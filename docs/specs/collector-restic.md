@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Collector de Restic y pruebas de restauración"
+title: Collector de Restic y pruebas de restauración
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [13]
 depends_on: [evidence-storage]
 supersedes: []
 related_specs: []

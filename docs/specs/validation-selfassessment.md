@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Validación y expediente de autoevaluación"
+title: Validación y expediente de autoevaluación
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [18]
 depends_on: [reports-scheduling, ens-applicability]
 supersedes: []
 related_specs: []

@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Collector de Cloudflare"
+title: Collector de Cloudflare
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [6]
 depends_on: [repo-foundation, evidence-storage]
 supersedes: []
 related_specs: []

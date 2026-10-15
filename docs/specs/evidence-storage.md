@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Storage de evidencias en R2"
+title: Storage de evidencias en R2
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [4]
 depends_on: [repo-foundation]
 supersedes: []
 related_specs: []

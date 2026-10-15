@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Servidor osquery en Cloudflare Workers"
+title: Servidor osquery en Cloudflare Workers
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [8]
 depends_on: [evidence-storage]
 supersedes: []
 related_specs: []

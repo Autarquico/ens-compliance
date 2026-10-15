@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Collector de Wazuh"
+title: Collector de Wazuh
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [12]
 depends_on: [evidence-storage, wazuh-deploy]
 supersedes: []
 related_specs: []

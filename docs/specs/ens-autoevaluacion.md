@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Autoevaluación ENS"
+title: Autoevaluación ENS
 type: epic
-status: draft
+status: active
 priority: P0
 size: XL
 issue: null
 prs: []
-related_issues: []
+related_issues: [1]
 depends_on: []
 supersedes: []
 related_specs: []

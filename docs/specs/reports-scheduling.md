@@ -1,14 +1,20 @@
 ---
 codename: ens-compliance
-title: "Checks, informes y scheduling"
+title: Checks, informes y scheduling
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
-depends_on: [collector-github, collector-cloudflare, collector-workspace, collector-osquery, collector-wazuh, collector-restic]
+related_issues: [14]
+depends_on:
+  - collector-github
+  - collector-cloudflare
+  - collector-workspace
+  - collector-osquery
+  - collector-wazuh
+  - collector-restic
 supersedes: []
 related_specs: []
 created: 2026-10-15

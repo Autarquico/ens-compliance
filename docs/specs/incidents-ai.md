@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Incidentes y análisis con IA opcional"
+title: Incidentes y análisis con IA opcional
 type: task
-status: draft
+status: active
 priority: P2
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [15]
 depends_on: [collector-wazuh, reports-scheduling]
 supersedes: []
 related_specs: []

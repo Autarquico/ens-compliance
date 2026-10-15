@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Inventario y alcance"
+title: Inventario y alcance
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [16]
 depends_on: [collector-osquery, collector-wazuh]
 supersedes: []
 related_specs: []

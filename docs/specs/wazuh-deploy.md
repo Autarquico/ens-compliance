@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Despliegue de Wazuh"
+title: Despliegue de Wazuh
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [11]
 depends_on: []
 supersedes: []
 related_specs: []

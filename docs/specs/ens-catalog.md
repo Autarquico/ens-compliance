@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Catálogo de medidas del Anexo II"
+title: Catálogo de medidas del Anexo II
 type: task
-status: draft
+status: active
 priority: P0
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [3]
 depends_on: [repo-foundation]
 supersedes: []
 related_specs: []
