@@ -1,0 +1,26 @@
+codename: ens-compliance
+display_name: Ens-compliance
+github:
+  repo: Autarquico/ens-compliance
+  project:
+    owner: Autarquico
+    owner_type: org
+    number: 6
+  field_ids:
+    status: PVTSSF_lADODyLb1M4BnO8Szhl0few
+    priority: PVTSSF_lADODyLb1M4BnO8Szhl0fgs
+    size: PVTSSF_lADODyLb1M4BnO8Szhl0fgw
+    ticket_type: PVTSSF_lADODyLb1M4BnO8Szhl0fhA
+paths:
+  specs: docs/specs/
+  specs_archive: docs/specs/archive/
+  tracking:
+    status: docs/STATUS.md
+agent:
+  language: es
+  conventions: AGENT.md
+mcp:
+  server: github
+sync:
+  archive_on_ship: false
+  default_since_days: 7
