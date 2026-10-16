@@ -1,9 +1,9 @@
 # ENS en una caja para pymes
 
-> Brief de producto para refinar con codex (Fase 1 del ciclo refine→ship).
-> Sustituye la orientación "repo de cumplimiento personal" de
-> `docs/ens-compliance-guide.md`. Mientras se refina, el backlog actual
-> (#1-#18) queda congelado.
+> Brief de producto aprobado (2026-10-16), revisado con una ronda de critique
+> de codex. Sustituye la orientación "repo de cumplimiento personal" de
+> `docs/ens-compliance-guide.md`. El backlog se organiza por las fases de
+> "Entrega por fases".
 
 ## Problema
 
@@ -139,6 +139,104 @@ propio, publicada con Cloudflare Tunnel; osquery en el Mac y los servidores;
 conectores GitHub, Cloudflare y Workspace; copia externa en R2; el perfil de
 detección se decide con datos.
 
+## Entrega por fases
+
+Cada fase es usable por sí sola.
+
+- **v0.1 — Autarqui hace su autoevaluación con la herramienta.**
+  - Puerta inicial: alcance y categorización aprobados. Si el sistema de
+    Autarqui resulta MEDIA, el resultado comprometido de v0.1 pasa a ser
+    "preparado para certificación", no autoevaluación.
+  - CLI; caja mínima (caddy + app en Compose); catálogo del Anexo II;
+    plantillas organizativas.
+  - **Matriz de cumplimiento:** por cada medida aplicable, requisito, evidencia
+    técnica o manual, responsable y fecha de la última revisión. Es lo que
+    exige la autoevaluación BÁSICA: "indicando si cada medida de seguridad
+    está implantada y sujeta a revisión regular" (RD 311/2022, anexo III,
+    2.1). Una medida sin evidencia o sin revisión vigente bloquea.
+  - Gestión de incidentes: procedimiento, responsables y registro manual
+    verificable (op.exp.7 y op.exp.9 aplican en BÁSICA). La automatización y
+    la correlación quedan para v0.3.
+  - Evidencias locales con copia restic cifrada a R2; conectores GitHub,
+    Cloudflare, Workspace y Restic. Endpoints: script guiado que ejecuta
+    consultas osquery en local y guarda el resultado como evidencia con hash.
+  - Checks, informes, expediente, y pre-auditoría (capa determinista + audit
+    pack con clientes Anthropic y OpenAI).
+  - Sin UI web, sin servidor osquery y sin detección.
+- **v0.2 — la usa una pyme que no es Autarqui.** UI web (htmx) con asistente y
+  generador documental; login con MFA u OIDC; instalador de un comando;
+  servidor osquery embebido y agentes; conector Microsoft 365; guías de
+  servicios externos; revisión de las plantillas por un auditor ENS; landing
+  mínima.
+- **v0.3 y siguientes.** Perfil de detección (wazuh-manager sin cabeza +
+  VictoriaLogs + panel de seguridad); incidentes; bundle offline y releases
+  firmadas; paquetes de agente por sistema operativo; landing completa; más
+  proveedores LLM, incluido modelo local.
+
+## Validación del auditor
+
+La pre-auditoría se valida contra la legislación, no contra nuestra opinión:
+
+1. **Autoauditoría:** los primeros expedientes son los de Autarqui y el de la
+   propia caja, que también es un sistema con datos sensibles.
+2. **Banco de defectos sembrados:**
+   - Casos: copias del expediente de Autarqui con incumplimientos conocidos
+     introducidos a propósito, expedientes correctos (sin defectos) y
+     expedientes sintéticos de pymes distintas de Autarqui.
+   - Cada defecto cita el texto literal del requisito del Anexo II que
+     incumple. Esa cita es la respuesta correcta, no nuestra opinión.
+   - Dos particiones: una de desarrollo y otra reservada que no se usa al
+     ajustar prompts ni criterios. El umbral se mide solo en la reservada.
+   - Se versiona en el repo como test de regresión del audit pack y para
+     comparar proveedores LLM.
+3. **Puntuación:**
+   - Un defecto cuenta como detectado si un hallazgo cita su medida y su
+     evidencia o documento. Los duplicados cuentan una vez.
+   - Falsas alarmas: hallazgos emitidos que no corresponden a ningún defecto
+     sembrado, sobre el total de hallazgos emitidos. Se mide también aparte
+     sobre los expedientes correctos.
+   - Cada ejecución registra la versión del audit pack, el proveedor, el
+     modelo y la temperatura. Cada caso se repite 3 veces y cuenta la mediana.
+4. **Umbral de cierre de v0.1** (cobertura del banco, no garantía universal):
+   100 % de los defectos deterministas detectados; ≥ 80 % de los defectos de
+   juicio con ≤ 20 % de falsas alarmas, por proveedor.
+5. **Superar el banco no aprueba un expediente real.** Son dos cosas
+   distintas: el banco valida la herramienta; el expediente lo aprueban las
+   personas (ver "Regla de preparación").
+
+## Regla de preparación
+
+Una única regla decide el estado de un expediente:
+
+- `READY` solo si toda medida aplicable tiene requisito satisfecho, evidencia
+  vigente y revisión registrada, y no hay no conformidades abiertas de la
+  pre-auditoría.
+- Cualquier otra cosa es `NOT READY`, con la lista de bloqueos. Si la capa de
+  juicio no se ejecutó, el estado indica "revisión humana pendiente" en lugar
+  de omitirla en silencio.
+
+Estados del expediente, en orden, cada uno con fecha y persona:
+1. **Expediente generado:** lo produce la herramienta.
+2. **Autoevaluación realizada:** por quien administra el sistema o en quien
+   delegue (RD 311/2022, anexo III, 2.1).
+3. **Autoevaluación analizada:** por el responsable de la seguridad, que
+   eleva las conclusiones y las medidas correctoras al responsable del
+   sistema.
+4. **Declaración de conformidad:** solo BÁSICA y solo tras el paso 3.
+
+## Copia independiente: qué garantiza y qué no
+
+"Independiente e inmutable" solo se afirma cuando se ha probado:
+- Credenciales de la copia distintas de las de cualquier fuente vigilada, y
+  administración separada. Si el destino es R2, Cloudflare queda como un
+  punto único de fallo; el modelo de amenaza lo debe recoger.
+- Prueba de borrado: con las credenciales de la caja no se puede borrar ni
+  sobrescribir dentro del periodo de retención.
+- Prueba de restauración completa: evidencias, manifiestos y estado de la
+  aplicación.
+- Sin verificar: que restic funcione sobre un bucket con bloqueo de objetos de
+  R2.
+
 ## Restricciones / no-goals
 
 - **Restricciones:**
@@ -146,7 +244,10 @@ detección se decide con datos.
     validar: ≤ 2 vCPU / 4 GB para la caja completa sin Wazuh).
   - Una sola organización por instalación.
   - Nunca declara conformidad automáticamente: la aprobación es humana y
-    queda registrada.
+    queda registrada (ver "Regla de preparación").
+  - En v0.1 la capa de juicio envía datos del expediente a Anthropic u
+    OpenAI: requiere consentimiento explícito, minimización y redacción de
+    secretos. El modelo local llega en v0.3.
   - Requisitos ENS solo desde fuentes oficiales: RD 311/2022, guías CCN-STIC y
     perfiles de cumplimiento específicos publicados por el CCN (art. 30).
   - Las reglas de seguridad de `docs/ens-compliance-guide.md` (líneas 269-282)
@@ -162,52 +263,64 @@ detección se decide con datos.
 
 ## Criterios de aceptación (Given/When/Then)
 
-### Scenario: instalación por un usuario apañado
+Cada escenario indica la versión en la que debe cumplirse.
+
+### Scenario: instalación por un usuario apañado (v0.2)
 - **Given** una VM Linux limpia con Docker
 - **When** el usuario sigue la guía de instalación (un comando + asistente web)
 - **Then** la caja queda operativa en menos de 1 hora, sin editar ficheros a mano
 
-### Scenario: autoevaluación BÁSICA defendible
+### Scenario: autoevaluación BÁSICA defendible (v0.1)
 - **Given** una pyme con un sistema categorizado como BÁSICA
-- **When** completa el asistente y conecta sus fuentes
-- **Then** obtiene la declaración de aplicabilidad, la documentación organizativa, las evidencias técnicas trazables y el expediente de autoevaluación pendiente de su aprobación
+- **When** completa alcance, aplicabilidad, documentación y conecta sus fuentes (CLI en v0.1, asistente en v0.2)
+- **Then** obtiene la matriz de cumplimiento con cada medida aplicable implantada, revisada y con evidencia, y el expediente en estado "generado", a la espera de la autoevaluación, el análisis del responsable de la seguridad y la declaración
 
-### Scenario: preparación para auditoría MEDIA
+### Scenario: preparación para auditoría MEDIA (v0.1)
 - **Given** un sistema categorizado como MEDIA
 - **When** se genera el expediente
 - **Then** el producto indica explícitamente que hace falta una auditoría de certificación y entrega el paquete de evidencias organizado por medida
 
-### Scenario: nunca un falso cumplimiento
+### Scenario: nunca un falso cumplimiento (v0.1)
 - **Given** una medida aplicable sin evidencia o con checks en `FAIL`/`UNKNOWN`
 - **When** se consulta el estado
 - **Then** el estado global es `NOT READY` y la medida aparece como bloqueante
 
-### Scenario: conectores enchufables
+### Scenario: conectores enchufables (v0.2)
 - **Given** una pyme que usa Microsoft 365 en lugar de Google Workspace
 - **When** activa su conector de identidad
 - **Then** los checks de identidad y MFA se evalúan sin cambiar el núcleo
 
-### Scenario: instalación sin Internet
+### Scenario: instalación sin Internet (v0.3)
 - **Given** una VM sin salida a Internet y el bundle offline de una release
 - **When** se ejecuta el instalador
 - **Then** la caja arranca con las mismas versiones y checksums que la release publicada
 
-### Scenario: configurar un servicio externo con la guía
+### Scenario: configurar un servicio externo con la guía (v0.2)
 - **Given** una pyme con Microsoft 365 y nadie que conozca Entra ID
 - **When** sigue la guía enlazada desde la UI y pega las credenciales
 - **Then** la UI prueba la conexión, confirma que los permisos son de solo lectura y avisa si sobran privilegios
 
-### Scenario: pre-auditoría
+### Scenario: pre-auditoría (v0.1)
 - **Given** un expediente generado con una medida cuya política contradice la evidencia técnica
 - **When** se ejecuta la pre-auditoría
 - **Then** aparece un hallazgo clasificado que cita la medida, el documento y la evidencia, y el informe dice explícitamente que no sustituye a la auditoría
 
-### Scenario: pre-auditoría sin LLM
+### Scenario: pre-auditoría sin LLM (v0.1)
 - **Given** el adaptador LLM desactivado
 - **When** se ejecuta la pre-auditoría
-- **Then** la capa determinista se completa y la de juicio aparece como no ejecutada, sin bloquear nada
+- **Then** la capa determinista se completa y el estado indica "revisión humana pendiente" para lo que cubría la capa de juicio
 
-### Scenario: perfil ligero
+### Scenario: la caja pasa su propia pre-auditoría (v0.1)
+- **Given** la caja instalada como sistema dentro del alcance de Autarqui
+- **When** se ejecuta la pre-auditoría sobre su expediente
+- **Then** su expediente cumple la regla de preparación (`READY`); si no, v0.1 no se cierra
+
+### Scenario: defectos sembrados por encima del umbral (v0.1)
+- **Given** el banco de defectos sembrados de la versión actual del audit pack
+- **When** se ejecuta la pre-auditoría con cada proveedor soportado
+- **Then** detecta el 100 % de los deterministas y ≥ 80 % de los de juicio con ≤ 20 % de falsas alarmas, y el resultado queda registrado por proveedor
+
+### Scenario: perfil ligero (v0.2)
 - **Given** la instalación base sin el perfil de detección
 - **When** recoge datos de hasta 25 endpoints
 - **Then** se mantiene dentro del presupuesto de recursos objetivo
@@ -223,8 +336,8 @@ detección se decide con datos.
   - Seguridad del propio producto: concentra datos sensibles de la pyme, así
     que es un objetivo valioso.
   - Un portátil como host de producción no da evidencia continua.
-- **Archivos afectados:** las specs de `docs/specs/` se replanifican tras el
-  refine. Se mantienen en esencia el núcleo (modelos, catálogo, evidencias,
+- **Archivos afectados:** las specs de `docs/specs/` se replanifican por
+  fases. Se mantienen en esencia el núcleo (modelos, catálogo, evidencias,
   collectors, informes) y cambian el empaquetado, la UI, los conectores, el
   osquery-edge (pasa de Worker a módulo de la app, con el Worker como
   opción), el storage (R2 pasa a destino de la copia externa) y Wazuh (sin
@@ -259,6 +372,8 @@ detección se decide con datos.
   - Modelo de sostenibilidad del proyecto (soporte, hosting gestionado…).
   - Qué guía CCN-STIC rige la auditoría del ENS y sus criterios de
     clasificación de hallazgos: la pre-auditoría debe seguirla, no inventarla.
-  - Qué proveedores soporta el adaptador LLM en la primera versión y qué
-    calidad mínima de modelo local hace fiable la capa de juicio (habrá que
-    medirlo con expedientes de prueba).
+  - Qué calidad mínima de modelo local hace fiable la capa de juicio: se mide
+    con el banco de defectos sembrados. Los proveedores de v0.1 están
+    decididos (Anthropic y OpenAI).
+  - Ollama u otro servidor local mediante el `base_url` del cliente
+    OpenAI-compatible: sin verificar.
