@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Evidencia de endpoints con script guiado"
+title: Evidencia de endpoints con script guiado
 type: task
-status: draft
+status: active
 priority: P0
 size: S
 issue: null
 prs: []
-related_issues: []
+related_issues: [19]
 depends_on: [evidence-storage]
 supersedes: []
 related_specs: []

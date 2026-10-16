@@ -1,14 +1,18 @@
 ---
 codename: ens-compliance
-title: "Generación del expediente y sus estados"
+title: Generación del expediente y sus estados
 type: task
-status: draft
+status: active
 priority: P0
 size: M
 issue: null
 prs: []
-related_issues: []
-depends_on: [compliance-matrix, org-docs-templates, incident-register, checks-engine]
+related_issues: [24]
+depends_on:
+  - compliance-matrix
+  - org-docs-templates
+  - incident-register
+  - checks-engine
 supersedes: []
 related_specs: []
 created: 2026-10-16

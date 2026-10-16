@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Perfil de detección"
+title: Perfil de detección
 type: task
-status: draft
+status: active
 priority: P2
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [34]
 depends_on: [box-packaging]
 supersedes: []
 related_specs: []

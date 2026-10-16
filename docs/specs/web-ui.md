@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "UI web con asistente"
+title: UI web con asistente
 type: task
-status: draft
+status: active
 priority: P1
 size: XL
 issue: null
 prs: []
-related_issues: []
+related_issues: [29]
 depends_on: [assessment-dossier, pre-audit]
 supersedes: []
 related_specs: []

@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Banco de defectos sembrados"
+title: Banco de defectos sembrados
 type: task
-status: draft
+status: active
 priority: P0
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [26]
 depends_on: [pre-audit]
 supersedes: []
 related_specs: []

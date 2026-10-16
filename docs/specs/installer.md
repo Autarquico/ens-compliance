@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Instalador de un comando"
+title: Instalador de un comando
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [32]
 depends_on: [box-packaging, web-ui]
 supersedes: []
 related_specs: []

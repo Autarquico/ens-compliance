@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Servidor osquery embebido"
+title: Servidor osquery embebido
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [28]
 depends_on: [evidence-storage, box-packaging]
 supersedes: []
 related_specs: []

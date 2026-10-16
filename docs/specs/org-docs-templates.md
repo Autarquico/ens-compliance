@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Plantillas de documentación organizativa"
+title: Plantillas de documentación organizativa
 type: task
-status: draft
+status: active
 priority: P0
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [21]
 depends_on: [repo-foundation]
 supersedes: []
 related_specs: []

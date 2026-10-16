@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Bundle offline y releases firmadas"
+title: Bundle offline y releases firmadas
 type: task
-status: draft
+status: active
 priority: P2
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [35]
 depends_on: [installer]
 supersedes: []
 related_specs: []

@@ -1,14 +1,20 @@
 ---
 codename: ens-compliance
-title: "Motor de checks y regla de preparación"
+title: Motor de checks y regla de preparación
 type: task
-status: draft
+status: active
 priority: P0
 size: M
 issue: null
 prs: []
-related_issues: []
-depends_on: [collector-github, collector-cloudflare, collector-workspace, collector-restic, endpoint-evidence, compliance-matrix]
+related_issues: [23]
+depends_on:
+  - collector-github
+  - collector-cloudflare
+  - collector-workspace
+  - collector-restic
+  - endpoint-evidence
+  - compliance-matrix
 supersedes: []
 related_specs: []
 created: 2026-10-16

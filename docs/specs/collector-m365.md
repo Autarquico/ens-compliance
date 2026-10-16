@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Conector de Microsoft 365"
+title: Conector de Microsoft 365
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [30]
 depends_on: [repo-foundation, evidence-storage]
 supersedes: []
 related_specs: []

@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Procedimiento y registro de incidentes"
+title: Procedimiento y registro de incidentes
 type: task
-status: draft
+status: active
 priority: P0
 size: S
 issue: null
 prs: []
-related_issues: []
+related_issues: [22]
 depends_on: [org-docs-templates, evidence-storage]
 supersedes: []
 related_specs: []

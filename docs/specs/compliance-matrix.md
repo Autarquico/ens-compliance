@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Matriz de cumplimiento por medida"
+title: Matriz de cumplimiento por medida
 type: task
-status: draft
+status: active
 priority: P0
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [20]
 depends_on: [ens-applicability, evidence-storage]
 supersedes: []
 related_specs: []

@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Landing pública"
+title: Landing pública
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [33]
 depends_on: []
 supersedes: []
 related_specs: []

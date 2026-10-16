@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Pre-auditoría y audit pack"
+title: Pre-auditoría y audit pack
 type: task
-status: draft
+status: active
 priority: P0
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [25]
 depends_on: [assessment-dossier]
 supersedes: []
 related_specs: []

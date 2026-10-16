@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Guías de servicios externos"
+title: Guías de servicios externos
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [31]
 depends_on: [collector-m365]
 supersedes: []
 related_specs: []

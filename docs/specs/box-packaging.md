@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Caja mínima en Docker Compose"
+title: Caja mínima en Docker Compose
 type: task
-status: draft
+status: active
 priority: P0
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [27]
 depends_on: [repo-foundation, reports-scheduling, evidence-storage]
 supersedes: []
 related_specs: []
