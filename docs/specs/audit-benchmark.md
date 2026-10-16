@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P0
 size: M
-issue: null
+issue: 26
 prs: []
 related_issues: [26]
 depends_on: [pre-audit]

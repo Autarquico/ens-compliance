@@ -1,11 +1,11 @@
 ---
 codename: ens-compliance
-title: "Fundación del repo y modelos"
+title: Fundación del repo y modelos
 type: task
 status: active
 priority: P0
 size: L
-issue: null
+issue: 2
 prs: []
 related_issues: [2]
 depends_on: []

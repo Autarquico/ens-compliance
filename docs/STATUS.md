@@ -9,7 +9,8 @@
 ## Done esta semana
 
 <!-- pm-sync:done-this-week -->
-_Pendiente de primera ejecución de `/pm sync`._
+- #8 Servidor osquery en Cloudflare Workers
+- #11 Despliegue de Wazuh
 <!-- /pm-sync:done-this-week -->
 
 ---
@@ -17,7 +18,7 @@ _Pendiente de primera ejecución de `/pm sync`._
 ## En curso
 
 <!-- pm-sync:in-progress -->
-_Pendiente de primera ejecución de `/pm sync`._
+_(nada)_
 <!-- /pm-sync:in-progress -->
 
 ---
@@ -25,7 +26,7 @@ _Pendiente de primera ejecución de `/pm sync`._
 ## Bloqueado / sin actividad
 
 <!-- pm-sync:blocked -->
-_Pendiente._
+_(nada)_
 <!-- /pm-sync:blocked -->
 
 ---

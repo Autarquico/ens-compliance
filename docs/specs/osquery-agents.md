@@ -1,11 +1,11 @@
 ---
 codename: ens-compliance
-title: "Despliegue de agentes osquery"
+title: Despliegue de agentes osquery
 type: task
 status: active
 priority: P1
 size: M
-issue: null
+issue: 9
 prs: []
 related_issues: [9]
 depends_on: [osquery-server]

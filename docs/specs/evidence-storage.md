@@ -1,11 +1,11 @@
 ---
 codename: ens-compliance
-title: "Storage de evidencias y copia independiente"
+title: Storage de evidencias y copia independiente
 type: task
 status: active
 priority: P0
 size: L
-issue: null
+issue: 4
 prs: []
 related_issues: [4]
 depends_on: [repo-foundation]

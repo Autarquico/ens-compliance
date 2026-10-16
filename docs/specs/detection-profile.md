@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P2
 size: L
-issue: null
+issue: 34
 prs: []
 related_issues: [34]
 depends_on: [box-packaging]

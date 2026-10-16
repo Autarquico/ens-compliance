@@ -1,11 +1,11 @@
 ---
 codename: ens-compliance
-title: "Collector de osquery y checks HOST"
+title: Collector de osquery y checks HOST
 type: task
 status: active
 priority: P1
 size: M
-issue: null
+issue: 10
 prs: []
 related_issues: [10]
 depends_on: [osquery-agents]

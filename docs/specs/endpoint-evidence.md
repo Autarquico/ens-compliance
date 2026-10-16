@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P0
 size: S
-issue: null
+issue: 19
 prs: []
 related_issues: [19]
 depends_on: [evidence-storage]

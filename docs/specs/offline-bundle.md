@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P2
 size: L
-issue: null
+issue: 35
 prs: []
 related_issues: [35]
 depends_on: [installer]

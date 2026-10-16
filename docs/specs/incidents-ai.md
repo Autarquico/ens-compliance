@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P2
 size: L
-issue: null
+issue: 15
 prs: []
 related_issues: [15]
 depends_on: [collector-wazuh, incident-register]

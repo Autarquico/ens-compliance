@@ -1,11 +1,11 @@
 ---
 codename: ens-compliance
-title: "Validación y cierre de la autoevaluación"
+title: Validación y cierre de la autoevaluación
 type: task
 status: active
 priority: P0
 size: L
-issue: null
+issue: 18
 prs: []
 related_issues: [18]
 depends_on: [audit-benchmark, box-packaging]

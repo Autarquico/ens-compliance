@@ -1,11 +1,11 @@
 ---
 codename: ens-compliance
-title: "Collector de Wazuh"
+title: Collector de Wazuh
 type: task
 status: active
 priority: P2
 size: M
-issue: null
+issue: 12
 prs: []
 related_issues: [12]
 depends_on: [detection-profile, evidence-storage]

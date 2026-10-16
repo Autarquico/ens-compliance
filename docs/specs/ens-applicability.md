@@ -1,11 +1,11 @@
 ---
 codename: ens-compliance
-title: "Categorización, riesgos y aplicabilidad"
+title: Categorización, riesgos y aplicabilidad
 type: task
 status: active
 priority: P0
 size: L
-issue: null
+issue: 17
 prs: []
 related_issues: [17]
 depends_on: [ens-catalog, discovery-inventory]

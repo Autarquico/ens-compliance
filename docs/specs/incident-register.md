@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P0
 size: S
-issue: null
+issue: 22
 prs: []
 related_issues: [22]
 depends_on: [org-docs-templates, evidence-storage]

@@ -1,11 +1,11 @@
 ---
 codename: ens-compliance
-title: "Inventario y alcance"
+title: Inventario y alcance
 type: task
 status: active
 priority: P0
 size: M
-issue: null
+issue: 16
 prs: []
 related_issues: [16]
 depends_on: [repo-foundation]

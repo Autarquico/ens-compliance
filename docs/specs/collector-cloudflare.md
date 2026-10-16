@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P0
 size: M
-issue: null
+issue: 6
 prs: []
 related_issues: [6]
 depends_on: [repo-foundation, evidence-storage]
