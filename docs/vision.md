@@ -40,9 +40,16 @@ una VM, o en un portátil para evaluarlo. Integra:
    auditoría de certificación, revisa todo el expediente en dos capas:
    - determinista (motor): evidencias ausentes o caducadas, hashes, checks en
      `FAIL`/`UNKNOWN`;
-   - juicio (skill de Claude Code sobre el adaptador LLM intercambiable):
-     coherencia entre política y evidencias, calidad de la documentación,
-     solidez de las justificaciones de aplicabilidad.
+   - juicio (adaptador LLM agnóstico de proveedor): coherencia entre
+     política y evidencias, calidad de la documentación, solidez de las
+     justificaciones de aplicabilidad.
+
+   La capa de juicio se define como un "audit pack" portable (criterios,
+   prompts y esquema JSON de hallazgos versionados en el repo) que se ejecuta
+   desde la propia caja con cualquier proveedor: APIs comerciales o modelos
+   locales, para que los datos de la pyme no salgan de su infraestructura. Una
+   skill para asistentes de código (Claude Code u otros) es solo un
+   empaquetado más del mismo pack.
 
    Devuelve hallazgos clasificados como en una auditoría (no conformidad
    mayor, no conformidad menor, observación), con referencia a medida y
@@ -143,5 +150,6 @@ y pegar un comando, pero no sabe de seguridad ni de ENS.
   - Modelo de sostenibilidad del proyecto (soporte, hosting gestionado…).
   - Qué guía CCN-STIC rige la auditoría del ENS y sus criterios de
     clasificación de hallazgos: la pre-auditoría debe seguirla, no inventarla.
-  - Cómo se ofrece la capa de juicio a usuarios sin Claude Code (prompt pack
-    para el adaptador LLM, servicio opcional…).
+  - Qué proveedores soporta el adaptador LLM en la primera versión y qué
+    calidad mínima de modelo local hace fiable la capa de juicio (habrá que
+    medirlo con expedientes de prueba).
