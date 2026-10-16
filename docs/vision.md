@@ -57,7 +57,20 @@ una VM, o en un portátil para evaluarlo. Integra:
    Devuelve hallazgos clasificados como en una auditoría (no conformidad
    mayor, no conformidad menor, observación), con referencia a medida y
    evidencia. Nunca dictamina conformidad.
-6. **Landing pública en el propio repo:** página estática con el estilo
+6. **Autocontenido:** cada release incluye todo lo necesario para instalar
+   sin buscar software por fuera:
+   - instalador de la caja con imágenes de contenedor de versión fijada y un
+     bundle offline (imágenes exportadas + checksums) para instalar sin
+     Internet;
+   - paquetes de agente preconfigurados por sistema operativo (osquery y, en
+     el perfil de detección, agente de Wazuh), generados por la caja con el
+     secreto de alta de esa instalación;
+   - guías paso a paso, en español y con capturas, para todo lo que no puede
+     ir dentro: Google Workspace, Microsoft 365 / Entra ID (Azure), GitHub,
+     Cloudflare y el proveedor S3 de la copia externa. Cada guía crea
+     credenciales de solo lectura con privilegio mínimo, y la UI enlaza la
+     guía y prueba la conexión al terminar.
+7. **Landing pública en el propio repo:** página estática con el estilo
    minimalista de Autarqui. Explica el producto, el camino BÁSICA/MEDIA y la
    instalación. Optimizada para búsquedas en español (metadatos, datos
    estructurados, contenido por medida o dimensión ENS). Usa iconografía
@@ -142,7 +155,8 @@ detección se decide con datos.
   - Sustituir al auditor en MEDIA o ALTA.
   - Cubrir ALTA en la primera versión.
   - Multi-cliente para MSP o consultores.
-  - Instalador gráfico o appliance precompilado (posterior).
+  - Instalador gráfico o imagen de VM precompilada (posterior; la primera
+    versión instala con un comando, con o sin Internet).
   - Competir con las herramientas del CCN (PILAR, INES, LUCÍA…): integrarse o
     exportar donde tenga sentido.
 
@@ -172,6 +186,16 @@ detección se decide con datos.
 - **Given** una pyme que usa Microsoft 365 en lugar de Google Workspace
 - **When** activa su conector de identidad
 - **Then** los checks de identidad y MFA se evalúan sin cambiar el núcleo
+
+### Scenario: instalación sin Internet
+- **Given** una VM sin salida a Internet y el bundle offline de una release
+- **When** se ejecuta el instalador
+- **Then** la caja arranca con las mismas versiones y checksums que la release publicada
+
+### Scenario: configurar un servicio externo con la guía
+- **Given** una pyme con Microsoft 365 y nadie que conozca Entra ID
+- **When** sigue la guía enlazada desde la UI y pega las credenciales
+- **Then** la UI prueba la conexión, confirma que los permisos son de solo lectura y avisa si sobran privilegios
 
 ### Scenario: pre-auditoría
 - **Given** un expediente generado con una medida cuya política contradice la evidencia técnica
@@ -220,6 +244,14 @@ detección se decide con datos.
   - Licencia de la edición libre de VictoriaLogs y su compatibilidad con
     AGPL-3.0.
   - Nombre del producto y dominio de la landing.
+  - Firma de las releases y de los paquetes de agente (origen verificable de
+    los instalables) y política de actualizaciones de los componentes
+    incluidos.
+  - Licencias de redistribución de cada componente que va dentro del bundle
+    (osquery, Wazuh, VictoriaLogs, Caddy…).
+  - Mantenimiento de las guías externas: las consolas de Google, Microsoft y
+    Cloudflare cambian; hace falta un proceso para detectar guías
+    desactualizadas.
   - La landing en GitHub Pages exige repo público (o un plan de pago con repo
     privado): decidir cuándo se publica el código.
   - Uso de la marca ENS: qué se puede decir y mostrar sin usar logotipos ni

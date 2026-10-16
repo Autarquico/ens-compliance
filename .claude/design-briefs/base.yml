@@ -1,0 +1,71 @@
+# Brief de diseño del proyecto. Hereda de ~/.claude/design-system.yml
+# todo lo que no se declara aquí. Precedencia: <page>.yml > base.yml > global.
+
+project:
+  name: ""                       # pendiente: nombre del producto (pregunta abierta en docs/vision.md)
+  url: ""                        # pendiente: dominio de la landing
+  audience: "pymes españolas que prestan servicios al sector público y necesitan cumplir el ENS, con alguien 'apañado' pero sin perfil de seguridad"
+  one_liner: ""                  # pendiente
+
+aesthetic:
+  family: ""                     # pendiente: el usuario pide "minimalista autárquico pero atractivo"
+  reference: []
+
+mode:
+  override: ""                   # hereda: light y dark al mismo nivel
+
+color:
+  accent:
+    name: ""                     # pendiente
+    hex_light: ""
+    hex_dark: ""
+    note: ""
+  neutrals_override: ""          # hereda: cold
+  semantics_override: {}
+
+typography:
+  headings:
+    family: "Instrument Serif"
+    weights: [400]
+    italic_allowed: true
+  body:
+    family: "Geist"
+    weights: [400, 500, 600]
+  mono:
+    family: "Geist Mono"
+    usage_in_ui: true            # IDs de medida (op.pl.1), estados PASS/FAIL, badges
+  scale_override: {}
+
+iconography:
+  set: "tabler"
+  stroke_override: null
+  size_default_override: null
+
+radius_override: {}
+depth_override: {}
+motion_override: {}
+density_override: ""
+
+copy:
+  tone: ""                       # pendiente
+  voice_examples: []
+  forbidden_local:
+    - "certificado / certificación ENS aplicado al producto"
+    - "garantiza el cumplimiento"
+  vocabulary_local: {}
+
+components_override: {}
+
+assets:
+  logo_light: ""
+  logo_dark: ""
+  favicon: ""
+  brand_marks: []
+
+notes: |
+  - Nunca usar logotipos, distintivos de conformidad ni marcas del CCN/ENS.
+    Iconografía propia por dimensión de seguridad y tipo de medida, con Tabler.
+  - La landing es estática (GitHub Pages) y optimizada para búsquedas en
+    español: metadatos, datos estructurados y contenido por medida/dimensión.
+  - El copy distingue siempre "preparado para" de "cumple": la conformidad la
+    declara una persona (BÁSICA) o un auditor (MEDIA).
