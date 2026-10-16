@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Servidor osquery en Cloudflare Workers
 type: task
-status: active
+status: abandoned
 priority: P1
 size: M
 issue: null
@@ -12,7 +12,9 @@ depends_on: [evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
+abandoned_at: 2026-10-16
+abandoned_reason: "Sustituido por osquery-server: el servidor osquery pasa a ser un módulo de la app dentro de la caja (docs/vision.md, Arquitectura propuesta), en v0.2."
 ---
 
 # Servidor osquery en Cloudflare Workers
