@@ -8,13 +8,7 @@ size: M
 issue: null
 prs: []
 related_issues: [14]
-depends_on:
-  - collector-github
-  - collector-cloudflare
-  - collector-workspace
-  - collector-osquery
-  - collector-wazuh
-  - collector-restic
+depends_on: [checks-engine]
 supersedes: []
 related_specs: []
 created: 2026-10-15
