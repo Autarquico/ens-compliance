@@ -1,6 +1,6 @@
 ---
 codename: ens-compliance
-title: Autoevaluación ENS
+title: "Autoevaluación ENS"
 type: epic
 status: active
 priority: P0
@@ -20,61 +20,43 @@ updated: 2026-10-15
 
 ## Contexto / problema
 
-Epic que agrupa la construcción del repositorio de cumplimiento ENS descrito en
-`docs/ens-compliance-guide.md`: documentación, evidencias, checks deterministas, informes y
-expediente de autoevaluación para una empresa unipersonal.
-
-Decisiones de planificación tomadas sobre la guía (sesión 2026-10-15):
-- Inventario, alcance y categorización van al final: aún no hay infraestructura desplegada.
-- Fleet se sustituye por osquery + un servidor TLS propio en Cloudflare Workers (`osquery-edge`); sin dashboard.
-- Storage de evidencias en Cloudflare R2, con copia independiente fuera de Cloudflare.
+Epic del producto "ENS en una caja para pymes" (docs/vision.md). Agrupa las specs por
+fases (milestones v0.1, v0.2, v0.3). v0.1 = Autarqui hace su autoevaluación
+con la herramienta; v0.2 = la usa una pyme que no es Autarqui; v0.3 y
+siguientes = detección, incidentes automatizados, bundle offline.
 
 ## Scope
 
 **Entra:**
-- Las 17 specs hijas listadas en Tasks, en el orden de dependencias declarado en cada una.
+- Las specs hijas (sub-issues), organizadas por milestone.
 
 **No entra:**
-- Lo listado en "No implementar inicialmente" (docs/ens-compliance-guide.md:1090-1099).
-- Declarar conformidad automáticamente: siempre requiere revisión humana.
+- Lo listado como no-goals en docs/vision.md.
+- Declarar conformidad automáticamente.
 
 ## Criterios de aceptación
 
-### Scenario: el sistema sabe decir NOT READY
-- **Given** medidas aplicables sin evidencia o con checks en FAIL
-- **When** se ejecuta `ens-evidence assessment status`
-- **Then** el estado es `NOT READY` con la lista de hallazgos bloqueantes
+### Scenario: cierre de v0.1
+- **Given** todas las specs del milestone v0.1 cerradas
+- **When** se revisa el expediente de Autarqui y el de la caja
+- **Then** ambos cumplen la regla de preparación y el banco de defectos supera el umbral
 
-### Scenario: expediente completo
-- **Given** todas las specs hijas cerradas
-- **When** se genera el informe de autoevaluación
-- **Then** contiene las 11 secciones de docs/ens-compliance-guide.md:945-957 y queda pendiente de aprobación humana
+### Scenario: el sistema sabe decir NOT READY
+- **Given** medidas aplicables sin evidencia o sin revisión
+- **When** se ejecuta `ens-evidence assessment status`
+- **Then** el estado es `NOT READY` con la lista de bloqueos
 
 ## Notas técnicas / riesgos
 
-- La numeración de fases de la guía es incoherente (tabla 63-75 frente a cuerpo FASE 0-14); manda el orden de dependencias de las specs.
-- Inconsistencia de estados de check en la guía (274, 361-368, 511-517): se resuelve en `repo-foundation`.
+- Fases, regla de preparación y validación del auditor: docs/vision.md.
 
 ## Tasks (no autoritativo — el board manda)
 
-- [ ] repo-foundation
-- [ ] ens-catalog
-- [ ] evidence-storage
-- [ ] collector-github
-- [ ] collector-cloudflare
-- [ ] collector-workspace
-- [ ] osquery-edge
-- [ ] osquery-agents
-- [ ] collector-osquery
-- [ ] wazuh-deploy
-- [ ] collector-wazuh
-- [ ] collector-restic
-- [ ] reports-scheduling
-- [ ] incidents-ai
-- [ ] discovery-inventory
-- [ ] ens-applicability
-- [ ] validation-selfassessment
+- [ ] v0.1: ver milestone v0.1
+- [ ] v0.2: ver milestone v0.2
+- [ ] v0.3: ver milestone v0.3
 
 ## Referencias
 
+- docs/vision.md
 - docs/ens-compliance-guide.md

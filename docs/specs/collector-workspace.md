@@ -3,7 +3,7 @@ codename: ens-compliance
 title: Collector de Google Workspace
 type: task
 status: active
-priority: P1
+priority: P0
 size: M
 issue: null
 prs: []

@@ -1,14 +1,14 @@
 ---
 codename: ens-compliance
-title: Despliegue de agentes osquery
+title: "Despliegue de agentes osquery"
 type: task
 status: active
 priority: P1
-size: S
+size: M
 issue: null
 prs: []
 related_issues: [9]
-depends_on: [osquery-edge]
+depends_on: [osquery-server]
 supersedes: []
 related_specs: []
 created: 2026-10-15
@@ -19,41 +19,42 @@ updated: 2026-10-15
 
 ## Contexto / problema
 
-Instalación y configuración de osqueryd en macOS y Linux apuntando a `osquery-edge`.
+Instalación de osqueryd en macOS y Linux apuntando al servidor osquery de la caja.
 
 ## Scope
 
 **Entra:**
-- Instalación reproducible (Ansible para Linux, script o perfil para macOS) versionada en `infrastructure/`.
-- Flags TLS: hostname, enroll_secret, plugins tls para config, logger y distributed.
-- Piloto en el Mac del usuario y luego el resto de hosts.
+- Instalación reproducible por SO, versionada en `infrastructure/`.
+- Flags TLS hacia `/agent/*` de la caja.
+- Comando de instalación generado por la caja.
+- Piloto y despliegue general.
 
 **No entra:**
-- Checks: son `collector-osquery`.
+- Checks: `collector-osquery`.
 
 ## Criterios de aceptación
 
 ### Scenario: piloto
-- **Given** el Mac del usuario con el agente instalado
-- **When** pasa un intervalo de agenda
-- **Then** sus resultados aparecen en R2 vía osquery-edge
+- **Given** el Mac con el agente
+- **When** pasa un intervalo
+- **Then** sus resultados llegan al storage de la caja
 
-### Scenario: servidor caído
-- **Given** osquery-edge inaccesible
-- **When** el agente sigue en marcha
-- **Then** no se degrada el host y reenvía al volver el servicio
+### Scenario: caja caída
+- **Given** la caja inaccesible
+- **When** el agente sigue
+- **Then** el host no se degrada y reenvía al volver
 
 ## Notas técnicas / riesgos
 
-- El enroll_secret no se guarda en Git; se distribuye desde Bitwarden.
+- El enroll_secret no va en Git.
+- Tamaño revisado a M: dos SO y recuperación tras caída.
 
 ## Tasks (no autoritativo — el board manda)
 
 - [ ] Paquetes y flags
-- [ ] Ansible Linux
-- [ ] Instalación macOS
+- [ ] macOS
+- [ ] Linux
 - [ ] Piloto
-- [ ] Despliegue general
 
 ## Referencias
 

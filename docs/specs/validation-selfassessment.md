@@ -1,35 +1,36 @@
 ---
 codename: ens-compliance
-title: Validación y expediente de autoevaluación
+title: "Validación y cierre de la autoevaluación"
 type: task
 status: active
-priority: P1
+priority: P0
 size: L
 issue: null
 prs: []
 related_issues: [18]
-depends_on: [reports-scheduling, ens-applicability]
+depends_on: [audit-benchmark, box-packaging]
 supersedes: []
 related_specs: []
 created: 2026-10-15
 updated: 2026-10-15
 ---
 
-# Validación y expediente de autoevaluación
+# Validación y cierre de la autoevaluación
 
 ## Contexto / problema
 
-Pruebas de validación (docs/ens-compliance-guide.md:963-977) y expediente de autoevaluación (docs/ens-compliance-guide.md:943-959).
+Cierre de v0.1: pruebas de validación (docs/ens-compliance-guide.md:963-977), autoauditoría de Autarqui y de la caja desplegada, y paso humano por los estados del expediente.
 
 ## Scope
 
 **Entra:**
-- Cada prueba de la tabla docs/ens-compliance-guide.md:965-975 ejecutada y registrada.
-- Prueba de recuperación de `ens-evidence`.
-- Informe de autoevaluación con las 11 secciones.
+- Pruebas de docs/ens-compliance-guide.md:965-975 ejecutadas y registradas.
+- Pre-auditoría sobre el expediente final de Autarqui y sobre el de la caja.
+- Análisis del responsable de la seguridad y conclusiones al responsable del sistema.
+- Declaración de conformidad si es BÁSICA y `READY`.
 
 **No entra:**
-- Aprobación: la firma el usuario.
+- Aprobación automática.
 
 ## Criterios de aceptación
 
@@ -38,27 +39,28 @@ Pruebas de validación (docs/ens-compliance-guide.md:963-977) y expediente de au
 - **When** se ejecuta la recogida
 - **Then** da `ERROR`, nunca `PASS`
 
-### Scenario: quitar protección
-- **Given** una protección de prueba desactivada
-- **When** se ejecutan los checks
-- **Then** se detecta la desviación
+### Scenario: la caja se audita
+- **Given** la caja desplegada como activo del alcance
+- **When** se ejecuta la pre-auditoría
+- **Then** cumple la regla de preparación o v0.1 no cierra
 
-### Scenario: expediente
-- **Given** todas las pruebas registradas
-- **When** se genera la autoevaluación
-- **Then** queda pendiente de aprobación humana con fecha
+### Scenario: cierre humano
+- **Given** expediente `READY`
+- **When** se completan los estados
+- **Then** queda la declaración con persona y fecha
 
 ## Notas técnicas / riesgos
 
-- Revisión humana obligatoria antes de concluir conformidad.
+- Revisión humana obligatoria.
 
 ## Tasks (no autoritativo — el board manda)
 
 - [ ] Pruebas de validación
-- [ ] Recuperación de ens-evidence
-- [ ] Expediente
-- [ ] Revisión humana
+- [ ] Autoauditoría Autarqui
+- [ ] Autoauditoría caja
+- [ ] Cierre humano
 
 ## Referencias
 
 - docs/ens-compliance-guide.md:943-977
+- docs/vision.md

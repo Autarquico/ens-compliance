@@ -3,12 +3,12 @@ codename: ens-compliance
 title: Collector de Restic y pruebas de restauración
 type: task
 status: active
-priority: P1
+priority: P0
 size: M
 issue: null
 prs: []
 related_issues: [13]
-depends_on: [evidence-storage]
+depends_on: [repo-foundation, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-15

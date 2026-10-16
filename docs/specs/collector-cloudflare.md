@@ -3,7 +3,7 @@ codename: ens-compliance
 title: Collector de Cloudflare
 type: task
 status: active
-priority: P1
+priority: P0
 size: M
 issue: null
 prs: []
@@ -55,7 +55,7 @@ Collector read-only de Cloudflare según docs/ens-compliance-guide.md:452-492.
 
 ## Notas técnicas / riesgos
 
-- Incluye el hostname de `osquery-edge` y el de cualquier UI de administración.
+- Incluye el hostname de la caja (`/agent/*` público, UI privada) y el de cualquier UI de administración.
 
 ## Tasks (no autoritativo — el board manda)
 

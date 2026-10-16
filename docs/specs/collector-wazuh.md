@@ -1,14 +1,14 @@
 ---
 codename: ens-compliance
-title: Collector de Wazuh
+title: "Collector de Wazuh"
 type: task
 status: active
-priority: P1
+priority: P2
 size: M
 issue: null
 prs: []
 related_issues: [12]
-depends_on: [evidence-storage, wazuh-deploy]
+depends_on: [detection-profile, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-15
@@ -19,12 +19,14 @@ updated: 2026-10-15
 
 ## Contexto / problema
 
-Collector read-only de la API de Wazuh: agentes, cobertura y alertas.
+Lee `alerts.json` y la API del manager (agentes, Syscollector, SCA) y reenvía las alertas a VictoriaLogs.
 
 ## Scope
 
 **Entra:**
-- Estado de agentes, cobertura por host, alertas críticas, eventos para incidentes.
+- Lectura incremental de `alerts.json`.
+- Reenvío a VictoriaLogs (`/insert/jsonline`).
+- Checks de cobertura de agentes.
 
 **No entra:**
 - Respuesta automática.
@@ -34,7 +36,7 @@ Collector read-only de la API de Wazuh: agentes, cobertura y alertas.
 ### Scenario: credencial revocada
 - **Given** un token de la fuente revocado o inválido
 - **When** se ejecuta el collector
-- **Then** el resultado es `collection_status: ERROR` y ningún check derivado da `PASS`
+- **Then** el resultado es `ERROR` y ningún check derivado da `PASS`
 
 ### Scenario: permiso insuficiente frente a configuración inexistente
 - **Given** un recurso al que el token no tiene acceso
@@ -47,21 +49,21 @@ Collector read-only de la API de Wazuh: agentes, cobertura y alertas.
 - **Then** no aparece ningún token, clave ni cabecera de autorización
 
 ### Scenario: host sin cobertura
-- **Given** un host del inventario sin agente Wazuh activo
+- **Given** un host del inventario sin agente activo
 - **When** se evalúan los checks
-- **Then** aparece como hallazgo de cobertura
+- **Then** aparece como hallazgo
 
 ## Notas técnicas / riesgos
 
-- API de Wazuh accesible solo desde la red interna o el ejecutor.
+- Sin Filebeat: el collector hace de shipper.
 
 ## Tasks (no autoritativo — el board manda)
 
-- [ ] Modelos
-- [ ] Cliente
+- [ ] Lector
+- [ ] Reenvío
 - [ ] Checks
-- [ ] Fixtures + tests
+- [ ] Tests
 
 ## Referencias
 
-- https://documentation.wazuh.com/
+- https://docs.victoriametrics.com/victorialogs/data-ingestion/

@@ -1,14 +1,14 @@
 ---
 codename: ens-compliance
-title: Inventario y alcance
+title: "Inventario y alcance"
 type: task
 status: active
-priority: P1
+priority: P0
 size: M
 issue: null
 prs: []
 related_issues: [16]
-depends_on: [collector-osquery, collector-wazuh]
+depends_on: [repo-foundation]
 supersedes: []
 related_specs: []
 created: 2026-10-15
@@ -19,26 +19,33 @@ updated: 2026-10-15
 
 ## Contexto / problema
 
-Fase 0 de la guía (docs/ens-compliance-guide.md:82-147), aplazada al final porque aún no hay
-infraestructura desplegada. Se apoya en los datos ya recogidos por osquery y
-Wazuh.
+Puerta inicial de v0.1: inventario declarado por CLI y delimitación del
+alcance (docs/ens-compliance-guide.md:82-147). La reconciliación con la evidencia de endpoints es
+opcional y no bloquea.
 
 ## Scope
 
 **Entra:**
 - `scope/assets.yaml`, `services.yaml`, `dependencies.yaml` con los elementos de docs/ens-compliance-guide.md:86-98.
-- `scope/system.yaml` con la delimitación del alcance.
-- Cuestionario de descubrimiento y decisiones humanas registradas.
+- `scope/system.yaml` con el alcance aprobado (persona y fecha).
+- Cuestionario de descubrimiento.
+- Reconciliación opcional con `endpoint-evidence`.
 
 **No entra:**
-- Secretos o tokens en el inventario.
+- Secretos en el inventario.
+- Dependencia de Wazuh u osquery-server.
 
 ## Criterios de aceptación
 
-### Scenario: inventario reconciliado
-- **Given** los hosts reportados por osquery y Wazuh
-- **When** se compara con `scope/assets.yaml`
-- **Then** cualquier host no inventariado o inventariado sin agente se lista como discrepancia
+### Scenario: alcance aprobado
+- **Given** el inventario completo
+- **When** se aprueba el alcance
+- **Then** queda registrado y desbloquea la categorización
+
+### Scenario: host no inventariado
+- **Given** evidencia de un endpoint que no está en `assets.yaml`
+- **When** se reconcilia
+- **Then** se lista como discrepancia
 
 ## Notas técnicas / riesgos
 
@@ -47,9 +54,9 @@ Wazuh.
 ## Tasks (no autoritativo — el board manda)
 
 - [ ] Cuestionario
-- [ ] assets/services/dependencies
-- [ ] Alcance
-- [ ] Reconciliación con collectors
+- [ ] Esquemas YAML
+- [ ] CLI
+- [ ] Reconciliación opcional
 
 ## Referencias
 

@@ -8,7 +8,7 @@ size: L
 issue: null
 prs: []
 related_issues: [15]
-depends_on: [collector-wazuh, reports-scheduling]
+depends_on: [collector-wazuh, incident-register]
 supersedes: []
 related_specs: []
 created: 2026-10-15
