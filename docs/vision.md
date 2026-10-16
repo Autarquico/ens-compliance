@@ -36,6 +36,17 @@ una VM, o en un portátil para evaluarlo. Integra:
 4. **Informes y expediente:** informe diario y mensual, `assessment status`
    capaz de decir `NOT READY` y expediente de autoevaluación con las 11
    secciones de la guía.
+5. **Pre-auditoría (opcional):** antes de una autoevaluación o de una
+   auditoría de certificación, revisa todo el expediente en dos capas:
+   - determinista (motor): evidencias ausentes o caducadas, hashes, checks en
+     `FAIL`/`UNKNOWN`;
+   - juicio (skill de Claude Code sobre el adaptador LLM intercambiable):
+     coherencia entre política y evidencias, calidad de la documentación,
+     solidez de las justificaciones de aplicabilidad.
+
+   Devuelve hallazgos clasificados como en una auditoría (no conformidad
+   mayor, no conformidad menor, observación), con referencia a medida y
+   evidencia. Nunca dictamina conformidad.
 
 **Usuario objetivo:** una pyme con alguien "apañado". Sabe seguir un asistente
 y pegar un comando, pero no sabe de seguridad ni de ENS.
@@ -89,6 +100,16 @@ y pegar un comando, pero no sabe de seguridad ni de ENS.
 - **When** activa su conector de identidad
 - **Then** los checks de identidad y MFA se evalúan sin cambiar el núcleo
 
+### Scenario: pre-auditoría
+- **Given** un expediente generado con una medida cuya política contradice la evidencia técnica
+- **When** se ejecuta la pre-auditoría
+- **Then** aparece un hallazgo clasificado que cita la medida, el documento y la evidencia, y el informe dice explícitamente que no sustituye a la auditoría
+
+### Scenario: pre-auditoría sin LLM
+- **Given** el adaptador LLM desactivado
+- **When** se ejecuta la pre-auditoría
+- **Then** la capa determinista se completa y la de juicio aparece como no ejecutada, sin bloquear nada
+
 ### Scenario: perfil ligero
 - **Given** la instalación base sin el perfil de detección
 - **When** recoge datos de hasta 25 endpoints
@@ -120,3 +141,7 @@ y pegar un comando, pero no sabe de seguridad ni de ENS.
   - Storage por defecto dentro de la caja (MinIO o similar) frente a un S3
     externo, y cómo se garantiza la copia independiente.
   - Modelo de sostenibilidad del proyecto (soporte, hosting gestionado…).
+  - Qué guía CCN-STIC rige la auditoría del ENS y sus criterios de
+    clasificación de hallazgos: la pre-auditoría debe seguirla, no inventarla.
+  - Cómo se ofrece la capa de juicio a usuarios sin Claude Code (prompt pack
+    para el adaptador LLM, servicio opcional…).
