@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Despliegue de Wazuh
 type: task
-status: active
+status: abandoned
 priority: P1
 size: L
 issue: null
@@ -12,7 +12,9 @@ depends_on: []
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-16
+abandoned_at: 2026-10-16
+abandoned_reason: "Sustituido por detection-profile: wazuh-manager sin indexer ni dashboard + VictoriaLogs como perfil opcional de la caja (docs/vision.md), en v0.3."
 ---
 
 # Despliegue de Wazuh
