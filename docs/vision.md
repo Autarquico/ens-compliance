@@ -25,14 +25,17 @@ deje el expediente preparado para que un auditor certifique MEDIA.
 Un único producto open source (AGPL-3.0) que se despliega con Docker Compose en
 una VM, o en un portátil para evaluarlo. Integra:
 
-1. **Asistente de cumplimiento (UI web):** guía paso a paso por alcance,
-   categorización, análisis de riesgos y aplicabilidad, y genera la
+1. **UI web única:** asistente de cumplimiento que guía paso a paso por
+   alcance, categorización, análisis de riesgos y aplicabilidad, y genera la
    documentación organizativa (política de seguridad, roles, procedimientos)
-   desde plantillas y respuestas.
+   desde plantillas y respuestas. También es el panel de seguridad (alertas,
+   agentes, incidentes), con un solo login y relacionando cada alerta con su
+   medida.
 2. **Motor de evidencias:** collectors de solo lectura como plugins, checks
-   deterministas, manifiestos con hash y storage cifrado.
+   deterministas, manifiestos con hash y copia externa inmutable.
 3. **Agente de endpoints ligero:** osquery con un servidor TLS propio dentro de
-   la caja. Wazuh queda como perfil opcional de detección.
+   la caja. La detección es un perfil opcional: manager de Wazuh sin indexer
+   ni dashboard, más VictoriaLogs como índice de búsqueda.
 4. **Informes y expediente:** informe diario y mensual, `assessment status`
    capaz de decir `NOT READY` y expediente de autoevaluación con las 11
    secciones de la guía.
@@ -54,11 +57,74 @@ una VM, o en un portátil para evaluarlo. Integra:
    Devuelve hallazgos clasificados como en una auditoría (no conformidad
    mayor, no conformidad menor, observación), con referencia a medida y
    evidencia. Nunca dictamina conformidad.
+6. **Landing pública en el propio repo:** página estática con el estilo
+   minimalista de Autarqui. Explica el producto, el camino BÁSICA/MEDIA y la
+   instalación. Optimizada para búsquedas en español (metadatos, datos
+   estructurados, contenido por medida o dimensión ENS). Usa iconografía
+   propia por dimensión y tipo de medida, nunca logotipos ni distintivos
+   oficiales del CCN.
 
 **Usuario objetivo:** una pyme con alguien "apañado". Sabe seguir un asistente
 y pegar un comando, pero no sabe de seguridad ni de ENS.
 
 **Primera instalación real:** Autarqui. El producto se valida usándolo.
+
+## Arquitectura propuesta
+
+Una VM (o un portátil para evaluar) con `docker compose up`:
+
+```
+                  Internet
+                     │
+          (opcional) Cloudflare Tunnel   ← sin abrir puertos
+                     │
+┌────────────────────┼──────────────── VM / portátil (Docker) ──────────┐
+│                    ▼                                                   │
+│   caddy (TLS automático) ──► /agent/*  público (agentes osquery)       │
+│                          └─► /         solo LAN/VPN/Access (UI)        │
+│                    ▼                                                   │
+│   app (Python, núcleo ens_evidence)                                    │
+│    · UI web (plantillas en servidor + htmx): asistente + seguridad     │
+│    · servidor TLS de osquery (enroll, config, log, distributed r/w)    │
+│    · scheduler: collectors → checks → informes                         │
+│    · pre-auditoría (capa determinista) + adaptador LLM                 │
+│         │                         │                                    │
+│   SQLite (estado,          /data/evidence (ficheros + manifiestos)     │
+│   usuarios, respuestas)           │                                    │
+│                                   │ restic cifrado, diario             │
+│  Perfil "deteccion" (opcional):   ▼                                    │
+│   · wazuh-manager (sin indexer ni dashboard) → alerts.json             │
+│   · victorialogs (índice de alertas, ingesta /insert/jsonline)         │
+│  Perfil "ia-local" (opcional):                                         │
+│   · ollama                                                             │
+└───────────────────────────────────┼────────────────────────────────────┘
+                                    ▼
+                    S3 externo con bloqueo de objetos (R2 u otro)
+                    = copia independiente e inmutable
+```
+
+| Pieza | Decisión | Motivo |
+|-------|----------|--------|
+| Proxy | Caddy | TLS automático; separa la ruta pública de agentes de la UI privada. |
+| App | Un contenedor: UI, API, servidor osquery, scheduler | Un proceso que operar, actualizar y respaldar. |
+| UI | Renderizada en servidor con htmx; sin SPA ni build de Node | Lo más ligero; misma app y mismo contenedor. |
+| Estado | SQLite | Sin servidor de base de datos; backup = un fichero. |
+| Evidencias | Ficheros locales + manifiestos sha256 | Simple; la inmutabilidad la aporta la copia externa. |
+| Copia independiente | Restic cifrado a S3 externo con bloqueo de objetos | Copia independiente (guía, línea 727) y protección contra borrado. |
+| Agentes | osquery; la UI genera el comando de instalación | Sin consola de Fleet ni servicios extra. |
+| Exposición | Cloudflare Tunnel (recomendado) o 443 | Los portátiles reportan desde fuera; la UI nunca es pública. |
+| Acceso UI | Usuarios locales con MFA obligatorio u OIDC (M365/Google) | La caja cumple lo que exige. |
+| Detección | Perfil opcional: wazuh-manager + VictoriaLogs | Se elimina lo pesado de Wazuh (indexer, dashboard, Filebeat); el collector lee `alerts.json` y reenvía a VictoriaLogs. |
+| IA | Adaptador agnóstico: API externa u Ollama | Datos que no salen de la pyme si se usa modelo local. |
+| Landing | Estática en el repo (GitHub Pages) | Sin servidor; versionada con el producto. |
+
+Fuera a propósito: Kubernetes, Fleet, MySQL/Postgres, Redis, MinIO, colas,
+indexer y dashboard de Wazuh, Grafana.
+
+**Para Autarqui (primera instalación):** VM pequeña en un servidor Linux
+propio, publicada con Cloudflare Tunnel; osquery en el Mac y los servidores;
+conectores GitHub, Cloudflare y Workspace; copia externa en R2; el perfil de
+detección se decide con datos.
 
 ## Restricciones / no-goals
 
@@ -135,8 +201,11 @@ y pegar un comando, pero no sabe de seguridad ni de ENS.
   - Un portátil como host de producción no da evidencia continua.
 - **Archivos afectados:** las specs de `docs/specs/` se replanifican tras el
   refine. Se mantienen en esencia el núcleo (modelos, catálogo, evidencias,
-  collectors, informes) y cambian el empaquetado, la UI, los conectores y el
-  osquery-edge (pasa de Worker a contenedor, con el Worker como opción).
+  collectors, informes) y cambian el empaquetado, la UI, los conectores, el
+  osquery-edge (pasa de Worker a módulo de la app, con el Worker como
+  opción), el storage (R2 pasa a destino de la copia externa) y Wazuh (sin
+  indexer ni dashboard). Se añaden la landing y el brief de diseño
+  (`.claude/design-briefs/`).
 - **Preguntas abiertas:**
   - ¿Existe un perfil de cumplimiento específico del CCN aplicable a pymes o a
     proveedores del sector público? Cambiaría el catálogo base.
@@ -145,8 +214,16 @@ y pegar un comando, pero no sabe de seguridad ni de ENS.
   - Qué conectores priorizar (Microsoft 365, Google Workspace, GitHub,
     Cloudflare…): hace falta validar qué usan de verdad las pymes objetivo.
   - Stack de la UI y si el núcleo Python también sirve el backend web.
-  - Storage por defecto dentro de la caja (MinIO o similar) frente a un S3
-    externo, y cómo se garantiza la copia independiente.
+  - RAM real del manager de Wazuh sin indexer y de VictoriaLogs con el
+    volumen de alertas de una pyme (el quickstart de 8 GiB incluye indexer y
+    dashboard).
+  - Licencia de la edición libre de VictoriaLogs y su compatibilidad con
+    AGPL-3.0.
+  - Nombre del producto y dominio de la landing.
+  - La landing en GitHub Pages exige repo público (o un plan de pago con repo
+    privado): decidir cuándo se publica el código.
+  - Uso de la marca ENS: qué se puede decir y mostrar sin usar logotipos ni
+    distintivos del CCN ni sugerir certificación.
   - Modelo de sostenibilidad del proyecto (soporte, hosting gestionado…).
   - Qué guía CCN-STIC rige la auditoría del ENS y sus criterios de
     clasificación de hallazgos: la pre-auditoría debe seguirla, no inventarla.
