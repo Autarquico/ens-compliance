@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Fundación del repo y modelos
 type: task
-status: active
+status: shipped
 priority: P0
 size: L
 issue: 2

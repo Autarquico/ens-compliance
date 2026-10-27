@@ -9,7 +9,7 @@
 ## Done esta semana
 
 <!-- pm-sync:done-this-week -->
-_(nada)_
+- #2 Fundación del repo y modelos
 <!-- /pm-sync:done-this-week -->
 
 ---
@@ -17,7 +17,7 @@ _(nada)_
 ## En curso
 
 <!-- pm-sync:in-progress -->
-- #2 Fundación del repo y modelos
+_(nada)_
 <!-- /pm-sync:in-progress -->
 
 ---
