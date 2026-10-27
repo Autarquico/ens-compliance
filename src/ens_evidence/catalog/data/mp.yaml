@@ -1,0 +1,2589 @@
+group:
+  id: mp
+  title: Medidas de protección
+  text:
+  - Las medidas de protección estarán dirigidas a proteger activos concretos, según su naturaleza, con
+    el nivel requerido en cada dimensión de seguridad.
+subgroups:
+- id: mp.if
+  title: Protección de las instalaciones e infraestructuras
+  text: []
+- id: mp.per
+  title: Gestión del personal
+  text: []
+- id: mp.eq
+  title: Protección de los equipos
+  text: []
+- id: mp.com
+  title: Protección de las comunicaciones
+  text: []
+- id: mp.si
+  title: Protección de los soportes de información
+  text: []
+- id: mp.sw
+  title: Protección de las aplicaciones informáticas
+  text: []
+- id: mp.info
+  title: Protección de la información
+  text: []
+- id: mp.s
+  title: Protección de los servicios
+  text: []
+measures:
+- id: mp.if.1
+  name: Áreas separadas y con control de acceso
+  group: mp
+  subgroup: mp.if
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.if.1.1
+    label: null
+    text: El equipamiento del Centro de Proceso de Datos (CPD) se instalará, en la medida de lo posible,
+      en áreas separadas, específicas para su función.
+  - id: mp.if.1.2
+    label: null
+    text: Se controlarán los accesos a las áreas indicadas de forma que sólo se pueda acceder por las
+      entradas previstas.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.1.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.if.2
+  name: Identificación de las personas
+  group: mp
+  subgroup: mp.if
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.if.2.1
+    label: null
+    text: El procedimiento de control de acceso identificará a las personas que accedan a los locales
+      donde hay equipamiento esencial que forme parte del sistema de información del CPD, registrando
+      las correspondientes entradas y salidas.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.1.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.if.3
+  name: Acondicionamiento de los locales
+  group: mp
+  subgroup: mp.if
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Los locales donde se ubiquen los sistemas de información y sus componentes esenciales dispondrán
+      de elementos adecuados para el eficaz funcionamiento del equipamiento allí instalado, y, en especial,
+      para asegurar:'
+  - id: mp.if.3.1
+    label: null
+    text: Las condiciones de temperatura y humedad.
+  - id: mp.if.3.2
+    label: null
+    text: La protección frente a las amenazas identificadas en el análisis de riesgos.
+  - id: mp.if.3.3
+    label: null
+    text: La protección del cableado frente a incidentes fortuitos o deliberados.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.1.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.if.4
+  name: Energía eléctrica
+  group: mp
+  subgroup: mp.if
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.if.4.1
+    label: null
+    text: Los locales donde se ubiquen los sistemas de información y sus componentes esenciales dispondrán
+      de tomas de energía eléctrica, de modo que se garantice el suministro y el correcto funcionamiento
+      de las luces de emergencia.
+  reinforcements:
+  - id: R1
+    title: Suministro eléctrico de emergencia
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.if.4.r1.1
+      label: null
+      text: En caso de fallo del suministro principal, el abastecimiento eléctrico deberá estar garantizado
+        durante el tiempo suficiente para una terminación ordenada de los procesos y la salvaguarda de
+        la información.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.1.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.if.5
+  name: Protección frente a incendios
+  group: mp
+  subgroup: mp.if
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.if.5.1
+    label: null
+    text: Los locales donde se ubiquen los sistemas de información y sus componentes esenciales se protegerán
+      frente a incendios atendiendo, al menos, a la normativa industrial de aplicación.
+  reinforcements: []
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.1.5
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.if.6
+  name: Protección frente a inundaciones
+  group: mp
+  subgroup: mp.if
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.if.6.1
+    label: null
+    text: Los locales donde se ubiquen los sistemas de información y sus componentes esenciales se protegerán
+      frente a incidentes causados por el agua.
+  reinforcements: []
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.1.6
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.if.7
+  name: Registro de entrada y salida de equipamiento
+  group: mp
+  subgroup: mp.if
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.if.7.1
+    label: null
+    text: Se llevará un registro pormenorizado de cualquier entrada y salida de equipamiento esencial,
+      incluyendo la identificación de la persona que autoriza el movimiento.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.1.7
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.per.1
+  name: Caracterización del puesto de trabajo
+  group: mp
+  subgroup: mp.per
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.per.1.1
+    label: null
+    text: Para cada puesto de trabajo, relacionado directamente con el manejo de información o servicios,
+      se definirán las responsabilidades en materia de seguridad, que estarán basadas en el análisis de
+      riesgos.
+  - id: mp.per.1.2
+    label: null
+    text: Se definirán los requisitos que deben satisfacer las personas que vayan a ocupar el puesto de
+      trabajo, en particular, en términos de confidencialidad. Dichos requisitos se tendrán en cuenta
+      en la selección de la persona que vaya a ocupar el puesto, incluyendo la verificación de sus antecedentes
+      laborales, formación y otras referencias, de conformidad con el ordenamiento jurídico y el respeto
+      a los derechos fundamentales.
+  reinforcements:
+  - id: R1
+    title: Habilitación Personal de Seguridad
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.per.1.r1.1
+      label: null
+      text: Los administradores de seguridad/sistema tendrán una Habilitación Personal de Seguridad (HPS)
+        otorgada por la autoridad competente, como consecuencia de los resultados del análisis de riesgos
+        previo o como requisito de seguridad de un sistema específico.
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.2.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.per.2
+  name: Deberes y obligaciones
+  group: mp
+  subgroup: mp.per
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se informará a cada persona que trabaje en el sistema de los deberes y responsabilidades de
+      su puesto de trabajo en materia de seguridad, contemplando:'
+  - id: mp.per.2.1
+    label: null
+    text: Las medidas disciplinarias a que haya lugar.
+  - id: mp.per.2.2
+    label: null
+    text: Contemplando tanto el periodo durante el cual se desempeña el puesto, como las obligaciones
+      en caso de término de la asignación, o traslado a otro puesto de trabajo.
+  - id: mp.per.2.3
+    label: null
+    text: El deber de confidencialidad respecto de los datos a los que tenga acceso, tanto durante el
+      periodo que esté adscrito al puesto de trabajo, como posteriormente a su terminación.
+  - id: mp.per.2.4
+    label: null
+    text: 'En caso de personal contratado a través de un tercero:'
+  - id: mp.per.2.4.1
+    label: null
+    text: Se establecerán los deberes y obligaciones de cada parte y del personal contratado.
+  - id: mp.per.2.4.2
+    label: null
+    text: Se establecerá el procedimiento de resolución de incidentes relacionados con el incumplimiento
+      de las obligaciones.
+  reinforcements:
+  - id: R1
+    title: Confirmación expresa
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.per.2.r1.1
+      label: null
+      text: Se ha de obtener la confirmación expresa de que los usuarios conocen las instrucciones de
+        seguridad necesarias y obligatorias y su aceptación, así como los procedimientos necesarios para
+        llevarlas a cabo de manera adecuada.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.2.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.per.3
+  name: Concienciación
+  group: mp
+  subgroup: mp.per
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se realizarán las acciones necesarias para concienciar regularmente al personal acerca de su
+      papel y responsabilidad para que la seguridad del sistema alcance los niveles exigidos. En particular,
+      se recordará periódicamente:'
+  - id: mp.per.3.1
+    label: null
+    text: La normativa de seguridad relativa al buen uso de los equipos o sistemas y las técnicas de ingeniería
+      social más habituales.
+  - id: mp.per.3.2
+    label: null
+    text: La identificación de incidentes, actividades o comportamientos sospechosos que deban ser reportados
+      para su tratamiento por personal especializado.
+  - id: mp.per.3.3
+    label: null
+    text: El procedimiento para informar sobre incidentes de seguridad, sean reales o falsas alarmas.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.2.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.per.4
+  name: Formación
+  group: mp
+  subgroup: mp.per
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.per.4.1
+    label: null
+    text: 'Se formará regularmente al personal en aquellas materias relativas a seguridad de la información
+      que requiera el desempeño de sus funciones, en particular en lo relativo a:
+
+      a) Configuración de sistemas.
+
+      b) Detección y reacción ante incidentes.
+
+      c) Gestión de la información en cualquier soporte en el que se encuentre. Se cubrirán al menos las
+      siguientes actividades: almacenamiento, transferencia, copias, distribución y destrucción.'
+  - id: null
+    label: null
+    text: Además, se evaluará la eficacia de las acciones formativas llevadas a cabo.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.2.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.eq.1
+  name: Puesto de trabajo despejado
+  group: mp
+  subgroup: mp.eq
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.eq.1.1
+    label: null
+    text: Los puestos de trabajo permanecerán despejados, sin que exista material distinto del necesario
+      en cada momento.
+  reinforcements:
+  - id: R1
+    title: Almacenamiento del material
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.eq.1.r1.1
+      label: null
+      text: Una vez usado, y siempre que sea factible, el material se almacenará en lugar cerrado.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.3.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.eq.2
+  name: Bloqueo de puesto de trabajo
+  group: mp
+  subgroup: mp.eq
+  applies_by: dimension
+  dimensions:
+  - A
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.eq.2.1
+    label: null
+    text: El puesto de trabajo se bloqueará al cabo de un tiempo prudencial de inactividad, requiriendo
+      una nueva autenticación del usuario para reanudar la actividad en curso.
+  reinforcements:
+  - id: R1
+    title: Cierre de sesiones
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.eq.2.r1.1
+      label: null
+      text: Pasado un cierto tiempo, superior al anterior, se cancelarán las sesiones abiertas desde dicho
+        puesto de trabajo.
+    - id: null
+      label: null
+      text: Una Guía CCN-STIC concretará la implementación de la configuración de seguridad adaptada a
+        la categorización del sistema o perfil de cumplimiento asociado.
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.3.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.eq.3
+  name: Protección de dispositivos portátiles
+  group: mp
+  subgroup: mp.eq
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: Los equipos (ordenadores portátiles, tabletas, etc.) que sean susceptibles de salir de las instalaciones
+      de la organización y no puedan beneficiarse de la protección física correspondiente, con un riesgo
+      manifiesto de pérdida o robo, serán protegidos adecuadamente.
+  - id: null
+    label: null
+    text: 'Sin perjuicio de las medidas generales que les afecten, se adoptarán las siguientes:'
+  - id: mp.eq.3.1
+    label: null
+    text: Se llevará un inventario de dispositivos portátiles junto con una identificación de la persona
+      responsable de cada uno de ellos y un control regular de que está positivamente bajo su control.
+  - id: mp.eq.3.2
+    label: null
+    text: Se establecerá un procedimiento operativo de seguridad para informar al servicio de gestión
+      de incidentes de pérdidas o sustracciones.
+  - id: mp.eq.3.3
+    label: null
+    text: Cuando un dispositivo portátil se conecte remotamente a través de redes que no están bajo el
+      estricto control de la organización, el ámbito de operación del servidor limitará la información
+      y los servicios accesibles a los mínimos imprescindibles, requiriendo autorización previa de los
+      responsables de la información y los servicios afectados. Este punto es de aplicación a conexiones
+      a través de internet y otras redes que no sean de confianza.
+  - id: mp.eq.3.4
+    label: null
+    text: Se evitará, en la medida de lo posible, que el dispositivo portátil contenga claves de acceso
+      remoto a la organización que no sean imprescindibles. Se considerarán claves de acceso remoto aquellas
+      que sean capaces de habilitar un acceso a otros equipos de la organización u otras de naturaleza
+      análoga.
+  reinforcements:
+  - id: R1
+    title: Cifrado del disco
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.eq.3.r1.1
+      label: null
+      text: Se protegerá el dispositivo portátil mediante cifrado del disco duro cuando el nivel de confidencialidad
+        de la información almacenada en el mismo sea de nivel MEDIO.
+  - id: R2
+    title: Entornos protegidos
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.eq.3.r2.1
+      label: null
+      text: El uso de dispositivos portátiles fuera de las instalaciones de la organización se restringirá
+        a entornos protegidos, donde el acceso sea controlado y a salvo de hurtos y miradas indiscretas.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: +R1+R2
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.3.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.eq.4
+  name: Otros dispositivos conectados a la red
+  group: mp
+  subgroup: mp.eq
+  applies_by: dimension
+  dimensions:
+  - C
+  preamble:
+  - 'Esta medida afecta a todo tipo de dispositivos conectados a la red y que puedan tener en algún momento
+    acceso a la información, tales como:
+
+    a) Dispositivos multifunción: impresoras, escáneres, etc.
+
+    b) Dispositivos multimedia: proyectores, altavoces inteligentes, etc.
+
+    c) Dispositivos internet de las cosas, en inglés Internet of Things (IoT).
+
+    d) Dispositivos de invitados y los personales de los propios empleados, en inglés Bring Your Own Device
+    (BYOD).
+
+    e) Otros.'
+  diagram_refs: []
+  base:
+  - id: mp.eq.4.1
+    label: null
+    text: Los dispositivos presentes en el sistema deberán contar con una configuración de seguridad adecuada
+      de manera que se garantice el control del flujo definido de entrada y salida de la información.
+  - id: mp.eq.4.2
+    label: null
+    text: Los dispositivos presentes en la red que dispongan de algún tipo de almacenamiento temporal
+      o permanente de información proporcionarán la funcionalidad necesaria para eliminar información
+      de soportes de información. (Ver [mp.si.5]).
+  reinforcements:
+  - id: R1
+    title: Productos certificados
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.eq.4.r1.1
+      label: null
+      text: Se usarán, cuando sea posible, productos o servicios que cumplan lo establecido en [op.pl.5].
+  - id: R2
+    title: Control de dispositivos conectados a la red
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.eq.4.r2.1
+      label: null
+      text: Se dispondrá de soluciones que permitan visualizar los dispositivos presentes en la red, controlar
+        su conexión/desconexión a la misma y verificar su configuración de seguridad.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.3.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.com.1
+  name: Perímetro seguro
+  group: mp
+  subgroup: mp.com
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.com.1.1
+    label: null
+    text: Se dispondrá de un sistema de protección perimetral que separe la red interna del exterior.
+      Todo el tráfico deberá atravesar dicho sistema.
+  - id: mp.com.1.2
+    label: null
+    text: Todos los flujos de información a través del perímetro deben estar autorizados previamente.
+  - id: null
+    label: null
+    text: La Instrucción Técnica de Seguridad de Interconexión de Sistemas de Información determinará
+      los requisitos establecidos en el perímetro que han de cumplir todos los componentes del sistema
+      en función de la categoría.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.4.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.com.2
+  name: Protección de la confidencialidad
+  group: mp
+  subgroup: mp.com
+  applies_by: dimension
+  dimensions:
+  - C
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.com.2.1
+    label: null
+    text: Se emplearán redes privadas virtuales cifradas cuando la comunicación discurra por redes fuera
+      del propio dominio de seguridad.
+  reinforcements:
+  - id: R1
+    title: Algoritmos y parámetros autorizados
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.com.2.r1.1
+      label: null
+      text: Se emplearán algoritmos y parámetros autorizados por el CCN.
+  - id: R2
+    title: Dispositivos hardware
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.com.2.r2.1
+      label: null
+      text: Se emplearán, dispositivos hardware en el establecimiento y utilización de la red privada
+        virtual.
+  - id: R3
+    title: Productos certificados
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.com.2.r3.1
+      label: null
+      text: Se usarán productos o servicios que cumplan lo establecido en [op.pl.5].
+  - id: R4
+    title: Cifradores
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.com.2.r4.1
+      label: null
+      text: Se emplearán cifradores que cumplan con los requisitos establecidos en la guía CCN-STIC que
+        sea de aplicación.
+  - id: R5
+    title: Cifrado de información especialmente sensible
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.com.2.r5.1
+      label: null
+      text: Se cifrará toda la información transmitida.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      any_of: []
+      expression: +R1+R2+R3
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.4.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.com.3
+  name: Protección de la integridad y de la autenticidad
+  group: mp
+  subgroup: mp.com
+  applies_by: dimension
+  dimensions:
+  - I
+  - A
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.com.3.1
+    label: null
+    text: En comunicaciones con puntos exteriores al dominio propio de seguridad, se asegurará la autenticidad
+      del otro extremo del canal de comunicación antes de intercambiar información. (Ver [op.acc.5]).
+  - id: mp.com.3.2
+    label: null
+    text: 'Se prevendrán ataques activos garantizando que al ser detectados se activarán los procedimientos
+      previstos de tratamiento del incidente. Se considerarán ataques activos:
+
+      a) La alteración de la información en tránsito.
+
+      b) La inyección de información espuria.
+
+      c) El secuestro de la sesión por una tercera parte.'
+  - id: mp.com.3.3
+    label: null
+    text: Se aceptará cualquier mecanismo de identificación y autenticación de los previstos en el ordenamiento
+      jurídico y en la normativa de aplicación.
+  reinforcements:
+  - id: R1
+    title: Redes privadas virtuales
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.com.3.r1.1
+      label: null
+      text: Se emplearán redes privadas virtuales cifradas cuando la comunicación discurra por redes fuera
+        del propio dominio de seguridad.
+  - id: R2
+    title: Algoritmos y parámetros autorizados
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.com.3.r2.1
+      label: null
+      text: Se emplearán algoritmos y parámetros autorizados por el CCN.
+  - id: R3
+    title: Dispositivos hardware
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.com.3.r3.1
+      label: null
+      text: Se recomienda emplear dispositivos hardware en el establecimiento y utilización de la red
+        privada virtual.
+  - id: R4
+    title: Productos certificados
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.com.3.r4.1
+      label: null
+      text: Se emplearán productos certificados conforme a lo establecido en [op.pl.5].
+  - id: R5
+    title: Cifradores
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.com.3.r5.1
+      label: null
+      text: Se emplearán cifradores que cumplan con los requisitos establecidos en la guía CCN-STIC que
+        sea de aplicación.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: + R1 + R2
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      - R4
+      any_of: []
+      expression: + R1 + R2 + R3 + R4
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.4.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.com.4
+  name: Separación de flujos de información en la red
+  group: mp
+  subgroup: mp.com
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble:
+  - La segmentación acota el acceso a la información y, consiguientemente, la propagación de los incidentes
+    de seguridad, que quedan restringidos al entorno donde ocurren.
+  - Cuando la transmisión de información por la red se restringe a ciertos segmentos, se acota el acceso
+    a la información y los incidentes de seguridad quedan encapsulados en su segmento.
+  diagram_refs:
+  - /datos/imagenes/disp/2022/106/7191_11542165_1.png
+  - /datos/imagenes/disp/2022/106/7191_11542165_2.png
+  base:
+  - id: null
+    label: null
+    text: 'Los flujos de información se separarán en segmentos de forma que:'
+  - id: mp.com.4.1
+    label: null
+    text: El tráfico por la red se segregará para que cada equipo solamente tenga acceso a la información
+      que necesita.
+  - id: mp.com.4.2
+    label: null
+    text: Si se emplean comunicaciones inalámbricas, será en un segmento separado.
+  reinforcements:
+  - id: R1
+    title: Segmentación lógica básica
+    required_at: []
+    alternative_at:
+    - MEDIA
+    clauses:
+    - id: mp.com.4.r1.1
+      label: null
+      text: Los segmentos de red se implementarán por medio de redes de área local virtuales (Virtual
+        Local Area Network, VLAN).
+    - id: mp.com.4.r1.2
+      label: null
+      text: 'La red que conforma el sistema deberá segregarse en distintas subredes contemplando como
+        mínimo:
+
+        • Usuarios.
+
+        • Servicios.
+
+        • Administración.'
+  - id: R2
+    title: Segmentación lógica avanzada
+    required_at: []
+    alternative_at:
+    - MEDIA
+    - ALTA
+    clauses:
+    - id: mp.com.4.r2.1
+      label: null
+      text: Los segmentos de red se implementarán por medio de redes privadas virtuales (Virtual Private
+        Network, VPN).
+  - id: R3
+    title: Segmentación física
+    required_at: []
+    alternative_at:
+    - MEDIA
+    - ALTA
+    clauses:
+    - id: mp.com.4.r3.1
+      label: null
+      text: Los segmentos de red se implementarán con medios físicos separados.
+  - id: R4
+    title: Puntos de interconexión
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.com.4.r4.1
+      label: null
+      text: Control de entrada de los usuarios que llegan a cada segmento y control de entrada y salida
+        de la información disponible en cada segmento.
+    - id: mp.com.4.r4.2
+      label: null
+      text: El punto de interconexión estará particularmente asegurado, mantenido y monitorizado, (como
+        en [mp.com.1]).
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of:
+      - - R1
+        - R2
+        - R3
+      expression: +[R1oR2oR3]
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R4
+      any_of:
+      - - R2
+        - R3
+      expression: +[R2oR3]+R4
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.4.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.si.1
+  name: Marcado de soportes
+  group: mp
+  subgroup: mp.si
+  applies_by: dimension
+  dimensions:
+  - C
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.si.1.1
+    label: null
+    text: Los soportes de información (papel impreso, documentos electrónicos, contenidos multimedia -vídeos,
+      cursos, presentaciones- etc.) que contengan información que según [mp.info.2] deba protegerse con
+      medidas de seguridad específicas, llevarán las marcas o metadatos correspondientes que indiquen
+      el nivel de seguridad de la información contenida de mayor calificación.
+  reinforcements:
+  - id: R1
+    title: Marca de agua digital
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.si.1.r1.1
+      label: null
+      text: La política de seguridad de la organización definirá marcas de agua para asegurar el uso adecuado
+        de la información que se maneja.
+    - id: mp.si.1.r1.2
+      label: null
+      text: Los soportes de información digital (documentos electrónicos, material multimedia, etc.) podrán
+        incluir una marca de agua según la política de seguridad.
+    - id: mp.si.1.r1.3
+      label: null
+      text: Los equipos o dispositivos a través de los que se accede a aplicaciones, escritorios remotos
+        o virtuales, datos, etc., presentarán una marca de agua en pantalla según la política de seguridad.
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.5.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.si.2
+  name: Criptografía
+  group: mp
+  subgroup: mp.si
+  applies_by: dimension
+  dimensions:
+  - C
+  - I
+  preamble:
+  - Esta medida se aplica, en particular, a todos los dispositivos removibles cuando salen de un área
+    controlada. Se entenderán por dispositivos removibles, los CD, DVD, discos extraíbles, pendrives,
+    memorias USB u otros de naturaleza análoga.
+  diagram_refs: []
+  base:
+  - id: mp.si.2.1
+    label: null
+    text: Se usarán mecanismos criptográficos que garanticen la confidencialidad y la integridad de la
+      información contenida.
+  - id: mp.si.2.2
+    label: null
+    text: Se emplearán algoritmos y parámetros autorizados por el CCN.
+  reinforcements:
+  - id: R1
+    title: Productos certificados
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.si.2.r1.1
+      label: null
+      text: Se emplearán productos certificados conforme a lo establecido en [op.pl.5].
+  - id: R2
+    title: Copias de seguridad
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.si.2.r2.1
+      label: null
+      text: Las copias se seguridad se cifrarán utilizando algoritmos y parámetros autorizados por el
+        CCN.
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: + R1 + R2
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.5.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.si.3
+  name: Custodia
+  group: mp
+  subgroup: mp.si
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.si.3.1
+    label: null
+    text: Se aplicará la debida diligencia y control a los soportes de información que permanecen bajo
+      la responsabilidad de la organización, garantizando el control de acceso con medidas físicas ([mp.if.1]
+      y [mp.if.7]) o lógicas ([mp.si.2]).
+  - id: mp.si.3.2
+    label: null
+    text: Se respetarán las exigencias de mantenimiento del fabricante, en especial, en lo referente a
+      temperatura, humedad y otros agentes medioambientales.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.5.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.si.4
+  name: Transporte
+  group: mp
+  subgroup: mp.si
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble:
+  - El responsable del sistema garantizará que los dispositivos permanecen bajo control y que satisfacen
+    sus requisitos de seguridad mientras están siendo desplazados de un lugar a otro, fuera de las zonas
+    controladas por la organización.
+  diagram_refs: []
+  base:
+  - id: mp.si.4.1
+    label: null
+    text: Se dispondrá de un registro de entrada/salida que identifique al transportista que entrega/recibe
+      el soporte.
+  - id: mp.si.4.2
+    label: null
+    text: Se dispondrá de un procedimiento rutinario que coteje las salidas con las llegadas y levante
+      las alarmas pertinentes cuando se detecte algún incidente.
+  - id: mp.si.4.3
+    label: null
+    text: Se utilizarán los medios de protección criptográfica ([mp.si.2]) correspondientes al mayor nivel
+      de seguridad de la información contenida.
+  - id: mp.si.4.4
+    label: null
+    text: Se gestionarán las claves según [op.exp.10].
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.5.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.si.5
+  name: Borrado y destrucción
+  group: mp
+  subgroup: mp.si
+  applies_by: dimension
+  dimensions:
+  - C
+  preamble:
+  - La medida de borrado y destrucción de soportes de información se aplicará a todo tipo de equipos y
+    soportes susceptibles de almacenar información, incluyendo medios electrónicos y no electrónicos.
+  diagram_refs: []
+  base:
+  - id: mp.si.5.1
+    label: null
+    text: Los soportes que vayan a ser reutilizados para otra información o liberados a otra organización
+      serán objeto del borrado seguro de su contenido que no permita su recuperación. Cuando la naturaleza
+      del soporte no permita un borrado seguro, el soporte no podrá ser reutilizado en ningún otro sistema.
+  - id: null
+    label: null
+    text: Las guías CCN-STIC del CCN precisarán los criterios para definir como seguro un mecanismo de
+      borrado o de destrucción, en función de la sensibilidad de la información almacenada en el dispositivo.
+  reinforcements:
+  - id: R1
+    title: Productos certificados
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.si.5.r1.1
+      label: null
+      text: Se usarán productos o servicios que cumplan lo establecido en [op.pl.5].
+  - id: R2
+    title: Destrucción de soportes
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.si.5.r2.1
+      label: null
+      text: Una vez finalizado el ciclo de vida del soporte de información, deberá ser destruido de forma
+        segura conforme a los criterios establecidos por el CCN.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.5.5
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.sw.1
+  name: Desarrollo de aplicaciones
+  group: mp
+  subgroup: mp.sw
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.sw.1.1
+    label: null
+    text: El desarrollo de aplicaciones se realizará sobre un sistema diferente y separado del de producción,
+      no debiendo existir herramientas o datos de desarrollo en el entorno de producción, ni datos de
+      producción en el de desarrollo.
+  reinforcements:
+  - id: R1
+    title: Mínimo privilegio
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.sw.1.r1.1
+      label: null
+      text: Las aplicaciones se desarrollarán respetando el principio de mínimo privilegio, accediendo
+        únicamente a los recursos imprescindibles para su función, y con los privilegios que sean indispensables.
+  - id: R2
+    title: Metodología de desarrollo seguro
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.sw.1.r2.1
+      label: null
+      text: 'Se aplicará una metodología de desarrollo seguro reconocida que:
+
+        a) Tendrá en consideración los aspectos de seguridad a lo largo de todo el ciclo de vida.
+
+        b) Incluirá normas de programación segura, especialmente: control de asignación y liberación de
+        memoria, desbordamiento de memoria (overflow).
+
+        c) Tratará específicamente los datos usados en pruebas.
+
+        d) Permitirá la inspección del código fuente.'
+  - id: R3
+    title: Seguridad desde el diseño
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.sw.1.r3.1
+      label: null
+      text: 'Los siguientes elementos serán parte integral del diseño del sistema:
+
+        a) Los mecanismos de identificación y autenticación.
+
+        b) Los mecanismos de protección de la información tratada.
+
+        c) La generación y tratamiento de pistas de auditoría.'
+  - id: R4
+    title: Datos de pruebas
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.sw.1.r4.1
+      label: null
+      text: Preferiblemente, las pruebas previas a la implantación o modificación de los sistemas de información
+        no se realizarán con datos reales. En caso de que fuese necesario recurrir a datos reales se garantizará
+        el nivel de seguridad correspondiente.
+  - id: R5
+    title: Lista de componentes software
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.sw.1.r5.1
+      label: null
+      text: El desarrollador elaborará y mantendrá actualizada una relación formal de los componentes
+        software de terceros empleados en la aplicación o producto. Se mantendrá un histórico de los componentes
+        utilizados en las diferentes versiones del software. El contenido mínimo de la lista de componentes,
+        que contendrá, al menos, la identificación del componente, el fabricante y la versión empleada,
+        se concretará en una guía CCN-STIC del CCN.
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      - R4
+      any_of: []
+      expression: +R1+R2+R3+R4
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      - R4
+      any_of: []
+      expression: +R1+R2+R3+R4
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.6.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.sw.2
+  name: Aceptación y puesta en servicio
+  group: mp
+  subgroup: mp.sw
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: Antes de pasar a producción se comprobará el correcto funcionamiento de la aplicación.
+  - id: mp.sw.2.1
+    label: null
+    text: 'Se comprobará que:
+
+      a) Se cumplen los criterios de aceptación en materia de seguridad.
+
+      b) No se deteriora la seguridad de otros componentes del servicio.'
+  reinforcements:
+  - id: R1
+    title: Pruebas
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.sw.2.r1.1
+      label: null
+      text: Las pruebas se realizarán en un entorno aislado (pre-producción).
+  - id: R2
+    title: Inspección de código fuente
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.sw.2.r2.1
+      label: null
+      text: Se realizará una auditoría de código fuente.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.6.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.info.1
+  name: Datos personales
+  group: mp
+  subgroup: mp.info
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.info.1.1
+    label: null
+    text: Cuando el sistema trate datos personales, el responsable de seguridad recogerá los requisitos
+      de protección de datos que sean fijados por el responsable o por el encargado del tratamiento, contando
+      con el asesoramiento del DPD, y que sean necesarios implementar en los sistemas de acuerdo a la
+      naturaleza, alcance, contexto y fines del mismo, así como de los riesgos para los derechos y libertades
+      de acuerdo a lo establecido en los artículos 24 y 32 del RGPD, y de acuerdo a la evaluación de impacto
+      en la protección de datos, si se ha llevado a cabo.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.7.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.info.2
+  name: Calificación de la información
+  group: mp
+  subgroup: mp.info
+  applies_by: dimension
+  dimensions:
+  - C
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.info.2.1
+    label: null
+    text: Para calificar la información se estará a lo establecido legalmente por las leyes y tratados
+      internacionales de los que España es miembro y su normativa de aplicación cuando se trate de materias
+      clasificadas. El valor a emplear en el caso de información de materias no clasificadas sería USO
+      OFICIAL para información con algún tipo de restricción en su manejo por su sensibilidad y confidencialidad.
+  - id: mp.info.2.2
+    label: null
+    text: La política de seguridad establecerá quién es el responsable de cada información manejada por
+      el sistema.
+  - id: mp.info.2.3
+    label: null
+    text: La política de seguridad recogerá, directa o indirectamente, los criterios que, en cada organización,
+      determinarán el nivel de seguridad requerido, dentro del marco establecido en el artículo 40 y los
+      criterios generales señalados en el anexo I.
+  - id: mp.info.2.4
+    label: null
+    text: El responsable de cada información seguirá los criterios determinados en el apartado anterior
+      para asignar a cada información el nivel de seguridad requerido, y será responsable de su documentación
+      y aprobación formal.
+  - id: mp.info.2.5
+    label: null
+    text: El responsable de cada información en cada momento tendrá en exclusiva la potestad de modificar
+      el nivel de seguridad requerido, de acuerdo a los apartados anteriores.
+  reinforcements: []
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.7.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.info.3
+  name: Firma electrónica
+  group: mp
+  subgroup: mp.info
+  applies_by: dimension
+  dimensions:
+  - I
+  - A
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.info.3.1
+    label: null
+    text: Se empleará cualquier tipo de firma electrónica de los previstos en el vigente ordenamiento
+      jurídico, entre ellos, los sistemas de código seguro de verificación vinculados a la Administración
+      Pública, órgano, organismo público o entidad de derecho público, en los términos y condiciones establecidos
+      en la Ley 39/2015, de 1 de octubre, del Procedimiento Administrativo Común de las Administraciones
+      Públicas, y en la Ley 40/2015, de 1 de octubre.
+  reinforcements:
+  - id: R1
+    title: Certificados cualificados
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.info.3.r1.1
+      label: null
+      text: Cuando se empleen sistemas de firma electrónica avanzada basados en certificados, estos serán
+        cualificados.
+  - id: R2
+    title: Algoritmos y parámetros autorizados
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.info.3.r2.1
+      label: null
+      text: Se emplearán algoritmos y parámetros autorizados por el CCN o por un esquema nacional o europeo
+        que resulte de aplicación.
+    - id: null
+      label: null
+      text: El CCN determinará los algoritmos criptográficos que hayan sido autorizados nominalmente para
+        su uso en el Esquema Nacional de Seguridad conforme a la Instrucción Técnica de Seguridad Criptología
+        de empleo en el ENS.
+  - id: R3
+    title: Verificación y validación de firma
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.info.3.r3.1
+      label: null
+      text: Cuando proceda, se garantizará la verificación y validación de la firma electrónica durante
+        el tiempo requerido por la actividad administrativa que aquélla soporte, sin perjuicio de que
+        se pueda ampliar este período de acuerdo con lo que establezca la Política de Firma Electrónica
+        y de Certificados que sea de aplicación. Para tal fin se adjuntará a la firma, o se referenciará,
+        toda la información pertinente para su verificación y validación, incluyendo certificados o datos
+        de verificación y validación.
+  - id: R4
+    title: Firma electrónica avanzada basada en certificados cualificados
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.info.3.r4.1
+      label: null
+      text: Se usará firma electrónica avanzada basada en certificados cualificados complementada por
+        un segundo factor del tipo «algo que se sabe» o «algo que se es».
+  - id: R5
+    title: Firma electrónica cualificada
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.info.3.r5.1
+      label: null
+      text: Se usará firma electrónica cualificada, empleando productos certificados conforme a lo establecido
+        en [op.pl.5].
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      any_of: []
+      expression: +R1+R2+R3
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      - R4
+      any_of: []
+      expression: + R1+R2+R3+R4
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.7.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.info.4
+  name: Sellos de tiempo
+  group: mp
+  subgroup: mp.info
+  applies_by: dimension
+  dimensions:
+  - T
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'La utilización de sellos de tiempo exigirá adoptar las siguientes cautelas:'
+  - id: mp.info.4.1
+    label: null
+    text: Los sellos de tiempo se aplicarán a aquella información que sea susceptible de ser utilizada
+      como evidencia electrónica en el futuro.
+  - id: mp.info.4.2
+    label: null
+    text: Los datos pertinentes para la verificación posterior de la fecha serán tratados con la misma
+      seguridad que la información fechada a efectos de disponibilidad, integridad y confidencialidad.
+  - id: mp.info.4.3
+    label: null
+    text: Se renovarán regularmente los sellos de tiempo hasta que la información protegida ya no sea
+      requerida por el proceso administrativo al que da soporte, en su caso.
+  - id: mp.info.4.4
+    label: null
+    text: Se emplearán "sellos cualificados de tiempo electrónicos" atendiendo a lo dispuesto en el Reglamento
+      (UE) n.º 910/2014 y normativa de desarrollo.
+  reinforcements:
+  - id: R1
+    title: Productos certificados
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.info.4.r1.1
+      label: mp.info.4.r1.1.
+      text: Se utilizarán productos certificados según [op.pl.5].
+    - id: mp.info.4.r1.2
+      label: null
+      text: Se asignará una fecha y hora a un documento electrónico, conforme a lo establecido en la guía
+        CCN-STIC Criptología de empleo en el ENS.
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.7.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.info.5
+  name: Limpieza de documentos
+  group: mp
+  subgroup: mp.info
+  applies_by: dimension
+  dimensions:
+  - C
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.info.5.1
+    label: null
+    text: En el proceso de limpieza de documentos, se retirará de estos toda la información adicional
+      contenida en campos ocultos, metadatos, comentarios o revisiones anteriores, salvo cuando dicha
+      información sea pertinente para el receptor del documento.
+  - id: null
+    label: null
+    text: Esta medida es especialmente relevante cuando el documento se difunde ampliamente, como ocurre
+      cuando se ofrece al público en un servidor web u otro tipo de repositorio de información.
+  reinforcements: []
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.7.5
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.info.6
+  name: Copias de seguridad
+  group: mp
+  subgroup: mp.info
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: mp.info.6.1
+    label: null
+    text: Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o intencionadamente.
+      La periodicidad y los plazos de retención de estas copias de seguridad se determinarán en la normativa
+      interna de la organización relativa a copias de seguridad.
+  - id: mp.info.6.2
+    label: null
+    text: 'Los procedimientos de respaldo establecidos indicarán:
+
+      a) Frecuencia de las copias.
+
+      b) Requisitos de almacenamiento en el propio lugar.
+
+      c) Requisitos de almacenamiento en otros lugares.
+
+      d) Controles para el acceso autorizado a las copias de respaldo.'
+  reinforcements:
+  - id: R1
+    title: Pruebas de recuperación
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.info.6.r1.1
+      label: null
+      text: Los procedimientos de copia de seguridad y restauración deben probarse regularmente. Su frecuencia
+        dependerá de la criticidad de los datos y del impacto que cause la falta de disponibilidad.
+  - id: R2
+    title: Protección de las copias de seguridad
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.info.6.r2.1
+      label: null
+      text: Al menos, una de las copias de seguridad se almacenará de forma separada en lugar diferente,
+        de tal manera que un incidente no pueda afectar tanto al repositorio original como a la copia
+        simultáneamente.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: + R1 + R2
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.7.6
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.s.1
+  name: Protección del correo electrónico
+  group: mp
+  subgroup: mp.s
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'El correo electrónico se protegerá frente a las amenazas que le son propias, actuando del siguiente
+      modo:'
+  - id: mp.s.1.1
+    label: null
+    text: La información distribuida por medio de correo electrónico se protegerá, tanto en el cuerpo
+      de los mensajes como en los anexos.
+  - id: mp.s.1.2
+    label: null
+    text: Se protegerá la información de encaminamiento de mensajes y establecimiento de conexiones.
+  - id: null
+    label: null
+    text: 'Se protegerá a la organización frente a problemas que se materializan por medio del correo
+      electrónico, en concreto:'
+  - id: mp.s.1.3
+    label: null
+    text: Correo no solicitado, en su expresión inglesa «spam».
+  - id: mp.s.1.4
+    label: null
+    text: Código dañino, constituidos por virus, gusanos, troyanos, espías, u otros de naturaleza análoga.
+  - id: mp.s.1.5
+    label: null
+    text: Código móvil de tipo micro-aplicación, en su expresión inglesa «applet».
+  - id: null
+    label: null
+    text: 'Se establecerán normas de uso del correo electrónico para el personal. (Ver [org.2]). Estas
+      normas de uso contendrán:'
+  - id: mp.s.1.6
+    label: null
+    text: Limitaciones al uso como soporte de comunicaciones privadas.
+  - id: mp.s.1.7
+    label: null
+    text: Actividades de concienciación y formación relativas al uso del correo electrónico.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.8.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.s.2
+  name: Protección de servicios y aplicaciones web
+  group: mp
+  subgroup: mp.s
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs:
+  - /datos/imagenes/disp/2022/106/7191_11542165_3.png
+  - /datos/imagenes/disp/2022/106/7191_11542165_4.png
+  base:
+  - id: null
+    label: null
+    text: 'Los sistemas que prestan servicios web deberán ser protegidos frente a las siguientes amenazas:'
+  - id: mp.s.2.1
+    label: null
+    text: 'Cuando la información requiera control de acceso se garantizará la imposibilidad de acceder
+      a la información obviando la autenticación, en particular, tomando medidas en los siguientes aspectos:
+
+      a) Se evitará que el servidor ofrezca acceso a los documentos por vías alternativas al protocolo
+      determinado.
+
+      b) Se prevendrán ataques de manipulación del localizador uniforme de recursos (Uniform Resource
+      Locator, URL).
+
+      c) Se prevendrán ataques de manipulación de fragmentos de información que se almacena en el disco
+      duro del visitante de una página web a través de su navegador, a petición del servidor de la página,
+      conocido en terminología inglesa como cookies.
+
+      d) Se prevendrán ataques de inyección de código.'
+  - id: mp.s.2.2
+    label: null
+    text: Se prevendrán intentos de escalado de privilegios.
+  - id: mp.s.2.3
+    label: null
+    text: Se prevendrán ataques de cross site scripting.
+  reinforcements:
+  - id: R1
+    title: Auditorías de seguridad
+    required_at: []
+    alternative_at:
+    - BASICA
+    - MEDIA
+    clauses:
+    - id: mp.s.2.r1.1
+      label: null
+      text: Se realizarán auditorías continuas de seguridad de «caja negra» sobre las aplicaciones web
+        durante la fase de desarrollo y antes de la fase de producción.
+    - id: mp.s.2.r1.2
+      label: null
+      text: La frecuencia de estas auditorías de seguridad quedará definida en el procedimiento de auditoría.
+  - id: R2
+    title: Auditorías de seguridad avanzada
+    required_at:
+    - ALTA
+    alternative_at:
+    - BASICA
+    - MEDIA
+    clauses:
+    - id: mp.s.2.r2.1
+      label: null
+      text: Se realizarán auditorías de seguridad de «caja blanca» sobre las aplicaciones web durante
+        la fase de desarrollo.
+    - id: mp.s.2.r2.2
+      label: null
+      text: Se emplearán metodologías definidas y herramientas automáticas de detección de vulnerabilidades
+        en la realización de las auditorías de seguridad sobre las aplicaciones web.
+    - id: mp.s.2.r2.3
+      label: null
+      text: Una vez finalizada una auditoría de seguridad, se analizarán los resultados y se solventarán
+        las vulnerabilidades encontradas mediante los procedimientos definidos [op.exp.5].
+  - id: R3
+    title: Protección de las cachés
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.s.2.r3.1
+      label: null
+      text: Se prevendrán ataques de manipulación de programas o dispositivos que realizan una acción
+        en representación de otros, conocidos en terminología inglesa como "proxies" y, sistemas especiales
+        de almacenamiento de alta velocidad, conocidos en terminología inglesa como "cachés".
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of:
+      - - R1
+        - R2
+      expression: +[R1oR2]
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of:
+      - - R1
+        - R2
+      expression: +[R1oR2]
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R2
+      - R3
+      any_of: []
+      expression: +R2+R3
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.8.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.s.3
+  name: Protección de la navegación web
+  group: mp
+  subgroup: mp.s
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'El acceso de los usuarios internos a la navegación por internet se protegerá frente a las amenazas
+      que le son propias, actuando del siguiente modo:'
+  - id: mp.s.3.1
+    label: null
+    text: Se establecerá una normativa de utilización, definiendo el uso que se autoriza y las limitaciones
+      de uso personal. En particular, se concretará el uso permitido de conexiones cifradas.
+  - id: mp.s.3.2
+    label: null
+    text: Se llevarán a cabo regularmente actividades de concienciación sobre higiene en la navegación
+      web, fomentando el uso seguro y alertando de usos incorrectos.
+  - id: mp.s.3.3
+    label: null
+    text: Se formará al personal encargado de la administración del sistema en monitorización del servicio
+      y respuesta a incidentes.
+  - id: mp.s.3.4
+    label: null
+    text: Se protegerá la información de resolución de direcciones web y de establecimiento de conexiones.
+  - id: mp.s.3.5
+    label: null
+    text: Se protegerá a la organización en general y al puesto de trabajo en particular frente a problemas
+      que se materializan vía navegación web.
+  - id: mp.s.3.6
+    label: null
+    text: Se protegerá contra la actuación de programas dañinos tales como páginas activas, descargas
+      de código ejecutable, etc., previniendo la exposición del sistema a vectores de ataque del tipo
+      spyware, ransomware, etc.
+  - id: mp.s.3.7
+    label: null
+    text: Se establecerá una política ejecutiva de control de cookies, en particular, para evitar la contaminación
+      entre uso personal y uso organizativo.
+  reinforcements:
+  - id: R1
+    title: Monitorización
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: mp.s.3.r1.1
+      label: null
+      text: Se registrará el uso de la navegación web, estableciendo los elementos que se registran, el
+        periodo de retención de estos registros y el uso que el organismo prevé hacer de ellos.
+    - id: mp.s.3.r1.2
+      label: null
+      text: Se establecerá una función para la ruptura de canales cifrados a fin de inspeccionar su contenido,
+        indicando qué se analiza, qué se registra, durante cuánto tiempo se retienen los registros y qué
+        uso prevé hacer el organismo de estas inspecciones. Todo ello sin perjuicio de que se puedan autorizar
+        accesos cifrados singulares a destinos de confianza.
+    - id: mp.s.3.r1.3
+      label: null
+      text: Se establecerá una lista negra de destinos vetados.
+  - id: R2
+    title: Destinos autorizados
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.s.3.r2.1
+      label: null
+      text: Se establecerá una lista blanca de destinos accesibles. Todo acceso fuera de los lugares señalados
+        en la lista blanca estará vetado, salvo autorización singular expresa.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.8.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: mp.s.4
+  name: Protección frente a la denegación de servicio
+  group: mp
+  subgroup: mp.s
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se establecerán medidas preventivas frente a ataques de denegación de servicio y denegación
+      de servicio distribuido (Denial of Service, DoS y Distributed Denial of Service, DDoS). Para ello:'
+  - id: mp.s.4.1
+    label: mp.s 4.1
+    text: Se planificará y dotará al sistema de capacidad suficiente para atender con holgura a la carga
+      prevista.
+  - id: mp.s.4.2
+    label: null
+    text: Se desplegarán tecnologías para prevenir los ataques conocidos.
+  reinforcements:
+  - id: R1
+    title: Detección y reacción
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: mp.s.4.r1.1
+      label: null
+      text: Se establecerá un sistema de detección y tratamiento de ataques de denegación de servicio
+        (DoS y DDoS).
+    - id: mp.s.4.r1.2
+      label: mp.s. 4.r1.2
+      text: Se establecerán procedimientos de reacción a los ataques, incluyendo la comunicación con el
+        proveedor de comunicaciones.
+  - id: R2
+    title: Ataques propios
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: mp.s.4.r2.1
+      label: null
+      text: Se detectará y se evitará el lanzamiento de ataques desde las propias instalaciones perjudicando
+        a terceros.
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes:
+  - La tabla resumen del anexo titula la medida «Protección frente a denegación de servicio».
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 5.8.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1

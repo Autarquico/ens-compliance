@@ -6,23 +6,24 @@ status: active
 priority: P0
 size: L
 issue: 3
-prs: []
+prs: [39]
 related_issues: [3]
 depends_on: [repo-foundation]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-27
 ---
 
 # Catálogo de medidas del Anexo II
 
 ## Contexto / problema
 
-Catálogo de medidas del Anexo II del RD 311/2022 como fichas YAML
-(`controls/catalog/*.yaml`) con el formato de docs/ens-compliance-guide.md:320-347. Es independiente
-de la infraestructura: todas las fichas arrancan con aplicabilidad `REVIEW` y
-evaluación `NOT_ASSESSED`.
+Catálogo de medidas del anexo II del RD 311/2022 como datos de referencia
+empaquetados en el producto, extraídos de forma determinista del texto
+consolidado del BOE. El estado de cada organización frente a cada medida
+vive en su workspace (`controls/measures.yaml`, ADR 0006 y 0007), con estado
+inicial `UNDETERMINED` / `NOT_ASSESSED`.
 
 ## Scope
 
@@ -45,7 +46,12 @@ evaluación `NOT_ASSESSED`.
 ### Scenario: fichas válidas
 - **Given** el catálogo completo
 - **When** se ejecuta la validación de esquema en CI
-- **Then** todas las fichas pasan y ninguna tiene estado distinto de `REVIEW`/`NOT_ASSESSED`
+- **Then** todas las fichas pasan
+
+### Scenario: estado inicial de la organización
+- **Given** un workspace sin `controls/measures.yaml`
+- **When** se ejecuta `ens-evidence controls init`
+- **Then** cada medida del catálogo queda con aplicabilidad `UNDETERMINED` y evaluación `NOT_ASSESSED`, y no se sobrescriben estados existentes
 
 ## Notas técnicas / riesgos
 

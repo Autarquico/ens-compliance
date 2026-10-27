@@ -1,0 +1,294 @@
+{
+  "$defs": {
+    "Axis": {
+      "enum": [
+        "category",
+        "dimension"
+      ],
+      "title": "Axis",
+      "type": "string"
+    },
+    "Clause": {
+      "additionalProperties": false,
+      "description": "P\u00e1rrafo del cuerpo de la medida; `id` es None si el anexo no lo etiqueta.",
+      "properties": {
+        "id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Id"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Etiqueta literal del anexo cuando difiere de `id`.",
+          "title": "Label"
+        },
+        "text": {
+          "title": "Text",
+          "type": "string"
+        }
+      },
+      "required": [
+        "text"
+      ],
+      "title": "Clause",
+      "type": "object"
+    },
+    "Dimension": {
+      "enum": [
+        "C",
+        "I",
+        "T",
+        "A",
+        "D"
+      ],
+      "title": "Dimension",
+      "type": "string"
+    },
+    "Group": {
+      "enum": [
+        "org",
+        "op",
+        "mp"
+      ],
+      "title": "Group",
+      "type": "string"
+    },
+    "LevelRequirement": {
+      "additionalProperties": false,
+      "description": "Exigencia de un nivel: `all_of` (todas) y `any_of` (una por grupo) sobre `base` y Rn.",
+      "properties": {
+        "all_of": {
+          "items": {
+            "type": "string"
+          },
+          "title": "All Of",
+          "type": "array"
+        },
+        "any_of": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Any Of",
+          "type": "array"
+        },
+        "expression": {
+          "description": "Celda del anexo tal cual; vac\u00eda si la celda lo est\u00e1.",
+          "title": "Expression",
+          "type": "string"
+        },
+        "not_applicable": {
+          "title": "Not Applicable",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "not_applicable",
+        "expression"
+      ],
+      "title": "LevelRequirement",
+      "type": "object"
+    },
+    "Reinforcement": {
+      "additionalProperties": false,
+      "properties": {
+        "alternative_at": {
+          "description": "Niveles en los que es una alternativa dentro de un grupo `[Rn o Rm]`, no una exigencia por s\u00ed solo; vac\u00eda si ninguno.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Alternative At",
+          "type": "array"
+        },
+        "clauses": {
+          "items": {
+            "$ref": "#/$defs/Clause"
+          },
+          "title": "Clauses",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "required_at": {
+          "description": "Niveles en los que la tabla del anexo exige este refuerzo; vac\u00eda si ninguno.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Required At",
+          "type": "array"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "required_at",
+        "alternative_at",
+        "clauses"
+      ],
+      "title": "Reinforcement",
+      "type": "object"
+    },
+    "Source": {
+      "additionalProperties": false,
+      "properties": {
+        "annex": {
+          "title": "Annex",
+          "type": "string"
+        },
+        "consolidation_date": {
+          "format": "date",
+          "title": "Consolidation Date",
+          "type": "string"
+        },
+        "regulation": {
+          "title": "Regulation",
+          "type": "string"
+        },
+        "section": {
+          "title": "Section",
+          "type": "string"
+        },
+        "snapshot_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Sha256",
+          "type": "string"
+        },
+        "url": {
+          "title": "Url",
+          "type": "string"
+        }
+      },
+      "required": [
+        "regulation",
+        "annex",
+        "section",
+        "url",
+        "consolidation_date",
+        "snapshot_sha256"
+      ],
+      "title": "Source",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "applies_by": {
+      "$ref": "#/$defs/Axis"
+    },
+    "base": {
+      "items": {
+        "$ref": "#/$defs/Clause"
+      },
+      "title": "Base",
+      "type": "array"
+    },
+    "diagram_refs": {
+      "description": "Im\u00e1genes (diagramas de flujo) que el anexo intercala; no se descargan.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Diagram Refs",
+      "type": "array"
+    },
+    "dimensions": {
+      "description": "Las cinco si el anexo dice \u00abTodas\u00bb.",
+      "items": {
+        "$ref": "#/$defs/Dimension"
+      },
+      "minItems": 1,
+      "title": "Dimensions",
+      "type": "array"
+    },
+    "group": {
+      "$ref": "#/$defs/Group"
+    },
+    "id": {
+      "title": "Id",
+      "type": "string"
+    },
+    "levels": {
+      "additionalProperties": {
+        "$ref": "#/$defs/LevelRequirement"
+      },
+      "title": "Levels",
+      "type": "object"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "notes": {
+      "description": "Divergencias del propio anexo aceptadas al extraer.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Notes",
+      "type": "array"
+    },
+    "preamble": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Preamble",
+      "type": "array"
+    },
+    "reinforcements": {
+      "items": {
+        "$ref": "#/$defs/Reinforcement"
+      },
+      "title": "Reinforcements",
+      "type": "array"
+    },
+    "source": {
+      "$ref": "#/$defs/Source"
+    },
+    "subgroup": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "description": "p. ej. `op.pl`; None en el marco organizativo.",
+      "title": "Subgroup"
+    }
+  },
+  "required": [
+    "id",
+    "name",
+    "group",
+    "subgroup",
+    "applies_by",
+    "dimensions",
+    "base",
+    "levels",
+    "source"
+  ],
+  "title": "MeasureCard",
+  "type": "object"
+}
