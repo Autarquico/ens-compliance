@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Storage de evidencias y copia independiente
 type: task
-status: active
+status: shipped
 priority: P0
 size: L
 issue: 4

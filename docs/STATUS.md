@@ -11,6 +11,7 @@
 <!-- pm-sync:done-this-week -->
 - #2 Fundación del repo y modelos
 - #3 Catálogo de medidas del Anexo II
+- #4 Storage de evidencias y copia independiente
 - #16 Inventario y alcance
 <!-- /pm-sync:done-this-week -->
 
