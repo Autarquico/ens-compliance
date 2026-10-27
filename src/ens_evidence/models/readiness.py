@@ -68,6 +68,14 @@ class ReadinessResult(Strict):
 def _review_blockers(measure: Measure, now: AwareDatetime) -> list[Blocker]:
     if measure.review is None:
         return [Blocker(kind=BlockerKind.MISSING_REVIEW, measure_id=measure.id)]
+    if measure.review.reviewed_at > now:
+        return [
+            Blocker(
+                kind=BlockerKind.MISSING_REVIEW,
+                measure_id=measure.id,
+                detail="review_in_future",
+            )
+        ]
     if measure.review.valid_until <= now:
         return [Blocker(kind=BlockerKind.EXPIRED_REVIEW, measure_id=measure.id)]
     return []

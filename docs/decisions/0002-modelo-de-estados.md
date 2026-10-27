@@ -51,7 +51,10 @@ Mezclar ejes en un mismo enum permite estados absurdos (un check
 
 `Review`: `reviewer`, `role`, `reviewed_at`, `valid_until`, `conclusion`,
 `evidence_ids`. Una medida `COMPLIANT` sin `Review` vigente no cuenta como
-satisfecha.
+satisfecha. Vigente significa `reviewed_at <= fecha de evaluación <
+valid_until`. Una revisión con `reviewed_at` posterior a la fecha de
+evaluación todavía no ha ocurrido: bloqueo `MISSING_REVIEW` con detalle
+`review_in_future`.
 
 ### Regla de preparación
 

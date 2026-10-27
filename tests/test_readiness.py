@@ -19,11 +19,11 @@ from ens_evidence.models import (
 from ens_evidence.models.readiness import EvidenceRef, OpenFinding
 
 
-def review(valid_until=None):
+def review(valid_until=None, reviewed_at=None):
     return Review(
         reviewer="ana",
         role=Role.SECURITY_OFFICER,
-        reviewed_at=NOW - timedelta(days=10),
+        reviewed_at=reviewed_at or NOW - timedelta(days=10),
         valid_until=valid_until or NOW + timedelta(days=30),
         conclusion="ok",
     )
@@ -80,6 +80,40 @@ def test_evidencia_sin_valid_until_no_caduca():
 def test_revision_caducada_bloquea_por_expired_review():
     result = evaluate(good_measure(review=review(valid_until=NOW)))
     assert kinds(result) == [BlockerKind.EXPIRED_REVIEW]
+
+
+def tomorrow_review():
+    return review(
+        reviewed_at=NOW + timedelta(days=1), valid_until=NOW + timedelta(days=365)
+    )
+
+
+def test_applicable_con_revision_fechada_en_el_futuro_bloquea_por_review_in_future():
+    result = evaluate(good_measure(review=tomorrow_review()))
+    assert result.readiness is Readiness.NOT_READY
+    assert result.blockers == [
+        Blocker(kind=BlockerKind.MISSING_REVIEW, measure_id="m1", detail="review_in_future")
+    ]
+
+
+def test_not_applicable_con_revision_fechada_en_el_futuro_bloquea_por_review_in_future():
+    measure = good_measure(
+        applicability=Applicability.NOT_APPLICABLE,
+        justification="no aplica",
+        evidence=[],
+        review=tomorrow_review(),
+    )
+    result = evaluate(measure)
+    assert result.readiness is Readiness.NOT_READY
+    assert result.blockers == [
+        Blocker(kind=BlockerKind.MISSING_REVIEW, measure_id="m1", detail="review_in_future")
+    ]
+
+
+def test_revision_fechada_justo_ahora_cuenta_como_vigente():
+    result = evaluate(good_measure(review=review(reviewed_at=NOW)))
+    assert result.readiness is Readiness.READY
+    assert result.blockers == []
 
 
 def test_applicable_sin_revision_bloquea_por_missing_review():

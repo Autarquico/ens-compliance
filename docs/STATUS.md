@@ -9,8 +9,7 @@
 ## Done esta semana
 
 <!-- pm-sync:done-this-week -->
-- #8 Servidor osquery en Cloudflare Workers
-- #11 Despliegue de Wazuh
+_(nada)_
 <!-- /pm-sync:done-this-week -->
 
 ---
@@ -18,7 +17,7 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-_(nada)_
+- #2 Fundación del repo y modelos
 <!-- /pm-sync:in-progress -->
 
 ---
