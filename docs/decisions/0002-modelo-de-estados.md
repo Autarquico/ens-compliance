@@ -76,8 +76,10 @@ transición registra `actor`, `role`, `at` y `dossier_sha256`.
 
 - `SELF_ASSESSED`: por `system_administrator` o su delegado
   (`system_administrator_delegate`).
-- `ANALYZED`: por `security_officer`, con conclusiones y medidas correctoras
-  dirigidas a `system_owner`.
+- `ANALYZED`: por `security_officer`, con conclusiones (obligatorias) y
+  medidas correctoras dirigidas a `system_owner`. La lista de medidas
+  correctoras puede ir vacía si no hacen falta (anexo III, 2.1: "las medidas
+  correctoras adecuadas").
 - `DECLARED`: solo si la categoría es `BASICA` y `Readiness` es `READY`.
   Si `pending_human_review` es verdadero (no se ejecutó la capa de juicio),
   además exige que la transición `ANALYZED` registre
