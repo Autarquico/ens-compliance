@@ -1,0 +1,4 @@
+# Revisión humana del catálogo (ADR 0007). Cambiar el catálogo exige una revisión nueva.
+catalog_sha256: d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d
+reviewed_by: Alejandro Perez
+reviewed_at: "2026-10-27T19:30:00+01:00"
