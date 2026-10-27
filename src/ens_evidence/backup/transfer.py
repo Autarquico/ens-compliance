@@ -4,8 +4,6 @@ from collections.abc import Collection
 from dataclasses import dataclass
 from datetime import datetime
 
-import yaml
-
 from ens_evidence.backup.records import (
     BackupRun,
     dump,
@@ -93,18 +91,17 @@ def import_all(destination: WorkspaceStore, source: WorkspaceStore, now: datetim
 
 
 def _require_snapshot_inventory(contents: dict[str, bytes], folder: WorkspaceStore) -> None:
-    """Aborta, sin escrituras, si lo que se va a importar difiere del inventario del snapshot."""
+    """Aborta, sin escrituras, si lo que se va a importar difiere del inventario del snapshot.
+
+    La exportación nunca incluye el registro de la propia ejecución, así que su presencia en la
+    carpeta es una clave añadida y también aborta.
+    """
     marker = read_snapshot_marker(folder)
     meta = read_snapshot_inventory(folder)
     if marker is None or meta is None or meta.run_id != marker.run_id:
         return
-    own_record = run_key(meta.run_id)
-    actual = {
-        key: sha256_hex(data)
-        for key, data in contents.items()
-        if not _is_backup_meta(key) and key != own_record
-    }
-    expected = {key: digest for key, digest in meta.inventory.items() if key != own_record}
+    actual = {key: sha256_hex(data) for key, data in contents.items() if not _is_backup_meta(key)}
+    expected = meta.inventory
     differing = [
         key for key in sorted(set(expected) | set(actual)) if expected.get(key) != actual.get(key)
     ]
@@ -162,8 +159,8 @@ def _settle_backup_records(
     """Una copia restaurada y verificada nunca deja su ejecución como interrumpida.
 
     Solo si `backup restore` verificó el snapshot (marcador) y la carpeta trae exactamente
-    el inventario de esa ejecución, se importa como completed: se convierte un registro
-    started o se reconstruye el que la exportación excluyó. Si no, no se reconstruye.
+    el inventario de esa ejecución, se reconstruye siempre como completed el registro de esa
+    ejecución, que la exportación excluyó. Si no, no se reconstruye.
     """
     if not any(_is_backup_meta(key) for key in contents):
         return contents, (
@@ -177,10 +174,7 @@ def _settle_backup_records(
             "La carpeta no trae un snapshot verificado por `backup restore` con un único "
             "inventario que le corresponda: no se reconstruye ningún registro de copia."
         )
-    current = _parse_run(contents.get(run_key(meta.run_id)))
-    if current is not None and current.status != "started":
-        return contents, None
-    base = current or BackupRun(
+    base = BackupRun(
         run_id=meta.run_id,
         status="started",
         started_at=meta.started_at,
@@ -202,12 +196,3 @@ def _settle_backup_records(
         )
     )
     return settled, f"Registro de la ejecución {meta.run_id} reconstruido desde el snapshot."
-
-
-def _parse_run(data: bytes | None) -> BackupRun | None:
-    if data is None:
-        return None
-    try:
-        return BackupRun.model_validate(yaml.safe_load(data))
-    except (ValueError, yaml.YAMLError):
-        return None
