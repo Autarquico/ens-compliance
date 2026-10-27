@@ -83,6 +83,7 @@ def test_evidence_ids_sin_manifiesto_se_detectan():
         collected_at=NOW,
         artifact={"storage": "local", "key": "k", "sha256": SHA},
         collector={"name": "fake", "version": "1"},
+        provenance={"kind": "collector", "submitted_by": "fake", "submitted_at": NOW},
     )
     check = make_check(CheckStatus.PASS, evidence_ids=["ev-1", "ev-9"])
     assert unresolved_evidence_ids(check, [manifest]) == ["ev-9"]
@@ -97,4 +98,5 @@ def test_manifiesto_rechaza_sha256_malformado():
             collected_at=NOW,
             artifact={"storage": "local", "key": "k", "sha256": "xyz"},
             collector={"name": "fake", "version": "1"},
+            provenance={"kind": "collector", "submitted_by": "fake", "submitted_at": NOW},
         )

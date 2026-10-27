@@ -33,6 +33,19 @@
     "EvidenceRef": {
       "additionalProperties": false,
       "properties": {
+        "collected_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Collected At"
+        },
         "id": {
           "title": "Id",
           "type": "string"

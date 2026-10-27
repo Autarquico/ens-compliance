@@ -1,4 +1,4 @@
-from datetime import timedelta
+from datetime import timedelta, timezone
 
 import pytest
 from conftest import NOW
@@ -183,3 +183,57 @@ def test_pending_human_review_refleja_judgment_executed_y_no_bloquea(executed):
 def test_sin_medidas_no_hay_ready_por_omision():
     with pytest.raises(ValidationError):
         ReadinessInput(measures=[], judgment_executed=True, evaluated_at=NOW)
+
+
+def evidence_collected_at(collected_at):
+    return good_measure(
+        evidence=[
+            EvidenceRef(id="ev-1", valid_until=NOW + timedelta(days=30), collected_at=collected_at)
+        ]
+    )
+
+
+def test_evidencia_posterior_a_la_evaluacion_no_cuenta():
+    result = evaluate(evidence_collected_at(NOW + timedelta(seconds=1)))
+    assert result.readiness is Readiness.NOT_READY
+    assert [(b.kind, b.detail) for b in result.blockers] == [
+        (BlockerKind.MISSING_EVIDENCE, "evidence_in_future:ev-1")
+    ]
+
+
+def test_evidencia_recogida_en_el_instante_de_la_evaluacion_cuenta():
+    assert evaluate(evidence_collected_at(NOW)).readiness is Readiness.READY
+
+
+def test_evidencia_sin_collected_at_sigue_siendo_valida():
+    assert evaluate(evidence_collected_at(None)).readiness is Readiness.READY
+
+
+def test_zonas_horarias_se_comparan_por_instante_y_no_por_hora_local():
+    plus_two = timezone(timedelta(hours=2))
+    minus_five = timezone(timedelta(hours=-5))
+    local_now = NOW.astimezone(plus_two)
+    # misma hora de reloj que NOW, pero en UTC-5 es 5 horas posterior: futura
+    wall_clock_equal = NOW.replace(tzinfo=minus_five)
+    assert evaluate(evidence_collected_at(local_now)).readiness is Readiness.READY
+    assert evaluate(evidence_collected_at(wall_clock_equal)).readiness is Readiness.NOT_READY
+
+
+def test_una_evidencia_futura_no_anula_a_otra_valida():
+    measure = good_measure(
+        evidence=[
+            EvidenceRef(id="ev-1", collected_at=NOW + timedelta(days=1)),
+            EvidenceRef(id="ev-2", collected_at=NOW - timedelta(days=1)),
+        ]
+    )
+    assert evaluate(measure).readiness is Readiness.READY
+
+
+def test_evidencia_futura_caducada_no_genera_bloqueo_de_caducidad():
+    measure = good_measure(
+        evidence=[
+            EvidenceRef(id="ev-1", collected_at=NOW + timedelta(days=1)),
+            EvidenceRef(id="ev-2", valid_until=NOW - timedelta(days=1)),
+        ]
+    )
+    assert kinds(evaluate(measure)) == [BlockerKind.EXPIRED_EVIDENCE]

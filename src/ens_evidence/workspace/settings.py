@@ -1,6 +1,7 @@
 """Ajustes del workspace: carga, validación y resolución de rutas."""
 
 import os
+import re
 import tomllib
 from collections.abc import Mapping
 from pathlib import Path
@@ -71,8 +72,23 @@ class WorkspaceSettings(_Strict):
         return self
 
 
+class BackupSettings(_Strict):
+    restic_repository: str
+    region: str | None = None
+
+    @field_validator("restic_repository")
+    @classmethod
+    def _repository_is_safe(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("no puede estar vacío")
+        if re.search(r"://[^/@\s]*@", value):
+            raise ValueError("el repositorio no puede llevar credenciales; usa ENS_BACKUP_*")
+        return value
+
+
 class Settings(_Strict):
     workspace: WorkspaceSettings
+    backup: BackupSettings | None = None
 
 
 def resolve_settings_path(

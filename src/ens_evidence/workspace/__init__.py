@@ -2,6 +2,8 @@
 
 from ens_evidence.workspace.errors import (
     AccessDenied,
+    AlreadyExists,
+    ConditionalWriteUnsupported,
     InvalidKey,
     NotFound,
     NotText,
@@ -14,6 +16,7 @@ from ens_evidence.workspace.keys import normalize_key
 from ens_evidence.workspace.local import LocalStore
 from ens_evidence.workspace.s3 import S3Store
 from ens_evidence.workspace.settings import (
+    BackupSettings,
     Settings,
     is_inside_product,
     load_settings,
@@ -23,6 +26,9 @@ from ens_evidence.workspace.store import WorkspaceStore
 
 __all__ = [
     "AccessDenied",
+    "BackupSettings",
+    "AlreadyExists",
+    "ConditionalWriteUnsupported",
     "InvalidKey",
     "LocalStore",
     "NotFound",

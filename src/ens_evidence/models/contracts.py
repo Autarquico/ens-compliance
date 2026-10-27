@@ -1,6 +1,7 @@
 """Contratos de collector, check y manifiesto de evidencias."""
 
 from collections.abc import Iterable
+from enum import StrEnum
 from typing import Any, NamedTuple
 
 from pydantic import AwareDatetime, BaseModel, ConfigDict, Field, model_validator
@@ -99,6 +100,17 @@ class CollectorInfo(Strict):
     version: str
 
 
+class ProvenanceKind(StrEnum):
+    COLLECTOR = "collector"
+    MANUAL = "manual"
+
+
+class Provenance(Strict):
+    kind: ProvenanceKind
+    submitted_by: str = Field(min_length=1)
+    submitted_at: AwareDatetime
+
+
 class EvidenceManifest(Strict):
     id: str
     source: str
@@ -106,8 +118,17 @@ class EvidenceManifest(Strict):
     collected_at: AwareDatetime
     valid_until: AwareDatetime | None = None
     artifact: Artifact
-    collector: CollectorInfo
+    provenance: Provenance
+    collector: CollectorInfo | None = None
     review: Review | None = None
+
+    @model_validator(mode="after")
+    def _consistent(self) -> "EvidenceManifest":
+        if self.provenance.kind is ProvenanceKind.COLLECTOR and self.collector is None:
+            raise ValueError("una evidencia de collector necesita el campo collector")
+        if self.valid_until is not None and self.valid_until <= self.collected_at:
+            raise ValueError("valid_until debe ser posterior a collected_at")
+        return self
 
 
 def unresolved_evidence_ids(check: CheckResult, manifests: Iterable[EvidenceManifest]) -> list[str]:
