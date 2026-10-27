@@ -10,6 +10,7 @@
 
 <!-- pm-sync:done-this-week -->
 - #2 Fundación del repo y modelos
+- #16 Inventario y alcance
 <!-- /pm-sync:done-this-week -->
 
 ---
@@ -17,7 +18,7 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-- #16 Inventario y alcance
+_(nada)_
 <!-- /pm-sync:in-progress -->
 
 ---
