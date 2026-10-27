@@ -61,10 +61,13 @@ def _changed_keys(source: WorkspaceStore, copied: dict[str, str]) -> list[str]:
 def import_all(destination: WorkspaceStore, source: WorkspaceStore, now: datetime) -> ImportReport:
     """Copia todas las claves de `source` a `destination`, sin pisar evidencias distintas.
 
-    Si el alcance cambia se revoca la aprobación del destino, igual que `workspace push`,
-    y la aprobación de la copia solo se restaura si el destino no tiene ninguna.
+    Si la carpeta viene de `backup restore`, antes de escribir nada se exige que sus claves y
+    sha256 coincidan con el inventario del snapshot. Si el alcance cambia se revoca la
+    aprobación del destino, igual que `workspace push`, y la
+    aprobación de la copia solo se restaura si el destino no tiene ninguna.
     """
     contents = {key: source.read_bytes(key) for key in source.list("")}
+    _require_snapshot_inventory(contents, source)
     contents, backup_note = _settle_backup_records(contents, source, now)
     keys = sorted(
         (key for key in contents if not _is_backup_meta(key)), key=lambda key: (_phase(key), key)
@@ -87,6 +90,29 @@ def import_all(destination: WorkspaceStore, source: WorkspaceStore, now: datetim
         _write(destination, key, contents[key])
         written += 1
     return ImportReport(written, len(keys) - written, revoked, backup_note)
+
+
+def _require_snapshot_inventory(contents: dict[str, bytes], folder: WorkspaceStore) -> None:
+    """Aborta, sin escrituras, si lo que se va a importar difiere del inventario del snapshot."""
+    marker = read_snapshot_marker(folder)
+    meta = read_snapshot_inventory(folder)
+    if marker is None or meta is None or meta.run_id != marker.run_id:
+        return
+    own_record = run_key(meta.run_id)
+    actual = {
+        key: sha256_hex(data)
+        for key, data in contents.items()
+        if not _is_backup_meta(key) and key != own_record
+    }
+    expected = {key: digest for key, digest in meta.inventory.items() if key != own_record}
+    differing = [
+        key for key in sorted(set(expected) | set(actual)) if expected.get(key) != actual.get(key)
+    ]
+    if differing:
+        raise WorkspaceError(
+            "no se importa nada: la carpeta difiere del inventario del snapshot "
+            f"{meta.run_id} (modificadas, eliminadas o añadidas): " + ", ".join(differing)
+        )
 
 
 def _is_write_once(key: str) -> bool:
@@ -140,7 +166,10 @@ def _settle_backup_records(
     started o se reconstruye el que la exportación excluyó. Si no, no se reconstruye.
     """
     if not any(_is_backup_meta(key) for key in contents):
-        return contents, None
+        return contents, (
+            "Importación NO verificada contra una copia: la carpeta no viene de `backup restore` "
+            "y no se reconstruye ningún registro de copia."
+        )
     marker = read_snapshot_marker(folder)
     meta = read_snapshot_inventory(folder)
     if marker is None or meta is None or meta.run_id != marker.run_id:

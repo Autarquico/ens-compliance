@@ -11,14 +11,19 @@
           "title": "Prefix",
           "type": "string"
         },
-        "protected": {
-          "title": "Protected",
-          "type": "boolean"
+        "status": {
+          "enum": [
+            "protected",
+            "unprotected",
+            "inconclusive"
+          ],
+          "title": "Status",
+          "type": "string"
         }
       },
       "required": [
         "prefix",
-        "protected",
+        "status",
         "detail"
       ],
       "title": "CanaryResult",

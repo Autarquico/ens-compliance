@@ -66,10 +66,17 @@ class SnapshotMarker(Strict):
     snapshot_time: AwareDatetime | None = None
 
 
+ImmutabilityStatus = Literal["protected", "unprotected", "inconclusive"]
+
+
 class CanaryResult(Strict):
     prefix: str
-    protected: bool
+    status: ImmutabilityStatus
     detail: str
+
+    @property
+    def protected(self) -> bool:
+        return self.status == "protected"
 
 
 class ImmutabilityCheck(Strict):
@@ -82,8 +89,15 @@ class ImmutabilityCheck(Strict):
     )
 
     @property
+    def status(self) -> ImmutabilityStatus:
+        statuses = {result.status for result in self.results}
+        if "unprotected" in statuses:
+            return "unprotected"
+        return "inconclusive" if "inconclusive" in statuses else "protected"
+
+    @property
     def protected(self) -> bool:
-        return all(result.protected for result in self.results)
+        return self.status == "protected"
 
 
 def run_key(run_id: str) -> str:

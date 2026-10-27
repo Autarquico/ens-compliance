@@ -15,6 +15,9 @@ from ens_evidence.backup.records import CanaryResult, ImmutabilityCheck
 PROTECTED_PREFIXES = ("data", "index", "snapshots", "keys")
 _ORIGINAL = b"canario original\n"
 _OVERWRITE = b"canario sobrescrito\n"
+_NOT_FOUND_CODES = {"NoSuchKey", "404", "NotFound"}
+_MISSING = object()
+_UNREADABLE = object()
 
 
 def parse_s3_repository(repository: str) -> tuple[str | None, str, str]:
@@ -49,19 +52,41 @@ def _probe(client: Any, bucket: str, base_prefix: str, prefix: str) -> CanaryRes
             "sin él no se puede probar la protección"
         ) from None
     deleted = _attempt(lambda: client.delete_object(Bucket=bucket, Key=key))
-    gone = _read(client, bucket, key) is None
+    after_delete = _read(client, bucket, key)
+    if after_delete is _MISSING:
+        return CanaryResult(
+            prefix=prefix,
+            status="unprotected",
+            detail="el canario desapareció: el borrado surtió efecto",
+        )
+    if after_delete is _UNREADABLE:
+        return _inconclusive(prefix, "tras intentar borrar")
     overwritten = _attempt(lambda: client.put_object(Bucket=bucket, Key=key, Body=_OVERWRITE))
-    changed = _read(client, bucket, key) == _OVERWRITE
-    problems = []
-    if gone:
-        problems.append("el canario desapareció: el borrado surtió efecto")
-    if changed:
-        problems.append("el canario cambió de contenido: la sobrescritura surtió efecto")
-    detail = "; ".join(problems) or (
-        f"borrado {'aceptado pero sin efecto' if deleted else 'rechazado'}, "
-        f"sobrescritura {'aceptada pero sin efecto' if overwritten else 'rechazada'}"
+    after_overwrite = _read(client, bucket, key)
+    if after_overwrite is _UNREADABLE or after_overwrite is _MISSING:
+        return _inconclusive(prefix, "tras intentar sobrescribir")
+    if after_delete != _ORIGINAL or after_overwrite != _ORIGINAL:
+        return CanaryResult(
+            prefix=prefix,
+            status="unprotected",
+            detail="el canario cambió de contenido: la sobrescritura surtió efecto",
+        )
+    return CanaryResult(
+        prefix=prefix,
+        status="protected",
+        detail=(
+            f"borrado {'aceptado pero sin efecto' if deleted else 'rechazado'}, "
+            f"sobrescritura {'aceptada pero sin efecto' if overwritten else 'rechazada'}"
+        ),
     )
-    return CanaryResult(prefix=prefix, protected=not problems, detail=detail)
+
+
+def _inconclusive(prefix: str, moment: str) -> CanaryResult:
+    return CanaryResult(
+        prefix=prefix,
+        status="inconclusive",
+        detail=f"no se pudo leer el canario {moment}; un error de lectura no prueba protección",
+    )
 
 
 def _attempt(action: Any) -> bool:
@@ -72,8 +97,10 @@ def _attempt(action: Any) -> bool:
     return True
 
 
-def _read(client: Any, bucket: str, key: str) -> bytes | None:
+def _read(client: Any, bucket: str, key: str) -> Any:
+    """Contenido del objeto, `_MISSING` si el destino dice que no existe, `_UNREADABLE` si no."""
     try:
         return client.get_object(Bucket=bucket, Key=key)["Body"].read()
-    except Exception:
-        return None
+    except Exception as exc:
+        code = getattr(exc, "response", {}).get("Error", {}).get("Code")
+        return _MISSING if code in _NOT_FOUND_CODES else _UNREADABLE

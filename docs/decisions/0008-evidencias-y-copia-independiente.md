@@ -54,14 +54,21 @@ ambos solo la detecta la copia externa inmutable.
   propio snapshot (y con el registro del workspace si existe) y
   `evidence verify --all` pasa. Sin inventario, la restauración es "no
   verificada" y falla.
-- Al importar una restauración, el registro de esa ejecución se reconstruye
-  como `completed` y lo declara (`reconstructed_from_snapshot: true`).
+- Al importar una restauración, antes de escribir nada, las claves y sha256
+  de la carpeta se comparan con el inventario del snapshot; cualquier clave
+  modificada, eliminada o añadida aborta la importación sin escrituras. Solo
+  entonces el registro de esa ejecución se reconstruye como `completed` y lo
+  declara (`reconstructed_from_snapshot: true`). Una carpeta sin marcador de
+  snapshot se importa como "no verificada" y sin reconstruir registros.
 
 ### Inmutabilidad del destino
 Es una propiedad del proveedor, no del código. Se trata como hipótesis
 hasta probarla con `backup verify-immutability`, que usa objetos canario
-desechables por prefijo protegido. La prueba es manual contra el bucket real
-y su resultado se registra como evidencia. Receta propuesta para R2 (bucket
+desechables por prefijo protegido. Cada prefijo da `protected`,
+`unprotected` (el canario desapareció o cambió) o `inconclusive` (no se pudo
+leer: un error de lectura nunca prueba protección); el conjunto solo es
+`protected` si lo son todos. La prueba es manual contra el bucket real y su
+resultado se registra como evidencia. Receta propuesta para R2 (bucket
 lock en `data/`, `index/`, `snapshots/`, `keys/`; no en `locks/`): sin
 verificar.
 

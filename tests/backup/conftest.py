@@ -3,18 +3,21 @@ import shutil
 import stat
 from pathlib import Path
 
+import boto3
 import pytest
 import yaml
+from moto import mock_aws
 from typer.testing import CliRunner
 
 from ens_evidence.cli import app
-from ens_evidence.workspace import LocalStore
+from ens_evidence.workspace import LocalStore, S3Store
 
 PASSWORD = "contrasena-de-la-copia-9f3k"
 BACKUP_KEY = "AKIA-COPIA-0001"
 BACKUP_SECRET = "secreto-de-la-copia-0002"
 WORKSPACE_KEY = "AKIA-WORKSPACE-0003"
 WORKSPACE_SECRET = "secreto-del-workspace-0004"
+BUCKET = "evidencias"
 
 runner = CliRunner()
 
@@ -99,3 +102,13 @@ def fake_restic(tmp_path, monkeypatch):
     script.chmod(script.stat().st_mode | stat.S_IEXEC)
     monkeypatch.setenv("PATH", f"{bin_dir}{os.pathsep}{os.environ['PATH']}")
     return dump
+
+
+@pytest.fixture
+def s3(monkeypatch):
+    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
+    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
+    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
+    with mock_aws():
+        boto3.client("s3").create_bucket(Bucket=BUCKET)
+        yield S3Store(BUCKET, "org")

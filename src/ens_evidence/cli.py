@@ -575,6 +575,13 @@ def backup_restore(
     typer.echo("El inventario restaurado coincide con el registrado (claves y sha256).")
 
 
+_IMMUTABILITY_MARKS = {
+    "protected": "protegido",
+    "unprotected": "NO protegido",
+    "inconclusive": "NO CONCLUYENTE",
+}
+
+
 @backup_app.command("verify-immutability")
 @handled
 def backup_verify_immutability(ctx: typer.Context) -> None:
@@ -607,11 +614,19 @@ def backup_verify_immutability(ctx: typer.Context) -> None:
     stamp = check.checked_at.strftime("%Y%m%dT%H%M%S%fZ")
     open_workspace(ctx).create_bytes(f"{IMMUTABILITY_PREFIX}/{stamp}.yaml", dump(check))
     for result in check.results:
-        mark = "protegido" if result.protected else "NO protegido"
-        typer.echo(f"{result.prefix}/: {mark} ({result.detail})")
+        typer.echo(f"{result.prefix}/: {_IMMUTABILITY_MARKS[result.status]} ({result.detail})")
     typer.echo(check.note)
+    if check.status == "unprotected":
+        typer.echo("El destino NO es inmutable: se pudo borrar o sobrescribir algún canario.")
+    elif check.status == "inconclusive":
+        typer.echo(
+            "Prueba no concluyente: algún canario no se pudo leer (error, timeout o permisos). "
+            "Un error de lectura no prueba protección; corrige el acceso y repite."
+        )
     if not check.protected:
         raise typer.Exit(1)
+
+
 @catalog_app.command("list")
 def catalog_list(
     group: Annotated[Group | None, typer.Option("--group", help="Solo este grupo.")] = None,

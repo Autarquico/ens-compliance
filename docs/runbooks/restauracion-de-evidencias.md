@@ -51,9 +51,12 @@ Después, contra el bucket real y con el bloqueo de objetos ya configurado:
 ens-evidence backup verify-immutability
 ```
 
-Solo usa objetos canario. Su resultado queda registrado como evidencia. Si
-algún borrado o sobrescritura no se rechaza, la copia **no** es inmutable:
-revisa la configuración del bloqueo antes de dar la copia por buena.
+Solo usa objetos canario. Su resultado queda registrado como evidencia y
+solo vale si todos los prefijos salen "protegido". "NO protegido": algún
+borrado o sobrescritura surtió efecto y la copia **no** es inmutable; revisa
+la configuración del bloqueo. "NO CONCLUYENTE": algún canario no se pudo leer
+(red, permisos); corrige el acceso y repite. En ambos casos el comando sale
+con error.
 
 ## Restauración completa en una máquina nueva
 
@@ -88,5 +91,6 @@ revisa la configuración del bloqueo antes de dar la copia por buena.
 | `backup status` muestra una ejecución `started` | Se interrumpió | Repite `backup run`; la interrumpida nunca cuenta como copia |
 | `backup run` termina en `failed` | El destino no estaba disponible o las credenciales fallaron | Revisa red y credenciales; la evidencia no se da por copiada |
 | El inventario restaurado no coincide | Copia incompleta o alterada | No uses esa restauración; prueba otro snapshot y revisa el destino |
+| `workspace import --all` aborta porque la carpeta difiere del inventario | Se modificó, borró o añadió algo tras `restore` | Nada se escribió; restaura de nuevo en una carpeta vacía e importa sin tocarla |
 | `scope status` sale `NOT_APPROVED` tras importar | La importación cambió el alcance | El responsable del sistema vuelve a aprobarlo |
 | `backup status` muestra la ejecución restaurada como "reconstruido al restaurar" | Es esperado: el registro se rehízo a partir del inventario del snapshot | Nada; queda constancia de que procede de una restauración |

@@ -3,10 +3,8 @@ import shutil
 from datetime import UTC, datetime
 from pathlib import Path
 
-import boto3
 import pytest
 import yaml
-from moto import mock_aws
 from typer.testing import CliRunner
 
 from ens_evidence.backup.transfer import export_all, import_all
@@ -19,9 +17,8 @@ from ens_evidence.scope import (
     revoke_approval,
     scope_status,
 )
-from ens_evidence.workspace import LocalStore, S3Store
+from ens_evidence.workspace import LocalStore
 
-BUCKET = "evidencias"
 EXAMPLE_SCOPE = Path(__file__).resolve().parents[2] / "examples" / "workspace" / "scope"
 APPROVED_AT = datetime(2026, 10, 27, 9, 0, tzinfo=UTC)
 runner = CliRunner()
@@ -35,16 +32,6 @@ def tree(root: Path) -> dict[str, str]:
     return {
         p.relative_to(root).as_posix(): sha(p.read_bytes()) for p in root.rglob("*") if p.is_file()
     }
-
-
-@pytest.fixture
-def s3(monkeypatch):
-    monkeypatch.setenv("AWS_ACCESS_KEY_ID", "testing")
-    monkeypatch.setenv("AWS_SECRET_ACCESS_KEY", "testing")
-    monkeypatch.setenv("AWS_DEFAULT_REGION", "us-east-1")
-    with mock_aws():
-        boto3.client("s3").create_bucket(Bucket=BUCKET)
-        yield S3Store(BUCKET, "org")
 
 
 CONTENTS = {
