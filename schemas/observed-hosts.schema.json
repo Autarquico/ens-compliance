@@ -1,0 +1,73 @@
+{
+  "$defs": {
+    "ObservedHost": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Asset Id"
+        },
+        "hostname": {
+          "title": "Hostname",
+          "type": "string"
+        },
+        "serial": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Serial"
+        }
+      },
+      "required": [
+        "hostname"
+      ],
+      "title": "ObservedHost",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "hosts": {
+      "items": {
+        "$ref": "#/$defs/ObservedHost"
+      },
+      "title": "Hosts",
+      "type": "array"
+    },
+    "observed_at": {
+      "format": "date-time",
+      "title": "Observed At",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "source": {
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "source",
+    "observed_at",
+    "hosts"
+  ],
+  "title": "ObservedHosts",
+  "type": "object"
+}

@@ -1,0 +1,4 @@
+services:
+  - id: svc-facturacion
+    name: Facturación online
+    assets: [app-facturas, db-facturas, srv-app, cf-taller]

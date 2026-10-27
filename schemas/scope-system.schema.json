@@ -1,0 +1,76 @@
+{
+  "$defs": {
+    "Exclusion": {
+      "additionalProperties": false,
+      "properties": {
+        "justification": {
+          "title": "Justification",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ExclusionKind"
+        },
+        "ref": {
+          "minLength": 1,
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "ref",
+        "justification"
+      ],
+      "title": "Exclusion",
+      "type": "object"
+    },
+    "ExclusionKind": {
+      "enum": [
+        "asset",
+        "service"
+      ],
+      "title": "ExclusionKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "description": {
+      "minLength": 1,
+      "title": "Description",
+      "type": "string"
+    },
+    "exclusions": {
+      "items": {
+        "$ref": "#/$defs/Exclusion"
+      },
+      "title": "Exclusions",
+      "type": "array"
+    },
+    "included_assets": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Included Assets",
+      "type": "array"
+    },
+    "included_services": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Included Services",
+      "type": "array"
+    },
+    "name": {
+      "minLength": 1,
+      "title": "Name",
+      "type": "string"
+    }
+  },
+  "required": [
+    "name",
+    "description"
+  ],
+  "title": "SystemScope",
+  "type": "object"
+}

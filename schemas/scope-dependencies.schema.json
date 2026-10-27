@@ -1,0 +1,58 @@
+{
+  "$defs": {
+    "Dependency": {
+      "additionalProperties": false,
+      "properties": {
+        "asset": {
+          "minLength": 1,
+          "title": "Asset",
+          "type": "string"
+        },
+        "depends_on": {
+          "minLength": 1,
+          "title": "Depends On",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "purpose": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Purpose"
+        }
+      },
+      "required": [
+        "id",
+        "asset",
+        "depends_on"
+      ],
+      "title": "Dependency",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "dependencies": {
+      "items": {
+        "$ref": "#/$defs/Dependency"
+      },
+      "title": "Dependencies",
+      "type": "array"
+    }
+  },
+  "required": [
+    "dependencies"
+  ],
+  "title": "DependenciesFile",
+  "type": "object"
+}

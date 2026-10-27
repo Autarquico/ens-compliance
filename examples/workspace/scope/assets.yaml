@@ -1,0 +1,92 @@
+assets:
+  - id: lap-ana
+    type: laptop
+    deployment: deployed
+    hostname: lap-ana.taller-norte.example
+    os: macOS 15
+    owner: Ana Ruiz
+    encrypted: true
+    usage: Desarrollo y administración
+  - id: lap-personal
+    type: laptop
+    deployment: deployed
+    hostname: lap-personal.taller-norte.example
+    os: Linux
+    owner: Ana Ruiz
+    encrypted: true
+    usage: Uso personal, sin acceso a producción
+  - id: srv-app
+    type: server
+    deployment: deployed
+    hostname: srv-app.taller-norte.example
+    function: Aplicaciones de clientes
+    os: Debian 12
+    environment: producción
+    location: Oficina, Gijón
+  - id: app-facturas
+    type: application
+    deployment: deployed
+    service: Facturación
+    domain: facturas.taller-norte.example
+    repo: taller-norte/facturas
+    database: db-facturas
+  - id: db-facturas
+    type: database
+    deployment: deployed
+    engine: PostgreSQL 16
+    location: srv-app
+    data: Facturas y datos de clientes
+    backup: Diaria con restic
+  - id: gh-taller
+    type: code_hosting
+    deployment: deployed
+    account: taller-norte
+    repos: [facturas, infra]
+    actions: Compilación y despliegue
+  - id: cf-taller
+    type: edge_network
+    deployment: deployed
+    account: taller-norte
+    zones: [taller-norte.example]
+    tunnel: Activo hacia srv-app
+    waf: Reglas gestionadas activas
+    access: Acceso por identidad a paneles
+  - id: ws-identidad
+    type: identity
+    deployment: deployed
+    users: Ana Ruiz
+    admins: Ana Ruiz
+    mfa: true
+  - id: pw-gestor
+    type: password_manager
+    deployment: deployed
+    mode: Alojado
+    recovery: Contacto de emergencia y clave de recuperación en caja fuerte física
+    mfa: true
+  - id: st-backups
+    type: storage
+    deployment: deployed
+    buckets: [taller-norte-backups]
+    location: UE
+    encryption: Cifrado en servidor y por restic
+    access: Solo cuenta de servicio de copias
+  - id: bk-diario
+    type: backup
+    deployment: deployed
+    source: db-facturas
+    destination: st-backups
+    frequency: Diaria
+    restoration: Prueba trimestral
+  - id: bk-externo
+    type: backup
+    deployment: planned
+    source: db-facturas
+    destination: Segundo proveedor
+    frequency: Semanal
+    restoration: Por definir
+  - id: prov-nube
+    type: provider
+    deployment: deployed
+    service: Almacenamiento compatible con S3
+    function: Aloja las copias de seguridad
+    dependency: Disponibilidad del bucket

@@ -1,0 +1,10 @@
+{
+  "schema_version": "1.0",
+  "source": "ejemplo",
+  "observed_at": "2026-10-27T08:00:00+00:00",
+  "hosts": [
+    {"hostname": "lap-ana.taller-norte.example"},
+    {"hostname": "srv-app.taller-norte.example"},
+    {"hostname": "srv-extra.taller-norte.example"}
+  ]
+}

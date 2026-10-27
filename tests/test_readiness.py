@@ -83,9 +83,7 @@ def test_revision_caducada_bloquea_por_expired_review():
 
 
 def tomorrow_review():
-    return review(
-        reviewed_at=NOW + timedelta(days=1), valid_until=NOW + timedelta(days=365)
-    )
+    return review(reviewed_at=NOW + timedelta(days=1), valid_until=NOW + timedelta(days=365))
 
 
 def test_applicable_con_revision_fechada_en_el_futuro_bloquea_por_review_in_future():

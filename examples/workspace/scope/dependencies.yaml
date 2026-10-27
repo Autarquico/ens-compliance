@@ -1,0 +1,8 @@
+dependencies:
+  - id: dep-app-db
+    asset: app-facturas
+    depends_on: db-facturas
+  - id: dep-backup-nube
+    asset: bk-diario
+    depends_on: prov-nube
+    purpose: Destino de las copias

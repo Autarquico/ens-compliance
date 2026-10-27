@@ -1,0 +1,42 @@
+{
+  "$defs": {
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "approved_at": {
+      "format": "date-time",
+      "title": "Approved At",
+      "type": "string"
+    },
+    "approved_by": {
+      "title": "Approved By",
+      "type": "string"
+    },
+    "fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Fingerprint",
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/Role"
+    }
+  },
+  "required": [
+    "fingerprint",
+    "approved_by",
+    "role",
+    "approved_at"
+  ],
+  "title": "Approval",
+  "type": "object"
+}
