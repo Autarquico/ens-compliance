@@ -106,6 +106,21 @@ def test_entrada_observada_invalida_se_rechaza(text):
         parse_observed(text)
 
 
+def test_entrada_observada_con_schema_version_desconocida_se_rechaza_en_espanol():
+    text = "schema_version: '999'\nsource: edr\nobserved_at: 2026-10-27T08:00:00+00:00\nhosts: []\n"
+
+    with pytest.raises(ObservedInputError) as error:
+        parse_observed(text)
+
+    assert "no soportada" in "\n".join(error.value.errors)
+
+
+def test_entrada_observada_con_schema_version_1_0_se_acepta():
+    text = "schema_version: '1.0'\nsource: edr\nobserved_at: 2026-10-27T08:00:00+00:00\nhosts: []\n"
+
+    assert parse_observed(text).schema_version == "1.0"
+
+
 def test_la_discrepancia_no_impide_aprobar_el_alcance(store, assets):
     report = reconcile(assets, observed("{hostname: srv-extra.x}"))
     assert report.discrepancies

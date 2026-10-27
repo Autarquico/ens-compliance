@@ -1,4 +1,5 @@
 import shutil
+from datetime import datetime
 from pathlib import Path
 
 import pytest
@@ -6,6 +7,7 @@ import yaml
 from typer.testing import CliRunner
 
 from ens_evidence.cli import app
+from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.workspace import LocalStore
 
 runner = CliRunner()
@@ -138,7 +140,77 @@ def test_push_muestra_el_estado_del_alcance_en_el_destino(settings, example_work
     result = ens(settings, "workspace", "push", str(draft))
 
     assert result.exit_code == 0, result.output
-    assert "STALE" in result.output
+    assert "NOT_APPROVED" in result.output
+    assert "STALE" not in result.output
+
+
+def test_push_con_cambios_revoca_la_aprobacion_y_se_puede_aprobar_de_nuevo(
+    settings, example_workspace, draft
+):
+    ens(settings, "scope", "approve", "--by", "Ana Ruiz")
+    path = draft / "scope" / "services.yaml"
+    path.write_text(path.read_text().replace("online", "web"))
+
+    result = ens(settings, "workspace", "push", str(draft))
+
+    assert result.exit_code == 0, result.output
+    revocation = yaml.safe_load(example_workspace.read_text("scope/approval.yaml"))
+    assert revocation["revoked"] is True
+    assert revocation["reason"]
+    assert datetime.fromisoformat(revocation["revoked_at"]).tzinfo is not None
+    assert scope_status(example_workspace).state is ScopeState.NOT_APPROVED
+    assert ens(settings, "scope", "approve", "--by", "Ana Ruiz").exit_code == 0
+    assert scope_status(example_workspace).state is ScopeState.APPROVED
+
+
+def test_push_sin_cambios_ni_escribe_ni_revoca_la_aprobacion(
+    settings, example_workspace, draft, monkeypatch
+):
+    ens(settings, "scope", "approve", "--by", "Ana Ruiz")
+    approval = example_workspace.read_text("scope/approval.yaml")
+    writes = []
+    original = LocalStore.write_text
+
+    def recording(self, key, text):
+        writes.append(key)
+        original(self, key, text)
+
+    monkeypatch.setattr(LocalStore, "write_text", recording)
+
+    result = ens(settings, "workspace", "push", str(draft))
+
+    assert result.exit_code == 0, result.output
+    assert writes == []
+    assert example_workspace.read_text("scope/approval.yaml") == approval
+    assert scope_status(example_workspace).state is ScopeState.APPROVED
+
+
+def test_push_parcial_que_restaura_los_activos_aprobados_no_deja_el_destino_aprobado(
+    settings, example_workspace, draft, monkeypatch
+):
+    ens(settings, "scope", "approve", "--by", "Ana Ruiz")
+    example_workspace.write_text(
+        "scope/assets.yaml",
+        example_workspace.read_text("scope/assets.yaml").replace(
+            "Aplicaciones de clientes", "Otra función"
+        ),
+    )
+    assert scope_status(example_workspace).state is ScopeState.STALE
+    system = draft / "scope" / "system.yaml"
+    system.write_text(system.read_text().replace("Sistema de Taller Norte", "Sistema Nuevo"))
+    original = LocalStore.write_text
+
+    def fails_on_system(self, key, text):
+        if key == "scope/system.yaml":
+            raise OSError("disco lleno")
+        original(self, key, text)
+
+    monkeypatch.setattr(LocalStore, "write_text", fails_on_system)
+
+    result = ens(settings, "workspace", "push", str(draft))
+
+    assert result.exit_code != 0
+    assert scope_status(example_workspace).state is not ScopeState.APPROVED
 
 
 def test_pull_nunca_copia_la_aprobacion(settings, example_workspace, tmp_path):

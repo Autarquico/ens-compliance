@@ -3,6 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 from enum import StrEnum
+from typing import Literal
 
 import yaml
 from pydantic import AwareDatetime, Field, ValidationError, field_validator
@@ -44,6 +45,12 @@ class Approval(Strict):
         return value
 
 
+class Revocation(Strict):
+    revoked: Literal[True]
+    reason: str
+    revoked_at: AwareDatetime
+
+
 @dataclass(frozen=True)
 class ScopeStatus:
     state: ScopeState
@@ -78,7 +85,11 @@ def scope_status(store: WorkspaceStore) -> ScopeStatus:
             ScopeState.INVALID, [f"{APPROVAL_KEY}: no es texto UTF-8; vuelve a aprobar"], current
         )
     try:
-        approval = Approval.model_validate(yaml.safe_load(text))
+        raw = yaml.safe_load(text)
+        if isinstance(raw, dict) and "revoked" in raw:
+            Revocation.model_validate(raw)
+            return ScopeStatus(ScopeState.NOT_APPROVED, fingerprint=current)
+        approval = Approval.model_validate(raw)
     except yaml.YAMLError:
         detail = [f"{APPROVAL_KEY}: no es YAML válido; vuelve a aprobar"]
         return ScopeStatus(ScopeState.INVALID, detail, current)
@@ -101,6 +112,15 @@ def approve_scope(store: WorkspaceStore, by: str, role: Role, now: datetime) -> 
         raise ScopeApprovalRejected(describe_validation("aprobación", exc)) from None
     store.write_text(APPROVAL_KEY, yaml.safe_dump(approval.model_dump(mode="json")))
     return approval
+
+
+def revoke_approval(store: WorkspaceStore, reason: str, now: datetime) -> bool:
+    """Deja constancia de que la aprobación ya no vale; False si no había ninguna."""
+    if not store.exists(APPROVAL_KEY):
+        return False
+    revocation = Revocation(revoked=True, reason=reason, revoked_at=now)
+    store.write_text(APPROVAL_KEY, yaml.safe_dump(revocation.model_dump(mode="json")))
+    return True
 
 
 def require_approved_scope(store: WorkspaceStore) -> ScopeStatus:

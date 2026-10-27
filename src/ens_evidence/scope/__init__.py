@@ -3,12 +3,14 @@
 from ens_evidence.scope.approval import (
     APPROVAL_KEY,
     Approval,
+    Revocation,
     ScopeApprovalRejected,
     ScopeNotApproved,
     ScopeState,
     ScopeStatus,
     approve_scope,
     require_approved_scope,
+    revoke_approval,
     scope_status,
 )
 from ens_evidence.scope.inventory import (
@@ -62,6 +64,7 @@ __all__ = [
     "ObservedHosts",
     "ObservedInputError",
     "ReconciliationReport",
+    "Revocation",
     "ScopeApprovalRejected",
     "ScopeNotApproved",
     "ScopeState",
@@ -70,6 +73,7 @@ __all__ = [
     "ServicesFile",
     "SystemScope",
     "approve_scope",
+    "revoke_approval",
     "find_secrets",
     "fingerprint",
     "load_assets",

@@ -4,7 +4,7 @@ from collections import Counter
 from enum import StrEnum
 
 import yaml
-from pydantic import AwareDatetime, BaseModel, ValidationError
+from pydantic import AwareDatetime, BaseModel, ValidationError, field_validator
 
 from ens_evidence.models.contracts import Strict
 from ens_evidence.scope.messages import describe_validation
@@ -19,11 +19,22 @@ class ObservedHost(Strict):
     serial: str | None = None
 
 
+SUPPORTED_SCHEMA_VERSIONS = ("1.0",)
+
+
 class ObservedHosts(Strict):
     schema_version: str = "1.0"
     source: str
     observed_at: AwareDatetime
     hosts: list[ObservedHost]
+
+    @field_validator("schema_version")
+    @classmethod
+    def _supported(cls, value: str) -> str:
+        if value not in SUPPORTED_SCHEMA_VERSIONS:
+            supported = ", ".join(SUPPORTED_SCHEMA_VERSIONS)
+            raise ValueError(f"versión de esquema no soportada; usa una de: {supported}")
+        return value
 
 
 class DiscrepancyKind(StrEnum):

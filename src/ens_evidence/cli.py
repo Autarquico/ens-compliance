@@ -19,6 +19,7 @@ from ens_evidence.scope import (
     load_inventory,
     parse_observed,
     reconcile,
+    revoke_approval,
     scope_status,
 )
 from ens_evidence.scope.models import Deployment
@@ -267,6 +268,13 @@ def workspace_push(ctx: typer.Context, directory: Path) -> None:
         print_errors(leaked)
         raise typer.Exit(1)
     destination = open_workspace(ctx)
+    present = [key for key in keys if destination.exists(key)]
+    changing = (set(keys) - set(present)) | set(differing_keys(source, destination, present))
+    if not changing:
+        typer.echo("Nada que publicar: el destino ya es idéntico.")
+        return
+    if revoke_approval(destination, "workspace push", datetime.now(UTC)):
+        typer.echo("Se revoca la aprobación del destino; tras publicar hay que aprobar de nuevo.")
     for key, text in contents.items():
         destination.write_text(key, text)
     typer.echo(f"{len(keys)} ficheros publicados.")
