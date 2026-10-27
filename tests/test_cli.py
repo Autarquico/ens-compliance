@@ -18,7 +18,6 @@ runner = CliRunner()
         ["report", "daily"],
         ["report", "monthly"],
         ["assessment", "status"],
-        ["evidence", "verify", "ev-1"],
     ],
 )
 def test_comandos_stub_fallan_explicitamente_con_codigo_2(args):

@@ -23,6 +23,7 @@ class BlockerKind(StrEnum):
 class EvidenceRef(Strict):
     id: str
     valid_until: AwareDatetime | None = None
+    collected_at: AwareDatetime | None = None
 
 
 class Measure(Strict):
@@ -82,11 +83,17 @@ def _review_blockers(measure: Measure, now: AwareDatetime) -> list[Blocker]:
 
 
 def _evidence_blockers(measure: Measure, now: AwareDatetime) -> list[Blocker]:
-    if not measure.evidence:
-        return [Blocker(kind=BlockerKind.MISSING_EVIDENCE, measure_id=measure.id)]
+    future = [e for e in measure.evidence if e.collected_at is not None and e.collected_at > now]
+    counted = [e for e in measure.evidence if e not in future]
+    if not counted:
+        details = [f"evidence_in_future:{e.id}" for e in future] or [""]
+        return [
+            Blocker(kind=BlockerKind.MISSING_EVIDENCE, measure_id=measure.id, detail=detail)
+            for detail in details
+        ]
     return [
         Blocker(kind=BlockerKind.EXPIRED_EVIDENCE, measure_id=measure.id, detail=evidence.id)
-        for evidence in measure.evidence
+        for evidence in counted
         if evidence.valid_until is not None and evidence.valid_until <= now
     ]
 

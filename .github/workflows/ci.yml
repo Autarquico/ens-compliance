@@ -14,6 +14,17 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
       - uses: astral-sh/setup-uv@07a047e608db84b3d8c06cd9a7c7dcc9c355c18e # v10.3.2
+      - name: Install restic 0.19.1
+        env:
+          RESTIC_VERSION: 0.19.1
+          RESTIC_SHA256: f415415624dcc452f2a02b8c33641791a8c6d6d3b65bbb3543fcf9a25151585c
+        run: |
+          curl -fsSL -o restic.bz2 "https://github.com/restic/restic/releases/download/v${RESTIC_VERSION}/restic_${RESTIC_VERSION}_linux_amd64.bz2"
+          echo "${RESTIC_SHA256}  restic.bz2" | sha256sum --check --strict
+          bunzip2 restic.bz2
+          sudo install -m 0755 restic /usr/local/bin/restic
+          rm -f restic
+      - run: restic version
       - run: uv sync --locked
       - run: uv run ruff check .
       - run: uv run pytest -q

@@ -17,6 +17,14 @@ class NotText(WorkspaceError):
     pass
 
 
+class AlreadyExists(WorkspaceError):
+    pass
+
+
+class ConditionalWriteUnsupported(WorkspaceError):
+    pass
+
+
 class AccessDenied(WorkspaceError):
     pass
 

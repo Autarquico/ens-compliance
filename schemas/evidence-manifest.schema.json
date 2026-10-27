@@ -44,6 +44,39 @@
       "title": "CollectorInfo",
       "type": "object"
     },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ProvenanceKind"
+        },
+        "submitted_at": {
+          "format": "date-time",
+          "title": "Submitted At",
+          "type": "string"
+        },
+        "submitted_by": {
+          "minLength": 1,
+          "title": "Submitted By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "submitted_by",
+        "submitted_at"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "ProvenanceKind": {
+      "enum": [
+        "collector",
+        "manual"
+      ],
+      "title": "ProvenanceKind",
+      "type": "string"
+    },
     "Review": {
       "additionalProperties": false,
       "properties": {
@@ -112,11 +145,22 @@
       "type": "string"
     },
     "collector": {
-      "$ref": "#/$defs/CollectorInfo"
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CollectorInfo"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "id": {
       "title": "Id",
       "type": "string"
+    },
+    "provenance": {
+      "$ref": "#/$defs/Provenance"
     },
     "review": {
       "anyOf": [
@@ -153,7 +197,7 @@
     "asset_id",
     "collected_at",
     "artifact",
-    "collector"
+    "provenance"
   ],
   "title": "EvidenceManifest",
   "type": "object"

@@ -1,0 +1,60 @@
+{
+  "$defs": {
+    "CanaryResult": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "prefix": {
+          "title": "Prefix",
+          "type": "string"
+        },
+        "protected": {
+          "title": "Protected",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "prefix",
+        "protected",
+        "detail"
+      ],
+      "title": "CanaryResult",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "checked_at": {
+      "format": "date-time",
+      "title": "Checked At",
+      "type": "string"
+    },
+    "note": {
+      "default": "Un rechazo aislado no acredita la pol\u00edtica completa; la retenci\u00f3n se verifica a mano contra el bucket real.",
+      "title": "Note",
+      "type": "string"
+    },
+    "repository": {
+      "title": "Repository",
+      "type": "string"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/CanaryResult"
+      },
+      "minItems": 1,
+      "title": "Results",
+      "type": "array"
+    }
+  },
+  "required": [
+    "checked_at",
+    "repository",
+    "results"
+  ],
+  "title": "ImmutabilityCheck",
+  "type": "object"
+}

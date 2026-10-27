@@ -71,6 +71,10 @@ Salida: `Readiness`, lista de bloqueos y `pending_human_review`. Bloqueos:
 - `UNDETERMINED` siempre bloquea.
 - `NOT_APPLICABLE` exige justificación y revisión vigente.
 - Si no se ejecutó la capa de juicio, `pending_human_review` es verdadero.
+- Una evidencia con `collected_at` posterior a la fecha de evaluación no
+  cuenta; si no queda ninguna válida, bloqueo `MISSING_EVIDENCE` con
+  detalle `evidence_in_future:<id>`. Las evidencias sin `collected_at` se
+  siguen aceptando (0008).
 
 ### Transiciones del expediente
 

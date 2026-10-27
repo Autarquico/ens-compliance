@@ -1,4 +1,5 @@
 import functools
+import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime
 from importlib.resources import files
@@ -7,8 +8,33 @@ from typing import Annotated, Any
 
 import typer
 import yaml
+from pydantic import ValidationError
 
 from ens_evidence import schemas
+from ens_evidence.backup import (
+    IMMUTABILITY_PREFIX,
+    BackupError,
+    BackupRun,
+    BackupSecrets,
+    Restic,
+    backup_status,
+    dump,
+    list_runs,
+    load_secrets,
+    parse_s3_repository,
+    restore_snapshot,
+    run_backup,
+    verify_immutability,
+)
+from ens_evidence.backup.environment import ACCESS_KEY_VAR, SECRET_KEY_VAR, redact
+from ens_evidence.backup.transfer import export_all, import_all
+from ens_evidence.evidence import (
+    MANUAL_SOURCE,
+    import_manual,
+    list_manifests,
+    verify_all,
+    verify_one,
+)
 from ens_evidence.models.enums import Role
 from ens_evidence.scope import (
     ObservedInputError,
@@ -22,10 +48,12 @@ from ens_evidence.scope import (
     revoke_approval,
     scope_status,
 )
+from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.models import Deployment
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SYNCED_KEYS
 from ens_evidence.workspace import (
+    BackupSettings,
     LocalStore,
     NotText,
     SettingsError,
@@ -47,6 +75,7 @@ workspace_app = typer.Typer(
     help="Sincroniza el workspace con una carpeta local.", no_args_is_help=True
 )
 scope_app = typer.Typer(help="Alcance del sistema y su aprobación.", no_args_is_help=True)
+backup_app = typer.Typer(help="Copia independiente de las evidencias.", no_args_is_help=True)
 app.add_typer(report_app, name="report")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
@@ -54,6 +83,7 @@ app.add_typer(schema_app, name="schema")
 app.add_typer(inventory_app, name="inventory")
 app.add_typer(workspace_app, name="workspace")
 app.add_typer(scope_app, name="scope")
+app.add_typer(backup_app, name="backup")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -283,6 +313,53 @@ def workspace_push(ctx: typer.Context, directory: Path) -> None:
     print_errors(published.errors)
 
 
+@workspace_app.command("export")
+@handled
+def workspace_export(
+    ctx: typer.Context,
+    directory: Path,
+    all_keys: Annotated[
+        bool, typer.Option("--all", help="Todas las claves del workspace, por bytes.")
+    ] = False,
+) -> None:
+    """Exporta el workspace completo a una carpeta local vacía.
+
+    Si una clave cambia durante la copia, aborta y borra la exportación."""
+    if not all_keys:
+        raise fail("Indica --all: la exportación copia todo el workspace.")
+    reject_inside_product(directory)
+    if directory.exists() and (not directory.is_dir() or any(directory.iterdir())):
+        raise fail(f"{directory} debe ser una carpeta vacía o no existir.", 1)
+    try:
+        keys = export_all(open_workspace(ctx), LocalStore(directory))
+    except WorkspaceError:
+        shutil.rmtree(directory, ignore_errors=True)
+        raise
+    typer.echo(f"{len(keys)} ficheros exportados a {directory}")
+
+
+@workspace_app.command("import")
+@handled
+def workspace_import(
+    ctx: typer.Context,
+    directory: Path,
+    all_keys: Annotated[
+        bool, typer.Option("--all", help="Todas las claves de la carpeta, por bytes.")
+    ] = False,
+) -> None:
+    """Importa una exportación completa al workspace, sin pisar evidencias distintas."""
+    if not all_keys:
+        raise fail("Indica --all: la importación copia toda la carpeta.")
+    if not directory.is_dir():
+        raise fail(f"La carpeta {directory} no existe.", 1)
+    report = import_all(open_workspace(ctx), LocalStore(directory), datetime.now(UTC))
+    if report.approval_revoked:
+        typer.echo("Se revoca la aprobación del destino; tras importar hay que aprobar de nuevo.")
+    if report.backup_note:
+        typer.echo(report.backup_note)
+    typer.echo(f"{report.written} ficheros importados, {report.unchanged} sin cambios.")
+
+
 @inventory_app.command("validate")
 @handled
 def inventory_validate(ctx: typer.Context) -> None:
@@ -382,6 +459,154 @@ def scope_show_status(ctx: typer.Context) -> None:
         raise typer.Exit(1)
 
 
+def backup_settings(ctx: typer.Context) -> BackupSettings:
+    configured = load_settings(resolve_settings_path(ctx.obj)).backup
+    if configured is None:
+        raise fail(
+            "Faltan los ajustes de la copia: añade backup.restic_repository al fichero de ajustes."
+        )
+    return configured
+
+
+def backup_restic(ctx: typer.Context) -> tuple[Restic, BackupSettings, BackupSecrets]:
+    configured = backup_settings(ctx)
+    secrets = load_secrets(configured.restic_repository)
+    restic = Restic(configured.restic_repository, secrets, region=configured.region)
+    return restic, configured, secrets
+
+
+@backup_app.command("init")
+@handled
+def backup_init(ctx: typer.Context) -> None:
+    """Inicializa el repositorio restic; si ya existe, lo deja intacto.
+
+    La región (backup.region en los ajustes) es opcional; Cloudflare R2 usa `auto`.
+    """
+    restic, configured, _ = backup_restic(ctx)
+    if restic.init():
+        typer.echo(f"Repositorio restic inicializado: {configured.restic_repository}")
+    else:
+        typer.echo(f"El repositorio ya existe, no se toca: {configured.restic_repository}")
+
+
+@backup_app.command("run")
+@handled
+def backup_run(ctx: typer.Context) -> None:
+    """Copia el workspace completo al repositorio restic y registra la ejecución."""
+    restic, configured, secrets = backup_restic(ctx)
+    run = run_backup(
+        open_workspace(ctx),
+        restic,
+        configured.restic_repository,
+        secrets,
+        lambda: datetime.now(UTC),
+    )
+    if run.status == "failed":
+        typer.echo(f"La copia {run.run_id} ha fallado: {run.error}", err=True)
+        raise typer.Exit(1)
+    typer.echo(
+        f"Copia {run.run_id} completada. Snapshot: {run.snapshot_id}; "
+        f"{len(run.inventory or {})} ficheros en el inventario."
+    )
+
+
+@backup_app.command("status")
+@handled
+def backup_show_status(ctx: typer.Context) -> None:
+    """Muestra la última ejecución y las interrumpidas. Sale con 1 si hay algo que revisar."""
+    status = backup_status(open_workspace(ctx))
+    if status.last is None:
+        typer.echo("No hay ninguna copia registrada.", err=True)
+        raise typer.Exit(1)
+    last = status.last
+    typer.echo(
+        f"Última ejecución: {last.run_id}  {last.status}  {last.started_at.isoformat()}"
+        + (f"  snapshot {last.snapshot_id}" if last.snapshot_id else "")
+        + ("  (reconstruido al restaurar)" if last.reconstructed_from_snapshot else "")
+    )
+    if last.error:
+        typer.echo(f"Error: {last.error}", err=True)
+    for run in status.interrupted:
+        typer.echo(f"Interrumpida (sin registro final): {run.run_id}  {run.started_at.isoformat()}")
+    for key in status.unreadable:
+        typer.echo(f"Registro ilegible: {key}", err=True)
+    if last.status != "completed" or status.interrupted or status.unreadable:
+        raise typer.Exit(1)
+
+
+@backup_app.command("restore")
+@handled
+def backup_restore(
+    ctx: typer.Context,
+    snapshot: Annotated[str, typer.Option(help="Id del snapshot o latest.")],
+    target: Annotated[Path, typer.Option(help="Carpeta vacía donde restaurar.")],
+) -> None:
+    """Restaura un snapshot en una carpeta y lo compara con el inventario registrado.
+
+    Después, `workspace import --all` lo devuelve a un workspace local o S3.
+    """
+    reject_inside_product(target)
+    restic, configured, _ = backup_restic(ctx)
+    recorded: list[BackupRun] = []
+    try:
+        recorded, _unreadable = list_runs(open_workspace(ctx))
+    except WorkspaceError:
+        typer.echo("No se puede leer el workspace; la restauración no se comparará.", err=True)
+    report = restore_snapshot(restic, snapshot, target, recorded)
+    typer.echo(f"Snapshot {report.snapshot_id} restaurado en {target}: {report.files} ficheros.")
+    if not report.inventory_checked:
+        typer.echo(
+            "El snapshot no lleva su inventario (.ens-backup): restauración NO verificada. "
+            "No la des por buena; ejecuta evidence verify --all sobre lo importado.",
+            err=True,
+        )
+        raise typer.Exit(1)
+    if report.mismatches:
+        typer.echo("El inventario restaurado no coincide con el registrado:", err=True)
+        print_errors(report.mismatches)
+        raise typer.Exit(1)
+    typer.echo("El inventario restaurado coincide con el registrado (claves y sha256).")
+
+
+@backup_app.command("verify-immutability")
+@handled
+def backup_verify_immutability(ctx: typer.Context) -> None:
+    """Prueba con objetos canario que el destino rechaza borrar y sobrescribir.
+
+    Solo toca objetos canario nuevos, nunca los de restic. Ejecútalo a mano contra el bucket real.
+    """
+    configured = backup_settings(ctx)
+    secrets = load_secrets(configured.restic_repository)
+    endpoint, bucket, prefix = parse_s3_repository(configured.restic_repository)
+    if secrets.access_key_id is None:
+        raise fail(f"Faltan {ACCESS_KEY_VAR} y {SECRET_KEY_VAR}.")
+    try:
+        import boto3
+    except ImportError:
+        raise fail("Requiere el extra opcional: pip install 'ens-evidence[s3]'") from None
+    client = boto3.client(
+        "s3",
+        endpoint_url=endpoint,
+        aws_access_key_id=secrets.access_key_id,
+        aws_secret_access_key=secrets.secret_access_key,
+        region_name=configured.region,
+    )
+    try:
+        check = verify_immutability(
+            client, configured.restic_repository, bucket, prefix, datetime.now(UTC)
+        )
+    except BackupError as exc:
+        raise fail(f"Error: {redact(str(exc), secrets)}") from None
+    stamp = check.checked_at.strftime("%Y%m%dT%H%M%S%fZ")
+    open_workspace(ctx).create_bytes(f"{IMMUTABILITY_PREFIX}/{stamp}.yaml", dump(check))
+    for result in check.results:
+        mark = "protegido" if result.protected else "NO protegido"
+        typer.echo(f"{result.prefix}/: {mark} ({result.detail})")
+    typer.echo(check.note)
+    if not check.protected:
+        raise typer.Exit(1)
+
+
 @app.command()
 def collect(
     source: Annotated[str | None, typer.Argument(help="Conector a ejecutar.")] = None,
@@ -415,10 +640,101 @@ def assessment_status() -> None:
     not_implemented()
 
 
+def parse_instant(option: str, text: str | None) -> datetime | None:
+    if text is None:
+        return None
+    try:
+        instant = datetime.fromisoformat(text)
+    except ValueError:
+        instant = None
+    if instant is None or instant.tzinfo is None:
+        raise fail(f"{option}: fecha y hora no válidas; usa el formato 2026-01-31T10:00:00+00:00")
+    return instant
+
+
+@evidence_app.command("import")
+@handled
+def evidence_import(
+    ctx: typer.Context,
+    file: Annotated[Path, typer.Argument(help="Fichero aportado por una persona.")],
+    source: Annotated[str, typer.Option(help="Origen; solo se admite manual.")],
+    asset: Annotated[str, typer.Option(help="Id del activo al que se refiere.")],
+    by: Annotated[str, typer.Option("--by", help="Nombre de quien aporta (declarado).")],
+    collected_at: Annotated[
+        str | None, typer.Option(help="Momento al que se refiere (por defecto, ahora).")
+    ] = None,
+    valid_until: Annotated[str | None, typer.Option(help="Caducidad de la evidencia.")] = None,
+) -> None:
+    """Registra una evidencia manual con su hash, autor y fecha."""
+    if source != MANUAL_SOURCE:
+        raise fail(f"--source: solo se admite {MANUAL_SOURCE}; las demás las recoge un collector.")
+    collected = parse_instant("--collected-at", collected_at)
+    expires = parse_instant("--valid-until", valid_until)
+    try:
+        data = file.read_bytes()
+    except OSError:
+        raise fail("No se puede leer el fichero indicado.") from None
+    try:
+        manifest = import_manual(
+            open_workspace(ctx),
+            data,
+            asset_id=asset,
+            submitted_by=by,
+            now=datetime.now(UTC),
+            collected_at=collected,
+            valid_until=expires,
+        )
+    except ValidationError as exc:
+        typer.echo("No se importa la evidencia:", err=True)
+        print_errors(describe_validation("evidence import", exc))
+        raise typer.Exit(1) from None
+    typer.echo(
+        f"Evidencia registrada: {manifest.id}\n"
+        f"Huella sha256: {manifest.artifact.sha256}\n"
+        "El nombre de quien aporta es declarado; no se autentica."
+    )
+
+
+@evidence_app.command("list")
+@handled
+def evidence_list(ctx: typer.Context) -> None:
+    """Lista las evidencias registradas."""
+    listing = list_manifests(open_workspace(ctx))
+    for manifest in listing.manifests:
+        expiry = manifest.valid_until.isoformat() if manifest.valid_until else "sin caducidad"
+        typer.echo(
+            f"{manifest.id}  {manifest.source}  {manifest.asset_id}  "
+            f"{manifest.collected_at.isoformat()}  {expiry}"
+        )
+    typer.echo(f"{len(listing.manifests)} evidencias.")
+    if listing.errors:
+        typer.echo("Manifiestos no válidos:", err=True)
+        print_errors(listing.errors)
+        raise typer.Exit(1)
+
+
 @evidence_app.command("verify")
-def evidence_verify(evidence_id: str) -> None:
-    """Verifica la integridad de una evidencia."""
-    not_implemented()
+@handled
+def evidence_verify(
+    ctx: typer.Context,
+    evidence_id: Annotated[str | None, typer.Argument(help="Id de la evidencia.")] = None,
+    all_evidence: Annotated[
+        bool, typer.Option("--all", help="Todas, y además huérfanos y referencias rotas.")
+    ] = False,
+) -> None:
+    """Verifica la integridad de una evidencia o de todas.
+
+    El hash prueba que el artefacto coincide con su manifiesto, no que sea auténtico.
+    """
+    if (evidence_id is None) == (not all_evidence):
+        raise fail("Indica un id de evidencia o --all, no ambos.")
+    store = open_workspace(ctx)
+    report = verify_all(store) if all_evidence else verify_one(store, str(evidence_id))
+    if not report.ok:
+        typer.echo("La verificación ha fallado:", err=True)
+        print_errors(report.problems)
+        raise typer.Exit(1)
+    typer.echo(f"{report.checked} evidencias verificadas: íntegras.")
 
 
 @schema_app.command("export")
