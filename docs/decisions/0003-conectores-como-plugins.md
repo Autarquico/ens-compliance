@@ -1,0 +1,26 @@
+# 0003 — Conectores como plugins
+
+- Estado: aceptada
+- Fecha: 2026-10-27
+
+## Contexto
+
+Cada pyme usa fuentes distintas (Google Workspace o Microsoft 365, GitHub o
+no, Cloudflare o no). El núcleo no puede cambiar cada vez que se añade una
+fuente (`docs/vision.md`, escenario "conectores enchufables").
+
+## Decisión
+
+- Interfaz `Connector`: `name`, `config_model` (Pydantic) y
+  `collect(config) -> CollectionResult`, de solo lectura.
+- Descubrimiento por entry points del grupo `ens_evidence.connectors`, más
+  registro explícito (para tests y conectores internos).
+- El conector devuelve `CollectionStatus` y datos; nunca un `CheckStatus`
+  (ver 0002).
+
+## Consecuencias
+
+- Un conector nuevo es un paquete o módulo que declara su entry point; el
+  núcleo no se toca.
+- Los conectores de terceros se ejecutan con los permisos de la caja: solo se
+  cargan los instalados explícitamente.

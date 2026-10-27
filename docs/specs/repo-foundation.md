@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: L
 issue: 2
-prs: []
+prs: [37]
 related_issues: [2]
 depends_on: []
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-27
 ---
 
 # Fundación del repo y modelos

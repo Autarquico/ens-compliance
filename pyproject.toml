@@ -1,0 +1,40 @@
+[project]
+name = "ens-evidence"
+version = "0.1.0"
+description = "Prepara evidencias para el cumplimiento del ENS (RD 311/2022). No certifica."
+readme = "README.md"
+license = "AGPL-3.0-or-later"
+license-files = ["LICENSE"]
+requires-python = ">=3.12"
+dependencies = [
+    "pydantic>=2,<3",
+    "typer>=0.12",
+    "httpx>=0.27",
+    "pyyaml>=6",
+]
+
+[project.scripts]
+ens-evidence = "ens_evidence.cli:app"
+
+[dependency-groups]
+dev = [
+    "pytest>=8",
+    "ruff>=0.6",
+]
+
+[build-system]
+requires = ["hatchling"]
+build-backend = "hatchling.build"
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/ens_evidence"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B"]

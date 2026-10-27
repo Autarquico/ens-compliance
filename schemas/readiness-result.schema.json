@@ -1,0 +1,80 @@
+{
+  "$defs": {
+    "Blocker": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/BlockerKind"
+        },
+        "measure_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measure Id"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Blocker",
+      "type": "object"
+    },
+    "BlockerKind": {
+      "enum": [
+        "UNDETERMINED_APPLICABILITY",
+        "NOT_APPLICABLE_WITHOUT_JUSTIFICATION",
+        "MISSING_EVIDENCE",
+        "EXPIRED_EVIDENCE",
+        "MISSING_REVIEW",
+        "EXPIRED_REVIEW",
+        "NOT_COMPLIANT",
+        "OPEN_FINDING"
+      ],
+      "title": "BlockerKind",
+      "type": "string"
+    },
+    "Readiness": {
+      "enum": [
+        "READY",
+        "NOT_READY"
+      ],
+      "title": "Readiness",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "blockers": {
+      "items": {
+        "$ref": "#/$defs/Blocker"
+      },
+      "title": "Blockers",
+      "type": "array"
+    },
+    "pending_human_review": {
+      "title": "Pending Human Review",
+      "type": "boolean"
+    },
+    "readiness": {
+      "$ref": "#/$defs/Readiness"
+    }
+  },
+  "required": [
+    "readiness",
+    "blockers",
+    "pending_human_review"
+  ],
+  "title": "ReadinessResult",
+  "type": "object"
+}
