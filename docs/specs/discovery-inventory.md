@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 16
-prs: []
+prs: [38]
 related_issues: [16]
 depends_on: [repo-foundation]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-27
 ---
 
 # Inventario y alcance
