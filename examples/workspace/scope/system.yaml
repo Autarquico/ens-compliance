@@ -1,0 +1,22 @@
+name: Sistema de Taller Norte Software
+description: >-
+  Sistema de información que soporta el desarrollo, despliegue y operación
+  de las aplicaciones prestadas a clientes de Taller Norte Software (empresa ficticia).
+included_assets:
+  - lap-ana
+  - srv-app
+  - app-facturas
+  - db-facturas
+  - gh-taller
+  - cf-taller
+  - ws-identidad
+  - pw-gestor
+  - st-backups
+  - bk-diario
+  - bk-externo
+  - prov-nube
+included_services: [svc-facturacion]
+exclusions:
+  - kind: asset
+    ref: lap-personal
+    justification: Equipo personal sin acceso a producción ni a datos de clientes.

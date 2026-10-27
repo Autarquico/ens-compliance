@@ -14,6 +14,24 @@ Estado: en desarrollo (v0.1). Visión y fases en
 [`docs/vision.md`](docs/vision.md); decisiones en
 [`docs/decisions/`](docs/decisions/).
 
+## Dónde viven tus datos
+
+Los datos de tu organización (inventario, alcance, evidencias…) nunca se
+guardan en este repo. Viven en un *workspace* que eliges tú: una carpeta
+local o un bucket S3-compatible (S3, Cloudflare R2…). Se configura en
+`~/.config/ens-evidence/settings.yaml` (o con `--settings`):
+
+```yaml
+workspace:
+  backend: local            # local | s3
+  local: { path: /ruta/a/mi-workspace }
+```
+
+Para S3, instala el extra (`ens-evidence[s3]`) y pasa las credenciales solo
+por variables de entorno (`AWS_ACCESS_KEY_ID`, `AWS_SECRET_ACCESS_KEY`);
+nunca en el fichero de ajustes. Detalle en
+[`docs/decisions/0006-workspace-y-almacenamiento.md`](docs/decisions/0006-workspace-y-almacenamiento.md).
+
 ## Desarrollo
 
 Requisitos: Python ≥ 3.12 y [uv](https://docs.astral.sh/uv/).

@@ -12,7 +12,6 @@ runner = CliRunner()
 @pytest.mark.parametrize(
     "args",
     [
-        ["inventory"],
         ["collect", "--all"],
         ["collect", "fake"],
         ["check", "--all"],

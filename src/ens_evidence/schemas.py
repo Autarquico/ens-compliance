@@ -14,6 +14,14 @@ from ens_evidence.models import (
     ReadinessResult,
     Review,
 )
+from ens_evidence.scope import (
+    Approval,
+    AssetsFile,
+    DependenciesFile,
+    ObservedHosts,
+    ServicesFile,
+    SystemScope,
+)
 
 CONTRACTS: dict[str, type[BaseModel]] = {
     "check-result": CheckResult,
@@ -23,6 +31,12 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "readiness-input": ReadinessInput,
     "readiness-result": ReadinessResult,
     "review": Review,
+    "scope-approval": Approval,
+    "scope-assets": AssetsFile,
+    "scope-dependencies": DependenciesFile,
+    "scope-services": ServicesFile,
+    "scope-system": SystemScope,
+    "observed-hosts": ObservedHosts,
 }
 
 

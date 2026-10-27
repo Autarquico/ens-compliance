@@ -17,7 +17,7 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-_(nada)_
+- #16 Inventario y alcance
 <!-- /pm-sync:in-progress -->
 
 ---

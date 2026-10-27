@@ -1,0 +1,49 @@
+{
+  "$defs": {
+    "Service": {
+      "additionalProperties": false,
+      "properties": {
+        "assets": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Assets",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "assets"
+      ],
+      "title": "Service",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "services": {
+      "items": {
+        "$ref": "#/$defs/Service"
+      },
+      "title": "Services",
+      "type": "array"
+    }
+  },
+  "required": [
+    "services"
+  ],
+  "title": "ServicesFile",
+  "type": "object"
+}
