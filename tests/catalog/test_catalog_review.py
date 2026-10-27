@@ -62,11 +62,10 @@ def test_review_malformado_es_invalido(review_dir):
     assert review_status().state is ReviewState.INVALID
 
 
-def test_el_catalogo_commiteado_tiene_una_revision_vigente_si_existe_review_yaml():
+def test_el_catalogo_commiteado_tiene_una_revision_vigente():
     real = REPO / "src" / "ens_evidence" / "catalog" / "review.yaml"
-    if not real.exists():
-        pytest.skip("revisión humana pendiente (tarea H): aún no hay review.yaml")
 
+    assert real.exists(), "falta review.yaml: el catálogo no ha sido revisado"
     assert review_status().state is ReviewState.CURRENT
 
 

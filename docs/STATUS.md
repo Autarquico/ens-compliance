@@ -18,7 +18,7 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-_(nada)_
+- #3 Catálogo de medidas del Anexo II
 <!-- /pm-sync:in-progress -->
 
 ---

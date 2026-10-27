@@ -426,6 +426,8 @@ def describe_measure(measure: MeasureCard, catalog: Catalog) -> list[str]:
     for level, requirement in measure.levels.items():
         shown = "n.a." if requirement.not_applicable else requirement.expression
         lines.append(f"  {level}: {shown}")
+    if measure.preamble:
+        lines += ["", *measure.preamble]
     lines += ["", "Base:", *(f"  {clause.text}" for clause in measure.base)]
     for reinforcement in measure.reinforcements:
         shown = [
@@ -443,6 +445,8 @@ def describe_measure(measure: MeasureCard, catalog: Catalog) -> list[str]:
         ]
     if measure.notes:
         lines += ["", *(f"Nota: {note}" for note in measure.notes)]
+    if measure.diagram_refs:
+        lines += ["", *(f"Diagrama del anexo: {ref}" for ref in measure.diagram_refs)]
     return lines
 
 

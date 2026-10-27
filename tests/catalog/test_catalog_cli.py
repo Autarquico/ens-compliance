@@ -49,6 +49,23 @@ def test_catalog_show_imprime_el_texto_introductorio_del_grupo_y_del_subgrupo():
     assert "El marco operacional está constituido por las medidas" in result.output
 
 
+def test_catalog_show_imprime_el_preambulo_de_la_medida_antes_de_la_base():
+    result = runner.invoke(app, ["catalog", "show", "mp.si.4"])
+
+    assert result.exit_code == 0, result.output
+    preamble = "El responsable del sistema garantizará que los dispositivos permanecen bajo control"
+    assert preamble in result.output
+    assert result.output.index(preamble) < result.output.index("Base:")
+
+
+def test_catalog_show_imprime_los_diagramas_del_anexo_de_la_medida():
+    result = runner.invoke(app, ["catalog", "show", "mp.com.4"])
+
+    assert result.exit_code == 0, result.output
+    assert "Diagrama del anexo: /datos/imagenes/disp/2022/106/7191_11542165_1.png" in result.output
+    assert "Diagrama del anexo: /datos/imagenes/disp/2022/106/7191_11542165_2.png" in result.output
+
+
 def test_catalog_list_empieza_por_org_1_y_termina_por_mp():
     result = runner.invoke(app, ["catalog", "list"])
 
