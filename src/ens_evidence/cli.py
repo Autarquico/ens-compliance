@@ -28,6 +28,9 @@ from ens_evidence.backup import (
 )
 from ens_evidence.backup.environment import ACCESS_KEY_VAR, SECRET_KEY_VAR, redact
 from ens_evidence.backup.transfer import export_all, import_all
+from ens_evidence.catalog import load_catalog
+from ens_evidence.catalog.controls import MeasuresFileError, init_measures
+from ens_evidence.catalog.model import Catalog, Group, MeasureCard
 from ens_evidence.evidence import (
     MANUAL_SOURCE,
     import_manual,
@@ -76,6 +79,8 @@ workspace_app = typer.Typer(
 )
 scope_app = typer.Typer(help="Alcance del sistema y su aprobación.", no_args_is_help=True)
 backup_app = typer.Typer(help="Copia independiente de las evidencias.", no_args_is_help=True)
+catalog_app = typer.Typer(help="Catálogo de medidas del anexo II.", no_args_is_help=True)
+controls_app = typer.Typer(help="Estado de las medidas de la organización.", no_args_is_help=True)
 app.add_typer(report_app, name="report")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
@@ -84,6 +89,8 @@ app.add_typer(inventory_app, name="inventory")
 app.add_typer(workspace_app, name="workspace")
 app.add_typer(scope_app, name="scope")
 app.add_typer(backup_app, name="backup")
+app.add_typer(catalog_app, name="catalog")
+app.add_typer(controls_app, name="controls")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -605,6 +612,92 @@ def backup_verify_immutability(ctx: typer.Context) -> None:
     typer.echo(check.note)
     if not check.protected:
         raise typer.Exit(1)
+@catalog_app.command("list")
+def catalog_list(
+    group: Annotated[Group | None, typer.Option("--group", help="Solo este grupo.")] = None,
+) -> None:
+    """Lista las medidas del catálogo."""
+    measures = [m for m in load_catalog().measures if group is None or m.group is group]
+    for measure in measures:
+        typer.echo(f"{measure.id}  {measure.name}")
+    typer.echo(f"{len(measures)} medidas.")
+
+
+@catalog_app.command("show")
+def catalog_show(measure_id: Annotated[str, typer.Argument(help="p. ej. op.acc.5")]) -> None:
+    """Muestra la ficha de una medida: eje, niveles, base y refuerzos."""
+    catalog = load_catalog()
+    measure = catalog.get(measure_id)
+    if measure is None:
+        raise fail(f"La medida {measure_id} no está en el catálogo (catalog list las muestra).", 1)
+    for line in describe_measure(measure, catalog):
+        typer.echo(line)
+
+
+def describe_measure(measure: MeasureCard, catalog: Catalog) -> list[str]:
+    axis = {"category": "categoría", "dimension": "dimensión"}[measure.applies_by.value]
+    lines = [
+        f"{measure.id}  {measure.name}",
+        f"Se aplica por {axis}. Dimensiones: {', '.join(d.value for d in measure.dimensions)}",
+        f"Fuente: {measure.source.regulation}, anexo {measure.source.annex}, "
+        f"apartado {measure.source.section} (consolidado {measure.source.consolidation_date})",
+    ]
+    for section in (catalog.group(measure.group), catalog.subgroup(measure.subgroup)):
+        if section:
+            lines += ["", f"{section.id}  {section.title}", *(f"  {p}" for p in section.text)]
+    lines += ["", "Niveles:"]
+    for level, requirement in measure.levels.items():
+        shown = "n.a." if requirement.not_applicable else requirement.expression
+        lines.append(f"  {level}: {shown}")
+    if measure.preamble:
+        lines += ["", *measure.preamble]
+    lines += ["", "Base:", *(f"  {clause.text}" for clause in measure.base)]
+    for reinforcement in measure.reinforcements:
+        shown = [
+            f"{label}: {', '.join(levels)}"
+            for label, levels in (
+                ("exigido en", reinforcement.required_at),
+                ("alternativa en", reinforcement.alternative_at),
+            )
+            if levels
+        ]
+        lines += [
+            "",
+            f"{reinforcement.id}  {reinforcement.title} ({'; '.join(shown) or 'ningún nivel'})",
+            *(f"  {clause.text}" for clause in reinforcement.clauses),
+        ]
+    if measure.notes:
+        lines += ["", *(f"Nota: {note}" for note in measure.notes)]
+    if measure.diagram_refs:
+        lines += ["", *(f"Diagrama del anexo: {ref}" for ref in measure.diagram_refs)]
+    return lines
+
+
+@controls_app.command("init")
+@handled
+def controls_init(ctx: typer.Context) -> None:
+    """Crea controls/measures.yaml con el estado inicial de cada medida del catálogo.
+
+    Conserva el estado de las medidas que ya existen y rechaza IDs ajenos al catálogo.
+    """
+    try:
+        result = init_measures(open_workspace(ctx))
+    except MeasuresFileError as exc:
+        typer.echo("No se cambia controls/measures.yaml:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    if result.created:
+        typer.echo(
+            f"Creadas {len(result.created)} medidas sin determinar (aplicabilidad "
+            f"UNDETERMINED, evaluación NOT_ASSESSED); conservadas {result.kept}."
+        )
+    else:
+        typer.echo(f"Las {result.kept} medidas ya existían; se conservan sin cambios.")
+    if replaced := result.replaced_version:
+        typer.echo(
+            f"La versión del catálogo cambió (consolidado {replaced.consolidation_date} → "
+            f"{result.version.consolidation_date}); revisa las medidas afectadas."
+        )
 
 
 @app.command()

@@ -7,5 +7,13 @@ Las specs futuras amplían esta lista.
 from ens_evidence.scope.inventory import ASSETS_KEY, DEPENDENCIES_KEY, SERVICES_KEY, SYSTEM_KEY
 
 QUESTIONNAIRE_KEY = "scope/questionnaire.md"
+MEASURES_KEY = "controls/measures.yaml"
 
-SYNCED_KEYS = (ASSETS_KEY, SERVICES_KEY, DEPENDENCIES_KEY, SYSTEM_KEY, QUESTIONNAIRE_KEY)
+SYNCED_KEYS = (
+    ASSETS_KEY,
+    SERVICES_KEY,
+    DEPENDENCIES_KEY,
+    SYSTEM_KEY,
+    QUESTIONNAIRE_KEY,
+    MEASURES_KEY,
+)

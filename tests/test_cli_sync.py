@@ -19,6 +19,7 @@ PUBLISHED = {
     "scope/dependencies.yaml",
     "scope/system.yaml",
     "scope/questionnaire.md",
+    "controls/measures.yaml",
 }
 
 

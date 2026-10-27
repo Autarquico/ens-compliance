@@ -1,0 +1,3080 @@
+group:
+  id: op
+  title: Marco operacional
+  text:
+  - El marco operacional está constituido por las medidas a tomar para proteger la operación del sistema
+    como conjunto integral de componentes para un fin.
+subgroups:
+- id: op.pl
+  title: Planificación
+  text: []
+- id: op.acc
+  title: Control de acceso
+  text:
+  - El control de acceso comprende el conjunto de actividades preparatorias y ejecutivas tendentes a permitir
+    o denegar a una entidad, usuario o proceso, el acceso a un recurso del sistema para la realización
+    de una acción concreta.
+  - Los mecanismos de control de acceso deberán equilibrar la facilidad de uso y la protección de la información
+    y los servicios, primando una u otra característica atendiendo a la categoría de seguridad del sistema.
+  - Cuando se interconecten sistemas en los que la identificación, autenticación y autorización tengan
+    lugar en diferentes dominios de seguridad, bajo distintas responsabilidades, en los casos en que sea
+    necesario, las medidas de seguridad locales se acompañarán de los correspondientes acuerdos de colaboración
+    que delimiten mecanismos y procedimientos para la atribución y ejercicio efectivos de las responsabilidades
+    de cada sistema ([op.ext]).
+- id: op.exp
+  title: Explotación
+  text: []
+- id: op.ext
+  title: Recursos externos
+  text:
+  - Cuando la organización utilice recursos externos (servicios, productos, instalaciones o personal),
+    mantendrá la plena responsabilidad de los riesgos para la información tratada o los servicios prestados,
+    debiendo adoptar las medidas necesarias para ejercer su responsabilidad y mantener el control en todo
+    momento.
+- id: op.nub
+  title: Servicios en la nube
+  text: []
+- id: op.cont
+  title: Continuidad del servicio
+  text: []
+- id: op.mon
+  title: Monitorización del sistema
+  text:
+  - El sistema estará sujeto a medidas de monitorización de su actividad y ejecutará acciones predeterminadas
+    en función de las situaciones de compromiso de la seguridad que figuren en el análisis de riesgos.
+    Esto puede incluir la generación de alarmas en tiempo real, la finalización del proceso que está ocasionando
+    la alarma, la inhabilitación de determinados servicios, la desconexión de usuarios y el bloqueo de
+    cuentas.
+measures:
+- id: op.pl.1
+  name: Análisis de riesgos
+  group: op
+  subgroup: op.pl
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se realizará un análisis de riesgos informal, realizado en lenguaje natural. Es decir, una
+      exposición textual que:'
+  - id: op.pl.1.1
+    label: null
+    text: Identifique los activos más valiosos del sistema. (Ver op.exp.1).
+  - id: op.pl.1.2
+    label: null
+    text: Identifique las amenazas más probables.
+  - id: op.pl.1.3
+    label: null
+    text: Identifique las salvaguardas que protegen de dichas amenazas.
+  - id: op.pl.1.4
+    label: null
+    text: Identifique los principales riesgos residuales.
+  reinforcements:
+  - id: R1
+    title: Análisis de riesgos semiformal
+    required_at:
+    - MEDIA
+    alternative_at: []
+    clauses:
+    - id: null
+      label: null
+      text: 'Se deberá realizar un análisis de riesgos semiformal, usando un lenguaje específico, con
+        un catálogo básico de amenazas y una semántica definida. Es decir, una presentación con tablas
+        que:'
+    - id: op.pl.1.r1.1
+      label: null
+      text: Valore cualitativamente los activos más valiosos del sistema.
+    - id: op.pl.1.r1.2
+      label: null
+      text: Cuantifique las amenazas más probables.
+    - id: op.pl.1.r1.3
+      label: null
+      text: Valore las salvaguardas que protegen de dichas amenazas.
+    - id: op.pl.1.r1.4
+      label: null
+      text: Valore el riesgo residual.
+  - id: R2
+    title: Análisis de riesgos formal
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: null
+      label: null
+      text: 'Se deberá realizar un análisis formal, usando un lenguaje específico, con un fundamento matemático
+        reconocido internacionalmente, que:'
+    - id: op.pl.1.r2.1
+      label: null
+      text: Valore cualitativamente los activos más valiosos del sistema.
+    - id: op.pl.1.r2.2
+      label: null
+      text: Cuantifique las amenazas posibles.
+    - id: op.pl.1.r2.3
+      label: null
+      text: Valore y priorice las salvaguardas adecuadas.
+    - id: op.pl.1.r2.4
+      label: null
+      text: Valore y asuma formalmente el riesgo residual.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R2
+      any_of: []
+      expression: + R2
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.1.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.pl.2
+  name: Arquitectura de seguridad
+  group: op
+  subgroup: op.pl
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'La seguridad del sistema será objeto de un planteamiento integral detallando, al menos, los
+      siguientes aspectos:'
+  - id: op.pl.2.1
+    label: null
+    text: Documentación de las instalaciones, incluyendo áreas y puntos de acceso.
+  - id: op.pl.2.2
+    label: null
+    text: Documentación del sistema, incluyendo equipos, redes internas y conexiones al exterior, y puntos
+      de acceso al sistema (puestos de trabajo y consolas de administración).
+  - id: op.pl.2.3
+    label: null
+    text: Esquema de líneas de defensa, incluyendo puntos de interconexión a otros sistemas o a otras
+      redes (en especial, si se trata de internet o redes públicas en general); cortafuegos, DMZ, etc.;
+      y la utilización de tecnologías diferentes para prevenir vulnerabilidades que pudieran perforar
+      simultáneamente varias líneas de defensa.
+  - id: op.pl.2.4
+    label: null
+    text: Sistema de identificación y autenticación de usuarios, incluyendo el uso de claves concertadas,
+      contraseñas, tarjetas de identificación, biometría, u otras de naturaleza análoga, y el uso de ficheros
+      o directorios para autenticar al usuario y determinar sus derechos de acceso.
+  reinforcements:
+  - id: R1
+    title: Sistema de gestión
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.pl.2.r1.1
+      label: null
+      text: Sistema de gestión, relativo a la planificación, organización y control de los recursos relativos
+        a la seguridad de la información.
+  - id: R2
+    title: Sistema de gestión de la seguridad con mejora continua
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.pl.2.r2.1
+      label: null
+      text: Sistema de gestión de la seguridad de la información, con actualización y aprobación periódica.
+  - id: R3
+    title: Validación de datos
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.pl.2.r3.1
+      label: null
+      text: Controles técnicos internos, incluyendo la validación de datos de entrada, salida y datos
+        intermedios.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      any_of: []
+      expression: +R1+R2+R3
+  notes:
+  - La tabla resumen del anexo titula la medida «Arquitectura de Seguridad».
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.1.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.pl.3
+  name: Adquisición de nuevos componentes
+  group: op
+  subgroup: op.pl
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se establecerá un proceso formal para planificar la adquisición de nuevos componentes del sistema,
+      proceso que:'
+  - id: op.pl.3.1
+    label: null
+    text: Atenderá a las conclusiones del análisis de riesgos ([op.pl.1]).
+  - id: op.pl.3.2
+    label: null
+    text: Será acorde a la arquitectura de seguridad escogida ([op.pl.2]).
+  - id: op.pl.3.3
+    label: null
+    text: Contemplará las necesidades técnicas, de formación y de financiación, de forma conjunta.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.1.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.pl.4
+  name: Dimensionamiento / gestión de la capacidad
+  group: op
+  subgroup: op.pl
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Con carácter previo a la puesta en explotación, se realizará un estudio que cubrirá los siguientes
+      aspectos:'
+  - id: op.pl.4.1
+    label: null
+    text: Necesidades de procesamiento.
+  - id: op.pl.4.2
+    label: null
+    text: 'Necesidades de almacenamiento de información: durante su procesamiento y durante el periodo
+      que deba retenerse.'
+  - id: op.pl.4.3
+    label: null
+    text: Necesidades de comunicación.
+  - id: op.pl.4.4
+    label: null
+    text: 'Necesidades de personal: cantidad y cualificación profesional.'
+  - id: op.pl.4.5
+    label: null
+    text: Necesidades de instalaciones y medios auxiliares.
+  reinforcements:
+  - id: R1
+    title: Mejora continua de la gestión de la capacidad
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.pl.4.r1.1
+      label: null
+      text: Se realizará una previsión de la capacidad y se mantendrá actualizada durante todo el ciclo
+        de vida del sistema.
+    - id: op.pl.4.r1.2
+      label: null
+      text: Se emplearán herramientas y recursos para la monitorización de la capacidad.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes:
+  - La tabla resumen del anexo titula la medida «Dimensionamiento/gestión de la capacidad».
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.1.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.pl.5
+  name: Componentes certificados
+  group: op
+  subgroup: op.pl
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.pl.5.1
+    label: null
+    text: . Se utilizará el Catálogo de Productos y Servicios de Seguridad de las Tecnologías de la Información
+      y Comunicación (CPSTIC) del CCN, para seleccionar los productos o servicios suministrados por un
+      tercero que formen parte de la arquitectura de seguridad del sistema y aquellos que se referencien
+      expresamente en las medidas de este real decreto.
+  - id: null
+    label: null
+    text: En caso de que no existan productos o servicios en el CPSTIC que implementen las funcionalidades
+      requeridas, se utilizarán productos certificados de acuerdo a lo descrito en el artículo 19.
+  - id: null
+    label: null
+    text: Una Instrucción Técnica de Seguridad detallará los criterios relativos a la adquisición de productos
+      de seguridad.
+  - id: op.pl.5.2
+    label: null
+    text: Si el sistema suministra un servicio de seguridad a un tercero bajo el alcance del ENS, el producto
+      o productos que en los que se sustente dicho servicio debe superar un proceso de cualificación y
+      ser incluido en el CPSTIC, o aportar una certificación que cumpla con los requisitos funcionales
+      de seguridad y de aseguramiento de acuerdo a lo establecido en el artículo 19.
+  reinforcements:
+  - id: R1
+    title: Protección de emisiones electromagnéticas
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.pl.5.r1.1
+      label: null
+      text: La información deberá ser protegida frente a las amenazas TEMPEST de acuerdo con la normativa
+        en vigor.
+  - id: R2
+    title: Lista de componentes software
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.pl.5.r2.1
+      label: null
+      text: Cada producto y servicio incluirá en su descripción una lista de componentes software, acorde
+        a lo especificado en [mp.sw.1.r5].
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.1.5
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.acc.1
+  name: Identificación
+  group: op
+  subgroup: op.acc
+  applies_by: dimension
+  dimensions:
+  - T
+  - A
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'La identificación de los usuarios del sistema se realizará de acuerdo con lo que se indica
+      a continuación:'
+  - id: op.acc.1.1
+    label: null
+    text: Se podrá utilizar como identificador único los sistemas de identificación previstos en la normativa
+      de aplicación, entre ellos, los sistemas de clave concertada y cualquier otro sistema que las administraciones
+      consideren válido en los términos y condiciones establecidos en la Ley 39/2015, de 1 de octubre,
+      del Procedimiento Administrativo Común de las Administraciones Públicas.
+  - id: op.acc.1.2
+    label: null
+    text: Cuando el usuario tenga diferentes roles frente al sistema (como ciudadano o usuario final,
+      como trabajador del organismo o como administrador de los sistemas, por ejemplo) recibirá identificadores
+      singulares para cada perfil, de forma que se recaben siempre los correspondientes registros de actividad,
+      delimitándose los privilegios correspondientes a cada perfil.
+  - id: op.acc.1.3
+    label: null
+    text: Cada entidad (entidad, usuario o proceso) que accede al sistema, contará con un identificador
+      singular que permita conocer el destinatario de los mismos y los derechos de acceso que recibe,
+      así como las acciones realizadas por cada entidad.
+  - id: op.acc.1.4
+    label: null
+    text: 'Las cuentas de usuario se gestionarán de la siguiente forma:
+
+      a) Cada cuenta (de entidad, usuario o proceso) estará asociada a un identificador único.
+
+      b) Las cuentas deben ser inhabilitadas en los siguientes casos: cuando el usuario deja la organización;
+      cuando el usuario cesa en la función para la cual se requería la cuenta de usuario; o, cuando la
+      persona que la autorizó da orden en sentido contrario.
+
+      c) Las cuentas se retendrán durante el periodo necesario para atender a las necesidades de trazabilidad
+      de los registros de actividad asociados a las mismas. A este periodo se le denominará «periodo de
+      retención».'
+  - id: op.acc.1.5
+    label: null
+    text: 'En los supuestos de comunicaciones electrónicas, las partes intervinientes se identificarán
+      atendiendo a los mecanismos previstos en la legislación europea y nacional en la materia, con la
+      siguiente correspondencia entre los niveles de la dimensión de autenticidad de los sistemas de información
+      a los que se tiene acceso y los niveles de seguridad (bajo, sustancial, alto) de los sistemas de
+      identificación electrónica previstos en el Reglamento (UE) n.º 910/2014, del Parlamento Europeo
+      y del Consejo, de 23 de julio de 2014, relativo a la identificación electrónica y los servicios
+      de confianza para las transacciones electrónicas en el mercado interior y por el que se deroga la
+      Directiva 1999/93/CE y sus normas de desarrollo o ejecución que resulten de aplicación:
+
+      a) Si se requiere un nivel BAJO en la dimensión de autenticidad (anexo I): Nivel de seguridad bajo,
+      sustancial o alto (artículo 8 del Reglamento (UE) n.º 910/2014).
+
+      b) Si se requiere un nivel MEDIO en la dimensión de autenticidad (anexo I): Nivel de seguridad sustancial
+      o alto (artículo 8 del Reglamento (UE) n.º 910/2014).
+
+      c) Si se requiere un nivel ALTO en la dimensión de autenticidad (anexo I): Nivel de seguridad alto
+      (artículo 8 del Reglamento (UE) n.º 910/2014).'
+  reinforcements:
+  - id: R1
+    title: Identificación avanzada
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.acc.1.r1.1
+      label: null
+      text: La identificación del usuario permitirá al Responsable del Sistema, al Responsable de la Seguridad
+        o a sus respectivos administradores delegados, singularizar a la persona asociada al mismo, así
+        como sus responsabilidades en el sistema.
+    - id: op.acc.1.r1.2
+      label: null
+      text: Los datos de identificación serán utilizados por el sistema para determinar los privilegios
+        del usuario conforme a los requisitos de control de acceso establecidos en la documentación de
+        seguridad.
+    - id: op.acc.1.r1.3
+      label: null
+      text: Se asegurará la existencia de una lista actualizada de usuarios autorizados y mantenida por
+        el administrador del sistema/de la seguridad del sistema.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.2.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.acc.2
+  name: Requisitos de acceso
+  group: op
+  subgroup: op.acc
+  applies_by: dimension
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.acc.2.1
+    label: null
+    text: Los recursos del sistema se protegerán con algún mecanismo que impida su utilización, salvo
+      a las entidades que disfruten de derechos de acceso suficientes.
+  - id: op.acc.2.2
+    label: null
+    text: Los derechos de acceso de cada recurso, se establecerán según las decisiones de la persona responsable
+      del recurso, ateniéndose a la política y normativa de seguridad del sistema.
+  - id: op.acc.2.3
+    label: null
+    text: Particularmente, se controlará el acceso a los componentes del sistema operativo y a sus ficheros
+      o registros de configuración.
+  reinforcements:
+  - id: R1
+    title: Privilegios de acceso
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.acc.2.r1.1
+      label: null
+      text: Todos los usuarios autorizados deben tener un conjunto de atributos de seguridad (privilegios)
+        que puedan ser mantenidos individualmente.
+    - id: op.acc.2.r1.2
+      label: null
+      text: Los privilegios de acceso se implementarán para restringir el tipo de acceso que un usuario
+        puede tener (lectura, escritura, modificación, borrado, etc.).
+  - id: R2
+    title: Control de acceso a dispositivos
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.acc.2.r2.1
+      label: null
+      text: Se dispondrá de soluciones que permitan establecer controles de acceso a los dispositivos
+        en función de la política de seguridad de la organización.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.2.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.acc.3
+  name: Segregación de funciones y tareas
+  group: op
+  subgroup: op.acc
+  applies_by: dimension
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: El sistema de control de acceso se organizará de forma que se exija la concurrencia de dos o
+      más personas para realizar tareas críticas, anulando la posibilidad de que un solo individuo autorizado
+      pueda abusar de sus derechos para cometer alguna acción ilícita o no autorizada.
+  - id: op.acc.3.1
+    label: null
+    text: Siempre que sea posible, las capacidades de desarrollo y operación no recaerán en la misma persona.
+  - id: op.acc.3.2
+    label: null
+    text: Siempre que sea posible, las personas que autorizan y controlan el uso serán distintas.
+  reinforcements:
+  - id: R1
+    title: Segregación rigurosa
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.acc.3.r1.1
+      label: null
+      text: Siempre que sea posible, la misma persona no aunará funciones de configuración y mantenimiento
+        del sistema.
+    - id: op.acc.3.r1.2
+      label: null
+      text: La misma persona no puede aunar funciones de auditoría o supervisión con cualquier otra función.
+  - id: R2
+    title: Privilegios de auditoría
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.acc.3.r2.1
+      label: null
+      text: Existirán cuentas con privilegios de auditoría estrictamente controladas y personalizadas.
+  - id: R3
+    title: Acceso a la información de seguridad
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.acc.3.r3.1
+      label: null
+      text: El acceso a la información de seguridad del sistema estará permitido únicamente a los administradores
+        de seguridad/sistema autorizados, utilizando los mecanismos de acceso imprescindibles (consola,
+        interfaz web, acceso remoto, etc.).
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.2.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.acc.4
+  name: Proceso de gestión de derechos de acceso
+  group: op
+  subgroup: op.acc
+  applies_by: dimension
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Los derechos de acceso de cada entidad, usuario o proceso se limitarán atendiendo a los siguientes
+      principios:'
+  - id: op.acc.4.1
+    label: null
+    text: Todo acceso estará prohibido, salvo autorización expresa.
+  - id: op.acc.4.2
+    label: null
+    text: 'Mínimo privilegio: los privilegios de cada entidad, usuario o proceso se reducirán al mínimo
+      imprescindible para cumplir sus obligaciones o funciones.'
+  - id: op.acc.4.3
+    label: null
+    text: 'Necesidad de conocer y responsabilidad de compartir: los privilegios se asignarán de forma
+      que las entidades, usuarios o procesos sólo accederán al conocimiento de aquella información requerida
+      para cumplir sus obligaciones o funciones. La información es patrimonio del organismo y toda aquella
+      que resulte necesaria para el usuario estará a su disposición.'
+  - id: op.acc.4.4
+    label: null
+    text: 'Capacidad de autorizar: Exclusivamente el personal con competencia para ello podrá conceder,
+      alterar o anular la autorización de acceso a los recursos, conforme a los criterios establecidos
+      por su responsable. Los permisos de acceso se revisarán de forma periódica.'
+  - id: op.acc.4.5
+    label: null
+    text: Se establecerá una política específica de acceso remoto, requiriéndose autorización expresa.
+  reinforcements: []
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.2.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.acc.5
+  name: Mecanismo de autenticación (usuarios externos)
+  group: op
+  subgroup: op.acc
+  applies_by: dimension
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  preamble:
+  - Referente a usuarios que no son usuarios de la organización.
+  - Las guías CCN-STIC desarrollarán los mecanismos y calidades exigibles a cada tipo de factor de autenticación
+    en función de los niveles de seguridad requeridos por el sistema de información el que se accede y
+    los privilegios concedidos al usuario.
+  diagram_refs: []
+  base:
+  - id: op.acc.5.1
+    label: null
+    text: Antes de proporcionar las credenciales de autenticación a las entidades, usuarios o procesos,
+      estos deberán haberse identificado y registrado de manera fidedigna ante el sistema o ante un Prestador
+      Cualificado de Servicios de Confianza o un proveedor de identidad electrónica reconocido por las
+      administraciones públicas, de conformidad con lo dispuesto en la Ley 39/2015, de 1 de octubre.
+  - id: op.acc.5.2
+    label: null
+    text: Antes de activar el mecanismo de autenticación, el usuario reconocerá que las ha recibido y
+      que conoce y acepta las obligaciones que implica su tenencia, en particular, el deber de custodia
+      diligente, la protección de su confidencialidad y el deber de notificación inmediata en caso de
+      pérdida.
+  - id: op.acc.5.3
+    label: null
+    text: Las credenciales estarán bajo el control exclusivo del usuario y se activarán una vez estén
+      bajo su control efectivo.
+  - id: op.acc.5.4
+    label: null
+    text: Las credenciales se cambiarán con una periodicidad marcada por la política de seguridad de la
+      organización.
+  - id: op.acc.5.5
+    label: null
+    text: Las credenciales serán inhabilitadas -pudiendo ser regeneradas, en su caso-, cuando conste o
+      se sospeche su pérdida, compromiso o revelación a entidades (personas, equipos o procesos) no autorizadas.
+  - id: op.acc.5.6
+    label: null
+    text: Las credenciales serán inhabilitadas cuando la entidad (persona, equipo o proceso) que autentican
+      termina su relación con el sistema.
+  - id: op.acc.5.7
+    label: null
+    text: Antes de autorizar el acceso, la información presentada por el sistema será la mínima imprescindible
+      para que el usuario se autentique, evitando todo aquello que pueda, directa o indirectamente, revelar
+      información sobre el sistema o la cuenta, sus características, su operación o su estado. Las credenciales
+      solamente se validarán cuando se tengan todos los datos necesarios y, si se rechaza, no se informará
+      del motivo del rechazo.
+  - id: op.acc.5.8
+    label: null
+    text: El número de intentos permitidos será limitado, bloqueando la oportunidad de acceso una vez
+      superado tal número, y requiriendo una intervención específica para reactivar la cuenta, que se
+      describirá en la documentación.
+  - id: op.acc.5.9
+    label: null
+    text: El sistema informará al usuario de sus derechos u obligaciones inmediatamente después de obtener
+      el acceso.
+  reinforcements:
+  - id: R1
+    title: Contraseñas
+    required_at: []
+    alternative_at:
+    - BAJO
+    clauses:
+    - id: op.acc.5.r1.1
+      label: null
+      text: Se empleará una contraseña como mecanismo de autenticación.
+    - id: op.acc.5.r1.2
+      label: null
+      text: Se impondrán normas de complejidad mínima y robustez frente a ataques de adivinación (ver
+        guías CCN-STIC).
+  - id: R2
+    title: Contraseña + OTP
+    required_at: []
+    alternative_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    clauses:
+    - id: op.acc.5.r2.1
+      label: null
+      text: Se requerirá una contraseña de un solo uso (OTP, en inglés) como complemento a la contraseña
+        de usuario.
+  - id: R3
+    title: Certificados
+    required_at: []
+    alternative_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    clauses:
+    - id: op.acc.5.r3.1
+      label: null
+      text: Se emplearán certificados cualificados como mecanismo de autenticación.
+    - id: op.acc.5.r3.2
+      label: null
+      text: El uso del certificado estará protegido por un segundo factor, del tipo PIN o biométrico.
+    - id: op.acc.5.r3.3
+      label: null
+      text: Las credenciales utilizadas deberán haber sido obtenidas tras un registro previo presencial,
+        o bien telemático, usando un certificado electrónico cualificado.
+  - id: R4
+    title: Certificados en dispositivo físico
+    required_at: []
+    alternative_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    clauses:
+    - id: op.acc.5.r4.1
+      label: null
+      text: Se emplearán certificados cualificados como mecanismo de autenticación, en soporte físico
+        (tarjeta o similar) usando algoritmos, parámetros y dispositivos autorizados por el CCN.
+    - id: op.acc.5.r4.2
+      label: null
+      text: El uso del certificado estará protegido por un segundo factor, del tipo PIN o biométrico.
+    - id: op.acc.5.r4.3
+      label: null
+      text: Las credenciales utilizadas deberán haber sido obtenidas tras un registro previo presencial,
+        o bien telemático, usando certificado electrónico cualificado.
+  - id: R5
+    title: Registro
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.acc.5.r5.1
+      label: null
+      text: Se registrarán los accesos con éxito y los fallidos.
+    - id: op.acc.5.r5.2
+      label: null
+      text: Se informará al usuario del último acceso efectuado con su identidad.
+  - id: R6
+    title: Limitación de la ventana de acceso
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.acc.5.r6.1
+      label: null
+      text: Se definirán aquellos puntos en los que el sistema requerirá una renovación de la autenticación
+        del usuario, mediante identificación singular, no bastando con la sesión establecida.
+  - id: R7
+    title: Suspensión por no utilización
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.acc.5.r7.1
+      label: null
+      text: Las credenciales se suspenderán tras un periodo definido de no utilización.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of:
+      - - R1
+        - R2
+        - R3
+        - R4
+      expression: + [R1 o R2 o R3 o R4]
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R5
+      any_of:
+      - - R2
+        - R3
+        - R4
+      expression: + [R2 o R3 o R4] + R5
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R5
+      any_of:
+      - - R2
+        - R3
+        - R4
+      expression: + [R2 o R3 o R4] + R5
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.2.5
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.acc.6
+  name: Mecanismo de autenticación (usuarios de la organización)
+  group: op
+  subgroup: op.acc
+  applies_by: dimension
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  preamble:
+  - Esta medida se refiere a personal del organismo, propio o contratado, estable o circunstancial, que
+    pueda tener acceso a información contenida en el sistema.
+  - Las guías CCN-STIC desarrollarán los mecanismos y calidades exigibles a cada tipo de factor de autenticación,
+    en función de los niveles de seguridad requeridos por el sistema de información el que se accede y
+    los privilegios concedidos al usuario.
+  diagram_refs: []
+  base:
+  - id: op.acc.6.1
+    label: null
+    text: Antes de proporcionar las credenciales a los usuarios, estos deberán conocer y aceptar la política
+      de seguridad del organismo en los aspectos que les afecten.
+  - id: op.acc.6.2
+    label: null
+    text: Antes de activar el mecanismo de autenticación, el usuario reconocerá que ha recibido las credenciales
+      de acceso y que conoce y acepta las obligaciones que implica su tenencia, en particular, el deber
+      de custodia diligente, la protección de su confidencialidad y el deber de notificación inmediata
+      en caso de pérdida.
+  - id: op.acc.6.3
+    label: null
+    text: Las credenciales estarán bajo el control exclusivo del usuario y se activarán una vez estén
+      bajo su control efectivo.
+  - id: op.acc.6.4
+    label: null
+    text: Las credenciales se cambiarán con una periodicidad marcada por la política de seguridad de la
+      organización.
+  - id: op.acc.6.5
+    label: null
+    text: Las credenciales serán inhabilitadas -pudiendo ser regeneradas, en su caso-, cuando conste o
+      se sospeche su pérdida, compromiso o revelación a entidades (personas, equipos o procesos) no autorizadas.
+  - id: op.acc.6.6
+    label: null
+    text: Las credenciales serán inhabilitadas cuando el usuario que autentican termina su relación con
+      el sistema.
+  - id: op.acc.6.7
+    label: null
+    text: Antes de autorizar el acceso, la información presentada por el sistema será la mínima imprescindible
+      para que el usuario se autentique, evitando todo aquello que pueda, directa o indirectamente, revelar
+      información sobre el sistema o la cuenta, sus características, su operación o su estado. Las credenciales
+      solamente se validarán cuando se tengan todos los datos necesarios y, si se rechaza, no se informará
+      del motivo del rechazo.
+  - id: op.acc.6.8
+    label: null
+    text: El número de intentos permitidos será limitado, bloqueando la oportunidad de acceso una vez
+      superado tal número, y requiriendo una intervención específica para reactivar la cuenta, que se
+      describirá en la documentación.
+  - id: op.acc.6.9
+    label: null
+    text: El sistema informará al usuario de sus derechos u obligaciones inmediatamente después de obtener
+      el acceso.
+  reinforcements:
+  - id: R1
+    title: Contraseñas
+    required_at: []
+    alternative_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    clauses:
+    - id: op.acc.6.r1.1
+      label: null
+      text: Se empleará una contraseña como mecanismo de autenticación cuando el acceso se realiza desde
+        zonas controladas y sin atravesar zonas no controladas (véase refuerzo R8).
+    - id: op.acc.6.r1.2
+      label: null
+      text: Se impondrán normas de complejidad mínima y robustez frente a ataques de adivinación (ver
+        guías CCN-STIC).
+  - id: R2
+    title: Contraseña + otro factor de autenticación
+    required_at: []
+    alternative_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    clauses:
+    - id: op.acc.6.r2.1
+      label: null
+      text: Se requerirá un segundo factor tal como «algo que se tiene», es decir, un dispositivo, una
+        contraseña de un solo uso (OTP, en inglés) como complemento a la contraseña de usuario, o «algo
+        que se es».
+  - id: R3
+    title: Certificados
+    required_at: []
+    alternative_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    clauses:
+    - id: op.acc.6.r3.1
+      label: null
+      text: Se emplearán certificados cualificados como mecanismo de autenticación.
+    - id: op.acc.6.r3.2
+      label: null
+      text: El uso del certificado estará protegido por un segundo factor, del tipo PIN o biométrico.
+  - id: R4
+    title: Certificados en dispositivo físico
+    required_at: []
+    alternative_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    clauses:
+    - id: op.acc.6.r4.1
+      label: null
+      text: Se emplearán certificados cualificados como mecanismo de autenticación, en soporte físico
+        (tarjeta o similar) usando algoritmos, parámetros y dispositivos autorizados por el CCN.
+    - id: op.acc.6.r4.2
+      label: null
+      text: El uso del certificado estará protegido por un segundo factor, del tipo PIN o biométrico.
+  - id: R5
+    title: Registro
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.acc.6.r5.1
+      label: null
+      text: Se registrarán los accesos con éxito y los fallidos.
+    - id: op.acc.6.r5.2
+      label: null
+      text: Se informará al usuario del último acceso efectuado con su identidad.
+  - id: R6
+    title: Limitación de la ventana de acceso
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.acc.6.r6.1
+      label: null
+      text: Se definirán aquellos puntos en los que el sistema requerirá una renovación de la autenticación
+        del usuario, mediante identificación singular, no bastando con la sesión establecida.
+  - id: R7
+    title: Suspensión por no utilización
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.acc.6.r7.1
+      label: null
+      text: Las credenciales se suspenderán tras un periodo definido de no utilización.
+  - id: R8
+    title: Doble factor para acceso desde o a través de zonas no controladas
+    required_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: null
+      label: null
+      text: Se denomina «zona controlada» aquella que no es de acceso público, requiriéndose que el usuario,
+        antes de tener acceso al equipo, se haya autenticado previamente de alguna forma (control de acceso
+        a las instalaciones), diferente del mecanismo de autenticación lógica frente al sistema. Un ejemplo
+        de zona no controlada es Internet.
+    - id: op.acc.6.r8.1
+      label: null
+      text: 'Para el acceso desde o a través de zonas no controladas se requerirá un doble factor de autenticación:
+        R2, R3 o R4.'
+  - id: R9
+    title: Acceso remoto (todos los niveles)
+    required_at:
+    - BAJO
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.acc.6.r9.1
+      label: null
+      text: Será de aplicación la ITS de Interconexión de sistemas de información.
+    - id: op.acc.6.r9.2
+      label: null
+      text: 'El acceso remoto deberá considerar los siguientes aspectos:
+
+        a) Ser autorizado por la autoridad correspondiente.
+
+        b) El tráfico deberá ser cifrado.
+
+        c) Si la utilización no se produce de manera constante, el acceso remoto deberá encontrarse inhabilitado
+        y habilitarse únicamente cuando sea necesario.
+
+        d) Deberán recogerse registros de auditoría de este tipo de conexiones.'
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      - R8
+      - R9
+      any_of:
+      - - R1
+        - R2
+        - R3
+        - R4
+      expression: + [R1 o R2 o R3 o R4] + R8 + R9
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R5
+      - R8
+      - R9
+      any_of:
+      - - R1
+        - R2
+        - R3
+        - R4
+      expression: + [R1 o R2 o R3 o R4] + R5 + R8 + R9
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R5
+      - R6
+      - R7
+      - R8
+      - R9
+      any_of:
+      - - R1
+        - R2
+        - R3
+        - R4
+      expression: + [R1 o R2 o R3 o R4] + R5 + R6 + R7 + R8 + R9
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.2.6
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.1
+  name: Inventario de activos
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.exp.1.1
+    label: null
+    text: Se mantendrá un inventario actualizado de todos los elementos del sistema, detallando su naturaleza
+      e identificando a su responsable; es decir, la persona que toma las decisiones relativas al mismo.
+  reinforcements:
+  - id: R1
+    title: Inventario de etiquetado
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.1.r1.1
+      label: null
+      text: El etiquetado del equipamiento y del cableado formará parte del inventario.
+  - id: R2
+    title: Identificación periódica de activos
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.1.r2.1
+      label: null
+      text: Se dispondrá de herramientas que permitan visualizar de forma continua el estado de todos
+        los equipos en la red, en particular, los servidores y los dispositivos de red y de comunicaciones.
+  - id: R3
+    title: Identificación de activos críticos
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.1.r3.1
+      label: null
+      text: Se dispondrá de herramientas que permitan categorizar los activos críticos por contexto de
+        la organización y riesgos de seguridad.
+  - id: R4
+    title: Lista de componentes software
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.1.r4.1
+      label: null
+      text: Se mantendrá actualizada una relación formal de los componentes software de terceros empleados
+        en el despliegue del sistema. Esta lista incluirá librerías software y los servicios requeridos
+        para su despliegue (plataforma o entorno operacional). El contenido de la lista de componentes
+        será equivalente a lo requerido en [mp.sw.1.r5].
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.2
+  name: Configuración de seguridad
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se configurarán los equipos previamente a su entrada en operación, de forma que:'
+  - id: op.exp.2.1
+    label: null
+    text: Se retiren cuentas y contraseñas estándar.
+  - id: op.exp.2.2
+    label: null
+    text: 'Se aplicará la regla de «mínima funcionalidad», es decir:
+
+      a) El sistema debe proporcionar la funcionalidad mínima imprescindible para que la organización
+      alcance sus objetivos.
+
+      b) No proporcionará funciones injustificadas (de operación, administración o auditoría) al objeto
+      de reducir al mínimo su perímetro de exposición, eliminándose o desactivándose aquellas funciones
+      que sean innecesarias o inadecuadas al fin que se persigue.'
+  - id: op.exp.2.3
+    label: null
+    text: 'Se aplicará la regla de «seguridad por defecto», es decir:
+
+      a) Las medidas de seguridad serán respetuosas con el usuario y protegerán a éste, salvo que se exponga
+      conscientemente a un riesgo.
+
+      b) Para reducir la seguridad, el usuario tendrá que realizar acciones conscientes.
+
+      c) El uso natural, en los casos que el usuario no ha consultado el manual, será un uso seguro.'
+  - id: op.exp.2.4
+    label: null
+    text: Las máquinas virtuales estarán configuradas y gestionadas de un modo seguro. La gestión del
+      parcheado, cuentas de usuarios, software antivirus, etc. se realizará como si se tratara de máquinas
+      físicas, incluyendo la máquina anfitriona.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.3
+  name: Gestión de la configuración de seguridad
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se gestionará de forma continua la configuración de los componentes del sistema, de forma que:'
+  - id: op.exp.3.1
+    label: null
+    text: Se mantenga en todo momento la regla de "funcionalidad mínima" ([op.exp.2]).
+  - id: op.exp.3.2
+    label: null
+    text: Se mantenga en todo momento la regla de "mínimo privilegio" ([op.exp.2]).
+  - id: op.exp.3.3
+    label: null
+    text: El sistema se adapte a las nuevas necesidades, previamente autorizadas. (Ver [op.acc.4]).
+  - id: op.exp.3.4
+    label: null
+    text: El sistema reaccione a vulnerabilidades notificadas. (Ver [op.exp.4]).
+  - id: op.exp.3.5
+    label: null
+    text: El sistema reaccione a incidentes. (Ver [op.exp.7]).
+  - id: op.exp.3.6
+    label: null
+    text: La configuración de seguridad solamente podrá editarse por personal debidamente autorizado.
+  reinforcements:
+  - id: R1
+    title: Mantenimiento regular de la configuración
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.3.r1.1
+      label: null
+      text: Existirán configuraciones hardware/software, autorizadas y mantenidas regularmente, para los
+        servidores, elementos de red y estaciones de trabajo.
+    - id: op.exp.3.r1.2
+      label: null
+      text: Se verificará periódicamente la configuración hardware/software del sistema para asegurar
+        que no se han introducido ni instalado elementos no autorizados.
+    - id: op.exp.3.r1.3
+      label: null
+      text: Se mantendrá una lista de servicios autorizados para servidores y estaciones de trabajo.
+  - id: R2
+    title: Responsabilidad de la configuración
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.3.r2.1
+      label: null
+      text: La configuración de seguridad del sistema operativo y aplicaciones, tanto de estaciones y
+        servidores como de la electrónica de red del sistema, será responsabilidad de un número muy limitado
+        de administradores del sistema.
+  - id: R3
+    title: Copias de seguridad
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.3.r3.1
+      label: null
+      text: Se realizarán copias de seguridad de la configuración del sistema de forma que sea posible
+        reconstruirlo en parte o en su totalidad tras un incidente.
+  - id: R4
+    title: Aplicación de la configuración
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.3.r4.1
+      label: null
+      text: La configuración de seguridad del sistema operativo y de las aplicaciones se mantendrá actualizada
+        a través de una aplicación o procedimiento manual que permita la instalación de las correspondientes
+        modificaciones de versión y actualizaciones de seguridad oportunas.
+  - id: R5
+    title: Control del estado de seguridad de la Configuración
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.3.r5.1
+      label: null
+      text: Se dispondrá de herramientas que permitan conocer de forma periódica el estado de seguridad
+        de la configuración de los dispositivos de red y, en el caso de que resulte deficiente, permitir
+        su corrección.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      any_of: []
+      expression: +R1+R2+R3
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.4
+  name: Mantenimiento y actualizaciones de seguridad
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Para mantener el equipamiento físico y lógico que constituye el sistema, se aplicará lo siguiente:'
+  - id: op.exp.4.1
+    label: null
+    text: Se atenderá a las especificaciones de los fabricantes en lo relativo a instalación y mantenimiento
+      de los sistemas, lo que incluirá un seguimiento continuo de los anuncios de defectos.
+  - id: op.exp.4.2
+    label: null
+    text: Se dispondrá de un procedimiento para analizar, priorizar y determinar cuándo aplicar las actualizaciones
+      de seguridad, parches, mejoras y nuevas versiones. La priorización tendrá en cuenta la variación
+      del riesgo en función de la implantación o no de la actualización.
+  - id: op.exp.4.3
+    label: null
+    text: El mantenimiento solo podrá realizarse por personal debidamente autorizado.
+  reinforcements:
+  - id: R1
+    title: Pruebas en preproducción
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.4.r1.1
+      label: null
+      text: Antes de poner en producción una nueva versión o una versión parcheada, se comprobará en un
+        entorno de prueba controlado y consistente en configuración al entorno de producción, que la nueva
+        instalación funciona correctamente y no disminuye la eficacia de las funciones necesarias para
+        el trabajo diario.
+  - id: R2
+    title: Prevención de fallos
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.4.r2.1
+      label: null
+      text: Antes de la aplicación de las configuraciones, parches y actualizaciones de seguridad se preverá
+        un mecanismo para revertirlos en caso de aparición de efectos adversos.
+  - id: R3
+    title: Actualizaciones y pruebas periódicas
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.4.r3.1
+      label: null
+      text: Se deberá comprobar de forma periódica la integridad del firmware utilizado en los dispositivos
+        hardware del sistema (infraestructura de red, BIOS, etc.). La periodicidad de estas comprobaciones
+        seguirá las recomendaciones de la Guía CCN-STIC que sea de aplicación.
+  - id: R4
+    title: Monitorización continua
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.4.r4.1
+      label: null
+      text: 'Se desplegará a nivel de sistema una estrategia de monitorización continua de amenazas y
+        vulnerabilidades. Esta estrategia detallará:
+
+        1. Los indicadores críticos de seguridad a emplear.
+
+        2. La política de aplicación de parches de seguridad de los componentes software relacionados
+        en las listas de [op.exp.1.r4], [op.ext.3.r3] y [mp.sw.1.r5]).
+
+        3. Los criterios de revisión regular y excepcional de las amenazas sobre el sistema.'
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: +R1+R2
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.5
+  name: Gestión de cambios
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se mantendrá un control continuo de los cambios realizados en el sistema, de forma que:'
+  - id: op.exp.5.1
+    label: null
+    text: Los cambios se planificarán para reducir el impacto sobre la prestación de los servicios afectados.
+      Para ello, todas las peticiones de cambio se registrarán asignando un número de referencia que permita
+      su seguimiento, de forma equivalente al registro de los incidentes.
+  - id: op.exp.5.2
+    label: null
+    text: La información a registrar para cada petición de cambio será suficiente para que quien deba
+      autorizarlos no tenga dudas al respecto y permita gestionarlo hasta su desestimación o implementación.
+  - id: op.exp.5.3
+    label: null
+    text: Las pruebas de preproducción, siempre que sea posible realizarlas, se efectuarán en equipos
+      equivalentes a los de producción, al menos en los aspectos específicos del cambio.
+  - id: op.exp.5.4
+    label: null
+    text: Mediante un análisis de riesgos se determinará si los cambios son relevantes para la seguridad
+      del sistema. Aquellos cambios que impliquen un riesgo de nivel ALTO deberán ser aprobados, explícitamente,
+      de forma previa a su implantación, por el Responsable de la Seguridad.
+  - id: op.exp.5.5
+    label: null
+    text: Una vez implementado el cambio, se realizarán las pruebas de aceptación convenientes. Si son
+      positivas, se actualizará la documentación de configuración (diagramas de red, manuales, el inventario,
+      etc.), siempre que proceda.
+  reinforcements:
+  - id: R1
+    title: Prevención de fallos
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.5.r1.1
+      label: null
+      text: Antes de la aplicación de los cambios, se deberá tener en cuenta la posibilidad de revertirlos
+        en caso de la aparición de efectos adversos.
+    - id: op.exp.5.r1.2
+      label: null
+      text: Todos los fallos en el software y hardware deberán ser comunicados al responsable designado
+        en la organización de la seguridad.
+    - id: op.exp.5.r1.3
+      label: null
+      text: Todos los cambios en el sistema deberán documentarse, incluyendo una valoración del impacto
+        que dicho cambio supone en la seguridad del sistema.
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.5
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.6
+  name: Protección frente a código dañino
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.exp.6.1
+    label: null
+    text: Se dispondrá de mecanismos de prevención y reacción frente a código dañino, incluyendo el correspondiente
+      mantenimiento de acuerdo a las recomendaciones del fabricante.
+  - id: op.exp.6.2
+    label: null
+    text: 'Se instalará software de protección frente a código dañino en todos los equipos: puestos de
+      usuario, servidores y elementos perimetrales.'
+  - id: op.exp.6.3
+    label: null
+    text: Todo fichero procedente de fuentes externas será analizado antes de trabajar con él.
+  - id: op.exp.6.4
+    label: null
+    text: Las bases de datos de detección de código dañino permanecerán permanentemente actualizadas.
+  - id: op.exp.6.5
+    label: null
+    text: El software de detección de código dañino instalado en los puestos de usuario deberá estar configurado
+      de forma adecuada e implementará protección en tiempo real de acuerdo a las recomendaciones del
+      fabricante.
+  reinforcements:
+  - id: R1
+    title: Escaneo periódico
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.6.r1.1
+      label: null
+      text: Todo el sistema se escaneará regularmente para detectar código dañino.
+  - id: R2
+    title: Revisión preventiva del sistema
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.6.r2.1
+      label: null
+      text: Las funciones críticas se analizarán al arrancar el sistema en prevención de modificaciones
+        no autorizadas.
+  - id: R3
+    title: Lista blanca
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.6.r3.1
+      label: null
+      text: Solamente se podrán ejecutar aquellas aplicaciones previamente autorizadas. Se implementará
+        una lista blanca para impedir la ejecución de aplicaciones no autorizadas.
+  - id: R4
+    title: Capacidad de respuesta en caso de incidente
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.6.r4.1
+      label: null
+      text: Se emplearán herramientas de seguridad orientadas a detectar, investigar y resolver actividades
+        sospechosas en puestos de usuario y servidores (EDR - Endpoint Detection and Response).
+  - id: R5
+    title: Configuración de la herramienta de detección de código dañino
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.6.r5.1
+      label: null
+      text: El software de detección de código dañino permitirá realizar configuraciones avanzadas y revisar
+        el sistema en el arranque y cada vez que se conecte un dispositivo extraíble.
+    - id: op.exp.6.r5.2
+      label: null
+      text: El software de detección de código dañino instalado en servidores y elementos perimetrales
+        deberá estar configurado de forma adecuada e implementará protección en tiempo real de acuerdo
+        a las recomendaciones del fabricante.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: + R1+R2
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      - R4
+      any_of: []
+      expression: +R1+R2+R3+R4
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.6
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.7
+  name: Gestión de incidentes
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.exp.7.1
+    label: null
+    text: Se dispondrá de un proceso integral para hacer frente a los incidentes que puedan tener un impacto
+      en la seguridad del sistema, que incluya el informe de eventos de seguridad y debilidades, detallando
+      los criterios de clasificación y el escalado de la notificación.
+  - id: op.exp.7.2
+    label: null
+    text: La gestión de incidentes que afecten a datos personales tendrá en cuenta lo dispuesto en el
+      Reglamento General de Protección de Datos; la Ley Orgánica 3/2018, de 5 de diciembre, en especial
+      su disposición adicional primera, así como el resto de normativa de aplicación, sin perjuicio de
+      los requisitos establecidos en este real decreto.
+  reinforcements:
+  - id: R1
+    title: Notificación
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.7.r1.1
+      label: null
+      text: Se dispondrá de soluciones de ventanilla única para la notificación de incidentes al CCN-CERT,
+        que permita la distribución de notificaciones a las diferentes entidades de manera federada, utilizando
+        para ello dependencias administrativas jerárquicas.
+  - id: R2
+    title: Detección y Respuesta
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: null
+      label: null
+      text: 'El proceso integral para hacer frente a los incidentes que puedan tener un impacto en la
+        seguridad del sistema ([op.exp.7.1]) deberá incluir:'
+    - id: op.exp.7.r2.1
+      label: null
+      text: Implantación de medidas urgentes, incluyendo la detención de servicios, el aislamiento del
+        sistema afectado, la recogida de evidencias y protección de los registros, según convenga al caso.
+    - id: op.exp.7.r2.2
+      label: null
+      text: Asignación de recursos para investigar las causas, analizar las consecuencias y resolver el
+        incidente.
+    - id: op.exp.7.r2.3
+      label: null
+      text: Informar del incidente a los responsables de la información y servicios afectados y de las
+        actuaciones llevadas a cabo para su resolución.
+    - id: op.exp.7.r2.4
+      label: null
+      text: 'Medidas para:
+
+        a) Prevenir que se repita el incidente.
+
+        b) Incluir en los procedimientos de usuario la identificación y forma de tratar el incidente.
+
+        c) Actualizar, extender, mejorar u optimizar los procedimientos de resolución de incidentes.'
+  - id: R3
+    title: Reconfiguración dinámica
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: null
+      label: null
+      text: La reconfiguración dinámica del sistema persigue detener, desviar o limitar ataques, acotando
+        los daños.
+    - id: op.exp.7.r3.1
+      label: null
+      text: La reconfiguración dinámica incluye, por ejemplo, cambios en las reglas de los enrutadores
+        (routers), listas de control de acceso, parámetros del sistema de detección / prevención de intrusiones
+        y reglas en los cortafuegos y puertas de enlace, aislamiento de elementos críticos y aislamiento
+        de las copias de seguridad.
+    - id: op.exp.7.r3.2
+      label: null
+      text: El organismo adaptará los procedimientos de reconfiguración dinámica reaccionando a los anuncios
+        recibidos del CCN-CERT relativos a ciberamenazas sofisticadas y campañas de ataques.
+  - id: R4
+    title: Prevención y Respuesta Automática
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.7.r4.1
+      label: null
+      text: Se dispondrá de herramientas que automaticen el proceso de prevención y respuesta mediante
+        la detección e identificación de anomalías, la segmentación dinámica de la red para reducir la
+        superficie de ataque, el aislamiento de dispositivos críticos, etc.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: + R1+R2
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      any_of: []
+      expression: + R1+R2+ R3
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.7
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.8
+  name: Registro de la actividad
+  group: op
+  subgroup: op.exp
+  applies_by: dimension
+  dimensions:
+  - T
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se registrarán las actividades en el sistema, de forma que:'
+  - id: op.exp.8.1
+    label: null
+    text: Se generará un registro de auditoría, que incluirá, al menos, el identificador del usuario o
+      entidad asociado al evento, fecha y hora, sobre qué información se realiza el evento, tipo de evento
+      y el resultado del evento (fallo o éxito), según la política de seguridad y los procedimientos asociados
+      a la misma.
+  - id: op.exp.8.2
+    label: null
+    text: Se activarán los registros de actividad en los servidores.
+  reinforcements:
+  - id: R1
+    title: Revisión de los registros
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.exp.8.r1.1
+      label: null
+      text: Se revisarán informalmente, de forma periódica, los registros de actividad, buscando patrones
+        anormales.
+  - id: R2
+    title: Sincronización del reloj del sistema
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.exp.8.r2.1
+      label: null
+      text: El sistema deberá disponer de una referencia de tiempo (timestamp) para facilitar las funciones
+        de registro de eventos y auditoría. La modificación de la referencia de tiempo del sistema será
+        una función de administración y, en caso de realizarse su sincronización con otros dispositivos,
+        deberán utilizarse mecanismos de autenticación e integridad.
+  - id: R3
+    title: Retención de registros
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.exp.8.r3.1
+      label: null
+      text: En la documentación de seguridad del sistema se deberán indicar los eventos de seguridad que
+        serán auditados y el tiempo de retención de los registros antes de ser eliminados.
+  - id: R4
+    title: Control de acceso
+    required_at:
+    - MEDIO
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.exp.8.r4.1
+      label: null
+      text: Los registros de actividad y, en su caso, las copias de seguridad de los mismos, solamente
+        podrán ser accedidos o eliminarse por personal debidamente autorizado.
+  - id: R5
+    title: Revisión automática y correlación de eventos
+    required_at:
+    - ALTO
+    alternative_at: []
+    clauses:
+    - id: op.exp.8.r5.1
+      label: null
+      text: El sistema deberá implementar herramientas para analizar y revisar la actividad del sistema
+        y la información de auditoría, en búsqueda de comprometimientos de la seguridad posibles o reales.
+    - id: op.exp.8.r5.2
+      label: null
+      text: Se dispondrá de un sistema automático de recolección de registros, correlación de eventos
+        y respuesta automática ante los mismos.
+  levels:
+    BAJO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      - R4
+      any_of: []
+      expression: +R1+R2+R3+R4
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      - R4
+      - R5
+      any_of: []
+      expression: +R1+R2+R3+R4+R5
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.8
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.9
+  name: Registro de la gestión de incidentes
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se registrarán todas las actuaciones relacionadas con la gestión de incidentes, de forma que:'
+  - id: op.exp.9.1
+    label: null
+    text: Se registrarán los reportes iniciales, intermedios y finales de los incidentes, las actuaciones
+      de emergencia y las modificaciones del sistema derivadas del incidente.
+  - id: op.exp.9.2
+    label: null
+    text: Se registrará aquella evidencia que pueda dirimirse en un ámbito jurisdiccional, especialmente
+      cuando el incidente pueda comportar acciones disciplinarias sobre el personal interno, sobre proveedores
+      externos o en la persecución de delitos. En la determinación de la composición y detalle de estas
+      evidencias, se recurrirá a asesoramiento legal especializado.
+  - id: op.exp.9.3
+    label: null
+    text: Como consecuencia del análisis de los incidentes, se revisará la determinación de los eventos
+      auditables.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.9
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.exp.10
+  name: Protección de claves criptográficas
+  group: op
+  subgroup: op.exp
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.exp.10.1
+    label: null
+    text: 'Las claves criptográficas se protegerán durante todo su ciclo de vida: (1) generación, (2)
+      transporte al punto de explotación, (3) custodia durante la explotación, (4) archivo posterior a
+      su retirada de explotación activa y (5) destrucción final.'
+  - id: op.exp.10.2
+    label: null
+    text: Los medios de generación estarán aislados de los medios de explotación.
+  - id: op.exp.10.3
+    label: null
+    text: Las claves retiradas de operación que deban ser archivadas, lo serán en medios aislados de los
+      de explotación.
+  reinforcements:
+  - id: R1
+    title: Algoritmos autorizados
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.exp.10.r1.1
+      label: null
+      text: Se emplearán algoritmos y parámetros autorizados por el CCN.
+  - id: R2
+    title: Protección avanzada de claves criptográficas
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.exp.10.r2.1
+      label: null
+      text: Se emplearán cifradores que cumplan con los requisitos establecidos en la guía CCN-STIC que
+        sea de aplicación.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.3.10
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.ext.1
+  name: Contratación y acuerdos de nivel de servicio
+  group: op
+  subgroup: op.ext
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.ext.1.1
+    label: null
+    text: Con anterioridad a la efectiva utilización de los recursos externos se establecerá contractualmente
+      un Acuerdo de Nivel de Servicio, que incluirá las características del servicio prestado, lo que
+      debe entenderse como «servicio mínimo admisible», así como, la responsabilidad del prestador y las
+      consecuencias de eventuales incumplimientos.
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.4.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.ext.2
+  name: Gestión diaria
+  group: op
+  subgroup: op.ext
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se establecerá lo siguiente:'
+  - id: op.ext.2.1
+    label: null
+    text: Un sistema rutinario para medir el cumplimiento de las obligaciones de servicio, incluyendo
+      el procedimiento para neutralizar cualquier desviación fuera del margen de tolerancia acordado ([op.ext.1]).
+  - id: op.ext.2.2
+    label: null
+    text: El mecanismo y los procedimientos de coordinación para llevar a cabo las tareas de mantenimiento
+      de los sistemas comprendidos en el acuerdo, que contemplarán los supuestos de incidentes y desastres
+      (ver [op.exp.7]).
+  reinforcements: []
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.4.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.ext.3
+  name: Protección de la cadena de suministro
+  group: op
+  subgroup: op.ext
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.ext.3.1
+    label: null
+    text: Se analizará el impacto que puede tener sobre el sistema un incidente accidental o deliberado
+      que tenga su origen en la cadena de suministro.
+  - id: op.ext.3.2
+    label: null
+    text: Se estimará el riesgo sobre el sistema por causa del impacto estimado en el punto anterior.
+  - id: op.ext.3.3
+    label: null
+    text: Se tomarán medidas de contención de los impactos estimados en los puntos anteriores.
+  reinforcements:
+  - id: R1
+    title: Plan de contingencia
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.ext.3.r1.1
+      label: null
+      text: El plan de continuidad de la organización deberá tener en cuenta la dependencia de proveedores
+        externos críticos.
+    - id: op.ext.3.r1.2
+      label: null
+      text: Se deberán realizar pruebas o ejercicios de continuidad, incluyendo escenarios en los que
+        falla un proveedor.
+  - id: R2
+    title: Sistema de gestión de la seguridad
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.ext.3.r2.1
+      label: null
+      text: Se implementará un sistema de protección de los procesos y flujos de información en las relaciones
+        en línea (online) entre los distintos integrantes de la cadena de suministro.
+  - id: R3
+    title: Lista de componentes software
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.ext.3.r3.1
+      label: null
+      text: Se mantendrá actualizado un registro formal que contenga los detalles y las relaciones de
+        la cadena de suministro de los diversos componentes utilizados en la construcción de programas
+        informáticos, acorde a lo especificado en [mp.sw.1.r5]. Esta lista será proporcionada por el proveedor
+        de la aplicación, librería o producto suministrado.
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.4.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.ext.4
+  name: Interconexión de sistemas
+  group: op
+  subgroup: op.ext
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble:
+  - Se denomina interconexión al establecimiento de enlaces con otros sistemas de información para el
+    intercambio de información y servicios.
+  diagram_refs: []
+  base:
+  - id: op.ext.4.1
+    label: null
+    text: Todos los intercambios de información y prestación de servicios con otros sistemas deberán ser
+      objeto de una autorización previa. Todo flujo de información estará prohibido salvo autorización
+      expresa.
+  - id: op.ext.4.2
+    label: null
+    text: 'Para cada interconexión se documentará explícitamente: las características de la interfaz,
+      los requisitos de seguridad y protección de datos y la naturaleza de la información intercambiada.'
+  reinforcements:
+  - id: R1
+    title: Coordinación de actividades
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.ext.4.r1.1
+      label: null
+      text: Cuando se interconecten sistemas en los que la identificación, autenticación y autorización
+        tengan lugar en diferentes dominios de seguridad, bajo distintas responsabilidades, las medidas
+        de seguridad locales se acompañarán de los correspondientes mecanismos y procedimientos de coordinación
+        para la atribución y ejercicio efectivos de las responsabilidades de cada sistema.
+  levels:
+    BASICA:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.4.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.nub.1
+  name: Protección de servicios en la nube
+  group: op
+  subgroup: op.nub
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.nub.1.1
+    label: null
+    text: 'Los sistemas que suministran un servicio en la nube a organismos del sector público deberán
+      cumplir con el conjunto de medidas de seguridad en función del modelo de servicio en la nube que
+      presten: Software como Servicio (Software as a Service, SaaS), Plataforma como Servicio (Platform
+      as a Service, PaaS) e Infraestructura como Servicio (Infrastructure as a Service, IaaS) definidas
+      en las guías CCN-STIC que sean de aplicación.'
+  - id: op.nub.1.2
+    label: null
+    text: 'Cuando se utilicen servicios en la nube suministrados por terceros, los sistemas de información
+      que los soportan deberán ser conformes con el ENS o cumplir con las medidas desarrolladas en una
+      guía CCN-STIC que incluirá, entre otros, requisitos relativos a:
+
+      a) Auditoría de pruebas de penetración (pentesting).
+
+      b) Transparencia.
+
+      c) Cifrado y gestión de claves.
+
+      d) Jurisdicción de los datos.'
+  reinforcements:
+  - id: R1
+    title: Servicios certificados
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.nub.1.r1.1
+      label: null
+      text: Cuando se utilicen servicios en la nube suministrados por terceros, estos deberán estar certificados
+        bajo una metodología de certificación reconocida por el Organismo de Certificación del Esquema
+        Nacional de Evaluación y Certificación de Seguridad de las Tecnologías de la Información.
+    - id: op.nub.1.r1.2
+      label: null
+      text: Si el servicio en la nube es un servicio de seguridad deberá cumplir con los requisitos establecidos
+        en [op.pl.5].
+  - id: R2
+    title: Guías de Configuración de Seguridad Específicas
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.nub.1.r2.1
+      label: null
+      text: La configuración de seguridad de los sistemas que proporcionan estos servicios deberá realizarse
+        según la correspondiente guía CCN-STIC de Configuración de Seguridad Específica, orientadas tanto
+        al usuario como al proveedor.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: +R1+R2
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.5.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.cont.1
+  name: Análisis de impacto
+  group: op
+  subgroup: op.cont
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.cont.1.1
+    label: null
+    text: Se realizará un análisis de impacto que permita determinar los requisitos de disponibilidad
+      de cada servicio (impacto de una interrupción durante un periodo de tiempo determinado), así como
+      los elementos que son críticos para la prestación de cada servicio.
+  reinforcements: []
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.6.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.cont.2
+  name: Plan de continuidad
+  group: op
+  subgroup: op.cont
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: null
+    label: null
+    text: 'Se desarrollará un plan de continuidad que establezca las acciones a ejecutar en caso de interrupción
+      de los servicios prestados con los medios habituales. Dicho plan contemplará los siguientes aspectos:'
+  - id: op.cont.2.1
+    label: null
+    text: Se identificarán funciones, responsabilidades y actividades a realizar.
+  - id: op.cont.2.2
+    label: null
+    text: Existirá una previsión para coordinar la entrada en servicio de los medios alternativos de forma
+      que se garantice poder seguir prestando los servicios esenciales de la organización.
+  - id: op.cont.2.3
+    label: null
+    text: Todos los medios alternativos estarán planificados y materializados en acuerdos o contratos
+      con los proveedores correspondientes.
+  - id: op.cont.2.4
+    label: null
+    text: Las personas afectadas por el plan recibirán formación específica relativa a su papel en dicho
+      plan.
+  - id: op.cont.2.5
+    label: null
+    text: El plan de continuidad será parte integral y armónica de los planes de continuidad de la organización
+      en otras materias ajenas a la seguridad.
+  reinforcements:
+  - id: R1
+    title: Plan de emergencia y contingencia
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.cont.2.r1.1
+      label: null
+      text: Cuando se determine la necesidad de continuidad de los sistemas, deberá existir un plan de
+        emergencia y contingencia en consonancia. En función del análisis de Impacto, se determinarán
+        los aspectos a cubrir.
+  - id: R2
+    title: Comprobación de integridad
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.cont.2.r2.1
+      label: null
+      text: Ante una caída o discontinuidad del sistema, se deberá comprobar la integridad del sistema
+        operativo, del firmware y de los ficheros de configuración.
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.6.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.cont.3
+  name: Pruebas periódicas
+  group: op
+  subgroup: op.cont
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.cont.3.1
+    label: null
+    text: Se realizarán pruebas periódicas para localizar y, en su caso, corregir los errores o deficiencias
+      que puedan existir en el plan de continuidad.
+  reinforcements: []
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.6.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.cont.4
+  name: Medios alternativos
+  group: op
+  subgroup: op.cont
+  applies_by: dimension
+  dimensions:
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.cont.4.1
+    label: null
+    text: 'Estará prevista la disponibilidad de medios alternativos para poder seguir prestando servicio
+      cuando los medios habituales no estén disponibles. En concreto, se cubrirán los siguientes elementos
+      del sistema:
+
+      a) Servicios contratados a terceros.
+
+      b) Instalaciones alternativas.
+
+      c) Personal alternativo.
+
+      d) Equipamiento informático alternativo.
+
+      e) Medios de comunicación alternativos.'
+  - id: op.cont.4.2
+    label: null
+    text: Se establecerá un tiempo máximo para que los medios alternativos entren en funcionamiento.
+  - id: op.cont.4.3
+    label: null
+    text: Los medios alternativos estarán sometidos a las mismas garantías de seguridad que los originales.
+  reinforcements:
+  - id: R1
+    title: Automatización de la transición a medios alternativos
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.cont.4.r1.1
+      label: null
+      text: El sistema dispondrá de elementos hardware o software que permitan la transferencia de los
+        servicios automáticamente a los medios alternativos.
+  levels:
+    BAJO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    MEDIO:
+      not_applicable: true
+      all_of: []
+      any_of: []
+      expression: n.a.
+    ALTO:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.6.4
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.mon.1
+  name: Detección de intrusión
+  group: op
+  subgroup: op.mon
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.mon.1.1
+    label: null
+    text: Se dispondrá de herramientas de detección o prevención de intrusiones.
+  reinforcements:
+  - id: R1
+    title: Detección basada en reglas
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.mon.1.r1.1
+      label: null
+      text: El sistema dispondrá de herramientas de detección o prevención de intrusiones basadas en reglas.
+  - id: R2
+    title: Procedimientos de respuesta
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.mon.1.r2.1
+      label: null
+      text: Existirán procedimientos de respuesta a las alertas generadas por el sistema de detección
+        o prevención de intrusiones.
+  - id: R3
+    title: Acciones predeterminadas
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.mon.1.r3.1
+      label: null
+      text: El sistema ejecutará automáticamente acciones predeterminadas de respuesta a las alertas generadas.
+        Esto puede incluir la finalización del proceso que está ocasionando la alerta, la inhabilitación
+        de determinados servicios, la desconexión de usuarios y el bloqueo de cuentas.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      any_of: []
+      expression: + R1
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: +R1+R2
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.7.1
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.mon.2
+  name: Sistema de métricas
+  group: op
+  subgroup: op.mon
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.mon.2.1
+    label: null
+    text: Atendiendo a la categoría de seguridad del sistema, se recopilarán los datos necesarios para
+      conocer el grado de implantación de las medidas de seguridad que resulten aplicables y, en su caso,
+      para proveer el informe anual requerido por el artículo 32.
+  reinforcements:
+  - id: R1
+    title: Efectividad del sistema de gestión de incidentes
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.mon.2.r1.1
+      label: null
+      text: Se recopilarán los datos precisos que posibiliten evaluar el comportamiento del sistema de
+        gestión de incidentes, de acuerdo con la Instrucción Técnica de Seguridad de Notificación de Incidentes
+        de Seguridad y con la correspondiente guía CCN-STIC.
+  - id: R2
+    title: Eficiencia del sistema de gestión de la seguridad
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.mon.2.r2.1
+      label: null
+      text: Se recopilarán los datos precisos para conocer la eficiencia del sistema de seguridad, en
+        relación con los recursos consumidos, en términos de horas y presupuesto.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: + R1+R2
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: + R1+R2
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.7.2
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
+- id: op.mon.3
+  name: Vigilancia
+  group: op
+  subgroup: op.mon
+  applies_by: category
+  dimensions:
+  - C
+  - I
+  - T
+  - A
+  - D
+  preamble: []
+  diagram_refs: []
+  base:
+  - id: op.mon.3.1
+    label: null
+    text: Se dispondrá de un sistema automático de recolección de eventos de seguridad.
+  reinforcements:
+  - id: R1
+    title: Correlación de eventos
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.mon.3.r1.1
+      label: null
+      text: Se dispondrá de un sistema automático de recolección de eventos de seguridad que permita la
+        correlación de los mismos.
+  - id: R2
+    title: Análisis dinámico
+    required_at:
+    - MEDIA
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.mon.3.r2.1
+      label: null
+      text: Se dispondrá de soluciones de vigilancia que permitan determinar la superficie de exposición
+        con relación a vulnerabilidades y deficiencias de configuración.
+  - id: R3
+    title: Ciberamenazas avanzadas
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.mon.3.r3.1
+      label: null
+      text: Se dispondrá de sistemas para detección de amenazas avanzadas y comportamientos anómalos.
+    - id: op.mon.3.r3.2
+      label: null
+      text: Se dispondrá de sistemas para la detección de amenazas persistentes avanzadas (Advanced Persistent
+        Threat, APT) mediante la detección de anomalías significativas en el tráfico de la red.
+  - id: R4
+    title: Observatorios digitales
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: op.mon.3.r4.1
+      label: null
+      text: Se dispondrá de observatorios digitales con fines de cibervigilancia dedicados a la detección
+        y seguimiento de anomalías que pudieran representar indicadores de amenaza en contenidos digitales.
+  - id: R5
+    title: Minería de datos
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: null
+      label: null
+      text: 'Se aplicarán medidas para prevenir, detectar y reaccionar frente a intentos de minería de
+        datos:'
+    - id: op.mon.3.r5.1
+      label: null
+      text: Limitación de las consultas, monitorizando volumen y frecuencia.
+    - id: op.mon.3.r5.2
+      label: null
+      text: Alerta a los administradores de seguridad de comportamientos sospechosos en tiempo real.
+  - id: R6
+    title: Inspecciones de seguridad
+    required_at:
+    - ALTA
+    alternative_at: []
+    clauses:
+    - id: null
+      label: null
+      text: 'Periódicamente, o tras incidentes que hayan desvelado vulnerabilidades del sistema nuevas
+        o subestimadas, se realizarán las siguientes inspecciones:'
+    - id: op.mon.3.r6.1
+      label: null
+      text: Verificación de configuración.
+    - id: op.mon.3.r6.2
+      label: null
+      text: Análisis de vulnerabilidades.
+    - id: op.mon.3.r6.3
+      label: null
+      text: Pruebas de penetración.
+  - id: R7
+    title: Interconexiones
+    required_at: []
+    alternative_at: []
+    clauses:
+    - id: op.mon.3.r7.1
+      label: null
+      text: En las interconexiones que lo requieran se aplicarán controles en los flujos de intercambio
+        de información a través del uso de metadatos.
+  levels:
+    BASICA:
+      not_applicable: false
+      all_of:
+      - base
+      any_of: []
+      expression: aplica
+    MEDIA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      any_of: []
+      expression: + R1+R2
+    ALTA:
+      not_applicable: false
+      all_of:
+      - base
+      - R1
+      - R2
+      - R3
+      - R4
+      - R5
+      - R6
+      any_of: []
+      expression: + R1+R2+R3+R4+R5+R6
+  notes: []
+  source:
+    regulation: Real Decreto 311/2022, de 3 de mayo
+    annex: II
+    section: 4.7.3
+    url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+    consolidation_date: '2024-11-06'
+    snapshot_sha256: a44bd57a6503f689d03faa52e69e6aa6e060ee7cd0e43c11f4125e42a02400e1
