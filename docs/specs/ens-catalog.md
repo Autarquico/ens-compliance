@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Catálogo de medidas del Anexo II
 type: task
-status: active
+status: shipped
 priority: P0
 size: L
 issue: 3
