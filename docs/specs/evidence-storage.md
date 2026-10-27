@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: L
 issue: 4
-prs: []
+prs: [40]
 related_issues: [4]
 depends_on: [repo-foundation]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-27
 ---
 
 # Storage de evidencias y copia independiente
