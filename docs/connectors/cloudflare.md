@@ -15,6 +15,7 @@ estos permisos de lectura:
 | Cuenta | Account Settings Read | Audit logs |
 | Cuenta | Cloudflare Tunnel Read | Túneles y su ingress |
 | Cuenta | Access: Apps and Policies Read | Aplicaciones y políticas de Access |
+| Cuenta | Access: Organizations, Identity Providers, and Groups Read | Grupos de Access (`/access/groups`) |
 | Zona | Zone Read | Listado de zonas |
 | Zona | DNS Read | Registros DNS (hostnames de túneles locales) |
 | Zona | Zone Settings Read | TLS: modo SSL, versión mínima, HTTPS forzado |
@@ -57,15 +58,20 @@ ens-evidence collect cloudflare
 | Código | Significado |
 |--------|-------------|
 | 0 | Todo recogido |
-| 3 | Recogida parcial: alguna sección sin permiso, no soportada o con error |
+| 3 | Recogida parcial: alguna sección, o el conjunto, sin permiso, no soportado o con error |
 | 1 | Error global (token inválido, revocado o no activo); la evidencia del intento se guarda igual |
 
 ## Qué se recoge
 
-Zonas, DNS, TLS, WAF, aplicaciones y políticas de Access, túneles (con su
+Zonas, DNS, TLS, WAF, aplicaciones, políticas y grupos de Access, túneles (con su
 ingress) y un resumen de audit logs de los últimos 30 días. Cada sección
-tiene su propio estado: "sin permiso" nunca se confunde con "no
+tiene su propio estado (`access_groups` incluido): "sin permiso" nunca se confunde con "no
 configurado".
+
+De cada grupo de Access solo se guardan id, nombre, los tipos de selector de
+include/require/exclude y los ids de los grupos anidados que referencia. Una
+configuración remota de túnel sin `config` o sin `ingress` (ausentes o `null`) es
+`ingress_status: ERROR`, nunca un túnel sin rutas.
 
 No se guardan: el token, los valores de los selectores de Access (correos),
 el contenido de registros DNS que no son CNAME, credenciales o parámetros de
@@ -95,6 +101,14 @@ Detalles de la evaluación:
   descarta. Lo mismo vale para una catch-all final con origen real
   (`<túnel> (sin hostname)/*`): publica cualquier hostname que llegue al túnel.
   Solo las respuestas `http_status` se ignoran.
+- Un selector `group` solo cuenta como identidad si el contenido del grupo
+  (resuelto de forma recursiva) la exige con la misma regla que una política:
+  include solo de identidad, o algún require de identidad. Un grupo solo de IP,
+  país o service token no basta. Grupo inexistente, ciclo entre grupos, selector
+  sin id o sección `access_groups` no recogida: `UNKNOWN`, nunca `PASS`.
+- Un túnel cuyo ingress remoto no se pudo recoger (incluida una configuración
+  sin `config` o `ingress`) emite un resultado de cobertura no resuelta con la
+  traducción del ADR 0002.
 - Los hostnames se comparan en minúsculas.
 - Un destino de Access cuyo host no se puede interpretar (con puerto o mal
   formado) da `UNKNOWN` en toda ruta que pudiera alcanzar; solo se descarta si

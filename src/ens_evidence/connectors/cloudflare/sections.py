@@ -98,6 +98,14 @@ class _AccessApp(_Raw):
     destinations: list[_Destination] | None = None
 
 
+class _AccessGroup(_Raw):
+    id: str
+    name: str | None = None
+    include: list[Any] = Field(default_factory=list)
+    exclude: list[Any] = Field(default_factory=list)
+    require: list[Any] = Field(default_factory=list)
+
+
 class _AccessPolicy(_Raw):
     id: str
     name: str | None = None
@@ -123,11 +131,11 @@ class _IngressRule(_Raw):
 
 
 class _IngressConfig(_Raw):
-    ingress: list[_IngressRule] = Field(default_factory=list)
+    ingress: list[_IngressRule]
 
 
 class _TunnelConfiguration(_Raw):
-    config: _IngressConfig | None = None
+    config: _IngressConfig
 
 
 def worst(statuses: Iterable[CollectionStatus]) -> CollectionStatus:
@@ -181,6 +189,29 @@ def selector_kinds(rules: list[Any]) -> list[str]:
         if kind not in kinds:
             kinds.append(kind)
     return kinds
+
+
+def group_references(rules: list[Any]) -> list[str | None]:
+    """Ids de los grupos de Access referenciados por selectores `group` (`None`: sin id válido)."""
+    references: list[str | None] = []
+    for rule in rules:
+        if isinstance(rule, dict) and list(rule) == ["group"]:
+            body = rule["group"]
+            group_id = body.get("id") if isinstance(body, dict) else None
+            references.append(group_id if isinstance(group_id, str) and group_id else None)
+    return references
+
+
+def selector_summary(rule: _AccessGroup | _AccessPolicy) -> dict[str, Any]:
+    """Tipos de selector y grupos referenciados de include/require/exclude, sin valores."""
+    return {
+        "include": selector_kinds(rule.include),
+        "exclude": selector_kinds(rule.exclude),
+        "require": selector_kinds(rule.require),
+        "include_groups": group_references(rule.include),
+        "require_groups": group_references(rule.require),
+        "exclude_groups": group_references(rule.exclude),
+    }
 
 
 def sanitize_service(service: str | None) -> str | None:
@@ -308,6 +339,22 @@ def collect_access_applications(client: CloudflareClient, config: CloudflareConf
     )
 
 
+def collect_access_groups(client: CloudflareClient, config: CloudflareConfig) -> Section:
+    """Grupos de Access de la cuenta: sus políticas pueden referenciarlos con `group`."""
+    status, reason, groups = _attempt(
+        lambda: [
+            _AccessGroup.model_validate(raw)
+            for raw in client.pages(f"/accounts/{config.account_id}/access/groups")
+        ]
+    )
+    if groups is None:
+        return _failed(status, reason)
+    return Section(
+        status=CollectionStatus.SUCCESS,
+        items=[{"id": group.id, "name": group.name, **selector_summary(group)} for group in groups],
+    )
+
+
 def collect_access_policies(
     client: CloudflareClient, config: CloudflareConfig, applications: Section
 ) -> Section:
@@ -327,9 +374,7 @@ def collect_access_policies(
                     "name": policy.name,
                     "decision": policy.decision,
                     "precedence": policy.precedence,
-                    "include": selector_kinds(policy.include),
-                    "exclude": selector_kinds(policy.exclude),
-                    "require": selector_kinds(policy.require),
+                    **selector_summary(policy),
                 }
                 for policy in policies
             ]
@@ -402,7 +447,6 @@ def _tunnel_item(
 def _remote_ingress(client: CloudflareClient, account_id: str, tunnel_id: str) -> list[Any]:
     path = f"/accounts/{account_id}/cfd_tunnel/{tunnel_id}/configurations"
     configuration = _TunnelConfiguration.model_validate(client.get(path).result)
-    rules = configuration.config.ingress if configuration.config else []
     return [
         {
             "hostname": rule.hostname,
@@ -410,7 +454,7 @@ def _remote_ingress(client: CloudflareClient, account_id: str, tunnel_id: str) -
             "service": sanitize_service(rule.service),
             "inferred": False,
         }
-        for rule in rules
+        for rule in configuration.config.ingress
     ]
 
 

@@ -34,12 +34,13 @@ _ADMITTING_DECISIONS = frozenset({"allow", "non_identity"})
 _CREDENTIAL_SELECTORS = frozenset(
     {"service_token", "any_valid_service_token", "certificate", "common_name"}
 )
+_GROUP = "group"
 _IDENTITY_SELECTORS = frozenset(
     {
         "email",
         "email_domain",
         "email_list",
-        "group",
+        _GROUP,
         "github-organization",
         "azureAD",
         "gsuite",
@@ -48,6 +49,7 @@ _IDENTITY_SELECTORS = frozenset(
         "oidc",
     }
 )
+_DIRECT_IDENTITY_SELECTORS = _IDENTITY_SELECTORS - {_GROUP}
 _OTHER_KNOWN_SELECTORS = frozenset(
     {
         "everyone",
@@ -143,6 +145,35 @@ class Protection(StrEnum):
     PROTECTIVE = "protective"
     EXPOSED = "exposed"
     UNPROVABLE = "unprovable"
+
+
+class Unresolvable(Exception):
+    """Un grupo de Access referenciado no permite decidir si exige identidad."""
+
+    def __init__(self, detail: str, collection: CollectionStatus = CollectionStatus.SUCCESS):
+        super().__init__(detail)
+        self.detail = detail
+        self.collection = collection
+
+
+@dataclass(frozen=True)
+class AccessGroups:
+    """Grupos de Access por id; `unavailable` si la sección no se recogió con éxito."""
+
+    by_id: dict[str, dict[str, Any]]
+    unavailable: Unresolvable | None = None
+
+    def get(self, group_id: str | None, trail: tuple[str, ...]) -> dict[str, Any]:
+        if self.unavailable is not None:
+            raise self.unavailable
+        if group_id in trail:
+            raise Unresolvable("los grupos de Access se referencian entre sí en ciclo")
+        if group_id is None or group_id not in self.by_id:
+            raise Unresolvable("referencia un grupo de Access que no consta en la evidencia")
+        return self.by_id[group_id]
+
+
+NO_GROUPS = AccessGroups({})
 
 
 @dataclass(frozen=True)
@@ -244,7 +275,7 @@ def path_overlaps(candidate: PathPattern, target: PathPattern) -> bool:
     return target.prefix and candidate.value.startswith(target.value)
 
 
-def classify_policies(policies: list[dict[str, Any]]) -> Verdict:
+def classify_policies(policies: list[dict[str, Any]], groups: AccessGroups = NO_GROUPS) -> Verdict:
     decisions = [policy.get("decision") for policy in policies]
     if "bypass" in decisions:
         return Verdict(Protection.EXPOSED, "tiene una política bypass")
@@ -266,13 +297,20 @@ def classify_policies(policies: list[dict[str, Any]]) -> Verdict:
     }
     if not selectors <= known:
         return Verdict(Protection.UNPROVABLE, "tiene selectores de política desconocidos")
-    if any(not _requires_credential(policy) for policy in admitting):
+    try:
+        return _classify_admitting(admitting, groups)
+    except Unresolvable as exc:
+        return Verdict(Protection.UNPROVABLE, exc.detail, exc.collection)
+
+
+def _classify_admitting(admitting: list[dict[str, Any]], groups: AccessGroups) -> Verdict:
+    if any(not _requires_credential(policy, groups) for policy in admitting):
         return Verdict(
             Protection.UNPROVABLE,
             "tiene políticas que no exigen identidad ni credencial (IP, geo, everyone...)",
         )
     allows = [policy for policy in admitting if policy["decision"] == "allow"]
-    if any(_authenticates_users(policy) for policy in allows):
+    if any(_authenticates_users(policy, groups) for policy in allows):
         return Verdict(Protection.PROTECTIVE, "política allow con selector de identidad")
     if not allows:
         return Verdict(Protection.UNPROVABLE, "no tiene ninguna política allow")
@@ -282,16 +320,39 @@ def classify_policies(policies: list[dict[str, Any]]) -> Verdict:
     )
 
 
-def _requires_credential(policy: dict[str, Any]) -> bool:
+def _requires_credential(policy: dict[str, Any], groups: AccessGroups) -> bool:
     include = policy.get("include", [])
-    return _authenticates_users(policy) or (bool(include) and set(include) <= _CREDENTIAL_SELECTORS)
-
-
-def _authenticates_users(policy: dict[str, Any]) -> bool:
-    include, require = policy.get("include", []), policy.get("require", [])
-    return (bool(include) and set(include) <= _IDENTITY_SELECTORS) or any(
-        kind in _IDENTITY_SELECTORS for kind in require
+    return _authenticates_users(policy, groups) or (
+        bool(include) and set(include) <= _CREDENTIAL_SELECTORS
     )
+
+
+def _authenticates_users(
+    rule: dict[str, Any], groups: AccessGroups, trail: tuple[str, ...] = ()
+) -> bool:
+    """Política o grupo: include solo de identidad, o algún require de identidad."""
+    include = _identity_flags(rule, "include", groups, trail)
+    require = _identity_flags(rule, "require", groups, trail)
+    return (bool(include) and all(include)) or any(require)
+
+
+def _identity_flags(
+    rule: dict[str, Any], key: str, groups: AccessGroups, trail: tuple[str, ...]
+) -> list[bool]:
+    """Un valor por selector de `key`; un `group` vale lo que valga su contenido resuelto."""
+    kinds = rule.get(key, [])
+    flags = [kind in _DIRECT_IDENTITY_SELECTORS for kind in kinds if kind != _GROUP]
+    if _GROUP in kinds:
+        referenced = rule.get(f"{key}_groups") or [None]
+        flags += [_group_authenticates(ref, groups, trail) for ref in referenced]
+    return flags
+
+
+def _group_authenticates(
+    group_id: str | None, groups: AccessGroups, trail: tuple[str, ...]
+) -> bool:
+    group = groups.get(group_id, trail)
+    return _authenticates_users(group, groups, (*trail, group_id or ""))
 
 
 def _read(sections: dict[str, Any], name: str) -> SectionData:
@@ -323,7 +384,15 @@ class _Evaluator:
         self.applications = _read(sections, "access_applications")
         self.policies = _read(sections, "access_policies")
         self.policy_items = {item["app_id"]: item for item in self.policies.items}
+        self.groups = self._groups(_read(sections, "access_groups"))
         self.declared = self._declared_routes(result.data.get("public_routes", []))
+
+    @staticmethod
+    def _groups(section: SectionData) -> AccessGroups:
+        if section.status is not CollectionStatus.SUCCESS:
+            detail = f"referencia grupos de Access no recogidos: {_why(section)}"
+            return AccessGroups({}, Unresolvable(detail, section.status))
+        return AccessGroups({item["id"]: item for item in section.items})
 
     @staticmethod
     def _declared_routes(raw_routes: list[dict[str, Any]]) -> list[DeclaredRoute]:
@@ -436,7 +505,7 @@ class _Evaluator:
             return Verdict(
                 Protection.UNPROVABLE, f"sus políticas no se recogieron: {reason}", status
             )
-        return classify_policies(item.get("policies", []))
+        return classify_policies(item.get("policies", []), self.groups)
 
     def _outcome(
         self,

@@ -731,7 +731,8 @@ def collect(
     source: Annotated[str | None, typer.Argument(help="Conector a ejecutar.")] = None,
     all_sources: Annotated[bool, typer.Option("--all", help="Todos los conectores.")] = False,
 ) -> None:
-    """Recoge evidencias. Salida: 0 todo recogido, 3 recogida parcial, 1 error."""
+    """Recoge evidencias. Salida: 0 todo recogido, 3 parcial (secciones o estado global
+    sin permiso/no soportado), 1 error."""
     if all_sources or source is None:
         not_implemented()
     try:
@@ -756,11 +757,23 @@ def collect(
     sections = result.data.get("sections", {})
     for name, section in sections.items():
         typer.echo(f"  {name}: {section['status']}")
-    if result.collection_status is CollectionStatus.ERROR:
-        typer.echo(f"Error: {result.data.get('error')}", err=True)
-        raise typer.Exit(1)
-    if any(section["status"] != CollectionStatus.SUCCESS for section in sections.values()):
-        raise typer.Exit(3)
+    raise typer.Exit(collect_exit_code(result.collection_status, result.data, sections))
+
+
+def collect_exit_code(status: CollectionStatus, data: dict, sections: dict) -> int:
+    match status:
+        case CollectionStatus.SUCCESS:
+            partial = any(s["status"] != CollectionStatus.SUCCESS for s in sections.values())
+            return 3 if partial else 0
+        case CollectionStatus.PERMISSION_DENIED:
+            typer.echo("Recogida incompleta: permiso denegado.", err=True)
+            return 3
+        case CollectionStatus.NOT_SUPPORTED:
+            typer.echo("Recogida incompleta: no soportada por el conector.", err=True)
+            return 3
+        case CollectionStatus.ERROR:
+            typer.echo(f"Error: {data.get('error')}", err=True)
+            return 1
 
 
 @app.command()

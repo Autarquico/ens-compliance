@@ -2,10 +2,13 @@ import json
 
 import pytest
 import yaml
+from pydantic import BaseModel
 
 from ens_evidence import __version__
+from ens_evidence.connectors import Connector, ConnectorRegistry
 from ens_evidence.connectors.cloudflare.connector import TOKEN_ENV
 from ens_evidence.evidence import list_manifests
+from ens_evidence.models import CollectionResult
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.workspace import LocalStore
 
@@ -205,3 +208,45 @@ def test_token_no_ascii_sale_con_1_guarda_el_intento_y_no_lo_muestra(workspace, 
     assert stored.data["sections"] == {}
     for text in (data.decode(), result.output):
         assert "CANARY" not in text
+
+
+@pytest.mark.parametrize(
+    ("status", "exit_code"),
+    [
+        (CollectionStatus.SUCCESS, 0),
+        (CollectionStatus.PERMISSION_DENIED, 3),
+        (CollectionStatus.NOT_SUPPORTED, 3),
+        (CollectionStatus.ERROR, 1),
+    ],
+)
+def test_estado_global_sin_secciones_determina_el_codigo_y_guarda_la_evidencia(
+    status, exit_code, workspace, monkeypatch
+):
+    _, store = workspace
+
+    class Config(BaseModel):
+        asset_id: str
+        account_id: str
+
+    class GlobalStatusConnector(Connector):
+        name = "cloudflare"
+        config_model = Config
+
+        def collect(self, config):
+            return CollectionResult(
+                source="cloudflare",
+                collector=self.name,
+                collected_at=NOW,
+                asset_id=config.asset_id,
+                data={},
+                collection_status=status,
+            )
+
+    registry = ConnectorRegistry()
+    registry.register(GlobalStatusConnector)
+    monkeypatch.setattr("ens_evidence.cli.connector_registry", lambda: registry)
+
+    result = run_collect(workspace)
+
+    assert result.exit_code == exit_code, result.output
+    assert stored_result(store)[0].collection_status is status

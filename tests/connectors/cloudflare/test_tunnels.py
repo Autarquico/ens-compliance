@@ -1,7 +1,11 @@
 import pytest
 
+from ens_evidence.connectors.cloudflare.checks import tunnel_requires_access
+from ens_evidence.models.enums import CheckStatus
+
 from .fake_api import (
     ACCOUNT,
+    NOW,
     TUNNEL_LOCAL,
     TUNNEL_REMOTE,
     ZONE,
@@ -135,3 +139,36 @@ def test_nunca_se_piden_endpoints_que_devuelven_secretos(api, collect):
         assert not path.endswith("/token"), path
         assert "service_tokens" not in path, path
         assert "/credentials" not in path, path
+
+
+@pytest.mark.parametrize(
+    "result",
+    [{}, {"config": None}, {"config": {}}, None],
+    ids=["vacio", "config-null", "config-vacio", "result-null"],
+)
+def test_configuracion_remota_sin_config_o_sin_ingress_es_error_no_ingress_vacio(
+    api, collect, result
+):
+    api.set(f"/accounts/{ACCOUNT}/cfd_tunnel/{TUNNEL_REMOTE}/configurations", envelope(result))
+
+    collected = collect()
+
+    remote = tunnel(collected, TUNNEL_REMOTE)
+    assert remote["ingress_status"] == "ERROR"
+    assert remote["ingress"] == []
+    assert remote["reason"]
+    results = tunnel_requires_access(collected, "ev-1", NOW)
+    unresolved = next(r for r in results if r.subject == TUNNEL_REMOTE)
+    assert unresolved.status is CheckStatus.ERROR
+
+
+def test_ingress_remoto_vacio_pero_presente_es_success_sin_rutas(api, collect):
+    api.set(
+        f"/accounts/{ACCOUNT}/cfd_tunnel/{TUNNEL_REMOTE}/configurations",
+        envelope({"config": {"ingress": []}}),
+    )
+
+    remote = tunnel(collect(), TUNNEL_REMOTE)
+
+    assert remote["ingress_status"] == "SUCCESS"
+    assert remote["ingress"] == []

@@ -14,6 +14,7 @@ SECTIONS = {
     "waf",
     "access_applications",
     "access_policies",
+    "access_groups",
     "tunnels",
     "audit_logs",
 }

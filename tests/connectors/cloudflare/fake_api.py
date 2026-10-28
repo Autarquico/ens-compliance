@@ -62,6 +62,7 @@ def _defaults() -> list[tuple[str, Reply]]:
         (rf"/zones/{ZONE}/rulesets", fixture("rulesets")),
         (rf"/accounts/{ACCOUNT}/access/apps", fixture("access_apps")),
         (rf"/accounts/{ACCOUNT}/access/apps/app-1/policies", fixture("access_policies")),
+        (rf"/accounts/{ACCOUNT}/access/groups", fixture("access_groups")),
         (rf"/accounts/{ACCOUNT}/cfd_tunnel", fixture("tunnels")),
         (
             rf"/accounts/{ACCOUNT}/cfd_tunnel/{TUNNEL_REMOTE}/configurations",

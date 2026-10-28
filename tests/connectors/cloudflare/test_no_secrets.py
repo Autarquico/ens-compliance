@@ -50,6 +50,7 @@ def test_ningun_canario_llega_al_artefacto_guardado(collect):
         "svcpass-CANARY",
         "query-CANARY",
         "ana-CANARY",
+        "grupo-CANARY",
         "domain-CANARY",
         "aud-CANARY",
         "origin-ip-CANARY",
@@ -78,6 +79,25 @@ def test_las_politicas_de_access_guardan_tipos_de_selector_nunca_valores(collect
     assert policy["include"] == ["email", "email_domain"]
     assert policy["require"] == ["ip"]
     assert policy["exclude"] == []
+
+
+def test_los_grupos_de_access_guardan_tipos_de_selector_y_referencias_nunca_valores(collect):
+    group = collect().data["sections"]["access_groups"]["items"][0]
+
+    assert group["include"] == ["email"]
+    assert group["exclude"] == ["ip"]
+    assert group["require"] == ["group"]
+    assert group["require_groups"] == ["grp-2"]
+    assert set(group) == {
+        "id",
+        "name",
+        "include",
+        "exclude",
+        "require",
+        "include_groups",
+        "exclude_groups",
+        "require_groups",
+    }
 
 
 def test_la_url_de_origen_se_reduce_a_esquema_host_y_puerto(collect):

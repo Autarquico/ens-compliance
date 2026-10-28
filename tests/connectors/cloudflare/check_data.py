@@ -12,8 +12,24 @@ EVIDENCE_ID = "ev-1"
 ALLOW_IDENTITY = {"decision": "allow", "include": ["email"], "require": []}
 
 
-def policy(decision="allow", include=("email",), require=()):
-    return {"decision": decision, "include": list(include), "require": list(require)}
+def policy(decision="allow", include=("email",), require=(), include_groups=(), require_groups=()):
+    return {
+        "decision": decision,
+        "include": list(include),
+        "require": list(require),
+        "include_groups": list(include_groups),
+        "require_groups": list(require_groups),
+    }
+
+
+def group(group_id, include=("email",), require=(), include_groups=(), require_groups=()):
+    return {
+        "id": group_id,
+        "include": list(include),
+        "require": list(require),
+        "include_groups": list(include_groups),
+        "require_groups": list(require_groups),
+    }
 
 
 def section(items=(), status="SUCCESS", reason=None, **summary):
@@ -71,6 +87,7 @@ def build(
     public_routes=(),
     applications=None,
     policies_section=None,
+    groups_section=None,
     dns=None,
     zones=None,
     tunnels_section=None,
@@ -82,6 +99,7 @@ def build(
         "access_applications": applications or section(a["app"] for a in apps),
         "access_policies": policies_section
         or section(a["policies"] for a in apps if a["policies"]),
+        "access_groups": groups_section or section(),
         "tunnels": tunnels_section or section(tunnels),
     }
     return CollectionResult(

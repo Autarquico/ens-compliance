@@ -17,7 +17,9 @@ def evaluate(*policies, **app_options):
     "policies",
     [
         pytest.param([policy("allow", ["email"])], id="email"),
-        pytest.param([policy("allow", ["email_domain", "group"])], id="varios-de-identidad"),
+        pytest.param(
+            [policy("allow", ["email_domain", "github-organization"])], id="varios-de-identidad"
+        ),
         pytest.param([policy("allow", ["okta"])], id="idp"),
         pytest.param(
             [policy("allow", ["everyone"], ["email_domain"])], id="everyone-con-require-identidad"
