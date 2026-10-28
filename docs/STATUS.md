@@ -12,6 +12,7 @@
 - #2 Fundación del repo y modelos
 - #3 Catálogo de medidas del Anexo II
 - #4 Storage de evidencias y copia independiente
+- #6 Collector de Cloudflare
 - #16 Inventario y alcance
 <!-- /pm-sync:done-this-week -->
 
