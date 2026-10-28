@@ -1,0 +1,14 @@
+{
+  "total_count": 1,
+  "installations": [
+    {
+      "id": 55,
+      "app_slug": "dependabot",
+      "app_id": 9,
+      "repository_selection": "selected",
+      "permissions": {"contents": "read", "metadata": "read"},
+      "suspended_at": null,
+      "account": {"login": "install-account-CANARY"}
+    }
+  ]
+}

@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 5
-prs: []
+prs: [42]
 related_issues: [5]
 depends_on: [repo-foundation, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-28
 ---
 
 # Collector de GitHub

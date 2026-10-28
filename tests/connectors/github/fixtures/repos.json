@@ -1,0 +1,30 @@
+[
+  {
+    "id": 1,
+    "name": "facturas",
+    "full_name": "taller-norte/facturas",
+    "description": "repo-desc-CANARY",
+    "owner": {"login": "owner-CANARY"},
+    "visibility": "private",
+    "archived": false,
+    "default_branch": "main",
+    "permissions": {"admin": true, "maintain": true, "push": true, "triage": true, "pull": true},
+    "security_and_analysis": {
+      "secret_scanning": {"status": "enabled"},
+      "secret_scanning_push_protection": {"status": "enabled"}
+    }
+  },
+  {
+    "id": 2,
+    "name": "infra",
+    "full_name": "taller-norte/infra",
+    "description": null,
+    "visibility": "private",
+    "archived": false,
+    "default_branch": "main",
+    "permissions": {"admin": true, "maintain": true, "push": true, "triage": true, "pull": true},
+    "security_and_analysis": {
+      "secret_scanning": {"status": "disabled"}
+    }
+  }
+]

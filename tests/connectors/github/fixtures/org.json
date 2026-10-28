@@ -1,0 +1,7 @@
+{
+  "login": "taller-norte",
+  "id": 100,
+  "description": "org-desc-CANARY",
+  "billing_email": "billing-CANARY@example.invalid",
+  "two_factor_requirement_enabled": true
+}

@@ -1,0 +1,4 @@
+[
+  {"login": "collab-CANARY", "id": 21, "permissions": {"admin": false, "maintain": false, "push": true, "triage": true, "pull": true}},
+  {"login": "reader-CANARY", "id": 22, "permissions": {"admin": false, "maintain": false, "push": false, "triage": false, "pull": true}}
+]
