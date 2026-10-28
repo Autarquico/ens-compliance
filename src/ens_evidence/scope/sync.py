@@ -4,10 +4,12 @@ La aprobación nunca viaja: solo la escribe `scope approve` en el workspace.
 Las specs futuras amplían esta lista.
 """
 
+from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.scope.inventory import ASSETS_KEY, DEPENDENCIES_KEY, SERVICES_KEY, SYSTEM_KEY
 
 QUESTIONNAIRE_KEY = "scope/questionnaire.md"
 MEASURES_KEY = "controls/measures.yaml"
+CLOUDFLARE_CONFIG_KEY = connector_config_key("cloudflare")
 
 SYNCED_KEYS = (
     ASSETS_KEY,
@@ -16,4 +18,5 @@ SYNCED_KEYS = (
     SYSTEM_KEY,
     QUESTIONNAIRE_KEY,
     MEASURES_KEY,
+    CLOUDFLARE_CONFIG_KEY,
 )

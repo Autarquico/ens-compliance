@@ -1,10 +1,18 @@
 """Importación de evidencias: artefacto direccionado por contenido y después manifiesto."""
 
+import json
 from datetime import datetime
 
 from ens_evidence.evidence.layout import artifact_key, manifest_key, new_evidence_id, sha256_hex
 from ens_evidence.evidence.manifests import render_manifest
-from ens_evidence.models.contracts import Artifact, EvidenceManifest, Provenance, ProvenanceKind
+from ens_evidence.models.contracts import (
+    Artifact,
+    CollectionResult,
+    CollectorInfo,
+    EvidenceManifest,
+    Provenance,
+    ProvenanceKind,
+)
 from ens_evidence.workspace import AlreadyExists, WorkspaceError, WorkspaceStore
 
 MANUAL_SOURCE = "manual"
@@ -40,6 +48,34 @@ def import_manual(
     )
     _store_artifact(store, manifest.artifact, data)
     return _store_manifest(store, manifest, now)
+
+
+def import_collected(
+    store: WorkspaceStore, result: CollectionResult, *, collector_version: str, now: datetime
+) -> EvidenceManifest:
+    """Guarda una ejecución de collector (también `ERROR`) como JSON canónico y su manifiesto."""
+    data = canonical_json(result)
+    sha256 = sha256_hex(data)
+    manifest = EvidenceManifest(
+        id=new_evidence_id(now),
+        source=result.source,
+        asset_id=result.asset_id,
+        collected_at=result.collected_at,
+        artifact=Artifact(storage="workspace", key=artifact_key(sha256), sha256=sha256),
+        provenance=Provenance(
+            kind=ProvenanceKind.COLLECTOR,
+            submitted_by=f"collector:{result.collector}",
+            submitted_at=now,
+        ),
+        collector=CollectorInfo(name=result.collector, version=collector_version),
+    )
+    _store_artifact(store, manifest.artifact, data)
+    return _store_manifest(store, manifest, now)
+
+
+def canonical_json(result: CollectionResult) -> bytes:
+    document = result.model_dump(mode="json")
+    return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 
 def _store_artifact(store: WorkspaceStore, artifact: Artifact, data: bytes) -> None:

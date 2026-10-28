@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "id": "pol-1",
+      "name": "Equipo",
+      "decision": "allow",
+      "precedence": 1,
+      "include": [
+        {"email": {"email": "ana-CANARY@example.invalid"}},
+        {"email_domain": {"domain": "domain-CANARY.example.invalid"}}
+      ],
+      "exclude": [],
+      "require": [{"ip": {"ip": "198.51.100.0/24"}}]
+    }
+  ],
+  "result_info": {"page": 1, "per_page": 100, "total_pages": 1, "count": 1, "total_count": 1}
+}

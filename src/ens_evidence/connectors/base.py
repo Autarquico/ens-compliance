@@ -6,6 +6,7 @@ from typing import ClassVar
 from pydantic import BaseModel
 
 from ens_evidence.models.contracts import CollectionResult
+from ens_evidence.workspace import WorkspaceStore
 
 
 class Connector(ABC):
@@ -14,3 +15,7 @@ class Connector(ABC):
 
     @abstractmethod
     def collect(self, config: BaseModel) -> CollectionResult: ...
+
+    def prepare(self, config: BaseModel, store: WorkspaceStore) -> BaseModel:
+        """Completa la configuración con datos del workspace antes de recoger."""
+        return config

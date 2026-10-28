@@ -114,7 +114,7 @@ def load_settings(path: Path, *, allow_inside_product: bool = False) -> Settings
         raise SettingsError("no se puede leer el fichero de ajustes") from exc
     if not isinstance(raw, dict):
         raise SettingsError("el fichero de ajustes debe ser un mapa YAML")
-    _reject_credential_keys(raw)
+    reject_credential_keys(raw)
     try:
         settings = Settings.model_validate(raw)
     except ValidationError as exc:
@@ -122,7 +122,11 @@ def load_settings(path: Path, *, allow_inside_product: bool = False) -> Settings
     return _resolve_local(settings, path, allow_inside_product)
 
 
-def _reject_credential_keys(node: Any, trail: str = "") -> None:
+def reject_credential_keys(node: Any, trail: str = "") -> None:
+    if isinstance(node, list):
+        for index, item in enumerate(node):
+            reject_credential_keys(item, f"{trail}[{index}]")
+        return
     if not isinstance(node, dict):
         return
     for key, value in node.items():
@@ -133,7 +137,7 @@ def _reject_credential_keys(node: Any, trail: str = "") -> None:
             raise SettingsError(
                 f"'{where}': las credenciales no van en el YAML; usa variables de entorno"
             )
-        _reject_credential_keys(value, where)
+        reject_credential_keys(value, where)
 
 
 def _describe(error: ValidationError) -> str:
