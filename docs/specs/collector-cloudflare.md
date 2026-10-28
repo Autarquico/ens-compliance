@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 6
-prs: []
+prs: [41]
 related_issues: [6]
 depends_on: [repo-foundation, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-28
 ---
 
 # Collector de Cloudflare
