@@ -1,0 +1,10 @@
+{
+  "id": 11,
+  "name": "main-CANARY",
+  "source_type": "Repository",
+  "target": "branch",
+  "enforcement": "active",
+  "bypass_actors": [],
+  "conditions": {"ref_name": {"include": ["~DEFAULT_BRANCH"], "exclude": []}},
+  "rules": [{"type": "pull_request"}, {"type": "non_fast_forward"}, {"type": "deletion"}]
+}

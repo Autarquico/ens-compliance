@@ -1,0 +1,14 @@
+{
+  "total_count": 1,
+  "environments": [
+    {
+      "id": 31,
+      "name": "production",
+      "protection_rules": [
+        {"id": 1, "type": "required_reviewers", "reviewers": [{"type": "User", "reviewer": {"login": "reviewer-CANARY"}}]},
+        {"id": 2, "type": "wait_timer", "wait_timer": 10}
+      ],
+      "deployment_branch_policy": {"protected_branches": true, "custom_branch_policies": false}
+    }
+  ]
+}

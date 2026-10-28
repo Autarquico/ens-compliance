@@ -17,7 +17,7 @@ from fnmatch import fnmatchcase
 from functools import partial
 from typing import Any
 
-from ens_evidence.connectors.cloudflare.sections import worst
+from ens_evidence.connectors.sections import worst
 from ens_evidence.models.contracts import CheckResult, CollectionResult, translate_collection
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 

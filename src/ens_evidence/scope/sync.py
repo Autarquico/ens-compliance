@@ -10,6 +10,7 @@ from ens_evidence.scope.inventory import ASSETS_KEY, DEPENDENCIES_KEY, SERVICES_
 QUESTIONNAIRE_KEY = "scope/questionnaire.md"
 MEASURES_KEY = "controls/measures.yaml"
 CLOUDFLARE_CONFIG_KEY = connector_config_key("cloudflare")
+GITHUB_CONFIG_KEY = connector_config_key("github")
 
 SYNCED_KEYS = (
     ASSETS_KEY,
@@ -19,4 +20,5 @@ SYNCED_KEYS = (
     QUESTIONNAIRE_KEY,
     MEASURES_KEY,
     CLOUDFLARE_CONFIG_KEY,
+    GITHUB_CONFIG_KEY,
 )

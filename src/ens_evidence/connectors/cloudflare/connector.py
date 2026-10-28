@@ -15,6 +15,7 @@ from ens_evidence.connectors.cloudflare.client import (
     verify_token,
 )
 from ens_evidence.connectors.cloudflare.config import CloudflareConfig, CloudflareRun
+from ens_evidence.connectors.sections import Section
 from ens_evidence.models.contracts import CollectionResult
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.scope import load_assets
@@ -60,7 +61,7 @@ class CloudflareConnector(Connector):
     def collect(self, config: BaseModel) -> CollectionResult:
         assert isinstance(config, CloudflareRun)
         now = self._clock()
-        collected: dict[str, sections.Section] = {}
+        collected: dict[str, Section] = {}
         error: str | None = None
         token = self._env.get(TOKEN_ENV, "").strip()
         if not token:
@@ -93,7 +94,7 @@ class CloudflareConnector(Connector):
         client: CloudflareClient,
         config: CloudflareRun,
         now: datetime,
-        collected: dict[str, sections.Section],
+        collected: dict[str, Section],
     ) -> None:
         """Verifica el token al inicio y al final; una revocación a mitad invalida el conjunto."""
 

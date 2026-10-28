@@ -21,6 +21,7 @@ ens-evidence = "ens_evidence.cli:app"
 
 [project.entry-points."ens_evidence.connectors"]
 cloudflare = "ens_evidence.connectors.cloudflare:CloudflareConnector"
+github = "ens_evidence.connectors.github:GitHubConnector"
 
 [dependency-groups]
 dev = [

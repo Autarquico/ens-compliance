@@ -1,0 +1,5 @@
+[
+  {"id": 11, "name": "main-CANARY", "source_type": "Repository", "source": "taller-norte/facturas", "target": "branch", "enforcement": "active"},
+  {"id": 12, "name": "org-CANARY", "source_type": "Organization", "source": "taller-norte", "target": "branch", "enforcement": "evaluate"},
+  {"id": 13, "name": "off-CANARY", "source_type": "Repository", "source": "taller-norte/facturas", "target": "branch", "enforcement": "disabled"}
+]
