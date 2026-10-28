@@ -6,7 +6,7 @@ from ens_evidence.connectors.github.checks import dependabot_alerts_enabled
 from ens_evidence.models.enums import CheckStatus
 
 from .check_data import EVIDENCE_ID, by_subject, run
-from .fake_api import FACTURAS, ORG, denied, message, not_found
+from .fake_api import FACTURAS, ORG, denied, message, not_found, repo_body
 
 DISABLED = (403, message("Dependabot alerts are disabled for this repository."))
 
@@ -100,3 +100,9 @@ def test_repositorios_no_recogidos_dan_un_unico_resultado_sin_pass(api, collect)
     results = run(dependabot_alerts_enabled, collect())
 
     assert [r.status for r in results] == [CheckStatus.UNKNOWN]
+
+
+def test_repositorios_archivados_quedan_fuera(api, collect):
+    api.set(rf"/orgs/{ORG}/repos", [repo_body("facturas"), repo_body("infra", archived=True)])
+
+    assert set(checks(collect)) == {"facturas"}

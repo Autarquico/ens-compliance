@@ -118,3 +118,9 @@ def test_repositorios_no_recogidos_dan_un_unico_resultado_sin_pass(api, collect)
 
     assert [r.status for r in results] == [CheckStatus.UNKNOWN]
     assert results[0].reason_code == "permission_denied"
+
+
+def test_repositorios_archivados_quedan_fuera(api, collect):
+    api.set(REPOS, [repo_body("facturas"), repo_body("infra", archived=True)])
+
+    assert set(checks(collect)) == {"facturas"}

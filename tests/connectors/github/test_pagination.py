@@ -6,10 +6,11 @@ from ens_evidence.connectors.github.client import MAX_PAGES
 from .fake_api import API, FACTURAS, ORG, denied, fixture, page, repo_body
 
 REPOS = f"/orgs/{ORG}/repos"
+FILTERS = {REPOS: "&type=all"}
 
 
 def next_link(path: str, number: int, host: str = API) -> str:
-    return f"{host}{path}?per_page=100&page={number}"
+    return f"{host}{path}?per_page=100&page={number}{FILTERS.get(path, '')}"
 
 
 def paged_repos(pages: dict[str, list], *, link_for=lambda number: next_link(REPOS, number)):
@@ -245,7 +246,7 @@ def test_enlace_canonico_por_id_de_organizacion_se_sigue(api, section):
         rf"{REPOS}|{CANONICAL_REPOS}",
         paged_repos(
             {"1": [repo_body("facturas")], "2": [repo_body("infra")]},
-            link_for=lambda number: next_link("/organizations/456/repos", number),
+            link_for=lambda number: next_link("/organizations/456/repos", number) + "&type=all",
         ),
     )
 
@@ -350,3 +351,50 @@ def test_filtro_cambiado_en_la_pagina_siguiente_es_error(api, section):
 
     assert repositories["status"] == "ERROR"
     assert repositories["reason"] == "enlace de paginación no válido"
+
+
+LINK_WITHOUT_FILTER = f"{API}%s?per_page=100&page=2"
+FIRST_PAGE = [{"login": "ana"}]
+
+
+def test_enlace_que_omite_el_filtro_de_miembros_sin_2fa_es_error(api, section):
+    path = f"/orgs/{ORG}/members"
+    api.set(path, page(FIRST_PAGE, next_url=LINK_WITHOUT_FILTER % path))
+
+    summary = section("organization")["summary"]["members_without_two_factor"]
+
+    assert summary["status"] == "ERROR"
+    assert summary["reason"] == "enlace de paginación no válido"
+    assert len(api.params(path)) == 1
+
+
+def test_enlace_que_omite_el_filtro_de_tipo_de_repositorios_es_error(api, section):
+    api.set(REPOS, page([repo_body("facturas")], next_url=LINK_WITHOUT_FILTER % REPOS))
+
+    repositories = section("repositories")
+
+    assert repositories["status"] == "ERROR"
+    assert repositories["reason"] == "enlace de paginación no válido"
+    assert len(api.params(REPOS)) == 1
+
+
+def test_enlace_que_omite_affiliation_de_colaboradores_es_error(api, section):
+    path = f"{FACTURAS}/collaborators"
+    api.set(path, page(FIRST_PAGE, next_url=LINK_WITHOUT_FILTER % path))
+
+    entry = next(e for e in section("collaborators")["items"] if e["repository"] == "facturas")
+
+    assert entry["status"] == "ERROR"
+    assert entry["reason"] == "enlace de paginación no válido"
+    assert len(api.params(path)) == 1
+
+
+def test_enlace_que_omite_includes_parents_de_rulesets_es_error(api, section):
+    path = f"{FACTURAS}/rulesets"
+    api.set(path, page([{"id": 1}], next_url=LINK_WITHOUT_FILTER % path))
+
+    entry = next(e for e in section("branch_rules")["items"] if e["repository"] == "facturas")
+
+    assert entry["rulesets"]["status"] == "ERROR"
+    assert entry["rulesets"]["reason"] == "enlace de paginación no válido"
+    assert len(api.params(path)) == 1

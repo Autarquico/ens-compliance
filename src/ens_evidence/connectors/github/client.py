@@ -107,7 +107,10 @@ def _next_page_key(
     pairs = parse_qsl(parts.query, keep_blank_values=True)
     if not {name for name, _ in pairs} <= allowed_keys:
         return None
-    if any(name in fixed and value not in fixed[name] for name, value in pairs):
+    if any(
+        {value for name, value in pairs if name == fixed_name} != values
+        for fixed_name, values in fixed.items()
+    ):
         return None
     return _page_key(parts.path, pairs), match[0]
 

@@ -230,6 +230,7 @@ def secret_scanning_enabled(
         result,
         evidence_id,
         evaluated_at,
+        skip_archived=True,
     )
 
 
@@ -237,7 +238,13 @@ def dependabot_alerts_enabled(
     result: CollectionResult, evidence_id: str, evaluated_at: datetime
 ) -> list[CheckResult]:
     return _per_repository(
-        DEPENDABOT, "dependabot", _decide_dependabot, result, evidence_id, evaluated_at
+        DEPENDABOT,
+        "dependabot",
+        _decide_dependabot,
+        result,
+        evidence_id,
+        evaluated_at,
+        skip_archived=True,
     )
 
 
