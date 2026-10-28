@@ -12,7 +12,12 @@ fuente (`docs/vision.md`, escenario "conectores enchufables").
 ## Decisión
 
 - Interfaz `Connector`: `name`, `config_model` (Pydantic) y
-  `collect(config) -> CollectionResult`, de solo lectura.
+  `collect(config) -> CollectionResult`, de solo lectura. Hook opcional
+  `prepare(config, store) -> config` para completar la configuración con
+  datos del workspace (p. ej. las zonas del inventario) antes de recoger.
+- La configuración de cada conector vive en el workspace, en
+  `connectors/<name>.yaml`; sus credenciales, solo en variables de entorno.
+  `collect <name>` resuelve el conector por el registro.
 - Descubrimiento por entry points del grupo `ens_evidence.connectors`, más
   registro explícito (para tests y conectores internos).
 - El conector devuelve `CollectionStatus` y datos; nunca un `CheckStatus`

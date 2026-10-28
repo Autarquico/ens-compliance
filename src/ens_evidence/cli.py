@@ -10,7 +10,7 @@ import typer
 import yaml
 from pydantic import ValidationError
 
-from ens_evidence import schemas
+from ens_evidence import __version__, schemas
 from ens_evidence.backup import (
     IMMUTABILITY_PREFIX,
     BackupError,
@@ -31,6 +31,8 @@ from ens_evidence.backup.transfer import export_all, import_all
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import MeasuresFileError, init_measures
 from ens_evidence.catalog.model import Catalog, Group, MeasureCard
+from ens_evidence.connectors.config import load_connector_config
+from ens_evidence.connectors.registry import ConnectorLoadError, ConnectorRegistry
 from ens_evidence.evidence import (
     MANUAL_SOURCE,
     import_manual,
@@ -38,7 +40,8 @@ from ens_evidence.evidence import (
     verify_all,
     verify_one,
 )
-from ens_evidence.models.enums import Role
+from ens_evidence.evidence.importer import import_collected
+from ens_evidence.models.enums import CollectionStatus, Role
 from ens_evidence.scope import (
     ObservedInputError,
     ScopeApprovalRejected,
@@ -715,13 +718,62 @@ def controls_init(ctx: typer.Context) -> None:
         )
 
 
+def connector_registry() -> ConnectorRegistry:
+    registry = ConnectorRegistry()
+    registry.load_entry_points()
+    return registry
+
+
 @app.command()
+@handled
 def collect(
+    ctx: typer.Context,
     source: Annotated[str | None, typer.Argument(help="Conector a ejecutar.")] = None,
     all_sources: Annotated[bool, typer.Option("--all", help="Todos los conectores.")] = False,
 ) -> None:
-    """Recoge evidencias."""
-    not_implemented()
+    """Recoge evidencias. Salida: 0 todo recogido, 3 parcial (secciones o estado global
+    sin permiso/no soportado), 1 error."""
+    if all_sources or source is None:
+        not_implemented()
+    try:
+        registry = connector_registry()
+    except ConnectorLoadError:
+        raise fail(
+            "No se pueden cargar los conectores instalados: hay un plugin defectuoso. "
+            "Revisa los paquetes que declaran el grupo ens_evidence.connectors."
+        ) from None
+    try:
+        connector_class = registry.get(source)
+    except KeyError:
+        raise fail(
+            f"Conector desconocido: {source}. Disponibles: {', '.join(registry.names())}."
+        ) from None
+    store = open_workspace(ctx)
+    config = load_connector_config(store, source, connector_class.config_model)
+    connector = connector_class()
+    result = connector.collect(connector.prepare(config, store))
+    manifest = import_collected(store, result, collector_version=__version__, now=datetime.now(UTC))
+    typer.echo(f"Evidencia registrada: {manifest.id}")
+    sections = result.data.get("sections", {})
+    for name, section in sections.items():
+        typer.echo(f"  {name}: {section['status']}")
+    raise typer.Exit(collect_exit_code(result.collection_status, result.data, sections))
+
+
+def collect_exit_code(status: CollectionStatus, data: dict, sections: dict) -> int:
+    match status:
+        case CollectionStatus.SUCCESS:
+            partial = any(s["status"] != CollectionStatus.SUCCESS for s in sections.values())
+            return 3 if partial else 0
+        case CollectionStatus.PERMISSION_DENIED:
+            typer.echo("Recogida incompleta: permiso denegado.", err=True)
+            return 3
+        case CollectionStatus.NOT_SUPPORTED:
+            typer.echo("Recogida incompleta: no soportada por el conector.", err=True)
+            return 3
+        case CollectionStatus.ERROR:
+            typer.echo(f"Error: {data.get('error')}", err=True)
+            return 1
 
 
 @app.command()

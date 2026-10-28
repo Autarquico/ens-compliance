@@ -57,6 +57,7 @@ class CheckResult(Strict):
     evaluated_at: AwareDatetime
     evidence_ids: list[str] = Field(default_factory=list)
     reason: str
+    subject: str | None = None
     collection_status: CollectionStatus = CollectionStatus.SUCCESS
     reason_code: str | None = None
 

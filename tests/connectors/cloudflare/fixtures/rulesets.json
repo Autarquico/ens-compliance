@@ -1,0 +1,15 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "id": "rs-1",
+      "name": "Managed WAF",
+      "kind": "managed",
+      "phase": "http_request_firewall_managed",
+      "rules": [{"id": "r-1", "expression": "http.host eq \"expr-CANARY\"", "action": "execute"}]
+    }
+  ],
+  "result_info": {"cursors": {}}
+}

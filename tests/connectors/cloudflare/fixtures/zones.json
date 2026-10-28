@@ -1,0 +1,18 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "id": "zone-1",
+      "name": "taller-norte.example",
+      "status": "active",
+      "paused": false,
+      "type": "full",
+      "name_servers": ["ada.ns.example", "bob.ns.example"],
+      "owner": {"id": "owner-1", "email": "zone-owner-CANARY@example.invalid"},
+      "account": {"id": "acc1", "name": "Taller Norte"}
+    }
+  ],
+  "result_info": {"page": 1, "per_page": 100, "total_pages": 1, "count": 1, "total_count": 1}
+}

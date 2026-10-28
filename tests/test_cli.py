@@ -13,7 +13,6 @@ runner = CliRunner()
     "args",
     [
         ["collect", "--all"],
-        ["collect", "fake"],
         ["check", "--all"],
         ["report", "daily"],
         ["report", "monthly"],
@@ -24,6 +23,12 @@ def test_comandos_stub_fallan_explicitamente_con_codigo_2(args):
     result = runner.invoke(app, args)
     assert result.exit_code == 2
     assert "not implemented" in result.output
+
+
+def test_collect_de_conector_desconocido_falla_con_codigo_2_y_lista_los_disponibles():
+    result = runner.invoke(app, ["collect", "fake"])
+    assert result.exit_code == 2
+    assert "Conector desconocido: fake" in result.output
 
 
 def test_help_funciona():

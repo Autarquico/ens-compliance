@@ -19,6 +19,9 @@ s3 = ["boto3>=1.34"]
 [project.scripts]
 ens-evidence = "ens_evidence.cli:app"
 
+[project.entry-points."ens_evidence.connectors"]
+cloudflare = "ens_evidence.connectors.cloudflare:CloudflareConnector"
+
 [dependency-groups]
 dev = [
     "boto3>=1.34",

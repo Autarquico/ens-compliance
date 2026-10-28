@@ -1,0 +1,20 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "id": "app-1",
+      "name": "Paneles",
+      "type": "self_hosted",
+      "domain": "panel.taller-norte.example",
+      "self_hosted_domains": ["panel.taller-norte.example"],
+      "destinations": [
+        {"type": "public", "uri": "panel.taller-norte.example"},
+        {"type": "private", "cidr": "10.0.0.0/8"}
+      ],
+      "aud": "aud-CANARY"
+    }
+  ],
+  "result_info": {"page": 1, "per_page": 100, "total_pages": 1, "count": 1, "total_count": 1}
+}

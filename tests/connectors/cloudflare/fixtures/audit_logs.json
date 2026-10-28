@@ -1,0 +1,23 @@
+{
+  "success": true,
+  "errors": [],
+  "messages": [],
+  "result": [
+    {
+      "id": "ev-1",
+      "action": {"type": "update", "time": "2026-05-30T10:00:00Z"},
+      "actor": {"email": "actor-CANARY@example.invalid", "ip": "192.0.2.10"}
+    },
+    {
+      "id": "ev-2",
+      "action": {"type": "create", "time": "2026-05-12T08:30:00Z"},
+      "actor": {"email": "actor-CANARY@example.invalid", "ip": "192.0.2.10"}
+    },
+    {
+      "id": "ev-3",
+      "action": {"type": "delete", "time": "2026-05-20T23:59:59Z"},
+      "actor": {"email": "actor-CANARY@example.invalid", "ip": "192.0.2.10"}
+    }
+  ],
+  "result_info": {"cursor": ""}
+}
