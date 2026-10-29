@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 13
-prs: []
+prs: [43]
 related_issues: [13]
 depends_on: [repo-foundation, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-29
 ---
 
 # Collector de Restic y pruebas de restauración
