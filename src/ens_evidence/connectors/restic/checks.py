@@ -30,6 +30,12 @@ OFFSITE = "restic.backup_006_offsite"
 FOREIGN_RECORD = "registro de otro repositorio o sin id de repositorio"
 
 
+def _unbound_reason(item: dict[str, Any], what: str) -> str:
+    if item.get("repository_id") is None:
+        return f"{what} es un registro sin id de repositorio: no se puede atar"
+    return f"{what} es un {FOREIGN_RECORD}"
+
+
 @dataclass(frozen=True)
 class Outcome:
     status: CheckStatus
@@ -222,7 +228,7 @@ def _no_errors(result: CollectionResult, evaluated_at: datetime) -> Outcome:
     if isinstance(latest, Outcome):
         return latest
     if latest.get("bound") is not True:
-        return _unknown(f"la última ejecución es un {FOREIGN_RECORD}")
+        return _unknown(_unbound_reason(latest, "la última ejecución"))
     if timeline := _timeline_problem(latest, evaluated_at):
         return _unknown(f"última ejecución: {timeline}")
     status = latest.get("status")
@@ -287,7 +293,7 @@ def _integrity(result: CollectionResult, evaluated_at: datetime) -> Outcome:
     if isinstance(latest, Outcome):
         return latest
     if latest.get("bound") is not True:
-        return _unknown(f"el último check es un {FOREIGN_RECORD}")
+        return _unknown(_unbound_reason(latest, "el último check"))
     if timeline := _timeline_problem(latest, evaluated_at):
         return _unknown(f"último check: {timeline}")
     if latest.get("status") == "started":
@@ -344,7 +350,7 @@ def _restore_test(result: CollectionResult, evaluated_at: datetime) -> Outcome:
     if isinstance(latest, Outcome):
         return latest
     if latest.get("bound") is not True:
-        return _unknown(f"el último restore test es un {FOREIGN_RECORD}")
+        return _unknown(_unbound_reason(latest, "el último restore test"))
     review = _dict(latest.get("review"))
     performed = _instant(latest.get("performed_at"))
     reviewed = _instant(review.get("reviewed_at"))
@@ -358,8 +364,9 @@ def _restore_test(result: CollectionResult, evaluated_at: datetime) -> Outcome:
         return _fail(f"{failure}, según el restore test; {declared}")
     if not evaluated_at < valid_until:
         return _fail("la revisión del último restore test ha caducado")
-    age = (evaluated_at - performed).days
-    if age > validity:
+    elapsed = evaluated_at - performed
+    age = elapsed.days
+    if elapsed > timedelta(days=validity):
         return _fail(f"último restore test de hace {age} d (vigencia {validity} d)")
     if latest.get("restore_linked") is not True:
         problem = latest.get("restore_link_problem")

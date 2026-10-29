@@ -119,7 +119,7 @@ def collect_snapshots(
     completed = [
         run
         for run in records.runs
-        if run.status == "completed" and run.snapshot_id and _run_bound(run, current, repository)
+        if run.status == "completed" and run.snapshot_id and _run_bound(run, current)
     ]
     items = []
     for snapshot in sorted(snapshots, key=lambda s: s.time):
@@ -147,10 +147,12 @@ def _cites(cited: str, full_id: str) -> bool:
     return cited == full_id or (len(cited) >= MIN_SHORT_ID and full_id.startswith(cited))
 
 
-def _run_bound(run: BackupRun, current: str | None, repository: str) -> bool:
-    """Por id si ambos lo tienen; si no (run sin id, repositorio ausente), por la cadena."""
-    if run.repository_id is not None and current is not None:
-        return run.repository_id == current
+def _run_bound(run: BackupRun, current: str | None) -> bool:
+    """Atado solo por id: sin `repository_id` (o sin repositorio actual) no hay prueba."""
+    return run.repository_id is not None and run.repository_id == current
+
+
+def _same_repository_string(run: BackupRun, repository: str) -> bool:
     return run.repository == repository
 
 
@@ -187,11 +189,17 @@ def collect_runs(records: WorkspaceRecords, current: str | None, repository: str
             "has_error": run.error is not None,
             "reconstructed_from_snapshot": run.reconstructed_from_snapshot,
             "repository_id": run.repository_id,
-            "bound": _run_bound(run, current, repository),
+            "bound": _run_bound(run, current),
         }
         for run in records.runs
     ]
-    return _listed(items, records.unreadable.get("runs", []))
+    section = _listed(items, records.unreadable.get("runs", []))
+    section.summary["unbound_with_matching_repository_string"] = sorted(
+        run.run_id
+        for run in records.runs
+        if not _run_bound(run, current) and _same_repository_string(run, repository)
+    )
+    return section
 
 
 def collect_integrity_checks(records: WorkspaceRecords, current: str | None) -> Section:

@@ -30,13 +30,15 @@ def check_scope(read_data_subset: str | None, read_data: bool) -> str:
 def run_check(
     store: WorkspaceStore,
     restic: Restic,
-    repository_id: str,
+    repository_id: str | None,
     clock: Clock,
     *,
     read_data_subset: str | None = None,
     read_data: bool = False,
 ) -> IntegrityCheck:
-    """Registra started, ejecuta `restic check` y registra completed o failed."""
+    """Registra started, ejecuta `restic check` y registra completed o failed.
+
+    Sin `repository_id` (no se pudo leer) no se ejecuta: el intento queda `failed` sin id."""
     scope = check_scope(read_data_subset, read_data)
     check_id = f"CK-{clock():%Y%m%dT%H%M%SZ}-{randomness.token_hex(3)}"
     started = IntegrityCheck(
@@ -65,6 +67,8 @@ def _finish(
     read_data_subset: str | None,
     read_data: bool,
 ) -> IntegrityCheck:
+    if started.repository_id is None:
+        return _failed(started, clock, failure="restic_unavailable")
     try:
         outcome = restic.check(read_data_subset, read_data)
     except BackupError:

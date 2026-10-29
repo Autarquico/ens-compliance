@@ -75,9 +75,17 @@
       "title": "Num Errors"
     },
     "repository_id": {
-      "pattern": "^[0-9a-f]{64}$",
-      "title": "Repository Id",
-      "type": "string"
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Repository Id"
     },
     "scope": {
       "pattern": "^(metadata|all|subset:(100|[1-9][0-9]?)%)$",
@@ -103,7 +111,6 @@
     "check_id",
     "status",
     "started_at",
-    "repository_id",
     "scope"
   ],
   "title": "IntegrityCheck",

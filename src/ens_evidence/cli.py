@@ -658,7 +658,7 @@ def backup_check(
     check = run_check(
         open_workspace(ctx),
         restic,
-        restic.repository_id(),
+        optional_repository_id(restic),
         lambda: datetime.now(UTC),
         read_data_subset=read_data_subset,
         read_data=read_data,

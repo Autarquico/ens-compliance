@@ -72,12 +72,12 @@ def test_una_revision_no_aprobada_falla():
     ("age", "expected"),
     [
         (HOUR * 24 * 90, PASS),
-        (DAY * 90 + HOUR, PASS),
+        (DAY * 90 + HOUR, FAIL),
         (DAY * 91, FAIL),
         (DAY * 120, FAIL),
         (DAY, PASS),
     ],
-    ids=["en-el-umbral", "dentro-del-dia-90", "pasado-91d", "caducado-120d", "reciente"],
+    ids=["en-el-umbral", "pasado-90d-y-1h", "pasado-91d", "caducado-120d", "reciente"],
 )
 def test_el_restore_test_debe_ser_mas_reciente_que_los_dias_de_vigencia(age, expected):
     assert status(restore_test_item(age=age)) is expected

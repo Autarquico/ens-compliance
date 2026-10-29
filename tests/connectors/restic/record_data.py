@@ -59,7 +59,7 @@ def integrity_check(
     *,
     age: timedelta = timedelta(days=3),
     scope: str = "subset:10%",
-    repository_id: str = REPOSITORY_ID,
+    repository_id: str | None = REPOSITORY_ID,
 ) -> IntegrityCheck:
     started = NOW - age
     common: dict[str, Any] = {
@@ -75,6 +75,8 @@ def integrity_check(
             extra = {**finished, "exit_code": 0, "num_errors": 0, "broken_packs": 0}
         case "failed":
             extra = {**finished, "failure": "repository_errors", "exit_code": 1, "num_errors": 2}
+            if repository_id is None:
+                extra = {**finished, "failure": "restic_unavailable"}
         case _:
             extra = {}
     return IntegrityCheck(**common, **extra)

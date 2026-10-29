@@ -16,10 +16,10 @@ def old_run(run_id="r1", status="completed", *, repository=REPOSITORY, **kwargs)
     return record.model_copy(update={"repository": repository})
 
 
-def test_una_ejecucion_fallida_sin_id_del_mismo_repositorio_da_fail_en_002(collect):
+def test_una_ejecucion_fallida_sin_id_del_mismo_repositorio_da_unknown_en_002(collect):
     collected = collect(runs=[backup_run("r0", age=timedelta(hours=30)), old_run("r1", "failed")])
 
-    assert run(backup_002_no_errors, collected).status is CheckStatus.FAIL
+    assert run(backup_002_no_errors, collected).status is CheckStatus.UNKNOWN
 
 
 def test_una_ejecucion_fallida_sin_id_de_otro_repositorio_da_unknown_en_002(collect):
@@ -28,12 +28,12 @@ def test_una_ejecucion_fallida_sin_id_de_otro_repositorio_da_unknown_en_002(coll
     assert run(backup_002_no_errors, collected).status is CheckStatus.UNKNOWN
 
 
-def test_las_ejecuciones_sin_id_del_mismo_repositorio_salen_atadas(section):
+def test_las_ejecuciones_sin_id_no_salen_atadas_ni_siquiera_con_la_misma_cadena(section):
     items = section("runs", runs=[old_run("r1"), old_run("r2", repository="s3:otro/bucket")])[
         "items"
     ]
 
-    assert {i["run_id"]: i["bound"] for i in items} == {"r1": True, "r2": False}
+    assert {i["run_id"]: i["bound"] for i in items} == {"r1": False, "r2": False}
 
 
 def test_un_snapshot_citado_por_una_ejecucion_de_otro_repositorio_es_ajeno(collect, restic):

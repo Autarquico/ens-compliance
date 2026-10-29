@@ -65,7 +65,7 @@ class IntegrityCheck(Strict):
     status: RecordStatus
     started_at: AwareDatetime
     finished_at: AwareDatetime | None = None
-    repository_id: RepositoryId
+    repository_id: RepositoryId | None = None
     scope: CheckScope
     exit_code: int | None = None
     num_errors: int | None = Field(default=None, ge=0)

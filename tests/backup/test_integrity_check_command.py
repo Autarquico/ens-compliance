@@ -145,19 +145,6 @@ def test_check_registra_inicio_y_fin_en_utc_sin_futuro(settings, workspace, scri
     assert before <= check.started_at <= check.finished_at <= datetime.now(UTC)
 
 
-def test_check_con_repositorio_ilegible_aborta_sin_registro_ni_citar_restic(
-    settings, workspace, scripted_restic
-):
-    scripted_restic.reply("cat", err=PASSWORD, code=12)
-
-    result = ens(settings, "backup", "check")
-
-    assert result.exit_code != 0
-    assert list_checks(workspace) == ([], [])
-    assert PASSWORD not in result.output
-    assert not any("check" in call for call in scripted_restic.calls())
-
-
 class InterruptedRestic:
     def check(self, read_data_subset=None, read_data=False):
         raise KeyboardInterrupt
