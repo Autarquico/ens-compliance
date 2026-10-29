@@ -114,12 +114,14 @@ while read -r id platforms; do
 
     result="$stage/results/$id.json"
     sql=$(cat "$here/queries/$id.sql")
+    # ulimit -f cuenta en bloques de 512 bytes en dash y de 1024 en bash: el límite
+    # queda holgado en ambos y el tamaño máximo lo decide la comprobación de abajo.
     # shellcheck disable=SC2086  # $limiter son dos palabras fijas o vacío
-    (ulimit -f $((MAX_OUTPUT_KB * 2)) 2>/dev/null; exec $limiter osqueryi --json "$sql") \
+    (ulimit -f $((MAX_OUTPUT_KB * 4)) 2>/dev/null; exec $limiter osqueryi --json "$sql") \
         </dev/null >"$result" 2>"$stage/stderr"
     code=$?
     size=$(wc -c <"$result" | tr -d ' ')
-    if [ "$code" -eq 0 ] && [ "$size" -gt $((MAX_OUTPUT_KB * 1024)) ]; then
+    if [ "$code" -eq 0 ] && [ "$size" -ge $((MAX_OUTPUT_KB * 1024)) ]; then
         code=153
     fi
     [ "$code" -eq 0 ] || : >"$result"
