@@ -43,6 +43,7 @@ from ens_evidence.catalog.model import Catalog, Group, MeasureCard
 from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.connectors.registry import ConnectorLoadError, ConnectorRegistry
 from ens_evidence.endpoint.bundle import BundleTargetError, write_bundle
+from ens_evidence.endpoint.evaluate import evaluate_workspace
 from ens_evidence.endpoint.importer import ENDPOINT_SOURCE, import_endpoint
 from ens_evidence.endpoint.pack import pack_sha256
 from ens_evidence.endpoint.package import MAX_PACKAGE_BYTES
@@ -432,6 +433,29 @@ def endpoint_script(
         raise fail(f"Error al escribir ficheros: {type(exc).__name__}") from None
     typer.echo(f"{len(written)} ficheros en {out}")
     typer.echo(f"Hash del paquete de consultas: {pack_sha256()}")
+
+
+ENDPOINT_CHECK_EXIT = 4
+
+
+@endpoint_app.command("check")
+@handled
+def endpoint_check(
+    ctx: typer.Context,
+    at: Annotated[
+        str | None, typer.Option("--at", help="Momento de la evaluación (por defecto, ahora).")
+    ] = None,
+) -> None:
+    """Evalúa HOST-001…007 por activo. Salida: 0 sin FAIL ni evidencia caducada, 4 si hay
+    algún FAIL o evidencia caducada, 2 error de configuración o de lectura."""
+    evaluated_at = parse_instant("--at", at) or datetime.now(UTC)
+    evaluation = evaluate_workspace(open_workspace(ctx), evaluated_at)
+    for result in evaluation.results:
+        typer.echo(f"{result.asset_id}  {result.check_id}  {result.status}  {result.reason}")
+    for asset_id in evaluation.expired_assets:
+        typer.echo(f"{asset_id}: evidencia caducada; bloquearía la preparación hasta renovarla.")
+    if evaluation.has_failures or evaluation.expired_assets:
+        raise typer.Exit(ENDPOINT_CHECK_EXIT)
 
 
 @inventory_app.command("validate")

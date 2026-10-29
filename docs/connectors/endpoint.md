@@ -85,6 +85,20 @@ el nombre de quien la aporta.
    de las de la caja, fecha sin zona o futura, o un equipo que no coincide
    con el inscrito.
 
+5. **Evalúa**:
+
+   ```bash
+   ens-evidence endpoint check [--at 2026-01-31T10:00:00+00:00]
+   ```
+
+   Lee la configuración, el inventario y la evidencia del workspace, evalúa
+   HOST-001…007 con la fecha actual (`--at` fija otra, con zona horaria) e
+   imprime una línea por activo y check con su estado y motivo. Si la
+   evidencia de un activo está caducada, lo indica al final: bloquearía la
+   preparación. Salida: `0` sin FAIL ni evidencia caducada; `4` si hay algún
+   FAIL o evidencia caducada; `2` si la configuración, el inventario o los
+   argumentos no son válidos.
+
 El `.tar.gz` original se conserva en el workspace sin cambios junto al resultado
 normalizado (para que `evidence verify` lo reconozca y se pueda auditar). Como no
 se modifica, el script deja las cabeceras del tar sin usuario ni grupo (uid/gid 0)
@@ -112,7 +126,9 @@ bloquea la preparación (`EXPIRED_EVIDENCE`) hasta que se vuelva a ejecutar.
 | HOST-007 inventario de software | hay inventario de software (con su recuento) | — |
 
 Todo lo que no se puede demostrar da `UNKNOWN`: consulta sin filas, tabla no
-disponible en ese sistema, sin privilegios, cifrado `undefined`, mapeo del
+disponible en ese sistema (el script marca `unsupported_hint` en `meta.json`
+cuando `osqueryi` responde que la tabla o columna no existe; esa consulta
+queda `NOT_SUPPORTED` y el check `UNKNOWN` con motivo `not_supported`), sin privilegios, cifrado `undefined`, mapeo del
 volumen raíz ambiguo, Linux en firewall y actualizaciones (sin consulta
 concluyente en v1). En HOST-007, la tabla `apps` de macOS cubre las
 aplicaciones conocidas, no todo el software instalado.

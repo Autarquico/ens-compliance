@@ -43,6 +43,7 @@ class QueryRun(BaseModel):
     id: str
     exit_code: int
     permission_hint: bool
+    unsupported_hint: bool = False
 
 
 class Meta(BaseModel):

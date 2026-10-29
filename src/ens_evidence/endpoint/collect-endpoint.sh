@@ -130,9 +130,13 @@ while read -r id platforms; do
         permission_hint=1
         printf 'aviso: la consulta %s parece requerir privilegios; el script no los eleva\n' "$id" >&2
     fi
+    unsupported=false
+    if [ "$code" -ne 0 ] && grep -qiE 'no such (table|column)' "$stage/stderr"; then
+        unsupported=true
+    fi
     [ "$code" -eq 0 ] || printf 'aviso: la consulta %s terminó con código %s\n' "$id" "$code" >&2
 
-    entry="{\"id\": \"$id\", \"exit_code\": $code, \"permission_hint\": $hint}"
+    entry="{\"id\": \"$id\", \"exit_code\": $code, \"permission_hint\": $hint, \"unsupported_hint\": $unsupported}"
     queries_json="${queries_json:+$queries_json, }$entry"
     members="$members results/$id.json"
 done <"$here/queries.list"

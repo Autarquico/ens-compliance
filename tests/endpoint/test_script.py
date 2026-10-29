@@ -120,6 +120,19 @@ def test_un_error_de_permisos_se_marca_pero_el_script_no_eleva(tmp_path):
     assert "no los eleva" in run.process.stderr
 
 
+def test_una_tabla_inexistente_se_marca_unsupported_hint_sin_copiar_el_stderr(tmp_path):
+    run = collect(
+        tmp_path, answers={"alf": Answer(out=b"", code=1, err="Error: no such table: alf")}
+    )
+
+    entry = next(q for q in run.meta["queries"] if q["id"] == "alf")
+    assert entry["unsupported_hint"] is True
+    assert entry["permission_hint"] is False
+    assert "no such table" not in run.data.decode("latin-1")
+    others = [q for q in run.meta["queries"] if q["id"] != "alf"]
+    assert not any(q["unsupported_hint"] for q in others)
+
+
 def test_una_consulta_que_agota_el_tiempo_se_registra_con_codigo_124(tmp_path):
     run = collect(tmp_path, timeout_expires=True)
 

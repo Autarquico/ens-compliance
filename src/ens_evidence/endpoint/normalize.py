@@ -125,16 +125,21 @@ def _run(package: Package, query_id: str) -> dict[str, Any] | None:
     return None
 
 
+def _failed_status(run: dict[str, Any]) -> CollectionStatus:
+    """Tabla o columna inexistente en ese osquery es `NOT_SUPPORTED`; sin permiso, el suyo."""
+    if run["exit_code"] != 0 and run["unsupported_hint"]:
+        return CollectionStatus.NOT_SUPPORTED
+    if run["exit_code"] != 0 and run["permission_hint"]:
+        return CollectionStatus.PERMISSION_DENIED
+    return CollectionStatus.ERROR
+
+
 def _query_data(package: Package, query_id: str) -> dict[str, Any]:
     run = _run(package, query_id)
     assert run is not None
     rows = parse_rows(package.raw_results[query_id]) if run["exit_code"] == 0 else None
     if rows is None:
-        status = (
-            CollectionStatus.PERMISSION_DENIED
-            if run["permission_hint"] and run["exit_code"] != 0
-            else CollectionStatus.ERROR
-        )
+        status = _failed_status(run)
         rows = []
     elif not rows and run["permission_hint"]:
         status = CollectionStatus.PERMISSION_DENIED
@@ -145,6 +150,7 @@ def _query_data(package: Package, query_id: str) -> dict[str, Any]:
         "status": status,
         "exit_code": run["exit_code"],
         "permission_hint": run["permission_hint"],
+        "unsupported_hint": run["unsupported_hint"],
         "row_count": len(rows),
         "rows": [
             {column: row[column][:MAX_STORED_CHARS] for column in columns if column in row}
