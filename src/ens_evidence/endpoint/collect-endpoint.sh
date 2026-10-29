@@ -45,6 +45,15 @@ safe_id() {
 here=$(cd "$(dirname "$0")" && pwd) || die "no se puede resolver el directorio del script"
 out_dir=${1:-$PWD}
 [ -d "$out_dir" ] && [ -w "$out_dir" ] || die "directorio de salida no válido: $out_dir"
+# Solo se escribe en un directorio del usuario que nadie más pueda alterar:
+# propio y sin escritura de grupo/otros, salvo con sticky bit (como /tmp).
+dir_mode=$(ls -ld "$out_dir/." | cut -c1-10)
+[ -n "$(find "$out_dir/." -prune -user "$(id -u)" 2>/dev/null)" ] ||
+    die "el directorio de salida no es del usuario actual: $out_dir"
+case "$dir_mode" in
+    ?????-??-? | *t) ;;
+    *) die "el directorio de salida es escribible por otros sin sticky bit: $out_dir" ;;
+esac
 
 command -v osqueryi >/dev/null 2>&1 || die "osqueryi no está en el PATH"
 case "$(uname -s)" in
@@ -151,12 +160,26 @@ META
 ) || die "no se pudo calcular SHA256SUMS"
 
 archive="$out_dir/$host_name-$stamp.endpoint.tar.gz"
-[ -e "$archive" ] || [ -L "$archive" ] && die "ya existe $archive"
-# El tar se crea en el temporal privado y solo se mueve al final; tar no sigue
-# enlaces (sin -h) y solo recibe la lista blanca de miembros.
-# shellcheck disable=SC2086  # los miembros son nombres seguros validados arriba
-tar -czf "$stage/package.tar.gz" -C "$stage" $members SHA256SUMS || die "no se pudo crear el paquete"
-mv "$stage/package.tar.gz" "$archive" || die "no se pudo escribir $archive"
+
+# Las cabeceras del tar no deben llevar el usuario/grupo del endpoint.
+if tar --version 2>/dev/null | grep -qi bsdtar; then
+    owner_flags="--uid 0 --gid 0 --uname= --gname="
+else
+    owner_flags="--owner=0 --group=0 --numeric-owner"
+fi
+# El tar se crea en el temporal privado; tar no sigue enlaces (sin -h) y solo
+# recibe la lista blanca de miembros.
+# shellcheck disable=SC2086  # los miembros y las opciones son palabras fijas seguras
+tar $owner_flags -czf "$stage/package.tar.gz" -C "$stage" $members SHA256SUMS || die "no se pudo crear el paquete"
+
+# Publicación exclusiva: con noclobber el shell abre el destino con O_EXCL, que
+# falla si ya existe cualquier cosa (fichero, enlace, directorio) y nunca sigue
+# enlaces. Es POSIX y vale igual en macOS y Linux; `mv`/`ln` tratarían un enlace
+# a directorio como carpeta destino o dependerían de que el temporal esté en el
+# mismo sistema de ficheros.
+if ! (set -C; cat "$stage/package.tar.gz" >"$archive") 2>/dev/null; then
+    die "no se pudo crear $archive (¿ya existe?)"
+fi
 
 [ "$permission_hint" -eq 0 ] || printf 'aviso: revisa las consultas marcadas con permission_hint en meta.json\n' >&2
 printf '%s\n' "$archive"

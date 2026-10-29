@@ -313,18 +313,19 @@ def _padded(version: tuple[int, ...], other: tuple[int, ...]) -> tuple[int, ...]
 
 
 def _disk_encryption(host: Host) -> Outcome:
-    queries = ["root_mount", "disk_encryption"] + (
-        ["filevault_status"] if host.platform == "darwin" else []
-    )
-    if (failed := _failed_query(host, queries, "cifrado del volumen raíz")) is not None:
+    disks = "disk_encryption_darwin" if host.platform == "darwin" else "disk_encryption"
+    if (
+        failed := _failed_query(host, ["root_mount", disks], "cifrado del volumen raíz")
+    ) is not None:
         return failed
     root = _single_row(host, "root_mount")
     device = str(root.get("device", "")).strip() if root else ""
     if root is None or root.get("path") != "/" or not device:
         return _unknown("`mounts` no identifica un único volumen raíz", "ambiguous")
-    aliases = {device.casefold(), str(root.get("device_alias", "")).strip().casefold()} - {""}
+    alias = str(root.get("device_alias", "")).strip().casefold()
+    aliases = {device.casefold(), alias} - {""}
     if host.platform == "darwin":
-        return _filevault(host, device)
+        return _filevault(host, device, alias)
     related = [
         row
         for row in host.rows("disk_encryption")
@@ -347,37 +348,42 @@ def _encryption_state(row: dict[str, Any]) -> bool | None:
     return {"1": True, "0": False}.get(str(row.get("encrypted", "")).strip())
 
 
-def _filevault(host: Host, root_device: str) -> Outcome:
-    base = re.match(r"/dev/(disk\d+)", root_device.casefold())
-    values = {
-        str(row.get("filevault_status", "")).strip().casefold()
-        for row in host.rows("filevault_status")
-    }
-    unrecognized = sorted(values - FILEVAULT_FLAGS.keys())
-    if unrecognized:
+def _filevault_rows(host: Host, root_device: str, alias: str) -> list[dict[str, Any]]:
+    """Fila de `disk_encryption` que corresponde al volumen raíz, nunca un hermano del disco.
+
+    Regla: la fila cuyo `name` es el dispositivo raíz (o su alias) y, si no existe, la del
+    volumen de respaldo. En APFS el raíz sellado `/dev/diskNsMsK` se apoya en `/dev/diskNsM`,
+    así que se admite esa única derivación. Cualquier otra partición del mismo disco no cuenta.
+    """
+    names = {root_device.casefold(), alias} - {""}
+    backing = re.fullmatch(r"(/dev/disk\d+s\d+)s\d+", root_device.casefold())
+    rows = host.rows("disk_encryption_darwin")
+    exact = [row for row in rows if str(row.get("name", "")).casefold() in names]
+    if exact or backing is None:
+        return exact
+    return [row for row in rows if str(row.get("name", "")).casefold() == backing.group(1)]
+
+
+def _filevault(host: Host, root_device: str, alias: str) -> Outcome:
+    related = _filevault_rows(host, root_device, alias)
+    if len(related) != 1:
         return _unknown(
-            f"FileVault devuelve un valor no reconocido ({', '.join(map(repr, unrecognized))}); "
+            f"el volumen raíz {root_device} no casa con una única fila de `disk_encryption`",
+            "ambiguous",
+        )
+    value = str(related[0].get("filevault_status", "")).strip().casefold()
+    if value not in FILEVAULT_FLAGS:
+        return _unknown(
+            f"FileVault devuelve un valor no reconocido ({value!r}); "
             "solo se interpretan `on` y `off`",
             "ambiguous",
         )
-    states = {FILEVAULT_FLAGS[value] for value in values}
-    if base is None or len(states) != 1:
-        return _unknown(
-            "FileVault no tiene un estado único e interpretable para el volumen raíz", "ambiguous"
-        )
-    same_disk = [
-        row
-        for row in host.rows("disk_encryption")
-        if re.match(rf"/dev/{base.group(1)}(s\d+)*$", str(row.get("name", "")).casefold())
-    ]
-    encrypted = {_encryption_state(row) for row in same_disk}
-    if states == {True} and encrypted == {True}:
+    filevault, encrypted = FILEVAULT_FLAGS[value], _encryption_state(related[0])
+    if filevault and encrypted is True:
+        return Outcome(CheckStatus.PASS, f"{ATTESTED}: FileVault activo en el volumen raíz")
+    if not filevault and encrypted is False:
         return Outcome(
-            CheckStatus.PASS, f"{ATTESTED}: FileVault activo en el disco del volumen raíz"
-        )
-    if states == {False} and encrypted == {False}:
-        return Outcome(
-            CheckStatus.FAIL, f"{ATTESTED}: FileVault desactivado y volúmenes sin cifrar"
+            CheckStatus.FAIL, f"{ATTESTED}: FileVault desactivado y volumen raíz sin cifrar"
         )
     return _unknown(
         "FileVault y `disk_encryption` no coinciden o el cifrado por hardware no prueba FileVault",

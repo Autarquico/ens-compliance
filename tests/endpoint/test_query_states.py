@@ -55,10 +55,10 @@ def test_un_json_demasiado_profundo_en_una_consulta_es_error_de_esa_consulta(sto
 
 
 def test_una_consulta_sin_filas_es_exito_con_cero_filas_no_error(store, tmp_path):
-    queries = queries_after_import(store, tmp_path, {"disk_encryption": Answer(out=b"[]")})
+    queries = queries_after_import(store, tmp_path, {"disk_encryption_darwin": Answer(out=b"[]")})
 
-    assert queries["disk_encryption"]["status"] == "SUCCESS"
-    assert queries["disk_encryption"]["row_count"] == 0
+    assert queries["disk_encryption_darwin"]["status"] == "SUCCESS"
+    assert queries["disk_encryption_darwin"]["row_count"] == 0
 
 
 def test_un_permiso_denegado_se_conserva_como_permission_denied(store, tmp_path):
@@ -75,7 +75,7 @@ def test_una_consulta_de_otra_plataforma_es_not_supported(store, tmp_path):
         store, tmp_path, platform="linux", uuid=SERVER_UUID, hostname=SERVER_HOST
     )
 
-    for query_id in ("alf", "apps", "filevault_status", "software_update_policy"):
+    for query_id in ("alf", "apps", "software_update_policy"):
         assert queries[query_id]["status"] == "NOT_SUPPORTED", query_id
     assert queries["deb_packages"]["status"] == "SUCCESS"
 
@@ -89,7 +89,7 @@ def test_una_consulta_darwin_solo_no_existe_en_linux_y_las_de_linux_no_existen_e
     assert queries["rpm_packages"]["status"] == "NOT_SUPPORTED"
 
 
-@pytest.mark.parametrize("query_id", ["apps", "disk_encryption"])
+@pytest.mark.parametrize("query_id", ["apps", "disk_encryption_darwin"])
 def test_las_filas_conservan_solo_las_columnas_necesarias(store, tmp_path, query_id):
     queries = queries_after_import(store, tmp_path)
 

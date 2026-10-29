@@ -85,8 +85,10 @@ el nombre de quien la aporta.
    de las de la caja, fecha sin zona o futura, o un equipo que no coincide
    con el inscrito.
 
-El `.tar.gz` original se conserva en el workspace junto al resultado
-normalizado (para que `evidence verify` lo reconozca y se pueda auditar). Por eso
+El `.tar.gz` original se conserva en el workspace sin cambios junto al resultado
+normalizado (para que `evidence verify` lo reconozca y se pueda auditar). Como no
+se modifica, el script deja las cabeceras del tar sin usuario ni grupo (uid/gid 0)
+y la importación rechaza los paquetes que traigan propietario. Por eso
 las consultas solo piden lo que algún check o la inscripción necesitan: de la
 identidad, `hostname` y `uuid`; de las políticas de actualización, solo `user_scoped` (1 si la preferencia es de un usuario), sin `username`.
 No contiene nombres de usuario de las políticas; el `hostname` sí se guarda (hace

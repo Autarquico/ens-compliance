@@ -9,6 +9,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 import yaml
 
+from ens_evidence.endpoint.pack import load_pack
 from ens_evidence.endpoint.package import MAX_PACKAGE_BYTES
 from ens_evidence.evidence import EvidenceImportError
 
@@ -101,11 +102,13 @@ def test_un_miembro_extra_fuera_de_la_lista_blanca_se_rechaza(store, laptop_pack
 
 
 def test_demasiados_miembros_se_rechazan(store, laptop_package):
-    data = rebuilt(
-        laptop_package,
-        add={"results/deb_packages.json": b"[]", "results/rpm_packages.json": b"[]"},
-    )
-    entries = entries_of(data) + [regular("results/zzz.json", b"[]")]
+    present = set(members_of(laptop_package))
+    full = {
+        f"results/{query.id}.json": b"[]"
+        for query in load_pack().queries
+        if f"results/{query.id}.json" not in present
+    }
+    entries = entries_of(rebuilt(laptop_package, add=full)) + [regular("results/zzz.json", b"[]")]
 
     assert "demasiados" in rejected(store, tar_of(entries))
 
@@ -309,3 +312,12 @@ def test_el_nombre_corto_en_meta_frente_al_fqdn_de_system_info_no_se_rechaza(sto
     import_package(store, data, "lap-ana")
 
     assert persisted_keys(store) != []
+
+
+@pytest.mark.parametrize("field", ["uname", "gname", "uid", "gid"])
+def test_un_paquete_con_propietario_en_las_cabeceras_se_rechaza(store, laptop_package, field):
+    value = 1000 if field in ("uid", "gid") else "ana"
+    entries = [(info, body) for info, body in entries_of(laptop_package)]
+    setattr(entries[0][0], field, value)
+
+    assert "propietario" in rejected(store, tar_of(entries))

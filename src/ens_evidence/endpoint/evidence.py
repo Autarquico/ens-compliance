@@ -87,17 +87,25 @@ def _read(store: WorkspaceStore, manifest: EvidenceManifest) -> HostEvidence:
 def evidence_refs(
     manifests: Iterable[EvidenceManifest], max_evidence_age_days: int
 ) -> dict[str, list[EvidenceRef]]:
-    """`EvidenceRef` por activo, caducando con el umbral vigente igual que los checks."""
-    refs: dict[str, list[EvidenceRef]] = {}
-    for manifest in manifests:
-        if manifest.source == SOURCE:
-            refs.setdefault(manifest.asset_id, []).append(
-                EvidenceRef(
-                    id=manifest.id,
-                    valid_until=expires_at(
-                        manifest.collected_at, manifest.valid_until, max_evidence_age_days
-                    ),
-                    collected_at=manifest.collected_at,
-                )
+    """`EvidenceRef` de la última ejecución de cada activo, con el umbral vigente de los checks.
+
+    Las ejecuciones anteriores siguen en el workspace para auditoría, pero no bloquean la
+    preparación una vez sustituidas por otra más reciente.
+    """
+    latest: dict[str, EvidenceManifest] = {}
+    for manifest in sorted(
+        (m for m in manifests if m.source == SOURCE), key=lambda m: (m.collected_at, m.id)
+    ):
+        latest[manifest.asset_id] = manifest
+    return {
+        asset_id: [
+            EvidenceRef(
+                id=manifest.id,
+                valid_until=expires_at(
+                    manifest.collected_at, manifest.valid_until, max_evidence_age_days
+                ),
+                collected_at=manifest.collected_at,
             )
-    return refs
+        ]
+        for asset_id, manifest in latest.items()
+    }

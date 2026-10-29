@@ -64,20 +64,39 @@ def test_sin_volumen_raiz_identificable_es_unknown():
     assert linux(disk(ROOT), root=[{"device": ROOT, "path": "/home"}]).status is UNKNOWN
 
 
-def mac(*, filevault, disks):
-    rows = {"filevault_status": [{"filevault_status": filevault}], "disk_encryption": disks}
+def mac(*, filevault, disks, root="/dev/disk3s1s1"):
+    rows = {
+        "root_mount": [{"device": root, "path": "/"}],
+        "disk_encryption_darwin": [{"filevault_status": filevault, **d} for d in disks],
+    }
     return evaluate(host_evidence(rows=rows))["HOST-004"]
 
 
-def test_macos_con_filevault_activo_y_disco_cifrado_pasa():
+def test_macos_con_filevault_activo_y_volumen_de_respaldo_cifrado_pasa():
     result = mac(filevault="on", disks=[disk("/dev/disk3s1")])
 
     assert result.status is PASS
     assert "FileVault" in result.reason
 
 
-def test_macos_con_filevault_desactivado_y_disco_sin_cifrar_falla():
+def test_macos_con_la_raiz_misma_en_disk_encryption_pasa():
+    assert mac(filevault="on", disks=[disk("/dev/disk3s1s1")]).status is PASS
+
+
+def test_macos_con_filevault_desactivado_y_volumen_sin_cifrar_falla():
     assert mac(filevault="off", disks=[disk("/dev/disk3s1", "0")]).status is FAIL
+
+
+def test_macos_un_hermano_cifrado_del_mismo_disco_no_prueba_la_raiz():
+    result = mac(filevault="on", disks=[disk("/dev/disk3s9")])
+
+    assert result.status is UNKNOWN
+
+
+def test_macos_un_hermano_cifrado_no_salva_una_raiz_sin_cifrar():
+    disks = [disk("/dev/disk3s1", "0"), disk("/dev/disk3s9")]
+
+    assert mac(filevault="off", disks=disks).status is FAIL
 
 
 def test_macos_ignora_un_disco_ajeno_cifrado_al_juzgar_la_raiz():
@@ -98,10 +117,13 @@ def test_macos_con_filevault_pero_solo_discos_ajenos_es_unknown():
     assert mac(filevault="on", disks=[disk("/dev/disk9s1")]).status is UNKNOWN
 
 
-def test_macos_con_estado_de_filevault_no_interpretable_o_sin_filas_es_unknown():
+def test_macos_con_dos_filas_para_el_mismo_volumen_es_unknown():
+    assert mac(filevault="on", disks=[disk("/dev/disk3s1"), disk("/dev/disk3s1")]).status is UNKNOWN
+
+
+def test_macos_con_estado_de_filevault_no_interpretable_o_ausente_es_unknown():
     assert mac(filevault="quizá", disks=[disk("/dev/disk3s1")]).status is UNKNOWN
-    rows = {"filevault_status": []}
-    assert evaluate(host_evidence(rows=rows))["HOST-004"].status is UNKNOWN
+    assert mac(filevault="", disks=[disk("/dev/disk3s1")]).status is UNKNOWN
 
 
 def test_macos_con_encryption_status_undefined_es_unknown():
@@ -117,9 +139,3 @@ def test_macos_con_valor_de_filevault_adivinado_es_unknown_y_el_motivo_lo_dice()
         assert result.status is UNKNOWN
         assert "no reconocido" in result.reason
         assert guessed.casefold() in result.reason
-
-
-def test_macos_con_filas_de_filevault_contradictorias_es_unknown():
-    rows = {"filevault_status": [{"filevault_status": "on"}, {"filevault_status": "off"}]}
-
-    assert evaluate(host_evidence(rows=rows))["HOST-004"].status is UNKNOWN

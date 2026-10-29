@@ -26,15 +26,18 @@ queries:
     verified: false
     note: Dispositivo montado en la raíz; se une con disk_encryption.
   - id: disk_encryption
-    platforms: [darwin, linux]
+    platforms: [linux]
     purpose: HOST-004
     verified: false
     note: Puede requerir privilegios; sin filas el check da UNKNOWN.
-  - id: filevault_status
+  - id: disk_encryption_darwin
     platforms: [darwin]
     purpose: HOST-004
     verified: false
-    note: Tabla posiblemente inexistente según la versión de osquery; si falla, el check da UNKNOWN.
+    note: >-
+      Como disk_encryption más la columna filevault_status, que solo existe en
+      macOS y no se ha contrastado con la versión de osquery en uso; si falla,
+      el check da UNKNOWN.
   - id: alf
     platforms: [darwin]
     purpose: HOST-005

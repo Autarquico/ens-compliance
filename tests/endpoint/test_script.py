@@ -2,6 +2,7 @@
 
 import hashlib
 import re
+import shutil
 import subprocess
 import tarfile
 
@@ -111,10 +112,10 @@ def test_una_consulta_fallida_queda_vacia_con_su_codigo_de_salida(tmp_path):
 def test_un_error_de_permisos_se_marca_pero_el_script_no_eleva(tmp_path):
     run = collect(
         tmp_path,
-        answers={"disk_encryption": Answer(out=b"", code=1, err="Permission denied")},
+        answers={"disk_encryption_darwin": Answer(out=b"", code=1, err="Permission denied")},
     )
 
-    entry = next(q for q in run.meta["queries"] if q["id"] == "disk_encryption")
+    entry = next(q for q in run.meta["queries"] if q["id"] == "disk_encryption_darwin")
     assert entry["permission_hint"] is True
     assert "no los eleva" in run.process.stderr
 
@@ -238,3 +239,64 @@ def test_un_destino_final_que_es_un_enlace_se_rechaza(tmp_path):
     assert run.process.returncode != 0
     assert victim.read_text() == "intacta"
     assert not any(p.name.endswith(".part") for p in run.out_dir.iterdir())
+
+
+def test_las_cabeceras_del_tar_no_filtran_usuario_ni_grupo(tmp_path):
+    run = collect(tmp_path)
+
+    with tarfile.open(run.archive) as archive:
+        members = list(archive)
+    assert members
+    assert all((m.uname, m.gname, m.uid, m.gid) == ("", "", 0, 0) for m in members)
+
+
+def test_un_destino_que_aparece_entre_medias_no_se_sobrescribe(tmp_path):
+    victim = tmp_path / "victima.txt"
+    victim.write_text("intacta")
+    destination = f"{LAPTOP_HOST}-{STAMP}.endpoint.tar.gz"
+
+    def appear_after_tar(out_dir):
+        wrapper = out_dir.parent / "fakebin" / "tar"
+        wrapper.write_text(
+            f'#!/bin/sh\n{shutil.which("tar")} "$@" || exit $?\n'
+            f'ln -s "{victim}" "{out_dir / destination}"\n'
+        )
+        wrapper.chmod(0o755)
+
+    run = collect(tmp_path / "run", env={"FAKE_STAMP": STAMP}, prepare=appear_after_tar)
+
+    assert run.process.returncode != 0
+    assert victim.read_text() == "intacta"
+
+
+def test_un_destino_que_es_un_enlace_a_un_directorio_no_se_trata_como_directorio(tmp_path):
+    target = tmp_path / "otro"
+    target.mkdir()
+
+    def prepare(out_dir):
+        (out_dir / f"{LAPTOP_HOST}-{STAMP}.endpoint.tar.gz").symlink_to(target)
+
+    run = collect(tmp_path / "run", env={"FAKE_STAMP": STAMP}, prepare=prepare)
+
+    assert run.process.returncode != 0
+    assert list(target.iterdir()) == []
+
+
+def test_un_directorio_de_salida_escribible_por_otros_sin_sticky_se_rechaza(tmp_path):
+    def prepare(out_dir):
+        out_dir.chmod(0o777)
+
+    run = collect(tmp_path, prepare=prepare)
+
+    assert run.process.returncode != 0
+    assert run.archive is None or not run.archive.exists()
+    assert list(run.out_dir.iterdir()) == []
+
+
+def test_un_directorio_de_salida_escribible_por_otros_con_sticky_se_acepta(tmp_path):
+    def prepare(out_dir):
+        out_dir.chmod(0o1777)
+
+    run = collect(tmp_path, prepare=prepare)
+
+    assert run.process.returncode == 0, run.process.stderr

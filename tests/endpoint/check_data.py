@@ -20,8 +20,9 @@ DARWIN_ROWS: dict[str, list[dict[str, str]]] = {
     "os_version": [{"name": "macOS", "platform": "darwin", "version": "15.1"}],
     "osquery_info": [{"version": "5.14.1"}],
     "root_mount": [{"device": "/dev/disk3s1s1", "path": "/"}],
-    "disk_encryption": [{"name": "/dev/disk3s1", "encrypted": "1"}],
-    "filevault_status": [{"filevault_status": "on"}],
+    "disk_encryption_darwin": [
+        {"name": "/dev/disk3s1", "encrypted": "1", "filevault_status": "on"}
+    ],
     "alf": [{"global_state": "1"}],
     "software_update_policy": [
         {

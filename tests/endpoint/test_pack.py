@@ -85,8 +85,11 @@ def test_las_consultas_no_piden_datos_personales_que_ningun_check_usa():
     assert not any("computer_name" in body for body in sql.values())
 
 
-def test_filevault_status_selecciona_solo_la_columna_que_usa_el_check():
-    sql = bundle_files()["queries/filevault_status.sql"].decode()
+def test_disk_encryption_darwin_selecciona_columnas_explicitas_con_filevault():
+    sql = bundle_files()["queries/disk_encryption_darwin.sql"].decode()
 
     assert "*" not in sql
-    assert sql.strip() == "SELECT filevault_status FROM filevault_status;"
+    assert sql.strip() == (
+        "SELECT name, uuid, encrypted, type, encryption_status, filevault_status "
+        "FROM disk_encryption;"
+    )

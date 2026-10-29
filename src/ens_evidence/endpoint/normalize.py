@@ -25,7 +25,14 @@ STORED_COLUMNS: dict[str, tuple[str, ...]] = {
     "osquery_info": ("version", "build_platform", "build_distro"),
     "root_mount": ("device", "device_alias", "path", "type", "flags"),
     "disk_encryption": ("name", "uuid", "encrypted", "type", "encryption_status"),
-    "filevault_status": ("name", "status", "filevault_status", "enabled", "encrypted"),
+    "disk_encryption_darwin": (
+        "name",
+        "uuid",
+        "encrypted",
+        "type",
+        "encryption_status",
+        "filevault_status",
+    ),
     "alf": (
         "global_state",
         "stealth_enabled",

@@ -101,6 +101,11 @@ def _read_members(data: bytes, allowed: set[str]) -> dict[str, bytes]:
                 limit = _limit(member.name)
                 if member.name not in allowed or not member.isreg():
                     raise PackageRejected("el paquete contiene un miembro no permitido")
+                if member.uname or member.gname or member.uid or member.gid:
+                    raise PackageRejected(
+                        "el paquete lleva propietario en las cabeceras del tar; "
+                        "regenéralo con el script actual"
+                    )
                 if member.name in members:
                     raise PackageRejected("el paquete tiene un miembro duplicado")
                 declared += member.size

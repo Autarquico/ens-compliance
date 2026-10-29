@@ -156,6 +156,26 @@ def test_un_instante_antes_de_caducar_la_evidencia_vale_y_la_preparacion_no_se_b
     assert readiness.readiness is Readiness.READY
 
 
+def test_tras_recolectar_de_nuevo_la_ejecucion_vieja_caducada_no_bloquea_la_preparacion(
+    tmp_path, store
+):
+    collect_and_import(tmp_path, store)
+    current = next(m for m in list_manifests(store).manifests if m.source == "endpoint-script")
+    max_age = endpoint_config(store).max_evidence_age_days
+    old = current.model_copy(
+        update={
+            "id": "EV-19990101-0ld00000",
+            "collected_at": current.collected_at - timedelta(days=90),
+            "valid_until": current.valid_until - timedelta(days=90),
+        }
+    )
+
+    refs = evidence_refs([old, current], max_age)["lap-ana"]
+
+    assert [r.id for r in refs] == [current.id]
+    assert evidence_refs([old], max_age)["lap-ana"][0].valid_until < current.collected_at
+
+
 def test_los_ids_de_evidencia_de_los_checks_y_de_las_referencias_coinciden(tmp_path, store):
     collect_and_import(tmp_path, store)
 

@@ -105,9 +105,8 @@ def test_los_checks_citan_la_ejecucion_mas_reciente():
     ("check_id", "query_id"),
     [
         ("HOST-003", "os_version"),
-        ("HOST-004", "disk_encryption"),
+        ("HOST-004", "disk_encryption_darwin"),
         ("HOST-004", "root_mount"),
-        ("HOST-004", "filevault_status"),
         ("HOST-005", "alf"),
         ("HOST-006", "software_update_policy"),
         ("HOST-007", "apps"),
@@ -131,7 +130,7 @@ def test_una_tabla_sin_filas_es_unknown_nunca_pass(check_id, query_id):
     ("check_id", "query_id"),
     [
         ("HOST-003", "os_version"),
-        ("HOST-004", "disk_encryption"),
+        ("HOST-004", "disk_encryption_darwin"),
         ("HOST-005", "alf"),
         ("HOST-006", "software_update_policy"),
         ("HOST-007", "apps"),
