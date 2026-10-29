@@ -1,5 +1,7 @@
 """Admin SDK y endpoint de token simulados con `httpx.MockTransport` y `fixtures/*.json`."""
 
+from __future__ import annotations
+
 import json
 import re
 from collections.abc import Callable
