@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: S
 issue: 19
-prs: []
+prs: [45]
 related_issues: [19]
 depends_on: [evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-29
 ---
 
 # Evidencia de endpoints con script guiado
