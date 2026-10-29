@@ -1,0 +1,111 @@
+{
+  "additionalProperties": false,
+  "description": "Un intento de `restic check`. Solo diagn\u00f3sticos estructurados, nunca la salida de restic.",
+  "properties": {
+    "broken_packs": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Broken Packs"
+    },
+    "check_id": {
+      "title": "Check Id",
+      "type": "string"
+    },
+    "exit_code": {
+      "anyOf": [
+        {
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Exit Code"
+    },
+    "failure": {
+      "anyOf": [
+        {
+          "enum": [
+            "repository_errors",
+            "no_summary",
+            "restic_unavailable"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Failure"
+    },
+    "finished_at": {
+      "anyOf": [
+        {
+          "format": "date-time",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Finished At"
+    },
+    "num_errors": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "integer"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Num Errors"
+    },
+    "repository_id": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Repository Id",
+      "type": "string"
+    },
+    "scope": {
+      "pattern": "^(metadata|all|subset:(100|[1-9][0-9]?)%)$",
+      "title": "Scope",
+      "type": "string"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    },
+    "status": {
+      "enum": [
+        "started",
+        "completed",
+        "failed"
+      ],
+      "title": "Status",
+      "type": "string"
+    }
+  },
+  "required": [
+    "check_id",
+    "status",
+    "started_at",
+    "repository_id",
+    "scope"
+  ],
+  "title": "IntegrityCheck",
+  "type": "object"
+}

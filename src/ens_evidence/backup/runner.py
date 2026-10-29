@@ -14,11 +14,13 @@ from ens_evidence.backup.errors import BackupError
 from ens_evidence.backup.records import (
     SNAPSHOT_MARKER_KEY,
     BackupRun,
+    RestoreRecord,
     SnapshotInventory,
     SnapshotMarker,
     dump,
     list_runs,
     read_snapshot_inventory,
+    restore_key,
     run_key,
     snapshot_inventory_key,
 )
@@ -35,18 +37,27 @@ def inventory_of(store: WorkspaceStore) -> dict[str, str]:
 
 
 def run_backup(
-    store: WorkspaceStore, restic: Restic, repository: str, secrets: BackupSecrets, clock: Clock
+    store: WorkspaceStore,
+    restic: Restic,
+    repository: str,
+    secrets: BackupSecrets,
+    clock: Clock,
+    repository_id: str | None = None,
 ) -> BackupRun:
     """Registra started, hace la copia y registra completed o failed."""
     run_id = f"BK-{clock():%Y%m%dT%H%M%SZ}-{randomness.token_hex(3)}"
-    started = BackupRun(run_id=run_id, status="started", started_at=clock(), repository=repository)
+    started = BackupRun(
+        run_id=run_id,
+        status="started",
+        started_at=clock(),
+        repository=repository,
+        repository_id=repository_id,
+    )
     store.create_bytes(run_key(run_id), dump(started))
     try:
         final = _copy(store, restic, started, clock)
     except (WorkspaceError, OSError) as exc:
-        reason = (
-            redact(str(exc), secrets) if isinstance(exc, WorkspaceError) else type(exc).__name__
-        )
+        reason = type(exc).__name__ if isinstance(exc, OSError) else redact(str(exc), secrets)
         final = started.model_copy(
             update={
                 "status": "failed",
@@ -123,6 +134,11 @@ class RestoreReport:
     mismatches: list[str]
 
 
+def require_empty_target(target: Path) -> None:
+    if target.exists() and (not target.is_dir() or any(target.iterdir())):
+        raise BackupError("el destino de la restauración debe ser una carpeta vacía o no existir")
+
+
 def restore_snapshot(
     restic: Restic, snapshot: str, target: Path, recorded: list[BackupRun]
 ) -> RestoreReport:
@@ -131,8 +147,7 @@ def restore_snapshot(
     Sin ese inventario la restauración queda sin verificar. Si el workspace tiene el registro
     de la ejecución, también debe coincidir con el del snapshot.
     """
-    if target.exists() and (not target.is_dir() or any(target.iterdir())):
-        raise BackupError("el destino de la restauración debe ser una carpeta vacía o no existir")
+    require_empty_target(target)
     resolved = restic.resolve_snapshot(snapshot)
     snapshot_id = str(resolved["id"])
     restic.restore(resolved, target)
@@ -165,3 +180,67 @@ def _snapshot_time(resolved: dict[str, object]) -> datetime | None:
         return TypeAdapter(AwareDatetime).validate_python(resolved.get("time"))
     except ValidationError:
         return None
+
+
+def restore_recorded(
+    store: WorkspaceStore | None,
+    restic: Restic,
+    snapshot: str,
+    target: Path,
+    recorded: list[BackupRun],
+    clock: Clock,
+    repository_id: str | None = None,
+) -> RestoreReport:
+    """`restore_snapshot` y, si hay workspace, su registro started -> completed o failed."""
+    require_empty_target(target)
+    restore_id = f"RS-{clock():%Y%m%dT%H%M%SZ}-{randomness.token_hex(3)}"
+    started = RestoreRecord(
+        restore_id=restore_id,
+        status="started",
+        started_at=clock(),
+        repository_id=repository_id,
+        target=str(target.resolve()),
+    )
+    if store is not None:
+        store.create_bytes(restore_key(restore_id), dump(started))
+    try:
+        report = restore_snapshot(restic, snapshot, target, recorded)
+    except (WorkspaceError, OSError):
+        _write_restore(
+            store, restore_id, started, {"status": "failed", "failure": "restore_failed"}, clock
+        )
+        raise
+    _write_restore(
+        store,
+        restore_id,
+        started,
+        {
+            "status": "completed",
+            "snapshot_id": report.snapshot_id,
+            "inventory_verified": report.inventory_checked and not report.mismatches,
+            "mismatches": len(report.mismatches),
+        },
+        clock,
+    )
+    return report
+
+
+def _write_restore(
+    store: WorkspaceStore | None,
+    restore_id: str,
+    started: RestoreRecord,
+    update: dict[str, object],
+    clock: Clock,
+) -> None:
+    if store is None:
+        return
+    final = RestoreRecord.model_validate(
+        started.model_copy(update={"finished_at": clock(), **update}).model_dump()
+    )
+    try:
+        store.write_bytes(restore_key(restore_id), dump(final))
+    except (WorkspaceError, OSError) as exc:
+        raise BackupError(
+            f"no se pudo escribir el registro final de {restore_id} ({type(exc).__name__}); "
+            "la restauración queda como interrumpida en el registro"
+        ) from None

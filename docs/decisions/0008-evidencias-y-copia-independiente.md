@@ -61,6 +61,17 @@ ambos solo la detecta la copia externa inmutable.
   declara (`reconstructed_from_snapshot: true`). Una carpeta sin marcador de
   snapshot se importa como "no verificada" y sin reconstruir registros.
 
+### Comprobación y pruebas de restauración
+- `backup check` (integridad, con lock) y `backup restore` dejan un registro
+  por intento con el id del repositorio (`restic cat config`), el snapshot
+  completo, el alcance y los tiempos; `backup run` también guarda el id.
+- `backup restore-test record` registra la prueba de restauración (formato de
+  la guía más `restore_id`, `isolated_target` y la revisión) atada a una
+  restauración verificada del mismo repositorio. Escritura única.
+- El collector `restic` solo ejecuta `cat config` y `snapshots` con
+  `--no-lock --no-cache` y lee esos registros; un registro de otro
+  repositorio no cuenta.
+
 ### Inmutabilidad del destino
 Es una propiedad del proveedor, no del código. Se trata como hipótesis
 hasta probarla con `backup verify-immutability`, que usa objetos canario

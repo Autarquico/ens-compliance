@@ -14,7 +14,8 @@ fuente (`docs/vision.md`, escenario "conectores enchufables").
 - Interfaz `Connector`: `name`, `config_model` (Pydantic) y
   `collect(config) -> CollectionResult`, de solo lectura. Hook opcional
   `prepare(config, store) -> config` para completar la configuración con
-  datos del workspace (p. ej. las zonas del inventario) antes de recoger.
+  datos del workspace (p. ej. las zonas del inventario) antes de recoger. Constructor `from_settings(settings)` (por defecto
+  `cls()`) para los conectores que necesitan los ajustes del workspace abierto.
 - La configuración de cada conector vive en el workspace, en
   `connectors/<name>.yaml`; sus credenciales, solo en variables de entorno.
   `collect <name>` resuelve el conector por el registro.

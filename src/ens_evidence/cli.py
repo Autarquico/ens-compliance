@@ -1,4 +1,5 @@
 import functools
+import os
 import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -22,8 +23,10 @@ from ens_evidence.backup import (
     list_runs,
     load_secrets,
     parse_s3_repository,
-    restore_snapshot,
+    record_restore_test,
+    restore_recorded,
     run_backup,
+    run_check,
     verify_immutability,
 )
 from ens_evidence.backup.environment import ACCESS_KEY_VAR, SECRET_KEY_VAR, redact
@@ -62,6 +65,7 @@ from ens_evidence.workspace import (
     BackupSettings,
     LocalStore,
     NotText,
+    Settings,
     SettingsError,
     WorkspaceError,
     WorkspaceStore,
@@ -82,6 +86,10 @@ workspace_app = typer.Typer(
 )
 scope_app = typer.Typer(help="Alcance del sistema y su aprobación.", no_args_is_help=True)
 backup_app = typer.Typer(help="Copia independiente de las evidencias.", no_args_is_help=True)
+restore_test_app = typer.Typer(
+    help="Pruebas de restauración declaradas por una persona.", no_args_is_help=True
+)
+backup_app.add_typer(restore_test_app, name="restore-test")
 catalog_app = typer.Typer(help="Catálogo de medidas del anexo II.", no_args_is_help=True)
 controls_app = typer.Typer(help="Estado de las medidas de la organización.", no_args_is_help=True)
 app.add_typer(report_app, name="report")
@@ -149,8 +157,12 @@ def main(ctx: typer.Context, settings: SettingsOption = None) -> None:
     ctx.obj = settings
 
 
+def resolved_settings(ctx: typer.Context) -> Settings:
+    return load_settings(resolve_settings_path(ctx.obj))
+
+
 def open_workspace(ctx: typer.Context) -> WorkspaceStore:
-    return open_store(load_settings(resolve_settings_path(ctx.obj)))
+    return open_store(resolved_settings(ctx))
 
 
 def reject_inside_product(directory: Path) -> None:
@@ -158,6 +170,29 @@ def reject_inside_product(directory: Path) -> None:
         raise fail(
             f"{directory} está dentro del repo del producto; "
             "los datos de una organización no pueden guardarse ahí. Elige otra carpeta.",
+            1,
+        )
+
+
+def _same_file(candidate: Path, root: Path) -> bool:
+    try:
+        return os.path.samefile(candidate, root)
+    except OSError:
+        return False
+
+
+def reject_inside_workspace(ctx: typer.Context, directory: Path) -> None:
+    local = resolved_settings(ctx).workspace.local
+    if local is None:
+        return
+    root = Path(local.path).resolve()
+    resolved = directory.resolve()
+    if resolved.is_relative_to(root) or any(
+        _same_file(candidate, root) for candidate in (resolved, *resolved.parents)
+    ):
+        raise fail(
+            f"{directory} está dentro del workspace en uso ({root}); "
+            "restaura en una carpeta aislada fuera de él.",
             1,
         )
 
@@ -485,6 +520,14 @@ def backup_restic(ctx: typer.Context) -> tuple[Restic, BackupSettings, BackupSec
     return restic, configured, secrets
 
 
+def optional_repository_id(restic: Restic) -> str | None:
+    """Id del repositorio, o None si no se puede leer (el registro lo dejará sin id)."""
+    try:
+        return restic.repository_id()
+    except BackupError:
+        return None
+
+
 @backup_app.command("init")
 @handled
 def backup_init(ctx: typer.Context) -> None:
@@ -510,6 +553,7 @@ def backup_run(ctx: typer.Context) -> None:
         configured.restic_repository,
         secrets,
         lambda: datetime.now(UTC),
+        optional_repository_id(restic),
     )
     if run.status == "failed":
         typer.echo(f"La copia {run.run_id} ha fallado: {run.error}", err=True)
@@ -556,13 +600,31 @@ def backup_restore(
     Después, `workspace import --all` lo devuelve a un workspace local o S3.
     """
     reject_inside_product(target)
+    reject_inside_workspace(ctx, target)
     restic, configured, _ = backup_restic(ctx)
     recorded: list[BackupRun] = []
+    store = None
     try:
-        recorded, _unreadable = list_runs(open_workspace(ctx))
+        store = open_workspace(ctx)
+        recorded, _unreadable = list_runs(store)
     except WorkspaceError:
-        typer.echo("No se puede leer el workspace; la restauración no se comparará.", err=True)
-    report = restore_snapshot(restic, snapshot, target, recorded)
+        store = None
+        typer.echo(
+            "No se puede leer el workspace; la restauración no se comparará ni se registrará.",
+            err=True,
+        )
+    if store is not None and not recorded:
+        store = None  # workspace vacío: el import --all posterior debe recibir solo el snapshot
+        typer.echo("El workspace no tiene copias registradas; esta restauración no se registra.")
+    report = restore_recorded(
+        store,
+        restic,
+        snapshot,
+        target,
+        recorded,
+        lambda: datetime.now(UTC),
+        optional_repository_id(restic),
+    )
     typer.echo(f"Snapshot {report.snapshot_id} restaurado en {target}: {report.files} ficheros.")
     if not report.inventory_checked:
         typer.echo(
@@ -576,6 +638,72 @@ def backup_restore(
         print_errors(report.mismatches)
         raise typer.Exit(1)
     typer.echo("El inventario restaurado coincide con el registrado (claves y sha256).")
+
+
+@backup_app.command("check")
+@handled
+def backup_check(
+    ctx: typer.Context,
+    read_data_subset: Annotated[
+        str | None,
+        typer.Option(help="Lee este porcentaje de los datos del repositorio (1%-100%)."),
+    ] = None,
+    read_data: Annotated[bool, typer.Option(help="Lee todos los datos del repositorio.")] = False,
+) -> None:
+    """Ejecuta `restic check` y registra el intento y su alcance exacto.
+
+    Toma el lock del repositorio y puede tardar; sin opciones solo comprueba metadatos.
+    """
+    restic, _, _ = backup_restic(ctx)
+    check = run_check(
+        open_workspace(ctx),
+        restic,
+        restic.repository_id(),
+        lambda: datetime.now(UTC),
+        read_data_subset=read_data_subset,
+        read_data=read_data,
+    )
+    detail = f"alcance {check.scope}, {check.read_data_percent}% de los datos leído"
+    if check.status == "failed":
+        typer.echo(
+            f"La comprobación {check.check_id} ha fallado ({check.failure}; "
+            f"errores: {check.num_errors}, packs rotos: {check.broken_packs}): {detail}.",
+            err=True,
+        )
+        raise typer.Exit(1)
+    typer.echo(f"Comprobación {check.check_id} completada sin errores: {detail}.")
+
+
+@restore_test_app.command("record")
+@handled
+def backup_restore_test_record(
+    ctx: typer.Context,
+    file: Annotated[Path, typer.Argument(help="Fichero YAML con la prueba de restauración.")],
+) -> None:
+    """Registra una prueba de restauración atada a una restauración hecha con `backup restore`.
+
+    Guarda el registro en evidence/restore-tests y lo importa como evidencia manual; el revisor
+    es declarado, no se autentica.
+    """
+    try:
+        data = file.read_bytes()
+    except OSError:
+        raise fail("No se puede leer el fichero indicado.") from None
+    restic, _, _ = backup_restic(ctx)
+    try:
+        record = record_restore_test(
+            open_workspace(ctx), restic.repository_id(), data, datetime.now(UTC)
+        )
+    except ValidationError as exc:
+        typer.echo("No se registra el restore test:", err=True)
+        print_errors(describe_validation("restore-test record", exc))
+        raise typer.Exit(1) from None
+    except BackupError as exc:
+        raise fail(f"No se registra el restore test: {exc}") from None
+    typer.echo(
+        f"Restore test {record.test_id} registrado y guardado como evidencia manual.\n"
+        "El revisor es declarado; no se autentica."
+    )
 
 
 _IMMUTABILITY_MARKS = {
@@ -748,9 +876,10 @@ def collect(
         raise fail(
             f"Conector desconocido: {source}. Disponibles: {', '.join(registry.names())}."
         ) from None
-    store = open_workspace(ctx)
+    settings = resolved_settings(ctx)
+    store = open_store(settings)
     config = load_connector_config(store, source, connector_class.config_model)
-    connector = connector_class()
+    connector = connector_class.from_settings(settings)
     result = connector.collect(connector.prepare(config, store))
     manifest = import_collected(store, result, collector_version=__version__, now=datetime.now(UTC))
     typer.echo(f"Evidencia registrada: {manifest.id}")

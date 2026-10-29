@@ -11,18 +11,23 @@ from ens_evidence.backup.records import SnapshotInventory, run_key, snapshot_inv
 from ens_evidence.backup.runner import inventory_of
 from ens_evidence.workspace import LocalStore
 
-from .conftest import PASSWORD, ens, import_evidences
+from .conftest import PASSWORD, build_backed_up, ens, restore_backed_up
 
 pytestmark = pytest.mark.usefixtures("real_restic")
 
 META = ".ens-backup"
 
 
+@pytest.fixture(scope="module")
+def template(real_restic, tmp_path_factory) -> Path:
+    root = tmp_path_factory.mktemp("backed-up")
+    build_backed_up(root)
+    return root
+
+
 @pytest.fixture
-def backed_up(settings, workspace, documents) -> BackupRun:
-    import_evidences(settings, documents)
-    assert ens(settings, "backup", "init").exit_code == 0
-    assert ens(settings, "backup", "run").exit_code == 0
+def backed_up(template, settings, workspace, tmp_path) -> BackupRun:
+    restore_backed_up(template, tmp_path)
     (run,) = list_runs(workspace)[0]
     return run
 
