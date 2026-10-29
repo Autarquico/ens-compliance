@@ -1,0 +1,160 @@
+{
+  "kind": "admin#directory#users",
+  "users": [
+    {
+      "kind": "admin#directory#user",
+      "id": "100000000000000000001",
+      "primaryEmail": "ana@taller-norte.example",
+      "name": {
+        "fullName": "name1-CANARY",
+        "givenName": "given1-CANARY"
+      },
+      "orgUnitPath": "/ou1-CANARY",
+      "phones": [
+        {
+          "value": "phone1-CANARY"
+        }
+      ],
+      "ipWhitelisted": false,
+      "suspended": false,
+      "archived": false,
+      "isAdmin": true,
+      "isDelegatedAdmin": false,
+      "isEnrolledIn2Sv": true,
+      "isEnforcedIn2Sv": true,
+      "lastLoginTime": "2026-05-30T08:00:00.000Z",
+      "recoveryEmail": "recovery-CANARY@gmail.example",
+      "recoveryPhone": "+34600000-phone-CANARY"
+    },
+    {
+      "kind": "admin#directory#user",
+      "id": "100000000000000000002",
+      "primaryEmail": "luis@taller-norte.example",
+      "name": {
+        "fullName": "name2-CANARY",
+        "givenName": "given2-CANARY"
+      },
+      "orgUnitPath": "/ou2-CANARY",
+      "phones": [
+        {
+          "value": "phone2-CANARY"
+        }
+      ],
+      "ipWhitelisted": false,
+      "suspended": false,
+      "archived": false,
+      "isAdmin": false,
+      "isDelegatedAdmin": false,
+      "isEnrolledIn2Sv": false,
+      "isEnforcedIn2Sv": false,
+      "lastLoginTime": "1970-01-01T00:00:00.000Z",
+      "recoveryEmail": ""
+    },
+    {
+      "kind": "admin#directory#user",
+      "id": "100000000000000000003",
+      "primaryEmail": "marta@taller-norte.example",
+      "name": {
+        "fullName": "name3-CANARY",
+        "givenName": "given3-CANARY"
+      },
+      "orgUnitPath": "/ou3-CANARY",
+      "phones": [
+        {
+          "value": "phone3-CANARY"
+        }
+      ],
+      "ipWhitelisted": false,
+      "suspended": false,
+      "archived": false
+    },
+    {
+      "kind": "admin#directory#user",
+      "id": "100000000000000000004",
+      "primaryEmail": "paco@taller-norte.example",
+      "name": {
+        "fullName": "name4-CANARY",
+        "givenName": "given4-CANARY"
+      },
+      "orgUnitPath": "/ou4-CANARY",
+      "phones": [
+        {
+          "value": "phone4-CANARY"
+        }
+      ],
+      "ipWhitelisted": false,
+      "suspended": true,
+      "archived": false,
+      "isAdmin": false,
+      "isDelegatedAdmin": false,
+      "isEnrolledIn2Sv": false,
+      "isEnforcedIn2Sv": false
+    },
+    {
+      "kind": "admin#directory#user",
+      "id": "100000000000000000005",
+      "primaryEmail": "delia@taller-norte.example",
+      "name": {
+        "fullName": "name5-CANARY",
+        "givenName": "given5-CANARY"
+      },
+      "orgUnitPath": "/ou5-CANARY",
+      "phones": [
+        {
+          "value": "phone5-CANARY"
+        }
+      ],
+      "ipWhitelisted": false,
+      "suspended": false,
+      "archived": false,
+      "isAdmin": false,
+      "isDelegatedAdmin": true,
+      "isEnrolledIn2Sv": true,
+      "isEnforcedIn2Sv": false
+    },
+    {
+      "kind": "admin#directory#user",
+      "id": "100000000000000000006",
+      "primaryEmail": "inma@taller-norte.example",
+      "name": {
+        "fullName": "name6-CANARY",
+        "givenName": "given6-CANARY"
+      },
+      "orgUnitPath": "/ou6-CANARY",
+      "phones": [
+        {
+          "value": "phone6-CANARY"
+        }
+      ],
+      "ipWhitelisted": false,
+      "suspended": false,
+      "archived": false,
+      "isAdmin": false,
+      "isDelegatedAdmin": false,
+      "isEnrolledIn2Sv": true,
+      "isEnforcedIn2Sv": true
+    },
+    {
+      "kind": "admin#directory#user",
+      "id": "100000000000000000007",
+      "primaryEmail": "vieja@taller-norte.example",
+      "name": {
+        "fullName": "name7-CANARY",
+        "givenName": "given7-CANARY"
+      },
+      "orgUnitPath": "/ou7-CANARY",
+      "phones": [
+        {
+          "value": "phone7-CANARY"
+        }
+      ],
+      "ipWhitelisted": false,
+      "suspended": false,
+      "archived": true,
+      "isAdmin": false,
+      "isDelegatedAdmin": false,
+      "isEnrolledIn2Sv": false,
+      "isEnforcedIn2Sv": false
+    }
+  ]
+}

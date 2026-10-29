@@ -1,0 +1,11 @@
+{
+  "100000000000000000001": [
+    {"kind": "admin#directory#roleAssignment", "roleAssignmentId": "5001", "roleId": "9100000000000001", "assignedTo": "100000000000000000001", "assigneeType": "user", "scopeType": "CUSTOMER"}
+  ],
+  "100000000000000000005": [
+    {"kind": "admin#directory#roleAssignment", "roleAssignmentId": "5002", "roleId": "9100000000000002", "assignedTo": "100000000000000000005", "assigneeType": "user", "scopeType": "ORG_UNIT", "orgUnitId": "ou-CANARY"}
+  ],
+  "100000000000000000006": [
+    {"kind": "admin#directory#roleAssignment", "roleAssignmentId": "5003", "roleId": "9100000000000002", "assignedTo": "group000000000001", "assigneeType": "group", "scopeType": "CUSTOMER"}
+  ]
+}

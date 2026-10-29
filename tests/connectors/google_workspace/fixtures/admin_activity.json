@@ -1,0 +1,95 @@
+{
+  "kind": "admin#reports#activities",
+  "items": [
+    {
+      "kind": "admin#reports#activity",
+      "id": {
+        "time": "2026-05-10T08:00:00.000Z",
+        "uniqueQualifier": "uq-CANARY",
+        "applicationName": "x",
+        "customerId": "C01abc234"
+      },
+      "actor": {
+        "email": "admin@taller-norte.example",
+        "profileId": "100000000000000000001"
+      },
+      "ipAddress": "203.0.113.7",
+      "events": [
+        {
+          "type": "USER_SETTINGS",
+          "name": "CHANGE_PASSWORD",
+          "parameters": [
+            {
+              "name": "USER_EMAIL",
+              "value": "target-CANARY@taller-norte.example"
+            },
+            {
+              "name": "NEW_VALUE",
+              "value": "newvalue-CANARY"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "admin#reports#activity",
+      "id": {
+        "time": "2026-05-11T08:00:00.000Z",
+        "uniqueQualifier": "uq-CANARY",
+        "applicationName": "x",
+        "customerId": "C01abc234"
+      },
+      "actor": {
+        "email": "admin@taller-norte.example",
+        "profileId": "100000000000000000001"
+      },
+      "ipAddress": "203.0.113.7",
+      "events": [
+        {
+          "type": "USER_SETTINGS",
+          "name": "CHANGE_PASSWORD",
+          "parameters": [
+            {
+              "name": "USER_EMAIL",
+              "value": "target-CANARY@taller-norte.example"
+            },
+            {
+              "name": "NEW_VALUE",
+              "value": "newvalue-CANARY"
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "kind": "admin#reports#activity",
+      "id": {
+        "time": "2026-05-12T08:00:00.000Z",
+        "uniqueQualifier": "uq-CANARY",
+        "applicationName": "x",
+        "customerId": "C01abc234"
+      },
+      "actor": {
+        "email": "admin@taller-norte.example",
+        "profileId": "100000000000000000001"
+      },
+      "ipAddress": "203.0.113.7",
+      "events": [
+        {
+          "type": "DOMAIN_SETTINGS",
+          "name": "ADD_DOMAIN",
+          "parameters": [
+            {
+              "name": "USER_EMAIL",
+              "value": "target-CANARY@taller-norte.example"
+            },
+            {
+              "name": "NEW_VALUE",
+              "value": "newvalue-CANARY"
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

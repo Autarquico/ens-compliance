@@ -1,0 +1,9 @@
+{
+  "kind": "admin#directory#customer",
+  "id": "C01abc234",
+  "customerDomain": "taller-norte.example",
+  "customerCreationTime": "2020-01-15T10:00:00.000Z",
+  "alternateEmail": "alternate-CANARY@example.net",
+  "phoneNumber": "+34-customer-phone-CANARY",
+  "postalAddress": {"organizationName": "org-CANARY", "addressLine1": "address-CANARY"}
+}
