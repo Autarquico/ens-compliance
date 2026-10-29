@@ -1,0 +1,163 @@
+{
+  "$defs": {
+    "RestoreTestBackup": {
+      "additionalProperties": false,
+      "properties": {
+        "snapshot_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_id"
+      ],
+      "title": "RestoreTestBackup",
+      "type": "object"
+    },
+    "RestoreTestResult": {
+      "additionalProperties": false,
+      "properties": {
+        "application_justification": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Application Justification"
+        },
+        "application_started": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "const": "not_applicable",
+              "type": "string"
+            }
+          ],
+          "title": "Application Started"
+        },
+        "integrity_verified": {
+          "title": "Integrity Verified",
+          "type": "boolean"
+        },
+        "restored": {
+          "title": "Restored",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "restored",
+        "integrity_verified",
+        "application_started"
+      ],
+      "title": "RestoreTestResult",
+      "type": "object"
+    },
+    "RestoreTestReview": {
+      "additionalProperties": false,
+      "properties": {
+        "approved": {
+          "title": "Approved",
+          "type": "boolean"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "reviewer": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Reviewer",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "approved",
+        "reviewer",
+        "role",
+        "reviewed_at",
+        "valid_until"
+      ],
+      "title": "RestoreTestReview",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Lo que escribe la persona; `repository_id` lo a\u00f1ade la herramienta al registrar.",
+  "properties": {
+    "backup": {
+      "$ref": "#/$defs/RestoreTestBackup"
+    },
+    "isolated_target": {
+      "const": true,
+      "title": "Isolated Target",
+      "type": "boolean"
+    },
+    "performed_at": {
+      "format": "date-time",
+      "title": "Performed At",
+      "type": "string"
+    },
+    "restore_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+      "title": "Restore Id",
+      "type": "string"
+    },
+    "result": {
+      "$ref": "#/$defs/RestoreTestResult"
+    },
+    "review": {
+      "$ref": "#/$defs/RestoreTestReview"
+    },
+    "system": {
+      "maxLength": 500,
+      "minLength": 1,
+      "title": "System",
+      "type": "string"
+    },
+    "test_id": {
+      "pattern": "^[A-Za-z0-9][A-Za-z0-9_-]{0,63}$",
+      "title": "Test Id",
+      "type": "string"
+    }
+  },
+  "required": [
+    "test_id",
+    "system",
+    "performed_at",
+    "restore_id",
+    "isolated_target",
+    "backup",
+    "result",
+    "review"
+  ],
+  "title": "RestoreTestDeclaration",
+  "type": "object"
+}

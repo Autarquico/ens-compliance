@@ -31,6 +31,7 @@ backup:
   region: auto            # R2 usa "auto"; en AWS S3, la región del bucket
 ```
 
+El repositorio no admite parámetros (`?`), fragmento (`#`) ni credenciales en la URL.
 El fichero de ajustes no lleva secretos: la contraseña y las credenciales
 van solo en las variables de entorno de abajo.
 
@@ -57,6 +58,21 @@ borrado o sobrescritura surtió efecto y la copia **no** es inmutable; revisa
 la configuración del bloqueo. "NO CONCLUYENTE": algún canario no se pudo leer
 (red, permisos); corrige el acceso y repite. En ambos casos el comando sale
 con error.
+
+## Comprobaciones periódicas
+
+Con la frecuencia que fije la organización en `connectors/restic.yaml`
+(ver [conector de Restic](../connectors/restic.md)):
+
+```bash
+ens-evidence backup check --read-data-subset 10%   # integridad; toma el lock
+ens-evidence backup restore --snapshot latest --target /ruta/vacia/aislada
+ens-evidence backup restore-test record prueba.yaml # cita el restore_id anterior
+ens-evidence collect restic                         # BACKUP-001…006
+```
+
+La prueba de restauración se hace desde la caja de origen y siempre en una
+carpeta vacía y aislada; nunca sobre el workspace en uso.
 
 ## Restauración completa en una máquina nueva
 

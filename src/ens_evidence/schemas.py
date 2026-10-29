@@ -5,7 +5,8 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
-from ens_evidence.backup.records import BackupRun, ImmutabilityCheck
+from ens_evidence.backup.records import BackupRun, ImmutabilityCheck, IntegrityCheck, RestoreRecord
+from ens_evidence.backup.restore_test import RestoreTest, RestoreTestDeclaration
 from ens_evidence.catalog import MeasureCard
 from ens_evidence.catalog.controls import MeasuresFile
 from ens_evidence.models import (
@@ -28,6 +29,10 @@ from ens_evidence.scope import (
 
 CONTRACTS: dict[str, type[BaseModel]] = {
     "backup-run": BackupRun,
+    "backup-check": IntegrityCheck,
+    "backup-restore": RestoreRecord,
+    "backup-restore-test": RestoreTest,
+    "backup-restore-test-declaration": RestoreTestDeclaration,
     "immutability-check": ImmutabilityCheck,
     "catalog-measure": MeasureCard,
     "check-result": CheckResult,
