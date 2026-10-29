@@ -1,8 +1,8 @@
 """Intentos que no llegan a restic porque faltan credenciales o ajustes de la copia.
 
-Quedan registrados como `failed`, sin id de repositorio y con un código saneado: nunca el
-mensaje del error ni valores o nombres de secretos. Así el último intento no puede ser el
-éxito anterior.
+Quedan registrados como `failed`, sin id ni repositorio (el ajuste puede no estar validado) y
+con un código saneado: nunca el mensaje del error ni valores o nombres de secretos. Así el
+último intento no puede ser el éxito anterior.
 """
 
 import secrets as randomness
@@ -42,7 +42,7 @@ def failed_run_recorder(clock: Clock) -> SetupFailureRecorder:
             status="failed",
             started_at=now,
             finished_at=now,
-            repository=repository,
+            repository="",
             error=failure,
         )
         store.create_bytes(run_key(run_id), dump(run))

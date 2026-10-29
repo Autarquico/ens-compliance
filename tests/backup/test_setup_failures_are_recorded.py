@@ -194,3 +194,24 @@ def test_los_codigos_de_fallo_de_preparacion_estan_en_el_esquema():
     for model in (IntegrityCheck, RestoreRecord):
         enum = json.dumps(model.model_json_schema()["properties"]["failure"])
         assert all(code in enum for code in SETUP_CODES)
+
+
+def test_los_registros_de_fallo_no_contienen_el_ajuste_ni_los_secretos(
+    settings, workspace, prior_success, without_password, tmp_path
+):
+    ens(settings, "backup", "run")
+    ens(settings, "backup", "check")
+    ens(settings, "backup", "restore", "--snapshot", "latest", "--target", str(tmp_path / "out"))
+
+    repository = yaml.safe_load(settings.read_text())["backup"]["restic_repository"]
+    failed = [
+        p.read_text()
+        for p in (settings.parent / "ws").rglob("*.yaml")
+        if p.name.startswith(("BK-2026", "CK-2026", "RS-2026")) and "failed" in p.read_text()
+    ]
+    assert len(failed) == 3
+    assert all(
+        sentinel not in text
+        for text in failed
+        for sentinel in (repository, PASSWORD, BACKUP_KEY, BACKUP_SECRET)
+    )

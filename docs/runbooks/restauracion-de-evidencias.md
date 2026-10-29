@@ -31,6 +31,7 @@ backup:
   region: auto            # R2 usa "auto"; en AWS S3, la región del bucket
 ```
 
+El repositorio no admite parámetros (`?`), fragmento (`#`) ni credenciales en la URL.
 El fichero de ajustes no lleva secretos: la contraseña y las credenciales
 van solo en las variables de entorno de abajo.
 

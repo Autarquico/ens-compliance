@@ -81,8 +81,10 @@ class BackupSettings(_Strict):
     def _repository_is_safe(cls, value: str) -> str:
         if not value.strip():
             raise ValueError("no puede estar vacío")
-        if re.search(r"://[^/@\s]*@", value):
-            raise ValueError("el repositorio no puede llevar credenciales; usa ENS_BACKUP_*")
+        if re.search(r"://[^/@\s]*@", value) or re.search(r"[?#]", value):
+            raise ValueError(
+                "el repositorio no puede llevar parámetros ni credenciales; usa ENS_BACKUP_*"
+            )
         return value
 
 
