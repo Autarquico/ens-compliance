@@ -5,7 +5,11 @@
     "failure": {
       "anyOf": [
         {
-          "const": "restore_failed",
+          "enum": [
+            "restore_failed",
+            "invalid_credentials",
+            "invalid_settings"
+          ],
           "type": "string"
         },
         {

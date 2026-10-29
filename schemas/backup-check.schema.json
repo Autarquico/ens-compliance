@@ -37,7 +37,9 @@
           "enum": [
             "repository_errors",
             "no_summary",
-            "restic_unavailable"
+            "restic_unavailable",
+            "invalid_credentials",
+            "invalid_settings"
           ],
           "type": "string"
         },

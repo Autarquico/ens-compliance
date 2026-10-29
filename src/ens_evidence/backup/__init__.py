@@ -36,6 +36,12 @@ from ens_evidence.backup.runner import (
     restore_snapshot,
     run_backup,
 )
+from ens_evidence.backup.setup_failure import (
+    SetupFailureRecorder,
+    failed_check_recorder,
+    failed_restore_recorder,
+    failed_run_recorder,
+)
 
 __all__ = [
     "ACCESS_KEY_VAR",
@@ -54,9 +60,13 @@ __all__ = [
     "RestoreTestDeclaration",
     "RestoreReport",
     "Restic",
+    "SetupFailureRecorder",
     "backup_status",
     "check_scope",
     "dump",
+    "failed_check_recorder",
+    "failed_restore_recorder",
+    "failed_run_recorder",
     "list_checks",
     "list_restores",
     "list_runs",

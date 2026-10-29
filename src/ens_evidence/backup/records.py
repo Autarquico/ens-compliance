@@ -18,8 +18,15 @@ CheckScope = Annotated[
     str, StringConstraints(pattern=r"^(metadata|all|subset:(100|[1-9][0-9]?)%)$")
 ]
 RecordStatus = Literal["started", "completed", "failed"]
-CheckFailure = Literal["repository_errors", "no_summary", "restic_unavailable"]
-RestoreFailure = Literal["restore_failed"]
+SetupFailure = Literal["invalid_credentials", "invalid_settings"]
+CheckFailure = Literal[
+    "repository_errors",
+    "no_summary",
+    "restic_unavailable",
+    "invalid_credentials",
+    "invalid_settings",
+]
+RestoreFailure = Literal["restore_failed", "invalid_credentials", "invalid_settings"]
 
 
 class BackupRun(Strict):

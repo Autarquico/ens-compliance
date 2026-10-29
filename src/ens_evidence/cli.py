@@ -18,8 +18,13 @@ from ens_evidence.backup import (
     BackupRun,
     BackupSecrets,
     Restic,
+    SetupFailureRecorder,
     backup_status,
+    check_scope,
     dump,
+    failed_check_recorder,
+    failed_restore_recorder,
+    failed_run_recorder,
     list_runs,
     load_secrets,
     parse_s3_repository,
@@ -30,6 +35,7 @@ from ens_evidence.backup import (
     verify_immutability,
 )
 from ens_evidence.backup.environment import ACCESS_KEY_VAR, SECRET_KEY_VAR, redact
+from ens_evidence.backup.records import SetupFailure
 from ens_evidence.backup.transfer import export_all, import_all
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import MeasuresFileError, init_measures
@@ -504,6 +510,10 @@ def scope_show_status(ctx: typer.Context) -> None:
         raise typer.Exit(1)
 
 
+def clock() -> datetime:
+    return datetime.now(UTC)
+
+
 def backup_settings(ctx: typer.Context) -> BackupSettings:
     configured = load_settings(resolve_settings_path(ctx.obj)).backup
     if configured is None:
@@ -513,9 +523,35 @@ def backup_settings(ctx: typer.Context) -> BackupSettings:
     return configured
 
 
-def backup_restic(ctx: typer.Context) -> tuple[Restic, BackupSettings, BackupSecrets]:
-    configured = backup_settings(ctx)
-    secrets = load_secrets(configured.restic_repository)
+def record_setup_failure(
+    ctx: typer.Context,
+    recorder: SetupFailureRecorder | None,
+    repository: str,
+    failure: SetupFailure,
+) -> None:
+    """Deja el intento como `failed` si el workspace se abre; si no, no hay dónde registrarlo."""
+    if recorder is None:
+        return
+    try:
+        recorder(open_workspace(ctx), repository, failure)
+    except (WorkspaceError, OSError):
+        return
+
+
+def backup_restic(
+    ctx: typer.Context, recorder: SetupFailureRecorder | None = None
+) -> tuple[Restic, BackupSettings, BackupSecrets]:
+    """Restic y sus secretos; `recorder` deja constancia del intento si falta algo."""
+    try:
+        configured = backup_settings(ctx)
+    except typer.Exit:
+        record_setup_failure(ctx, recorder, "", "invalid_settings")
+        raise
+    try:
+        secrets = load_secrets(configured.restic_repository)
+    except BackupError:
+        record_setup_failure(ctx, recorder, configured.restic_repository, "invalid_credentials")
+        raise
     restic = Restic(configured.restic_repository, secrets, region=configured.region)
     return restic, configured, secrets
 
@@ -546,13 +582,13 @@ def backup_init(ctx: typer.Context) -> None:
 @handled
 def backup_run(ctx: typer.Context) -> None:
     """Copia el workspace completo al repositorio restic y registra la ejecución."""
-    restic, configured, secrets = backup_restic(ctx)
+    restic, configured, secrets = backup_restic(ctx, failed_run_recorder(clock))
     run = run_backup(
         open_workspace(ctx),
         restic,
         configured.restic_repository,
         secrets,
-        lambda: datetime.now(UTC),
+        clock,
         optional_repository_id(restic),
     )
     if run.status == "failed":
@@ -601,7 +637,7 @@ def backup_restore(
     """
     reject_inside_product(target)
     reject_inside_workspace(ctx, target)
-    restic, configured, _ = backup_restic(ctx)
+    restic, configured, _ = backup_restic(ctx, failed_restore_recorder(target, clock))
     recorded: list[BackupRun] = []
     store = None
     try:
@@ -622,7 +658,7 @@ def backup_restore(
         snapshot,
         target,
         recorded,
-        lambda: datetime.now(UTC),
+        clock,
         optional_repository_id(restic),
     )
     typer.echo(f"Snapshot {report.snapshot_id} restaurado en {target}: {report.files} ficheros.")
@@ -654,12 +690,13 @@ def backup_check(
 
     Toma el lock del repositorio y puede tardar; sin opciones solo comprueba metadatos.
     """
-    restic, _, _ = backup_restic(ctx)
+    scope = check_scope(read_data_subset, read_data)
+    restic, _, _ = backup_restic(ctx, failed_check_recorder(scope, clock))
     check = run_check(
         open_workspace(ctx),
         restic,
         optional_repository_id(restic),
-        lambda: datetime.now(UTC),
+        clock,
         read_data_subset=read_data_subset,
         read_data=read_data,
     )
