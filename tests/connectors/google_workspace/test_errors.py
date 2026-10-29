@@ -1,11 +1,8 @@
 import httpx
 import pytest
 
-from ens_evidence.connectors.google_workspace.client import EDITION_REASONS
-
 from .fake_api import TOKEN_EVENTS, USERS, google_error
 
-EDITION_REASON = sorted(EDITION_REASONS)[0]
 QUOTA = "HTTP {}: límite de peticiones alcanzado"
 
 
@@ -100,27 +97,23 @@ def test_403_sin_cuerpo_interpretable_es_permission_denied(api, section):
     assert section("users")["status"] == "PERMISSION_DENIED"
 
 
-def test_not_supported_solo_con_el_error_de_edicion_explicito(api, section):
-    api.set(TOKEN_EVENTS, google_error(403, EDITION_REASON))
-
-    events = section("oauth_token_events")
-
-    assert events["status"] == "NOT_SUPPORTED"
-    assert reason_of(events) == "HTTP 403: función no disponible en la edición"
-
-
 @pytest.mark.parametrize(
     "reply",
     [
         google_error(403, "forbidden", "Esta función no está disponible en su edición"),
-        google_error(400, EDITION_REASON),
+        google_error(403, "featureNotAvailable"),
+        google_error(400, "featureNotAvailable"),
         google_error(404, "notFound", "Not supported in this edition"),
     ],
 )
-def test_sin_el_error_explicito_de_edicion_nunca_hay_not_supported(api, section, reply):
+def test_las_limitaciones_de_edicion_no_se_distinguen_y_nunca_dan_not_supported(
+    api, section, reply
+):
     api.set(TOKEN_EVENTS, reply)
 
-    assert section("oauth_token_events")["status"] in {"PERMISSION_DENIED", "ERROR"}
+    status = section("oauth_token_events")["status"]
+
+    assert status in {"PERMISSION_DENIED", "ERROR"}
 
 
 def test_un_error_de_red_en_un_endpoint_es_error_de_seccion_con_motivo_fijo(api, section):

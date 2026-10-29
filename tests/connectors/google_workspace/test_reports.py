@@ -157,6 +157,45 @@ def test_valores_fuera_de_formato_se_sustituyen_por_other_o_se_recortan(api, sec
     assert "CANARY" not in json.dumps(item)
 
 
+def scope_event(parameter: dict):
+    event = token_event()
+    event["parameters"] = [p for p in event["parameters"] if p["name"] != "scope"]
+    event["parameters"].append({"name": "scope", **parameter})
+    return event
+
+
+@pytest.mark.parametrize(
+    "parameter",
+    [
+        {"value": DRIVE},
+        {"value": f"{DRIVE} {MAIL}"},
+        {"multiValue": [DRIVE, MAIL]},
+        {"value": DRIVE, "multiValue": [MAIL]},
+    ],
+)
+def test_los_scopes_se_leen_de_value_y_de_multivalue(api, section, parameter):
+    api.set(TOKEN_EVENTS, {"items": [activity([scope_event(parameter)])]})
+
+    events = section("oauth_token_events")
+    (item,) = events["items"]
+
+    assert DRIVE in item["scopes"]
+    assert events["summary"]["complete"] is True
+
+
+def test_un_parametro_scope_sin_valor_deja_la_seccion_incompleta(api, section):
+    api.set(
+        TOKEN_EVENTS,
+        {"items": [activity([scope_event({}), scope_event({"value": DRIVE})])]},
+    )
+
+    events = section("oauth_token_events")
+
+    assert events["items"][0]["scopes"] == [DRIVE]
+    assert events["summary"]["complete"] is False
+    assert events["summary"]["unreadable_events"] == 1
+
+
 def test_parametros_ip_y_correos_de_los_eventos_no_se_persisten(section):
     text = json.dumps(section("oauth_token_events"))
 

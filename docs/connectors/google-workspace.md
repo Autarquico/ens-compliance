@@ -103,6 +103,11 @@ No se guardan: la clave, el token, teléfonos, correos de recuperación, IPs,
 
 Los dos checks de 2SV solo afirman esos flags de Google: no prueban MFA
 resistente a phishing ni el MFA de un proveedor de identidad externo. Los
-usuarios archivados no se evalúan. Un dato ausente, mal formado o no
+usuarios archivados no se evalúan en la 2SV inscrita de usuarios activos
+(`user_2sv_enrolled`); `admin_2sv_enforced` y `suspended_without_admin_role`
+sí los evalúan. Un dato ausente, mal formado o no
 visible, un usuario ilegible o una consulta de roles incompleta dan
 `UNKNOWN`.
+
+Las limitaciones de la edición contratada aparecen como sin permiso o error;
+no se distinguen todavía.

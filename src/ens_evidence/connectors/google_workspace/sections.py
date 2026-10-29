@@ -351,7 +351,7 @@ def _unreadable_admin(user: dict[str, Any]) -> dict[str, Any]:
 
 
 def _stops_queries(failure: GoogleWorkspaceError) -> bool:
-    """Permiso, edición y cuota fallarán igual para el resto de usuarios."""
+    """Sin permiso o sin cuota, las consultas del resto de usuarios fallarán igual."""
     return failure.quota or failure.status in (
         CollectionStatus.PERMISSION_DENIED,
         CollectionStatus.NOT_SUPPORTED,
@@ -436,6 +436,7 @@ def collect_oauth_token_events(client: WorkspaceClient, now: datetime) -> Sectio
         return _failed(status, reason, complete=False)
     apps: dict[tuple[str, str | None], dict[str, Any]] = {}
     without_actor = 0
+    unreadable_events = 0
     for activity in activities:
         actor = activity.actor
         actor_key = (actor.profile_id or actor.email) if actor else None
@@ -453,8 +454,9 @@ def collect_oauth_token_events(client: WorkspaceClient, now: datetime) -> Sectio
                 {"events": Counter(), "scopes": set(), "actors": set()},
             )
             app["events"][_event_name(event.name)] += 1
-            scopes = parameters.get("scope")
-            for scope in (scopes.multi_value or []) if scopes else []:
+            scopes = _event_scopes(parameters.get("scope"))
+            unreadable_events += scopes is None
+            for scope in scopes or []:
                 app["scopes"].add(scope if _SCOPE.fullmatch(scope) else "other")
             if actor_key:
                 app["actors"].add(actor_key)
@@ -471,7 +473,18 @@ def collect_oauth_token_events(client: WorkspaceClient, now: datetime) -> Sectio
         )
     ]
     summary = {**_report_summary(window, activities), "activities_without_actor": without_actor}
+    if unreadable_events:
+        summary |= {"complete": False, "unreadable_events": unreadable_events}
     return Section(status=CollectionStatus.SUCCESS, items=items, summary=summary)
+
+
+def _event_scopes(parameter: _Parameter | None) -> list[str] | None:
+    """Scopes de un evento: `value` (separados por espacios) y/o `multiValue`; None si ilegible."""
+    if parameter is None:
+        return []
+    if parameter.value is None and parameter.multi_value is None:
+        return None
+    return [*(parameter.value or "").split(), *(parameter.multi_value or [])]
 
 
 def _event_name(name: str | None) -> str:

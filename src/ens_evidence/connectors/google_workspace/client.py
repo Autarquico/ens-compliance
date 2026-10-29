@@ -35,9 +35,6 @@ QUOTA_REASONS = frozenset(
         "RESOURCE_EXHAUSTED",
     }
 )
-# NO CONTRASTADO con la documentación: motivos con los que Google indicaría que la función
-# no existe en la edición contratada. Solo estos producen NOT_SUPPORTED.
-EDITION_REASONS = frozenset({"featureNotAvailable"})
 
 
 def segment(value: str) -> str:
@@ -153,8 +150,6 @@ def _failure(response: httpx.Response) -> GoogleWorkspaceError:
     if code == 429 or reasons & QUOTA_REASONS:
         return error(CollectionStatus.ERROR, "límite de peticiones alcanzado", quota=True)
     if code == 403:
-        if reasons & EDITION_REASONS:
-            return error(CollectionStatus.NOT_SUPPORTED, "función no disponible en la edición")
         return error(CollectionStatus.PERMISSION_DENIED, "permiso insuficiente")
     if 300 <= code < 400:
         return error(CollectionStatus.ERROR, "redirección no seguida")
