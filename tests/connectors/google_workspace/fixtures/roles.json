@@ -1,0 +1,20 @@
+{
+  "kind": "admin#directory#roles",
+  "items": [
+    {
+      "roleId": "9100000000000001",
+      "roleName": "_SEED_ADMIN_ROLE",
+      "roleDescription": "roledesc-CANARY",
+      "isSuperAdminRole": true,
+      "isSystemRole": true,
+      "rolePrivileges": [{"privilegeName": "privilege-CANARY", "serviceId": "00000000"}]
+    },
+    {
+      "roleId": "9100000000000002",
+      "roleName": "Soporte de usuarios",
+      "roleDescription": "roledesc2-CANARY",
+      "isSuperAdminRole": false,
+      "isSystemRole": false
+    }
+  ]
+}

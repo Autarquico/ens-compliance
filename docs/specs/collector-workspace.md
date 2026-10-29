@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 7
-prs: []
+prs: [44]
 related_issues: [7]
 depends_on: [repo-foundation, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-29
 ---
 
 # Collector de Google Workspace
