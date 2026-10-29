@@ -17,6 +17,7 @@
 - #7 Collector de Google Workspace
 - #13 Collector de Restic y pruebas de restauración
 - #16 Inventario y alcance
+- #19 Evidencia de endpoints con script guiado
 <!-- /pm-sync:done-this-week -->
 
 ---

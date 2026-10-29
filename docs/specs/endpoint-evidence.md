@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Evidencia de endpoints con script guiado
 type: task
-status: active
+status: shipped
 priority: P0
 size: S
 issue: 19
