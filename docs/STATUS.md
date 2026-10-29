@@ -14,6 +14,7 @@
 - #4 Storage de evidencias y copia independiente
 - #5 Collector de GitHub
 - #6 Collector de Cloudflare
+- #13 Collector de Restic y pruebas de restauración
 - #16 Inventario y alcance
 <!-- /pm-sync:done-this-week -->
 

@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Collector de Restic y pruebas de restauración
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 13
