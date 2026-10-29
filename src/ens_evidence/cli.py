@@ -42,6 +42,10 @@ from ens_evidence.catalog.controls import MeasuresFileError, init_measures
 from ens_evidence.catalog.model import Catalog, Group, MeasureCard
 from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.connectors.registry import ConnectorLoadError, ConnectorRegistry
+from ens_evidence.endpoint.bundle import BundleTargetError, write_bundle
+from ens_evidence.endpoint.importer import ENDPOINT_SOURCE, import_endpoint
+from ens_evidence.endpoint.pack import pack_sha256
+from ens_evidence.endpoint.package import MAX_PACKAGE_BYTES
 from ens_evidence.evidence import (
     MANUAL_SOURCE,
     import_manual,
@@ -98,6 +102,7 @@ restore_test_app = typer.Typer(
 backup_app.add_typer(restore_test_app, name="restore-test")
 catalog_app = typer.Typer(help="Catálogo de medidas del anexo II.", no_args_is_help=True)
 controls_app = typer.Typer(help="Estado de las medidas de la organización.", no_args_is_help=True)
+endpoint_app = typer.Typer(help="Evidencia de endpoints con script guiado.", no_args_is_help=True)
 app.add_typer(report_app, name="report")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
@@ -108,6 +113,7 @@ app.add_typer(scope_app, name="scope")
 app.add_typer(backup_app, name="backup")
 app.add_typer(catalog_app, name="catalog")
 app.add_typer(controls_app, name="controls")
+app.add_typer(endpoint_app, name="endpoint")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -409,6 +415,23 @@ def workspace_import(
     if report.backup_note:
         typer.echo(report.backup_note)
     typer.echo(f"{report.written} ficheros importados, {report.unchanged} sin cambios.")
+
+
+@endpoint_app.command("script")
+def endpoint_script(
+    out: Annotated[
+        Path, typer.Option("--out", help="Directorio vacío o inexistente donde escribir el script.")
+    ],
+) -> None:
+    """Escribe collect-endpoint.sh y el paquete de consultas fijo en un directorio."""
+    try:
+        written = write_bundle(out)
+    except BundleTargetError as exc:
+        raise fail(f"Error: {exc}") from None
+    except OSError as exc:
+        raise fail(f"Error al escribir ficheros: {type(exc).__name__}") from None
+    typer.echo(f"{len(written)} ficheros en {out}")
+    typer.echo(f"Hash del paquete de consultas: {pack_sha256()}")
 
 
 @inventory_app.command("validate")
@@ -983,7 +1006,7 @@ def parse_instant(option: str, text: str | None) -> datetime | None:
 def evidence_import(
     ctx: typer.Context,
     file: Annotated[Path, typer.Argument(help="Fichero aportado por una persona.")],
-    source: Annotated[str, typer.Option(help="Origen; solo se admite manual.")],
+    source: Annotated[str, typer.Option(help="Origen: manual o endpoint (paquete del script).")],
     asset: Annotated[str, typer.Option(help="Id del activo al que se refiere.")],
     by: Annotated[str, typer.Option("--by", help="Nombre de quien aporta (declarado).")],
     collected_at: Annotated[
@@ -992,8 +1015,14 @@ def evidence_import(
     valid_until: Annotated[str | None, typer.Option(help="Caducidad de la evidencia.")] = None,
 ) -> None:
     """Registra una evidencia manual con su hash, autor y fecha."""
+    if source == ENDPOINT_SOURCE:
+        import_endpoint_package(ctx, file, asset, by, collected_at, valid_until)
+        return
     if source != MANUAL_SOURCE:
-        raise fail(f"--source: solo se admite {MANUAL_SOURCE}; las demás las recoge un collector.")
+        raise fail(
+            f"--source: solo se admite {MANUAL_SOURCE} o {ENDPOINT_SOURCE}; "
+            "las demás las recoge un collector."
+        )
     collected = parse_instant("--collected-at", collected_at)
     expires = parse_instant("--valid-until", valid_until)
     try:
@@ -1018,6 +1047,35 @@ def evidence_import(
         f"Evidencia registrada: {manifest.id}\n"
         f"Huella sha256: {manifest.artifact.sha256}\n"
         "El nombre de quien aporta es declarado; no se autentica."
+    )
+
+
+def import_endpoint_package(
+    ctx: typer.Context,
+    file: Path,
+    asset: str,
+    by: str,
+    collected_at: str | None,
+    valid_until: str | None,
+) -> None:
+    if collected_at is not None or valid_until is not None:
+        raise fail(
+            "--collected-at y --valid-until no se admiten con --source endpoint: "
+            "salen del paquete y de max_evidence_age_days."
+        )
+    try:
+        with file.open("rb") as handle:
+            data = handle.read(MAX_PACKAGE_BYTES + 1)
+    except OSError:
+        raise fail("No se puede leer el fichero indicado.") from None
+    package, result = import_endpoint(
+        open_workspace(ctx), data, asset_id=asset, submitted_by=by, now=datetime.now(UTC)
+    )
+    typer.echo(
+        f"Evidencia registrada: {result.id} (paquete original: {package.id})\n"
+        f"Huella sha256 del paquete: {package.artifact.sha256}\n"
+        f"Válida hasta: {result.valid_until:%Y-%m-%dT%H:%M:%S%z}\n"
+        "Es una atestación manual: el nombre de quien aporta es declarado; no se autentica."
     )
 
 

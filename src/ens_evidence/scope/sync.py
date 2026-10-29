@@ -13,6 +13,7 @@ CLOUDFLARE_CONFIG_KEY = connector_config_key("cloudflare")
 GITHUB_CONFIG_KEY = connector_config_key("github")
 GOOGLE_WORKSPACE_CONFIG_KEY = connector_config_key("google-workspace")
 RESTIC_CONFIG_KEY = connector_config_key("restic")
+ENDPOINT_CONFIG_KEY = connector_config_key("endpoint")
 
 SYNCED_KEYS = (
     ASSETS_KEY,
@@ -25,4 +26,5 @@ SYNCED_KEYS = (
     GITHUB_CONFIG_KEY,
     GOOGLE_WORKSPACE_CONFIG_KEY,
     RESTIC_CONFIG_KEY,
+    ENDPOINT_CONFIG_KEY,
 )

@@ -1,0 +1,64 @@
+# Paquete de consultas osquery de la evidencia de endpoints.
+# Las tablas y columnas no marcadas con verified: true no se han contrastado
+# con las versiones de osquery en uso (https://osquery.io/schema/); el check
+# que las consuma debe dar UNKNOWN ante error, tabla vacía o columna ausente.
+id: endpoint-queries
+version: 1
+queries:
+  - id: system_info
+    platforms: [darwin, linux]
+    purpose: HOST-001
+    verified: false
+    note: Identidad del host (hostname, uuid).
+  - id: os_version
+    platforms: [darwin, linux]
+    purpose: HOST-003
+    verified: false
+    note: Nombre, versión y build del sistema operativo.
+  - id: osquery_info
+    platforms: [darwin, linux]
+    purpose: HOST-005
+    verified: false
+    note: Versión de osquery; alf en macOS 15 exige osquery 5.14.1 o superior.
+  - id: root_mount
+    platforms: [darwin, linux]
+    purpose: HOST-004
+    verified: false
+    note: Dispositivo montado en la raíz; se une con disk_encryption.
+  - id: disk_encryption
+    platforms: [darwin, linux]
+    purpose: HOST-004
+    verified: false
+    note: Puede requerir privilegios; sin filas el check da UNKNOWN.
+  - id: filevault_status
+    platforms: [darwin]
+    purpose: HOST-004
+    verified: false
+    note: Tabla posiblemente inexistente según la versión de osquery; si falla, el check da UNKNOWN.
+  - id: alf
+    platforms: [darwin]
+    purpose: HOST-005
+    verified: false
+    note: Firewall de aplicación de macOS; global_state 1 o 2 es activo.
+  - id: software_update_policy
+    platforms: [darwin]
+    purpose: HOST-006
+    verified: false
+    note: >-
+      Preferencias gestionadas (perfil) del dominio com.apple.SoftwareUpdate;
+      sin perfil la tabla está vacía y el check da UNKNOWN.
+  - id: apps
+    platforms: [darwin]
+    purpose: HOST-007
+    verified: false
+    note: Aplicaciones conocidas de macOS, no todo el software instalado.
+  - id: deb_packages
+    platforms: [linux]
+    purpose: HOST-007
+    verified: false
+    note: Solo hosts Debian/Ubuntu; el estado indica si el paquete está instalado.
+  - id: rpm_packages
+    platforms: [linux]
+    purpose: HOST-007
+    verified: false
+    note: Solo hosts RPM; en hosts DEB la tabla falla o está vacía.

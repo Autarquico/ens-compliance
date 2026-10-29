@@ -4,7 +4,7 @@ import json
 from datetime import datetime
 
 from ens_evidence.evidence.layout import artifact_key, manifest_key, new_evidence_id, sha256_hex
-from ens_evidence.evidence.manifests import render_manifest
+from ens_evidence.evidence.manifests import list_manifests, render_manifest
 from ens_evidence.models.contracts import (
     Artifact,
     CollectionResult,
@@ -71,6 +71,63 @@ def import_collected(
     )
     _store_artifact(store, manifest.artifact, data)
     return _store_manifest(store, manifest, now)
+
+
+def import_attested_package(
+    store: WorkspaceStore,
+    package: bytes,
+    result: CollectionResult,
+    *,
+    package_source: str,
+    collector_version: str,
+    submitted_by: str,
+    valid_until: datetime,
+    now: datetime,
+) -> tuple[EvidenceManifest, EvidenceManifest]:
+    """Guarda un paquete aportado a mano y su `CollectionResult` normalizado.
+
+    Dos manifiestos con `provenance: manual`, mismo `collected_at` y `valid_until`:
+    el paquete original (para que `evidence verify` no lo vea huérfano) y el
+    resultado normalizado, que es el que leen los checks. Reimportar el mismo
+    paquete para el mismo activo se rechaza y nombra la evidencia existente.
+    """
+    _reject_reimport(store, package, package_source, result.asset_id)
+    kinds = ((package_source, package), (result.source, canonical_json(result)))
+    manifests = []
+    for source, data in kinds:
+        sha256 = sha256_hex(data)
+        manifest = EvidenceManifest(
+            id=new_evidence_id(now),
+            source=source,
+            asset_id=result.asset_id,
+            collected_at=result.collected_at,
+            valid_until=valid_until,
+            artifact=Artifact(storage="workspace", key=artifact_key(sha256), sha256=sha256),
+            provenance=Provenance(
+                kind=ProvenanceKind.MANUAL, submitted_by=submitted_by, submitted_at=now
+            ),
+            collector=CollectorInfo(name=result.collector, version=collector_version),
+        )
+        manifests.append((manifest, data))
+    for manifest, data in manifests:
+        _store_artifact(store, manifest.artifact, data)
+    return (
+        _store_manifest(store, manifests[0][0], now),
+        _store_manifest(store, manifests[1][0], now),
+    )
+
+
+def _reject_reimport(store: WorkspaceStore, package: bytes, source: str, asset_id: str) -> None:
+    sha256 = sha256_hex(package)
+    for existing in list_manifests(store).manifests:
+        if (existing.source, existing.asset_id, existing.artifact.sha256) == (
+            source,
+            asset_id,
+            sha256,
+        ):
+            raise EvidenceImportError(
+                f"este paquete ya estaba importado como {existing.id}; no se registra otra vez."
+            )
 
 
 def canonical_json(result: CollectionResult) -> bytes:
