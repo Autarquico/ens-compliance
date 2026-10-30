@@ -1,5 +1,25 @@
 {
   "$defs": {
+    "AbsentAssets": {
+      "additionalProperties": false,
+      "description": "Qu\u00e9 tipo de activo no existe en el sistema y por qu\u00e9 (anexo II, 2.1.a).",
+      "properties": {
+        "asset_type": {
+          "title": "Asset Type",
+          "type": "string"
+        },
+        "justification": {
+          "title": "Justification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "asset_type",
+        "justification"
+      ],
+      "title": "AbsentAssets",
+      "type": "object"
+    },
     "Applicability": {
       "enum": [
         "APPLICABLE",
@@ -28,6 +48,41 @@
         "consolidation_date"
       ],
       "title": "CatalogVersion",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "BASICA",
+        "MEDIA",
+        "ALTA"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "Compensation": {
+      "additionalProperties": false,
+      "description": "Medidas compensatorias que sustituyen una exigida por el anexo II (art. 28.3).",
+      "properties": {
+        "justification": {
+          "description": "Por qu\u00e9 protegen igual o mejor frente al riesgo que la medida sustituida.",
+          "title": "Justification",
+          "type": "string"
+        },
+        "measures": {
+          "description": "Medidas compensatorias, descritas una a una.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Measures",
+          "type": "array"
+        }
+      },
+      "required": [
+        "measures",
+        "justification"
+      ],
+      "title": "Compensation",
       "type": "object"
     },
     "EvidenceRef": {
@@ -73,12 +128,43 @@
     "Measure": {
       "additionalProperties": false,
       "properties": {
+        "absent_assets": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/AbsentAssets"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tipo de activo que no existe en el sistema; \u00fanica v\u00eda para dejar NOT_APPLICABLE una medida que el anexo II exige (anexo II, 2.1.a). Solo las medidas de `applicability/absent_asset_types.yaml`."
+        },
         "applicability": {
           "$ref": "#/$defs/Applicability"
         },
         "assessment": {
           "$ref": "#/$defs/MeasureAssessment",
           "default": "NOT_ASSESSED"
+        },
+        "chosen_reinforcements": {
+          "description": "Refuerzo que la organizaci\u00f3n adopta de cada grupo alternativo.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Chosen Reinforcements",
+          "type": "array"
+        },
+        "compensation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Compensation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
         },
         "evidence": {
           "items": {
@@ -103,10 +189,27 @@
           "default": null,
           "title": "Justification"
         },
+        "proposed": {
+          "default": false,
+          "description": "La decisi\u00f3n la escribi\u00f3 `applicability propose` y nadie la ha editado.",
+          "title": "Proposed",
+          "type": "boolean"
+        },
         "review": {
           "anyOf": [
             {
               "$ref": "#/$defs/Review"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "selection": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SelectionBasis"
             },
             {
               "type": "null"
@@ -179,10 +282,62 @@
         "system_administrator",
         "system_administrator_delegate",
         "security_officer",
-        "system_owner"
+        "system_owner",
+        "information_owner",
+        "service_owner"
       ],
       "title": "Role",
       "type": "string"
+    },
+    "SelectionBasis": {
+      "additionalProperties": false,
+      "description": "Fundamento con el que se decidi\u00f3 la aplicabilidad; si cambia, la decisi\u00f3n se revisa.",
+      "properties": {
+        "alternatives": {
+          "description": "Grupos de refuerzos: basta uno de cada grupo.",
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "catalog_snapshot_sha256": {
+          "title": "Catalog Snapshot Sha256",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "required_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Por qu\u00e9 el anexo II la exige; None si no la exig\u00eda.",
+          "title": "Required By"
+        },
+        "required_reinforcements": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Reinforcements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "category",
+        "catalog_snapshot_sha256"
+      ],
+      "title": "SelectionBasis",
+      "type": "object"
     }
   },
   "additionalProperties": false,

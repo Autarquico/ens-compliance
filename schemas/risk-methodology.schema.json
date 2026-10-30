@@ -1,0 +1,86 @@
+{
+  "$defs": {
+    "ScaleValue": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "description"
+      ],
+      "title": "ScaleValue",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "adaptation": {
+      "title": "Adaptation",
+      "type": "string"
+    },
+    "adopted": {
+      "title": "Adopted",
+      "type": "boolean"
+    },
+    "impact": {
+      "items": {
+        "$ref": "#/$defs/ScaleValue"
+      },
+      "title": "Impact",
+      "type": "array"
+    },
+    "likelihood": {
+      "items": {
+        "$ref": "#/$defs/ScaleValue"
+      },
+      "title": "Likelihood",
+      "type": "array"
+    },
+    "matrix": {
+      "additionalProperties": {
+        "additionalProperties": {
+          "type": "string"
+        },
+        "type": "object"
+      },
+      "title": "Matrix",
+      "type": "object"
+    },
+    "name": {
+      "title": "Name",
+      "type": "string"
+    },
+    "reference": {
+      "title": "Reference",
+      "type": "string"
+    },
+    "risk_levels": {
+      "items": {
+        "$ref": "#/$defs/ScaleValue"
+      },
+      "title": "Risk Levels",
+      "type": "array"
+    }
+  },
+  "required": [
+    "adopted",
+    "name",
+    "reference",
+    "adaptation",
+    "likelihood",
+    "impact",
+    "risk_levels",
+    "matrix"
+  ],
+  "title": "Methodology",
+  "type": "object"
+}

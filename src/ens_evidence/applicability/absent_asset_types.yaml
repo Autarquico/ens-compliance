@@ -1,0 +1,29 @@
+# Medidas que el anexo II puede exigir y que quedan sin objeto si no existe el tipo de activo
+# al que se refieren (anexo II, 2.1.a). Es una decisión del producto, no texto legal: el
+# catálogo se extrae del BOE (ADR 0007) y no se toca. Ver ADR 0009.
+# Tampoco mp.si.1, mp.si.5 ni mp.info.3: se aplican a todo sistema con información o equipos.
+# Nunca entran org.*, op.pl.*, op.exp.*, op.cont.*, op.mon.* ni mp.per.*: son marco o proceso,
+# no activos que puedan faltar. Para esas, aplícalas o compénsalas (art. 28.3).
+op.acc.5: [usuarios externos]
+op.ext.1: [servicios prestados por terceros]
+op.ext.2: [servicios prestados por terceros]
+op.ext.3: [servicios prestados por terceros]
+op.ext.4: [interconexión con otros sistemas]
+op.nub.1: [servicios en la nube]
+mp.if.1: [instalaciones propias que alberguen el sistema]
+mp.if.2: [instalaciones propias que alberguen el sistema]
+mp.if.3: [instalaciones propias que alberguen el sistema]
+mp.if.4: [instalaciones propias que alberguen el sistema]
+mp.if.5: [instalaciones propias que alberguen el sistema]
+mp.if.6: [instalaciones propias que alberguen el sistema]
+mp.if.7: [instalaciones propias que alberguen el sistema]
+mp.eq.3: [dispositivos portátiles]
+mp.eq.4: [otros dispositivos conectados a la red]
+mp.si.2: [soportes de información removibles]
+mp.si.3: [soportes de información removibles]
+mp.si.4: [soportes de información removibles]
+mp.sw.1: [desarrollo propio de aplicaciones]
+mp.info.1: [datos personales]
+mp.info.4: [información susceptible de ser utilizada como evidencia electrónica]
+mp.s.1: [correo electrónico]
+mp.s.2: [servicios y aplicaciones web]

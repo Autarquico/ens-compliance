@@ -1,0 +1,215 @@
+{
+  "$defs": {
+    "Dimension": {
+      "enum": [
+        "C",
+        "I",
+        "T",
+        "A",
+        "D"
+      ],
+      "title": "Dimension",
+      "type": "string"
+    },
+    "Information": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "ratings": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Rating"
+          },
+          "description": "Una entrada por dimensi\u00f3n; ausente = pendiente.",
+          "propertyNames": {
+            "$ref": "#/$defs/Dimension"
+          },
+          "title": "Ratings",
+          "type": "object"
+        },
+        "valuation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/InformationValuation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id",
+        "description"
+      ],
+      "title": "Information",
+      "type": "object"
+    },
+    "InformationValuation": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "valued_at": {
+          "format": "date-time",
+          "title": "Valued At",
+          "type": "string"
+        },
+        "valued_by": {
+          "minLength": 1,
+          "title": "Valued By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "valued_by",
+        "role",
+        "valued_at"
+      ],
+      "title": "InformationValuation",
+      "type": "object"
+    },
+    "Rating": {
+      "additionalProperties": false,
+      "description": "Nivel de una dimensi\u00f3n, o `not_affected`, con su justificaci\u00f3n.",
+      "properties": {
+        "justification": {
+          "description": "Raz\u00f3n del nivel, referida a los criterios de perjuicio del anexo I, 3.",
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
+        "level": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/SecurityLevel"
+            },
+            {
+              "const": "not_affected",
+              "type": "string"
+            }
+          ],
+          "title": "Level"
+        }
+      },
+      "required": [
+        "level",
+        "justification"
+      ],
+      "title": "Rating",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "SecurityLevel": {
+      "enum": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "title": "SecurityLevel",
+      "type": "string"
+    },
+    "ServiceRating": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "ratings": {
+          "additionalProperties": {
+            "$ref": "#/$defs/Rating"
+          },
+          "description": "Una entrada por dimensi\u00f3n; ausente = pendiente.",
+          "propertyNames": {
+            "$ref": "#/$defs/Dimension"
+          },
+          "title": "Ratings",
+          "type": "object"
+        },
+        "valuation": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ServiceValuation"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "ServiceRating",
+      "type": "object"
+    },
+    "ServiceValuation": {
+      "additionalProperties": false,
+      "properties": {
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "valued_at": {
+          "format": "date-time",
+          "title": "Valued At",
+          "type": "string"
+        },
+        "valued_by": {
+          "minLength": 1,
+          "title": "Valued By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "valued_by",
+        "role",
+        "valued_at"
+      ],
+      "title": "ServiceValuation",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "information": {
+      "items": {
+        "$ref": "#/$defs/Information"
+      },
+      "title": "Information",
+      "type": "array"
+    },
+    "services": {
+      "items": {
+        "$ref": "#/$defs/ServiceRating"
+      },
+      "title": "Services",
+      "type": "array"
+    }
+  },
+  "title": "CategorizationFile",
+  "type": "object"
+}

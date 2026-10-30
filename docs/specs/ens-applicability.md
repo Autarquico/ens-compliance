@@ -28,7 +28,7 @@ el resultado comprometido pasa a "preparado para certificación" (docs/vision.md
 **Entra:**
 - `scope/categorization.yaml` aprobado
 - `risk/methodology.md`, `risk/register.yaml`, `risk/treatment-plan.yaml`
-- `controls/applicability.yaml` con justificación por medida
+- `controls/applicability.yaml`: Declaración de Aplicabilidad firmada (art. 28.2), con la justificación por medida en `controls/measures.yaml` (ADR 0009)
 
 **No entra:**
 - Matriz de evidencias por medida: es `compliance-matrix`.
@@ -42,7 +42,7 @@ el resultado comprometido pasa a "preparado para certificación" (docs/vision.md
 
 ### Scenario: aplicabilidad justificada
 - **Given** cada medida del catálogo
-- **When** se valida `applicability.yaml`
+- **When** se valida la aplicabilidad (`controls/measures.yaml`) para firmar la Declaración de Aplicabilidad (`controls/applicability.yaml`)
 - **Then** toda medida tiene estado y justificación
 
 ## Notas técnicas / riesgos

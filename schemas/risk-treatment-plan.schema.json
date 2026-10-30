@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "ActionStatus": {
+      "enum": [
+        "pending",
+        "in_progress",
+        "done",
+        "cancelled"
+      ],
+      "title": "ActionStatus",
+      "type": "string"
+    },
+    "TreatmentAction": {
+      "additionalProperties": false,
+      "properties": {
+        "description": {
+          "title": "Description",
+          "type": "string"
+        },
+        "due": {
+          "format": "date",
+          "title": "Due",
+          "type": "string"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "risk": {
+          "minLength": 1,
+          "title": "Risk",
+          "type": "string"
+        },
+        "status": {
+          "$ref": "#/$defs/ActionStatus"
+        }
+      },
+      "required": [
+        "id",
+        "risk",
+        "description",
+        "owner",
+        "due",
+        "status"
+      ],
+      "title": "TreatmentAction",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "actions": {
+      "items": {
+        "$ref": "#/$defs/TreatmentAction"
+      },
+      "title": "Actions",
+      "type": "array"
+    }
+  },
+  "required": [
+    "actions"
+  ],
+  "title": "TreatmentPlanFile",
+  "type": "object"
+}
