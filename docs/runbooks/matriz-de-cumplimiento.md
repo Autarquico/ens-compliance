@@ -45,7 +45,8 @@ ens-evidence matrix link op.exp.1 --check <id-del-check> --covers op.exp.1.1
 `--covers` dice qué cubre la fuente. Puede ser `base`, un refuerzo (`R1`), la
 compensación (`compensation`) o ids de cláusula concretos. Una obligación solo
 queda sustentada si **todas** sus cláusulas lo están, sumando todas las
-fuentes vinculadas.
+fuentes vinculadas. El texto de cada cláusula se lee con
+`ens-evidence catalog show op.acc.5`.
 
 Qué fuentes cuentan:
 
@@ -74,8 +75,11 @@ responsable de la seguridad analiza después el informe (2.1.b); no revisa
 medidas.
 
 - Antes de registrar, se muestra qué cubre cada fuente.
-- `COMPLIANT` se rechaza si falta el responsable, la periodicidad o alguna
-  cláusula por cubrir.
+- Toda revisión exige responsable y periodicidad (también la de una medida no
+  aplicable). `COMPLIANT` se rechaza además si queda alguna cláusula por cubrir
+  o si `--at` es anterior a una fuente que se le atribuye.
+- Una revisión solo vale para el contexto en que se hizo: si una medida pasa a
+  no aplicable y vuelve a aplicable, hay que revisarla de nuevo.
 - En las medidas no aplicables no se pone `--assessment`: se revisa que la
   decisión sigue valiendo.
 - El nombre es declarado; la herramienta no lo autentica.
@@ -98,11 +102,18 @@ ens-evidence matrix export --format md     # evidence/reports/matrix/<fecha>.md
 ens-evidence applicability show --annotated --save
 ```
 
-La exportación lista cada medida de la Declaración con:
+`status`, la exportación en Markdown y la vista de la Declaración muestran
+cada bloqueo en castellano y con el comando del siguiente paso. Una medida que
+nadie ha revisado figura como «sin revisar», no como «no conforme». El JSON
+conserva los códigos internos.
 
-- sus requisitos;
-- sus evidencias, con las fuentes, sus hashes y sus fechas;
-- el responsable, la periodicidad y la última revisión;
+La exportación lista cada medida de la Declaración, en el orden del catálogo, con:
+
+- sus requisitos (y, en una compensación, las medidas compensatorias);
+- sus evidencias, con las fuentes, lo que cubre cada una, sus hashes y sus fechas;
+- el responsable, la periodicidad y la última revisión: quién revisó, su
+  conclusión, la huella del registro y la fuente que cubre cada cláusula
+  según confirmó;
 - sus bloqueos.
 
 Si falta alguna medida de la Declaración, la exportación falla.

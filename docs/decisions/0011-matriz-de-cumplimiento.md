@@ -50,6 +50,11 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
   La huella del alcance no entra: dar de alta un activo no obliga a revisar
   todas las medidas. Los activos se controlan por la cobertura de los checks,
   y cuando cambia el alcance la Declaración se vuelve a firmar.
+- **Revisión vigente:** de cada medida vale la revisión más reciente, sea de
+  implantación o de aplicabilidad, y solo para el contexto en que se hizo:
+  volver a un contexto anterior no la recupera. Cada revisión guarda, por
+  obligación, las fuentes y las cláusulas que la persona confirmó; el export
+  las muestra junto con su conclusión.
 - **Una sola regla de preparación.** `matrix.assess()` es el único punto de
   integración. Aplica la regla compartida de `models/readiness.py`
   (`measure_blockers`, `evaluate_readiness`) y le añade los huecos de la

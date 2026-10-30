@@ -7,14 +7,12 @@ from ens_evidence.matrix.documents import (
     OrgDocumentEvidence,
     OrgDocumentSource,
     default_document_source,
-    document_support,
     documents_snapshot,
 )
-from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess, effective_review
-from ens_evidence.matrix.evidence import LinkSupport, manual_support
+from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess
+from ens_evidence.matrix.evidence import LinkSupport
 from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
 from ens_evidence.matrix.links import (
-    InitOutcome,
     LinkOutcome,
     MatrixRejected,
     add_link,
@@ -34,6 +32,7 @@ from ens_evidence.matrix.model import (
     MatrixFile,
     MeasureReviewRecord,
     Owner,
+    ReviewedClause,
     ReviewedDocument,
     ReviewedEvidence,
     ReviewedObligation,
@@ -41,13 +40,11 @@ from ens_evidence.matrix.model import (
 from ens_evidence.matrix.obligations import (
     COMPENSATION,
     ClauseRef,
-    CoverExpansion,
     MatrixRowSpec,
     Obligation,
     ObligationPlan,
     RowKind,
     expand_covers,
-    obligations_for,
     plan_obligations,
     rows_from_declaration,
 )
@@ -62,14 +59,8 @@ from ens_evidence.matrix.render import (
     render_markdown,
     save_report,
 )
-from ens_evidence.matrix.review import (
-    CHECKS_PENDING,
-    ReviewPlan,
-    RowStatus,
-    matrix_status,
-    prepare_review,
-    record_review,
-)
+from ens_evidence.matrix.review import ReviewPlan, prepare_review, record_review
+from ens_evidence.matrix.status import CHECKS_PENDING, RowStatus, matrix_status
 from ens_evidence.matrix.store import (
     MATRIX_KEY,
     REVIEWS_PREFIX,
@@ -88,7 +79,6 @@ from ens_evidence.matrix.technical import (
     CheckRun,
     NoCheckResults,
     StaticCheckResults,
-    technical_support,
 )
 
 __all__ = [
@@ -104,10 +94,8 @@ __all__ = [
     "AssessmentResult",
     "AssessmentRow",
     "assess",
-    "effective_review",
     "CHECKS_PENDING",
     "COMPENSATION",
-    "InitOutcome",
     "LinkOutcome",
     "MatrixRejected",
     "ReviewPlan",
@@ -135,16 +123,12 @@ __all__ = [
     "OrgdocsSource",
     "StaticCheckResults",
     "default_document_source",
-    "document_support",
     "documents_snapshot",
-    "manual_support",
-    "technical_support",
     "MATRIX_KEY",
     "REVIEWS_PREFIX",
     "ApplicabilityReview",
     "CheckLink",
     "ClauseRef",
-    "CoverExpansion",
     "DocumentLink",
     "EffectiveReviews",
     "ManualEvidenceLink",
@@ -155,6 +139,7 @@ __all__ = [
     "Obligation",
     "ObligationPlan",
     "Owner",
+    "ReviewedClause",
     "ReviewedDocument",
     "ReviewedEvidence",
     "ReviewedObligation",
@@ -165,7 +150,6 @@ __all__ = [
     "expand_covers",
     "links_sha256",
     "measure_context_sha256",
-    "obligations_for",
     "plan_obligations",
     "read_matrix",
     "read_reviews",

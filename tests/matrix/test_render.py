@@ -1,3 +1,4 @@
+import hashlib
 import json
 import re
 from dataclasses import replace
@@ -19,7 +20,9 @@ from ens_evidence.matrix import (
     StaticCheckResults,
     assess,
     build_export,
+    prepare_review,
     read_reviews,
+    record_review,
     render_json,
     render_markdown,
     save_report,
@@ -299,8 +302,9 @@ def test_la_tabla_markdown_tiene_las_columnas_pedidas_y_una_fila_por_medida(sour
     assert all(len(cells(line)) == len(COLUMNS) for line in table)
     revised = next(line for line in table if line.startswith(f"| {ONE_CLAUSE} "))
     row = cells(revised)
-    assert row[2] == CHECK.replace("_", r"\_") and row[7] == "sí" and row[8] == "sí"
-    assert "Ana (system_administrator)" in row[6]
+    assert row[2] == CHECK.replace("_", r"\_") + " (cubre base)"
+    assert row[7] == "sí" and row[8] == "sí"
+    assert "Ana (administrador del sistema)" in row[6]
 
 
 def test_el_markdown_termina_con_las_fuentes_y_el_aviso(sourced):
@@ -330,7 +334,7 @@ def test_el_markdown_escapa_los_textos_libres(signed):
     assert len(cells(line)) == len(COLUMNS)
     owner = cells(line)[4]
     assert owner == (
-        r"Ana\|B \*x\* \_y\_ \[l\](http://e) \<b\>z\</b\> \# titulo (system_administrator)"
+        r"Ana\|B \*x\* \_y\_ \[l\](http://e) \<b\>z\</b\> \# titulo (administrador del sistema)"
     )
     assert "<b>" not in text
 
@@ -341,7 +345,8 @@ def test_los_bloqueos_globales_salen_en_el_markdown(signed):
 
     text = render_markdown(export_of(signed))
 
-    assert r"- global: UNDETERMINED\_APPLICABILITY declaration\_stale" in text
+    assert "- global: la Declaración de Aplicabilidad ya no vale" in text
+    assert "todas las medidas quedan bloqueadas" in text
 
 
 # --- almacenamiento ---------------------------------------------------------------------------
@@ -355,3 +360,124 @@ def test_save_report_escribe_una_copia_nueva_y_no_sobrescribe(signed):
     with pytest.raises(Exception, match="exist"):
         save_report(signed, "evidence/reports/matrix", GENERATED, "json", "dos")
     assert signed.read_text(key) == "uno"
+
+
+# --- ronda 1: conclusión y cobertura, orden, textos --------------------------------------------
+
+
+@pytest.fixture
+def reviewed(signed):
+    """ONE_CLAUSE revisada por `prepare_review`, que es quien atribuye la cobertura por cláusula."""
+    evidence_id = manual_evidence(signed, valid_until=NOW + timedelta(days=365))
+    configure(
+        signed, entry(ONE_CLAUSE, ManualEvidenceLink(evidence_id=evidence_id, covers=["base"]))
+    )
+    plan = prepare_review(
+        signed,
+        NOW,
+        ONE_CLAUSE,
+        by="Ana",
+        role="system_administrator",
+        conclusion="Inventario completo y contrastado",
+        assessment="COMPLIANT",
+        documents=FakeDocuments(),
+    )
+    assert not plan.problems, plan.problems
+    key = record_review(signed, plan)
+    return signed, evidence_id, key
+
+
+def exported_row(export, measure_id):
+    return next(r for r in export.rows if r.measure_id == measure_id)
+
+
+def test_el_export_lleva_la_conclusion_la_huella_del_registro_y_la_cobertura_confirmada(reviewed):
+    store, evidence_id, key = reviewed
+
+    review = exported_row(export_of(store), ONE_CLAUSE).last_review
+
+    assert review.conclusion == "Inventario completo y contrastado"
+    assert review.record_sha256 == hashlib.sha256(store.read_bytes(key)).hexdigest()
+    (obligation,) = review.obligations
+    assert [(c.clause, c.sources) for c in obligation.coverage] == [
+        ("op.exp.1.1", [f"evidence:{evidence_id}"])
+    ]
+    assert json.loads(render_json(export_of(store)))["rows"]
+
+
+def test_el_markdown_muestra_la_conclusion_y_cada_clausula_con_su_fuente(reviewed):
+    store, evidence_id, key = reviewed
+
+    text = render_markdown(export_of(store))
+
+    revisions = text[text.index("### Revisiones") :]
+    assert "conclusión: Inventario completo y contrastado" in revisions
+    assert f"cláusula op.exp.1.1 ← evidence:{evidence_id}" in revisions
+    assert f"registro `{key}`" in revisions
+    assert "sha256 `" in revisions
+
+
+def test_el_markdown_muestra_que_cubre_cada_enlace(reviewed):
+    store, evidence_id, _ = reviewed
+
+    text = render_markdown(export_of(store))
+
+    line = next(line for line in text.splitlines() if line.startswith(f"| {ONE_CLAUSE} "))
+    assert f"{evidence_id} (cubre base)" in line
+
+
+def test_las_filas_salen_en_el_orden_del_catalogo_y_no_alfabetico(basic):
+    from ens_evidence.catalog import load_catalog
+
+    order = [m.id for m in load_catalog().measures]
+
+    ids = [r.measure_id for r in export_of(basic).rows]
+
+    assert ids == sorted(ids, key=order.index)
+    assert ids != sorted(ids)
+
+
+def test_el_json_conserva_los_codigos_y_el_markdown_los_traduce(signed):
+    export = export_of(signed)
+
+    document = json.loads(render_json(export))
+    text = render_markdown(export)
+
+    row = next(r for r in document["rows"] if r["measure_id"] == ONE_CLAUSE)
+    assert {"kind": "MISSING_REVIEW", "measure_id": ONE_CLAUSE, "detail": "review_missing"} in (
+        row["blockers"]
+    )
+    assert "MISSING\\_REVIEW" not in text and "NOT\\_COMPLIANT" not in text
+    assert "sin revisar: nadie ha valorado esta medida todavía" in text
+    assert "matrix review" in text
+    assert "no conforme" not in text
+
+
+def test_las_cifras_del_markdown_van_en_singular_y_sin_caducidad_se_explica(reviewed):
+    store, _, _ = reviewed
+    export = export_of(store)
+    one = export.model_copy(update={"blockers": export.blockers[:1]})
+    none_expiring = export.model_copy(
+        update={
+            "sources": export.sources.model_copy(
+                update={
+                    "evidence": [
+                        e.model_copy(update={"valid_until": None}) for e in export.sources.evidence
+                    ]
+                }
+            )
+        }
+    )
+
+    assert "- Preparación: NOT_READY, 1 bloqueo\n" in render_markdown(one)
+    assert "1 bloqueos" not in render_markdown(one)
+    assert "cuenta dentro de la periodicidad de la medida" in render_markdown(none_expiring)
+
+
+def test_un_hueco_de_cobertura_agrupa_las_clausulas_en_una_linea(signed):
+    configure(signed, entry(TWO_CLAUSES))
+
+    text = render_markdown(export_of(signed))
+
+    line = next(line for line in text.splitlines() if line.startswith(f"| {TWO_CLAUSES} "))
+    assert "faltan evidencias en 2 cláusulas: op.ext.4.1, op.ext.4.2" in line

@@ -10,12 +10,11 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from ens_evidence.matrix.documents import OrgDocumentSource, documents_snapshot
-from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess
+from ens_evidence.matrix.evaluate import covered_units, link_supports, uncovered_units
 from ens_evidence.matrix.evidence import LinkSupport
 from ens_evidence.matrix.fingerprint import links_sha256
 from ens_evidence.matrix.links import (
     MatrixRejected,
-    current_supports,
     entry_of,
     link_label,
     load_matrix,
@@ -25,8 +24,10 @@ from ens_evidence.matrix.links import (
 )
 from ens_evidence.matrix.model import (
     ApplicabilityReview,
+    CheckLink,
     MatrixEntry,
     MeasureReviewRecord,
+    ReviewedClause,
     ReviewedDocument,
     ReviewedEvidence,
     ReviewedObligation,
@@ -37,7 +38,6 @@ from ens_evidence.matrix.technical import CheckResultsSource, NoCheckResults
 from ens_evidence.models.contracts import Review
 from ens_evidence.models.dossier import SELF_ASSESSORS
 from ens_evidence.models.enums import MeasureAssessment
-from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.workspace import WorkspaceStore
 
 ASSESSMENTS = (
@@ -45,8 +45,6 @@ ASSESSMENTS = (
     MeasureAssessment.NON_COMPLIANT,
     MeasureAssessment.REQUIRES_REVIEW,
 )
-CHECKS_PENDING = "evidencia técnica: pendiente del motor de checks"
-REVIEW_BLOCKERS = {BlockerKind.MISSING_REVIEW, BlockerKind.EXPIRED_REVIEW}
 
 
 @dataclass(frozen=True)
@@ -144,7 +142,18 @@ def _reviewed_obligations(
                 obligation=obligation.id,
                 clauses=sorted(u for u in units if any(u in s.clauses for s in used)),
                 evidence=list(evidence.values()),
-                checks=sorted({s.link.check_id for s in used if s.link.kind == "check"}),
+                coverage=[
+                    ReviewedClause(
+                        clause=unit,
+                        sources=[
+                            f"{kind}:{target}"
+                            for kind, target in (s.link.target for s in used if unit in s.clauses)
+                        ],
+                    )
+                    for unit in sorted(units)
+                    if any(unit in s.clauses for s in used)
+                ],
+                checks=sorted({s.link.check_id for s in used if isinstance(s.link, CheckLink)}),
                 documents=list(documents.values()),
             )
         )
@@ -152,25 +161,37 @@ def _reviewed_obligations(
 
 
 def _missing(row: MatrixRowSpec, supports: Iterable[LinkSupport]) -> list[str]:
-    covered = frozenset().union(*(s.clauses for s in supports if s.counts))
     return [
-        f"{'cláusula' if o.clause_ids else 'obligación'} sin cubrir: {unit} ({o.id})"
-        for o in row.obligations
-        for unit in o.units
-        if unit not in covered
+        f"{'cláusula' if u.is_clause else 'obligación'} sin cubrir: {u.unit} ({u.obligation})"
+        for u in uncovered_units(row, covered_units(supports))
+    ]
+
+
+def _before_sources(supports: Iterable[LinkSupport], reviewed_at: datetime | None) -> list[str]:
+    """Una revisión no puede datarse antes de las fuentes que se le atribuyen."""
+    if reviewed_at is None:
+        return []
+    return [
+        f"--at {reviewed_at.isoformat()} es anterior a {link_label(s.link)}, disponible desde "
+        f"{s.available_at.isoformat()}; no se puede revisar una fuente que aún no existía."
+        for s in supports
+        if s.counts and s.available_at is not None and s.available_at > reviewed_at
     ]
 
 
 def _problems(
-    entry: MatrixEntry, assessment: MeasureAssessment | None, missing: list[str]
+    entry: MatrixEntry,
+    assessment: MeasureAssessment | None,
+    missing: list[str],
+    late_sources: list[str],
 ) -> list[str]:
     problems: list[str] = []
     if entry.review_every_days is None:
         problems.append("falta la periodicidad (matrix set --every DÍAS): fija la vigencia.")
+    if entry.owner is None:
+        problems.append("falta el responsable (matrix set --owner NOMBRE --owner-role ROL).")
     if assessment is MeasureAssessment.COMPLIANT:
-        if entry.owner is None:
-            problems.append("falta el responsable (matrix set --owner NOMBRE --owner-role ROL).")
-        problems += missing
+        problems += [*missing, *late_sources]
     return problems
 
 
@@ -209,8 +230,10 @@ def prepare_review(
     entry = entry_of(load_matrix(store), measure_id)
     snapshot = documents_snapshot(store, now, documents)
     runs = tuple((checks or NoCheckResults()).runs(store, now))
-    supports = current_supports(store, row, entry, now, snapshot, runs) if selected else []
-    problems = _problems(entry, verdict, _missing(row, supports) if selected else [])
+    supports = link_supports(store, row, entry, runs, snapshot, now) if selected else []
+    problems = _problems(
+        entry, verdict, _missing(row, supports) if selected else [], _before_sources(supports, at)
+    )
     notes = tuple(
         f"{link_label(s.link)}: {b.kind.value} {b.detail}" for s in supports for b in s.blockers
     )
@@ -253,50 +276,3 @@ def record_review(store: WorkspaceStore, plan: ReviewPlan) -> str:
     if plan.record is None:
         raise MatrixRejected(*plan.problems)
     return add_review(store, plan.record)
-
-
-@dataclass(frozen=True)
-class RowStatus:
-    row: AssessmentRow
-    implemented: bool
-    regularly_reviewed: bool
-    sources: tuple[str, ...]
-    has_check_links: bool
-
-    @property
-    def blockers(self) -> tuple[Blocker, ...]:
-        return self.row.blockers
-
-
-def row_status(row: AssessmentRow) -> RowStatus:
-    """Implantada: revisión COMPLIANT sin ningún bloqueo. Revisión regular: responsable,
-    periodicidad y revisión vigente (sin `MISSING_REVIEW` ni `EXPIRED_REVIEW`)."""
-    selected = row.spec.kind is RowKind.SELECTED
-    implemented = (
-        selected and row.measure.assessment is MeasureAssessment.COMPLIANT and not row.blockers
-    )
-    regular = row.review is not None and not any(b.kind in REVIEW_BLOCKERS for b in row.blockers)
-    links = row.entry.links if row.entry else []
-    return RowStatus(
-        row,
-        implemented,
-        regular,
-        tuple(link_label(s.link) for s in row.supports if s.counts),
-        any(link.kind == "check" for link in links),
-    )
-
-
-def matrix_status(
-    store: WorkspaceStore,
-    at: datetime,
-    *,
-    checks: CheckResultsSource | None = None,
-    documents: OrgDocumentSource | None = None,
-) -> tuple[AssessmentResult, tuple[RowStatus, ...]]:
-    kwargs = {}
-    if checks is not None:
-        kwargs["checks"] = checks
-    if documents is not None:
-        kwargs["documents"] = documents
-    result = assess(store, at, **kwargs)
-    return result, tuple(row_status(r) for r in result.rows)

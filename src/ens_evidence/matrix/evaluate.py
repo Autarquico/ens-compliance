@@ -6,16 +6,16 @@ evidencia que cuenta) y le añade los huecos propios de la matriz como `coverage
 aquí declara conformidad: `COMPLIANT` solo sale de una revisión humana registrada (regla 12).
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
+from typing import NamedTuple
 
 from ens_evidence.applicability import DeclarationState
 from ens_evidence.catalog.controls import MeasuresFileError, load_measures
 from ens_evidence.matrix.documents import (
     DocumentsSnapshot,
     OrgDocumentSource,
-    default_document_source,
     document_support,
     documents_snapshot,
 )
@@ -47,11 +47,9 @@ from ens_evidence.models.readiness import (
     ReadinessResult,
     evaluate_readiness,
     measure_blockers,
+    unique_blockers,
 )
 from ens_evidence.workspace import WorkspaceStore
-
-_NO_CHECKS = NoCheckResults()
-_ORG_DOCUMENTS = default_document_source()
 
 
 @dataclass(frozen=True)
@@ -80,10 +78,6 @@ class AssessmentResult:
     errors: tuple[str, ...] = field(default=())
 
 
-def _unique(blockers: list[Blocker]) -> tuple[Blocker, ...]:
-    return tuple({(b.kind, b.measure_id, b.detail): b for b in blockers}.values())
-
-
 def _gap(kind: BlockerKind, measure_id: str, detail: str) -> Blocker:
     return Blocker(kind=kind, measure_id=measure_id, detail=detail)
 
@@ -97,6 +91,8 @@ def effective_review(review: Review, review_every_days: int | None) -> Review:
 
 
 def _not_current(plan, now: datetime) -> AssessmentResult:
+    # No pasa por `evaluate_readiness`: con la Declaración sin vigencia puede no haber filas y
+    # `ReadinessInput.measures` no admite una lista vacía. Nada abre aquí un camino a READY.
     detail = f"declaration_{plan.state.value.lower()}"
     glob = Blocker(kind=BlockerKind.UNDETERMINED_APPLICABILITY, detail=detail)
     rows = tuple(
@@ -121,23 +117,27 @@ def _decisions(store: WorkspaceStore) -> tuple[Mapping[str, Measure], list[str]]
     return {m.id: m for m in document.measures} if document else {}, []
 
 
-def _supports(
+def link_supports(
     store: WorkspaceStore,
     row: MatrixRowSpec,
     entry: MatrixEntry,
     runs: tuple[CheckRun, ...],
     snapshot: DocumentsSnapshot,
-    now: datetime,
+    at: datetime,
 ) -> list[LinkSupport]:
+    """Lo que cada enlace sustenta en `at`: la única agregación de fuentes (`assess` y
+    `prepare_review`). No compara con revisiones anteriores: una revisión nueva se registra en
+    `at`, así que toda fuente existente es anterior a su registro y no bloquea re-revisar tras
+    importar evidencia nueva. `assess` añade `_sustains_review` sobre la revisión vigente."""
     found: list[LinkSupport] = []
     for link in entry.links:
         match link:
             case ManualEvidenceLink():
-                found.append(manual_support(store, row, link, now, entry.review_every_days))
+                found.append(manual_support(store, row, link, at, entry.review_every_days))
             case CheckLink():
-                found.append(technical_support(store, row, link, runs, now))
+                found.append(technical_support(store, row, link, runs, at))
             case DocumentLink():
-                found.append(document_support(snapshot, row, link, now))
+                found.append(document_support(snapshot, row, link, at))
     return found
 
 
@@ -213,16 +213,42 @@ def _review_gaps(
     return gaps
 
 
+class Uncovered(NamedTuple):
+    obligation: str
+    unit: str
+    is_clause: bool
+
+
+def covered_units(supports: Iterable[LinkSupport]) -> frozenset[str]:
+    """Unidades que cubren las fuentes que cuentan: la única definición de cobertura."""
+    return frozenset().union(*(s.clauses for s in supports if s.counts))
+
+
+def uncovered_units(row: MatrixRowSpec, covered: frozenset[str]) -> list[Uncovered]:
+    """Unidades de la medida (cláusulas con id o la obligación entera) que ninguna fuente cubre."""
+    return [
+        Uncovered(o.id, unit, bool(o.clause_ids))
+        for o in row.obligations
+        for unit in o.units
+        if unit not in covered
+    ]
+
+
 def _coverage_gaps(row: MatrixRowSpec, covered: frozenset[str]) -> list[Blocker]:
-    gaps: list[Blocker] = []
-    for obligation in row.obligations:
-        label = "clause" if obligation.clause_ids else "obligation"
-        gaps += [
-            _gap(BlockerKind.MISSING_EVIDENCE, row.measure_id, f"{label}:{unit}")
-            for unit in obligation.units
-            if unit not in covered
-        ]
-    return gaps
+    return [
+        _gap(
+            BlockerKind.MISSING_EVIDENCE,
+            row.measure_id,
+            f"{'clause' if u.is_clause else 'obligation'}:{u.unit}",
+        )
+        for u in uncovered_units(row, covered)
+    ]
+
+
+def _latest(*stored: StoredReview | None) -> StoredReview | None:
+    """La revisión más reciente de cualquier eje: una afirmación humana posterior sustituye a la
+    anterior aunque sea de otro eje (ADR 0002)."""
+    return max((s for s in stored if s), key=lambda s: (s.record.recorded_at, s.key), default=None)
 
 
 def _assess_row(
@@ -237,24 +263,19 @@ def _assess_row(
     selected = row.kind is RowKind.SELECTED
     entry = entry or MatrixEntry(id=row.measure_id)
     reviews = effective_reviews(store, row.measure_id, now)
-    primary, other = (
-        (reviews.implementation, reviews.applicability)
-        if selected
-        else (reviews.applicability, reviews.implementation)
-    )
-    stored = primary or other
+    stored = _latest(reviews.implementation, reviews.applicability)
     record = stored.record if stored else None
-    implementation = record if isinstance(record, MeasureReviewRecord) else None
+    implementation = record if selected and isinstance(record, MeasureReviewRecord) else None
 
     supports = (
         [
             _sustains_review(s, row, implementation)
-            for s in _supports(store, row, entry, runs, snapshot, now)
+            for s in link_supports(store, row, entry, runs, snapshot, now)
         ]
         if selected
         else []
     )
-    covered = frozenset().union(*(s.clauses for s in supports if s.counts))
+    covered = covered_units(supports)
 
     gaps: list[Blocker] = []
     if entry.owner is None:
@@ -266,8 +287,9 @@ def _assess_row(
     gaps += [b for s in supports for b in s.blockers]
 
     base = decision or Measure(id=row.measure_id, applicability=Applicability.UNDETERMINED)
-    measure = base.model_copy(
-        update={
+    measure = Measure.model_validate(
+        {
+            **base.model_dump(),
             "applicability": Applicability.APPLICABLE if selected else Applicability.NOT_APPLICABLE,
             "assessment": implementation.assessment
             if implementation
@@ -276,8 +298,8 @@ def _assess_row(
             "evidence": _evidence_refs(supports),
         }
     )
-    unique_gaps = list(_unique(gaps))
-    blockers = _unique([*measure_blockers(measure, now), *unique_gaps])
+    unique_gaps = unique_blockers(gaps)
+    blockers = tuple(unique_blockers([*measure_blockers(measure, now), *unique_gaps]))
     assessed = AssessmentRow(row, measure, blockers, entry, stored, tuple(supports), covered)
     return assessed, unique_gaps, reviews.errors
 
@@ -286,8 +308,8 @@ def assess(
     store: WorkspaceStore,
     now: datetime,
     *,
-    checks: CheckResultsSource = _NO_CHECKS,
-    documents: OrgDocumentSource = _ORG_DOCUMENTS,
+    checks: CheckResultsSource | None = None,
+    documents: OrgDocumentSource | None = None,
 ) -> AssessmentResult:
     """Filas, bloqueos de la matriz y `ReadinessResult` en `now`; único punto de integración."""
     plan = plan_obligations(store, now)
@@ -298,7 +320,7 @@ def assess(
     entries = {e.id: e for e in matrix.entries} if matrix else {}
     decisions, decision_errors = _decisions(store)
     errors = [*plan.errors, *errors, *decision_errors]
-    runs = tuple(checks.runs(store, now))
+    runs = tuple((checks or NoCheckResults()).runs(store, now))
     snapshot = documents_snapshot(store, now, documents)
 
     rows: list[AssessmentRow] = []

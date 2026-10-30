@@ -17,7 +17,8 @@ from ens_evidence.applicability.declaration import (
 )
 from ens_evidence.catalog import load_catalog
 from ens_evidence.matrix.evaluate import AssessmentResult
-from ens_evidence.matrix.obligations import RowKind
+from ens_evidence.matrix.messages import role_label
+from ens_evidence.matrix.obligations import COMPENSATION, RowKind
 from ens_evidence.matrix.render import (
     ExportedRow,
     blockers_text,
@@ -25,7 +26,7 @@ from ens_evidence.matrix.render import (
     md_escape,
     review_text,
 )
-from ens_evidence.matrix.review import row_status
+from ens_evidence.matrix.status import row_status
 from ens_evidence.workspace import WorkspaceStore
 
 ART_28_2 = (
@@ -50,8 +51,8 @@ class _Names:
         return md_escape(f"{measure_id} — {name}" if name else measure_id)
 
 
-def _list(items: list[str]) -> str:
-    return md_escape(", ".join(items)) if items else "ninguno"
+def _list(items: list[str], empty: str = "ninguno") -> str:
+    return md_escape(", ".join(items)) if items else empty
 
 
 def _header(
@@ -64,7 +65,7 @@ def _header(
         f"> {ART_28_2}",
         "",
         f"- Generada: {now.isoformat()} a partir de `{DECLARATION_KEY}`",
-        f"- Firmante: {md_escape(declaration.approved_by)} ({declaration.role.value}); "
+        f"- Firmante: {md_escape(declaration.approved_by)} ({role_label(declaration.role)}); "
         f"firmada el {declaration.approved_at.isoformat()}. {SIGNATURE_NOTE}",
         f"- Categoría del sistema: {declaration.category.value}",
         f"- Catálogo del anexo II: consolidado el {version.consolidation_date}, "
@@ -77,10 +78,14 @@ def _header(
     return lines
 
 
+def _compensation_of(row: ExportedRow) -> list[str]:
+    return [m for o in row.obligations if o.id == COMPENSATION for m in o.compensating_measures]
+
+
 def _annotation(row: ExportedRow) -> list[str]:
     owner = "sin responsable"
     if row.owner is not None:
-        owner = f"{md_escape(row.owner.name)} ({row.owner.role.value})"
+        owner = f"{md_escape(row.owner.name)} ({role_label(row.owner.role)})"
     every = "sin periodicidad" if row.review_every_days is None else f"{row.review_every_days} días"
     review = row.last_review
     if row.kind is not RowKind.SELECTED:
@@ -91,10 +96,19 @@ def _annotation(row: ExportedRow) -> list[str]:
             f"el {review.reviewed_at.date()}"
         )
     elif row.implemented and review is not None:
+        substitutes = _compensation_of(row)
+        by = (
+            " mediante las medidas compensatorias que sustituyen a la del anexo II "
+            f"(art. 28.3): {md_escape('; '.join(substitutes))};"
+            if substitutes
+            else ""
+        )
         verdict = (
-            f"implantada según la revisión de {md_escape(review.reviewer)} "
+            f"implantada{by} según la revisión de {md_escape(review.reviewer)} "
             f"el {review.reviewed_at.date()}"
         )
+    elif review is None:
+        verdict = "sin revisar"
     else:
         verdict = "no consta como implantada"
     current = [link.target for link in (*row.technical, *row.manual) if link.counts]
@@ -102,7 +116,7 @@ def _annotation(row: ExportedRow) -> list[str]:
         f"  - En la matriz: {verdict}",
         f"  - Responsable: {owner}; periodicidad: {every}",
         f"  - Última revisión: {review_text(review)}",
-        f"  - Evidencias vigentes: {_list(current)}",
+        f"  - Evidencias vigentes: {_list(current, 'ninguna')}",
         f"  - Bloqueos: {blockers_text(row.blockers)}",
     ]
 
@@ -149,11 +163,17 @@ class _View:
             f"### {self.names.title(record.replaces)}",
             "",
             f"- Obligaciones del anexo II que se compensan: {_list(record.obligations)}",
-            "- Medidas compensatorias implantadas:",
+            "- Medidas compensatorias (art. 28.3):",
             *measures,
+            *self.compensated_measure_line(record.replaces),
             f"- Justificación: {md_escape(record.justification)}",
             "",
         ]
+
+    def compensated_measure_line(self, measure_id: str) -> list[str]:
+        """Con evaluación, la línea de la matriz de la medida que se compensa."""
+        row = self.rows.get(measure_id)
+        return [] if row is None else [_annotation(row)[0].removeprefix("  ")]
 
     def not_selected(self, measure: NotSelected) -> list[str]:
         return [

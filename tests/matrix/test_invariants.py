@@ -21,7 +21,7 @@ from ens_evidence.matrix import (
     read_matrix,
     save_matrix,
 )
-from ens_evidence.matrix.review import row_status
+from ens_evidence.matrix.status import row_status
 from ens_evidence.models import BlockerKind, MeasureAssessment, Readiness
 
 from .acceptance_helpers import (

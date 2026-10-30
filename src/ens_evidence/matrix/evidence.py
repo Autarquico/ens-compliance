@@ -12,8 +12,7 @@ from ens_evidence.evidence.importer import MANUAL_SOURCE
 from ens_evidence.evidence.manifests import ManifestError, load_manifest_by_id
 from ens_evidence.evidence.verify import verify_one
 from ens_evidence.matrix.model import (
-    CheckLink,
-    DocumentLink,
+    Link,
     ManualEvidenceLink,
     ReviewedDocument,
     ReviewedEvidence,
@@ -22,8 +21,6 @@ from ens_evidence.matrix.obligations import MatrixRowSpec, expand_covers
 from ens_evidence.models.contracts import EvidenceManifest, ProvenanceKind
 from ens_evidence.models.readiness import Blocker, BlockerKind, EvidenceRef
 from ens_evidence.workspace import WorkspaceStore
-
-Link = ManualEvidenceLink | CheckLink | DocumentLink
 
 
 @dataclass(frozen=True)

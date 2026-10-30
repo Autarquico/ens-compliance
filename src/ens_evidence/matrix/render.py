@@ -22,9 +22,22 @@ from ens_evidence.catalog.controls import CatalogVersion, current_catalog_versio
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.evidence.manifests import ManifestError, load_manifest_by_id
 from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow
-from ens_evidence.matrix.model import MeasureReviewRecord, Owner
-from ens_evidence.matrix.obligations import RowKind
-from ens_evidence.matrix.review import RowStatus, row_status
+from ens_evidence.matrix.messages import (
+    ASSESSMENT_LABELS,
+    ROW_KIND_LABELS,
+    blocker_lines,
+    blocker_text,
+    role_label,
+)
+from ens_evidence.matrix.model import (
+    CheckLink,
+    ManualEvidenceLink,
+    MeasureReviewRecord,
+    Owner,
+    ReviewedObligation,
+)
+from ens_evidence.matrix.obligations import COMPENSATION, RowKind
+from ens_evidence.matrix.status import RowStatus, row_status
 from ens_evidence.matrix.store import MATRIX_KEY
 from ens_evidence.matrix.technical import KNOWN_CHECKS
 from ens_evidence.models.contracts import Provenance, Strict
@@ -70,6 +83,7 @@ class ExportedObligation(Strict):
     id: str
     clauses: list[str]
     replaces: list[str]
+    compensating_measures: list[str]
 
 
 class ExportedReview(Strict):
@@ -78,9 +92,12 @@ class ExportedReview(Strict):
     assessment: MeasureAssessment | None
     reviewer: str
     role: Role
+    conclusion: str
     reviewed_at: AwareDatetime
     valid_until: AwareDatetime
     recorded_at: AwareDatetime
+    record_sha256: str | None
+    obligations: list[ReviewedObligation]
 
 
 class ExportedRow(Strict):
@@ -171,39 +188,48 @@ def _links(row: AssessmentRow, kinds: set[str]) -> list[ExportedLink]:
     ]
 
 
-def _exported_review(row: AssessmentRow) -> ExportedReview | None:
+def _exported_review(row: AssessmentRow, store: WorkspaceStore | None) -> ExportedReview | None:
     stored = row.review
     if stored is None:
         return None
     record = stored.record
     effective = row.measure.review or record.review
+    is_implementation = isinstance(record, MeasureReviewRecord)
     return ExportedReview(
         key=stored.key,
         axis=record.axis,
-        assessment=record.assessment if isinstance(record, MeasureReviewRecord) else None,
+        assessment=record.assessment if is_implementation else None,
         reviewer=record.review.reviewer,
         role=record.review.role,
+        conclusion=record.review.conclusion,
         reviewed_at=record.review.reviewed_at,
         valid_until=effective.valid_until,
         recorded_at=record.recorded_at,
+        record_sha256=hashlib.sha256(store.read_bytes(stored.key)).hexdigest() if store else None,
+        obligations=list(record.obligations) if is_implementation else [],
     )
 
 
-def export_row(status: RowStatus, name: str) -> ExportedRow:
+def export_row(status: RowStatus, name: str, store: WorkspaceStore | None = None) -> ExportedRow:
     row = status.row
     return ExportedRow(
         measure_id=row.spec.measure_id,
         name=name,
         kind=row.spec.kind,
         obligations=[
-            ExportedObligation(id=o.id, clauses=list(o.clause_ids), replaces=list(o.replaces))
+            ExportedObligation(
+                id=o.id,
+                clauses=list(o.clause_ids),
+                replaces=list(o.replaces),
+                compensating_measures=list(o.compensating_measures),
+            )
             for o in row.spec.obligations
         ],
         technical=_links(row, {"check"}),
         manual=_links(row, {"evidence", "org_document"}),
         owner=row.entry.owner if row.entry else None,
         review_every_days=row.entry.review_every_days if row.entry else None,
-        last_review=_exported_review(row),
+        last_review=_exported_review(row, store),
         implemented=status.implemented,
         review_current=status.regularly_reviewed,
         blockers=sorted(status.blockers, key=_blocker_key),
@@ -266,9 +292,9 @@ def _build_sources(store: WorkspaceStore, rows: tuple[AssessmentRow, ...]) -> Ex
         measure = row.spec.measure_id
         for support in row.supports:
             link = support.link
-            if link.kind == "evidence":
+            if isinstance(link, ManualEvidenceLink):
                 evidence_ids.add(link.evidence_id)
-            elif link.kind == "check":
+            elif isinstance(link, CheckLink):
                 found = checks.setdefault(
                     link.check_id, {"measures": set(), "last_run_at": None, "evidence": set()}
                 )
@@ -333,9 +359,13 @@ def build_export(
     _check_complete(expected, evaluation.rows)
     catalog = load_catalog()
     names = {m.id: m.name for m in catalog.measures}
+    order = {m.id: position for position, m in enumerate(catalog.measures)}
     rows = sorted(
-        (export_row(row_status(r), names.get(r.spec.measure_id, "")) for r in evaluation.rows),
-        key=lambda r: r.measure_id,
+        (
+            export_row(row_status(r), names.get(r.spec.measure_id, ""), store)
+            for r in evaluation.rows
+        ),
+        key=lambda r: (order.get(r.measure_id, len(order)), r.measure_id),
     )
     return MatrixExport(
         generated_at=generated_at,
@@ -383,22 +413,30 @@ def _instant(moment: datetime) -> str:
 
 
 def _owner_text(owner: Owner | None) -> str:
-    return "—" if owner is None else f"{md_escape(owner.name)} ({owner.role.value})"
+    return "—" if owner is None else f"{md_escape(owner.name)} ({role_label(owner.role)})"
 
 
 def _links_text(links: list[ExportedLink]) -> str:
     if not links:
         return "—"
     return "; ".join(
-        md_escape(link.target) + ("" if link.counts else " (no cuenta)") for link in links
+        md_escape(link.target)
+        + f" (cubre {md_escape(', '.join(link.covers))})"
+        + ("" if link.counts else " (no cuenta)")
+        for link in links
     )
 
 
 def review_text(review: ExportedReview | None) -> str:
     if review is None:
-        return "sin revisión"
-    value = f" · {review.assessment.value}" if review.assessment else " · aplicabilidad"
-    return f"{md_escape(review.reviewer)} ({review.role.value}), {_day(review.reviewed_at)}{value}"
+        return "sin revisar"
+    value = (
+        f" · {ASSESSMENT_LABELS[review.assessment]}"
+        if review.assessment
+        else " · decisión de no aplicabilidad"
+    )
+    who = f"{md_escape(review.reviewer)} ({role_label(review.role)})"
+    return f"{who}, {_day(review.reviewed_at)}{value}"
 
 
 def requirements_text(row: ExportedRow) -> str:
@@ -407,14 +445,19 @@ def requirements_text(row: ExportedRow) -> str:
     parts = []
     for obligation in row.obligations:
         clauses = ", ".join(obligation.clauses) or "sin cláusulas con id"
-        parts.append(f"{obligation.id}: {clauses}")
+        compensated = (
+            f" (medidas compensatorias: {'; '.join(obligation.compensating_measures)})"
+            if obligation.id == COMPENSATION and obligation.compensating_measures
+            else ""
+        )
+        parts.append(f"{obligation.id}: {clauses}{compensated}")
     return md_escape("; ".join(parts))
 
 
 def blockers_text(blockers: list[Blocker]) -> str:
     if not blockers:
         return "—"
-    return md_escape("; ".join(f"{b.kind.value} {b.detail}".strip() for b in blockers))
+    return md_escape("; ".join(blocker_lines(blockers)))
 
 
 def _yes_no(row: ExportedRow, value: bool, *, applies_to_selected_only: bool = False) -> str:
@@ -424,7 +467,7 @@ def _yes_no(row: ExportedRow, value: bool, *, applies_to_selected_only: bool = F
 
 
 def _row_line(row: ExportedRow) -> str:
-    suffix = "" if row.kind is RowKind.SELECTED else f" ({row.kind.value})"
+    suffix = "" if row.kind is RowKind.SELECTED else f" ({ROW_KIND_LABELS[row.kind]})"
     cells = [
         f"{md_escape(row.measure_id)} {md_escape(row.name)}{suffix}",
         requirements_text(row),
@@ -447,10 +490,14 @@ TABLE_HEADER = (
 )
 
 
-def _source_lines(sources: ExportSources) -> list[str]:
+def _source_lines(sources: ExportSources, rows: list[ExportedRow]) -> list[str]:
     lines = ["## Fuentes", "", "### Evidencias", ""]
     for e in sources.evidence:
-        valid = _instant(e.valid_until) if e.valid_until else "sin caducidad"
+        valid = (
+            _instant(e.valid_until)
+            if e.valid_until
+            else "sin fecha de caducidad (cuenta dentro de la periodicidad de la medida)"
+        )
         lines.append(
             f"- {e.id} · manifiesto `{e.manifest_key}` · origen {md_escape(e.source)} · "
             f"sha256 `{e.artifact_sha256}` · procedencia {e.provenance.kind.value} "
@@ -473,8 +520,36 @@ def _source_lines(sources: ExportSources) -> list[str]:
             f"medidas {', '.join(d.measures)}"
         )
     lines += ["", "### Revisiones", ""]
-    lines += [f"- {r.measure_id} · registro `{r.key}`" for r in sources.reviews]
+    for review_row in rows:
+        review = review_row.last_review
+        if review is not None:
+            lines += _review_lines(review_row.measure_id, review)
     return lines
+
+
+def _review_lines(measure_id: str, review: ExportedReview) -> list[str]:
+    sha = f"`{review.record_sha256}`" if review.record_sha256 else "sin huella"
+    lines = [
+        f"- {measure_id} · registro `{review.key}` · sha256 {sha} · {review_text(review)} · "
+        f"conclusión: {md_escape(review.conclusion)}"
+    ]
+    for obligation in review.obligations:
+        lines.append(f"  - {md_escape(obligation.obligation)}: cobertura confirmada")
+        for clause in obligation.coverage:
+            sources = ", ".join(clause.sources) or "sin fuente"
+            lines.append(f"    - cláusula {md_escape(clause.clause)} ← {md_escape(sources)}")
+    return lines
+
+
+def _readiness_line(export: MatrixExport) -> str:
+    if export.declaration.state is not DeclarationState.CURRENT:
+        return (
+            f"- Preparación: {export.readiness.value}; todas las medidas quedan bloqueadas: "
+            f"la Declaración de Aplicabilidad no está vigente ({export.declaration.state.value})"
+        )
+    count = len(export.blockers)
+    noun = "bloqueo" if count == 1 else "bloqueos"
+    return f"- Preparación: {export.readiness.value}, {count} {noun}"
 
 
 def render_markdown(export: MatrixExport) -> str:
@@ -489,11 +564,11 @@ def render_markdown(export: MatrixExport) -> str:
         f"- Catálogo actual: consolidado el {export.catalog_version.consolidation_date}, "
         f"sha256 `{export.catalog_version.snapshot_sha256}`",
         f"- Declaración de Aplicabilidad: {d.state.value}, firmada por {md_escape(d.approved_by)} "
-        f"({d.role.value}) el {_instant(d.approved_at)}; categoría {d.category.value}",
+        f"({role_label(d.role)}) el {_instant(d.approved_at)}; categoría {d.category.value}",
         f"- Huellas de la Declaración: medidas `{d.measures_sha256}`, categorización "
         f"`{d.categorization_sha256}`, alcance `{d.scope_fingerprint}`",
         f"- Matriz (`controls/matrix.yaml`) sha256: {matrix_sha}",
-        f"- Preparación: {export.readiness.value}, {len(export.blockers)} bloqueos",
+        _readiness_line(export),
         "",
         f"> {export.disclaimer}",
         "",
@@ -505,10 +580,10 @@ def render_markdown(export: MatrixExport) -> str:
     if export.blockers:
         lines += ["", "## Bloqueos", ""]
         lines += [
-            f"- {md_escape((b.measure_id or 'global') + ': ' + b.kind.value + ' ' + b.detail)}"
+            f"- {md_escape((b.measure_id or 'global') + ': ' + blocker_text(b))}"
             for b in export.blockers
         ]
-    lines += ["", *_source_lines(export.sources), "", export.disclaimer, ""]
+    lines += ["", *_source_lines(export.sources, export.rows), "", export.disclaimer, ""]
     return "\n".join(lines)
 
 

@@ -90,6 +90,8 @@ def document_support(
         return rejected(
             BlockerKind.MISSING_EVIDENCE, f"document_not_approved:{name}:approved_after_query"
         )
+    if document.document_sha256 is None:
+        return rejected(BlockerKind.MISSING_EVIDENCE, f"document_not_approved:{name}:no_sha")
     covered = units & coverage.covered_clauses if coverage else frozenset()
     if not covered:
         return rejected(BlockerKind.MISSING_EVIDENCE, f"document_not_covering:{name}")
@@ -97,8 +99,6 @@ def document_support(
         link,
         clauses=covered if not cover_blockers else frozenset(),
         blockers=cover_blockers,
-        reviewed_document=ReviewedDocument(
-            name=name, document_sha256=document.document_sha256 or ""
-        ),
+        reviewed_document=ReviewedDocument(name=name, document_sha256=document.document_sha256),
         available_at=document.approved_at,
     )

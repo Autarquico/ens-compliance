@@ -12,17 +12,13 @@ from pydantic import ValidationError
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import CatalogVersion, current_catalog_version
 from ens_evidence.evidence.importer import MANUAL_SOURCE
-from ens_evidence.matrix.documents import (
-    DocumentsSnapshot,
-    OrgDocumentSource,
-    document_support,
-    documents_snapshot,
-)
-from ens_evidence.matrix.evidence import LinkSupport, manual_support, verified_manifest
+from ens_evidence.matrix.documents import DocumentsSnapshot, OrgDocumentSource, documents_snapshot
+from ens_evidence.matrix.evidence import verified_manifest
 from ens_evidence.matrix.model import (
     MAX_REVIEW_EVERY_DAYS,
     CheckLink,
     DocumentLink,
+    Link,
     ManualEvidenceLink,
     MatrixEntry,
     MatrixFile,
@@ -35,12 +31,10 @@ from ens_evidence.matrix.obligations import (
     plan_obligations,
 )
 from ens_evidence.matrix.store import read_matrix, save_matrix
-from ens_evidence.matrix.technical import KNOWN_CHECKS, CheckRun, technical_support
+from ens_evidence.matrix.technical import KNOWN_CHECKS
 from ens_evidence.models.contracts import ProvenanceKind
 from ens_evidence.models.enums import Role
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
-
-Link = ManualEvidenceLink | CheckLink | DocumentLink
 
 EVIDENCE = "evidence"
 CHECK = "check"
@@ -71,10 +65,10 @@ class InitOutcome:
 
 @dataclass(frozen=True)
 class LinkOutcome:
-    """`link_units`: lo que declara este enlace; `pending`: lo que ningún enlace declara."""
+    """`declared`: lo que declara este enlace; `pending`: lo que ningún enlace declara."""
 
     entry: MatrixEntry
-    link_units: tuple[str, ...]
+    declared: tuple[str, ...]
     pending: tuple[str, ...]
     removed: bool = False
 
@@ -235,7 +229,8 @@ def _check_source(
                     f"{', '.join(sorted(KNOWN_CHECKS))}."
                 ]
         case DocumentLink():
-            if snapshot is None or link.document not in snapshot.documents:
+            assert snapshot is not None, "un enlace a documento se comprueba con su instantánea"
+            if link.document not in snapshot.documents:
                 return [
                     f"Documento desconocido «{link.document}»; conocidos: "
                     f"{', '.join(sorted(snapshot.documents))}."
@@ -266,7 +261,7 @@ def add_link(
     matrix = load_matrix(store)
     entry = entry_of(matrix, measure_id)
     expansion = expand_covers(link.covers, row)
-    snapshot = documents_snapshot(store, now, documents) if link.kind == DOCUMENT else None
+    snapshot = documents_snapshot(store, now, documents) if isinstance(link, DocumentLink) else None
     errors = [*expansion.errors, *_check_source(store, link, snapshot)]
     if errors:
         raise MatrixRejected(*errors)
@@ -324,27 +319,3 @@ def link_label(link: Link) -> str:
             return f"check {link.check_id}"
         case DocumentLink():
             return f"documento {link.document}"
-
-
-def current_supports(
-    store: WorkspaceStore,
-    row: MatrixRowSpec,
-    entry: MatrixEntry,
-    now: datetime,
-    snapshot: DocumentsSnapshot,
-    runs: tuple[CheckRun, ...],
-) -> list[LinkSupport]:
-    """Lo que cada enlace sustenta en `now`, sin comparar con revisiones anteriores.
-
-    Para una revisión nueva (registrada en `now`) toda fuente existente es anterior a su registro.
-    """
-    found: list[LinkSupport] = []
-    for link in entry.links:
-        match link:
-            case ManualEvidenceLink():
-                found.append(manual_support(store, row, link, now, entry.review_every_days))
-            case CheckLink():
-                found.append(technical_support(store, row, link, runs, now))
-            case DocumentLink():
-                found.append(document_support(snapshot, row, link, now))
-    return found

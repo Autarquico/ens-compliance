@@ -10,8 +10,8 @@ from ens_evidence.matrix import (
     CheckRun,
     NoCheckResults,
     StaticCheckResults,
-    technical_support,
 )
+from ens_evidence.matrix.technical import technical_support
 from ens_evidence.models.enums import CheckStatus
 from ens_evidence.models.readiness import BlockerKind
 from ens_evidence.workspace import LocalStore

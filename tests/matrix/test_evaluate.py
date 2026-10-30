@@ -6,7 +6,10 @@ from ens_evidence.matrix import (
     ManualEvidenceLink,
     StaticCheckResults,
     add_review,
+    prepare_review,
 )
+from ens_evidence.matrix import evaluate as evaluate_module
+from ens_evidence.matrix import links as links_module
 from ens_evidence.models import (
     Applicability,
     BlockerKind,
@@ -16,6 +19,7 @@ from ens_evidence.models import (
     ReadinessInput,
     evaluate_readiness,
 )
+from ens_evidence.models.readiness import Measure
 
 from .evaluate_helpers import (
     ADDITIONAL,
@@ -464,3 +468,111 @@ def test_la_declaracion_y_las_decisiones_no_cambian_al_evaluar(signed):
     assess_now(signed)
 
     assert before == {key: signed.read_text(key) for key in before}
+
+
+# --- ronda 1: una sola revisión efectiva, una sola regla de cobertura --------------------------
+
+
+def test_ida_y_vuelta_aplicable_no_aplicable_aplicable_no_revive_la_revision_antigua(signed):
+    re_decide(signed, ADDITIONAL, Applicability.APPLICABLE, NOW - timedelta(hours=4))
+    evidence_id, link = evidence_link(signed)
+    matrix_entry = entry(ADDITIONAL, link, every=30)
+    configure(signed, matrix_entry)
+    reviewed = record(signed, matrix_entry, evidence_ids=[evidence_id])
+    assert row_of(assess_now(signed), ADDITIONAL).blockers == ()
+
+    re_decide(signed, ADDITIONAL, Applicability.NOT_APPLICABLE, NOW - timedelta(hours=3))
+    add_review(
+        signed,
+        applicability_review(ADDITIONAL, NOW - timedelta(hours=2)).model_copy(
+            update={"measure_context_sha256": _context(signed, ADDITIONAL)}
+        ),
+    )
+    re_decide(signed, ADDITIONAL, Applicability.APPLICABLE, NOW - timedelta(hours=1))
+    assert _context(signed, ADDITIONAL) == reviewed.measure_context_sha256
+
+    row = row_of(assess_now(signed), ADDITIONAL)
+
+    assert row.spec.kind.value == "selected"
+    assert (EXPIRED_REVIEW, "context_changed") in details(row)
+    assert row.measure.assessment is MeasureAssessment.NOT_ASSESSED
+
+
+def test_la_revision_de_implantacion_no_rellena_la_assessment_de_una_fila_no_aplicable(signed):
+    evidence_id, link = evidence_link(signed)
+    matrix_entry = entry(ADDITIONAL, link, every=30)
+    configure(signed, matrix_entry)
+    record(signed, matrix_entry, evidence_ids=[evidence_id])
+    re_decide(signed, ADDITIONAL, Applicability.NOT_APPLICABLE, NOW - timedelta(hours=1))
+
+    row = row_of(assess_now(signed), ADDITIONAL)
+
+    assert row.measure.assessment is MeasureAssessment.NOT_ASSESSED
+    assert (EXPIRED_REVIEW, "context_changed") in details(row)
+
+
+def test_review_y_assess_cuentan_las_mismas_clausulas_sin_cubrir(signed):
+    _, link = evidence_link(signed, covers=("op.ext.4.1",))
+    configure(signed, entry(TWO_CLAUSES, link))
+
+    plan = prepare_review(
+        signed,
+        NOW,
+        TWO_CLAUSES,
+        by="Ana",
+        role="system_administrator",
+        conclusion="Revisada",
+        assessment="COMPLIANT",
+        documents=FakeDocuments(),
+    )
+    row = row_of(assess_now(signed), TWO_CLAUSES)
+
+    in_assess = {
+        d.removeprefix("clause:")
+        for kind, d in details(row)
+        if kind == MISSING_EVIDENCE and d.startswith("clause:")
+    }
+    in_review = {
+        p.split("sin cubrir: ")[1].split(" ")[0] for p in plan.problems if "sin cubrir" in p
+    }
+    assert in_assess == in_review == {"op.ext.4.2"}
+
+
+def test_la_agregacion_de_fuentes_y_la_cobertura_tienen_una_sola_implementacion(signed):
+    _, link = evidence_link(signed, covers=("op.ext.4.1",))
+    matrix_entry = entry(TWO_CLAUSES, link)
+    configure(signed, matrix_entry)
+    spec = row_spec(signed, TWO_CLAUSES)
+
+    supports = evaluate_module.link_supports(
+        signed, spec, matrix_entry, (), FakeDocuments().snapshot(signed, NOW), NOW
+    )
+    covered = evaluate_module.covered_units(supports)
+
+    assert covered == frozenset({"op.ext.4.1"})
+    assert [(u.obligation, u.unit) for u in evaluate_module.uncovered_units(spec, covered)] == [
+        ("base", "op.ext.4.2")
+    ]
+    assert not hasattr(links_module, "current_supports")
+
+
+def test_assess_acepta_checks_y_documentos_sin_indicar(signed):
+    result = evaluate_module.assess(signed, NOW, checks=None, documents=FakeDocuments())
+
+    assert result.rows
+
+
+def test_la_measure_de_cada_fila_se_construye_con_validacion(signed, monkeypatch):
+    original = Measure.model_validate.__func__
+    built = []
+
+    def spy(cls, data, *args, **kwargs):
+        if isinstance(data, dict) and isinstance(data.get("applicability"), Applicability):
+            built.append(data["id"])
+        return original(cls, data, *args, **kwargs)
+
+    monkeypatch.setattr(Measure, "model_validate", classmethod(spy))
+
+    result = assess_now(signed)
+
+    assert sorted(built) == sorted(r.spec.measure_id for r in result.rows)

@@ -83,6 +83,7 @@ from ens_evidence.matrix import (
     ExportRejected,
     MatrixRejected,
     ReviewPlan,
+    RowKind,
     RowStatus,
     add_link,
     assess,
@@ -101,6 +102,8 @@ from ens_evidence.matrix import (
     save_report,
     set_entry,
 )
+from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE
+from ens_evidence.matrix.messages import blocker_lines
 from ens_evidence.models.enums import CollectionStatus, Role
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
@@ -1526,11 +1529,7 @@ def matrix_set(
 
 
 def source_target(evidence: str | None, check: str | None, document: str | None) -> tuple[str, str]:
-    given = [
-        (k, v)
-        for k, v in (("evidence", evidence), ("check", check), ("org_document", document))
-        if v
-    ]
+    given = [(k, v) for k, v in ((EVIDENCE, evidence), (CHECK, check), (DOCUMENT, document)) if v]
     if len(given) != 1:
         raise fail("Indica exactamente una fuente: --evidence, --check o --document.")
     return given[0]
@@ -1556,7 +1555,7 @@ def matrix_link(
     except MatrixRejected as exc:
         raise matrix_rejected(f"No se vincula a {measure}:", exc) from None
     typer.echo(f"Vinculado {link_label(link)} a {measure}.")
-    typer.echo(f"Cubre: {', '.join(outcome.link_units)}.")
+    typer.echo(f"Cubre: {', '.join(outcome.declared)}.")
     typer.echo(
         f"Sin cubrir por ningún enlace: {', '.join(outcome.pending)}."
         if outcome.pending
@@ -1647,8 +1646,11 @@ def matrix_review(
 
 def print_row_status(status: RowStatus) -> None:
     spec = status.row.spec
-    if spec.kind.value == "selected":
-        implemented = "sí" if status.implemented else "no"
+    if spec.kind is RowKind.SELECTED:
+        if status.implemented:
+            implemented = "sí"
+        else:
+            implemented = "sin revisar" if status.row.review is None else "no"
         line = f"{spec.measure_id}  seleccionada  implantada: {implemented}  "
     else:
         line = f"{spec.measure_id}  no aplicable  "
@@ -1658,8 +1660,14 @@ def print_row_status(status: RowStatus) -> None:
     typer.echo(line)
     if status.has_check_links:
         typer.echo(f"    {CHECKS_PENDING}")
-    for blocker in status.blockers:
-        typer.echo(f"    bloqueo: {blocker.kind.value} {blocker.detail or ''}".rstrip())
+    for obligation in spec.obligations:
+        if obligation.compensating_measures:
+            typer.echo(
+                "    compensada por: " + "; ".join(obligation.compensating_measures) + ". "
+                "La evidencia ha de mostrar esas medidas, no las cláusulas que sustituyen."
+            )
+    for text in blocker_lines(status.blockers):
+        typer.echo(f"    bloqueo: {text}")
 
 
 @matrix_app.command("status")
@@ -1684,8 +1692,12 @@ def matrix_show_status(
     print_errors(list(result.errors))
     readiness = result.readiness
     if measure is None:
+        count = len(readiness.blockers)
+        blocked_by = f"{count} bloqueo" if count == 1 else f"{count} bloqueos"
+        if result.declaration_state is not DeclarationState.CURRENT:
+            blocked_by = "todas las medidas bloqueadas: la Declaración no está vigente"
         typer.echo(
-            f"Preparación: {readiness.readiness.value}, {len(readiness.blockers)} bloqueos. "
+            f"Preparación: {readiness.readiness.value}, {blocked_by}. "
             "La herramienta no declara conformidad; la valoración es de la persona que revisa."
         )
     blocked = bool(readiness.blockers) if measure is None else any(s.blockers for s in shown)

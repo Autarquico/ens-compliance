@@ -19,9 +19,9 @@ from ens_evidence.matrix import (
     OrgdocsSource,
     RowKind,
     default_document_source,
-    document_support,
     documents_snapshot,
 )
+from ens_evidence.matrix.documents import document_support
 from ens_evidence.models.enums import Role
 from ens_evidence.models.readiness import BlockerKind
 from ens_evidence.orgdocs import approval_history, approve_document, build_documents
@@ -227,3 +227,24 @@ def test_covers_ajeno_a_la_medida_bloquea(built):
     result = support(built, row=ROW, covers=("R9",))
 
     assert not result.counts
+
+
+def test_un_documento_aprobado_sin_huella_se_rechaza_en_vez_de_romper():
+    from ens_evidence.matrix import MeasureCoverage, OrgDocumentEvidence
+    from ens_evidence.matrix.documents import DocumentsSnapshot
+
+    document = OrgDocumentEvidence(
+        name=POLICY,
+        state="APPROVED",
+        approved_at=DOCUMENT_APPROVED_AT,
+        document_sha256=None,
+        measures={"org.1": MeasureCoverage(frozenset(ORG_1))},
+    )
+    link = DocumentLink(document=POLICY, covers=["base"])
+
+    result = document_support(DocumentsSnapshot({POLICY: document}), ROW_ORG_1, link, AT)
+
+    assert only_blocker(result) == (
+        BlockerKind.MISSING_EVIDENCE,
+        f"document_not_approved:{POLICY}:no_sha",
+    )

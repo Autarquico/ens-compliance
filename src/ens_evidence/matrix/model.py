@@ -150,11 +150,21 @@ class ReviewedDocument(Strict):
     document_sha256: Sha256
 
 
+class ReviewedClause(Strict):
+    """Cláusula que la revisión confirmó y las fuentes (`tipo:destino`) que la cubren."""
+
+    clause: str = Field(min_length=1)
+    sources: list[str] = Field(default_factory=list)
+
+
 class ReviewedObligation(Strict):
     """Fuentes que la persona revisora vio para una obligación de la medida."""
 
     obligation: str = Field(min_length=1)
     clauses: list[str] = Field(default_factory=list)
+    coverage: list[ReviewedClause] = Field(
+        default_factory=list, description="Qué fuentes cubrían cada cláusula al revisar."
+    )
     evidence: list[ReviewedEvidence] = Field(default_factory=list)
     checks: list[str] = Field(default_factory=list)
     documents: list[ReviewedDocument] = Field(default_factory=list)

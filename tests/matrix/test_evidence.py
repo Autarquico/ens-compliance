@@ -4,7 +4,7 @@ import pytest
 
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.evidence.manifests import load_manifest_by_id, render_manifest
-from ens_evidence.matrix import manual_support
+from ens_evidence.matrix.evidence import manual_support
 from ens_evidence.models.readiness import BlockerKind
 from ens_evidence.workspace import LocalStore
 

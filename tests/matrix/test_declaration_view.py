@@ -66,7 +66,7 @@ def test_la_cabecera_lleva_firmante_rol_fecha_categoria_catalogo_huellas_y_estad
 
     version = current_catalog_version(load_catalog())
     assert text.startswith("# Declaración de Aplicabilidad")
-    assert f"Firmante: {SIGNED_BY} (security_officer)" in text
+    assert f"Firmante: {SIGNED_BY} (responsable de la seguridad)" in text
     assert declaration.approved_at.isoformat() in text
     assert f"Categoría del sistema: {declaration.category.value}" in text
     assert (
@@ -95,7 +95,7 @@ def test_cita_el_articulo_28_2_y_28_3_literales_y_ningun_otro(signed):
         "detallada, la correspondencia entre las medidas compensatorias implantadas y las "
         "medidas del anexo II que compensan.»"
     ) in text
-    cited = set(re.findall(r"[Aa]rt(?:ículo|\.)\s*\d+(?:\.\d+)?", text))
+    cited = {c.capitalize() for c in re.findall(r"[Aa]rt(?:ículo|\.)\s*\d+(?:\.\d+)?", text)}
     assert cited == {"Art. 28.2", "Art. 28.3"}
 
 
@@ -253,8 +253,11 @@ def test_anotada_dice_implantada_segun_la_revision_de_quien_y_cuando(signed):
     block = block[: block.index("\n- **")]
     day = reviewed.review.reviewed_at.date()
     assert f"En la matriz: implantada según la revisión de Ana el {day}" in block
-    assert "Responsable: Ana (system_administrator); periodicidad: 30 días" in block
-    assert f"Última revisión: Ana (system_administrator), {day} · COMPLIANT" in block
+    assert "Responsable: Ana (administrador del sistema); periodicidad: 30 días" in block
+    assert (
+        f"Última revisión: Ana (administrador del sistema), {day} "
+        "· conforme según la persona que revisa" in block
+    )
     assert f"Evidencias vigentes: {evidence_id}" in block
     assert "Bloqueos: —" in block
 
@@ -266,11 +269,12 @@ def test_anotada_una_medida_sin_revision_no_consta_como_implantada_y_lista_bloqu
 
     block = text[text.index(f"**{ONE_CLAUSE} — ") :]
     block = block[: block.index("\n- **")]
-    assert "En la matriz: no consta como implantada" in block
+    assert "En la matriz: sin revisar" in block
     assert "Responsable: sin responsable; periodicidad: sin periodicidad" in block
-    assert "Última revisión: sin revisión" in block
-    assert "Evidencias vigentes: ninguno" in block
-    assert "MISSING\\_REVIEW review\\_missing" in block
+    assert "Última revisión: sin revisar" in block
+    assert "Evidencias vigentes: ninguna" in block
+    assert "sin revisar: nadie ha valorado esta medida todavía" in block
+    assert "MISSING\\_REVIEW" not in block
 
 
 def test_anotada_las_no_seleccionadas_muestran_el_estado_de_su_decision(signed):
@@ -280,3 +284,46 @@ def test_anotada_las_no_seleccionadas_muestran_el_estado_de_su_decision(signed):
 
     block = section(text, "Medidas no seleccionadas")
     assert "decisión de no aplicabilidad sin revisar" in block
+
+
+# --- ronda 1: la compensación nunca se presenta como la medida literal -------------------------
+
+
+def implanted_compensation(store):
+    evidence_id = manual_evidence(store, valid_until=NOW + timedelta(days=365))
+    matrix_entry = entry(
+        "op.pl.1", ManualEvidenceLink(evidence_id=evidence_id, covers=["compensation", "R1"])
+    )
+    configure(store, matrix_entry)
+    record(store, matrix_entry, evidence_ids=[evidence_id])
+    return assess(store, NOW, documents=FakeDocuments())
+
+
+def test_anotada_una_compensacion_implantada_dice_con_que_medidas_se_sustituye(signed):
+    text = view(signed, evaluation=implanted_compensation(signed))
+
+    block = text[text.index("**op.pl.1 — ") :]
+    block = block[: block.index("\n- **")]
+    verdict = next(line for line in block.splitlines() if "En la matriz:" in line)
+    assert "implantada mediante las medidas compensatorias" in verdict
+    assert COMPENSATION.measures[0] in verdict
+
+
+def test_anotada_la_seccion_de_compensaciones_no_las_llama_implantadas_y_anota_la_medida(signed):
+    text = view(signed, evaluation=implanted_compensation(signed))
+
+    compensations = section(text, "Compensaciones (1)")
+    assert "Medidas compensatorias (art. 28.3):" in compensations
+    assert "Medidas compensatorias implantadas" not in text
+    assert "- En la matriz: implantada mediante las medidas compensatorias" in compensations
+
+
+def test_una_compensacion_sin_revisar_no_figura_como_implantada(signed):
+    evaluation = assess(signed, NOW, documents=FakeDocuments())
+
+    text = view(signed, evaluation=evaluation)
+
+    block = text[text.index("**op.pl.1 — ") :]
+    block = block[: block.index("\n- **")]
+    assert "En la matriz: sin revisar" in block
+    assert "implantada" not in block

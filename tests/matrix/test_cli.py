@@ -413,7 +413,7 @@ def test_review_compliant_sin_responsable_ni_periodicidad_lista_ambos(initialize
 
 
 def test_review_no_conforme_se_registra_sin_cobertura(initialized, signed):
-    initialized("matrix", "set", ONE_CLAUSE, "--every", "30")
+    configured(initialized, ONE_CLAUSE, "30")
 
     result = review(initialized, ONE_CLAUSE, "--assessment", "NON_COMPLIANT")
 
@@ -456,7 +456,7 @@ def test_review_rechaza_los_roles_no_permitidos(initialized, signed, role):
 
 
 def test_review_acepta_al_delegado_del_administrador(initialized, signed):
-    initialized("matrix", "set", ONE_CLAUSE, "--every", "30")
+    configured(initialized, ONE_CLAUSE, "30")
 
     result = initialized(
         "matrix",
@@ -468,7 +468,7 @@ def test_review_acepta_al_delegado_del_administrador(initialized, signed):
 
 
 def test_review_rechaza_un_at_futuro_y_acepta_uno_pasado(initialized, signed):
-    initialized("matrix", "set", ONE_CLAUSE, "--every", "30")
+    configured(initialized, ONE_CLAUSE, "30")
     future = (NOW + timedelta(seconds=1)).isoformat()
     past = (NOW - timedelta(days=2)).isoformat()
 
@@ -490,7 +490,7 @@ def test_review_con_un_at_sin_zona_es_un_error_de_uso(initialized):
 
 
 def test_review_de_una_no_aplicable_registra_la_decision_sin_assessment(initialized, signed):
-    initialized("matrix", "set", NOT_APPLICABLE, "--every", "90")
+    configured(initialized, NOT_APPLICABLE, "90")
 
     result = review(initialized, NOT_APPLICABLE)
 
@@ -535,8 +535,9 @@ def test_status_sin_revisiones_sale_con_1_y_lista_los_bloqueos(initialized):
 
     assert result.exit_code == 1
     assert CHECKS_PENDING in result.output
-    assert "implantada: no" in line_of(result.output, ONE_CLAUSE)
-    assert "bloqueo: MISSING_REVIEW review_missing" in result.output
+    assert "implantada: sin revisar" in line_of(result.output, ONE_CLAUSE)
+    assert "bloqueo: sin revisar" in result.output
+    assert "NOT_COMPLIANT" not in result.output and "no conforme" not in result.output
     assert "Preparación: NOT_READY" in result.output
     assert "no declara conformidad" in result.output
 
@@ -562,7 +563,7 @@ def test_status_con_at_anterior_a_la_revision_no_la_ve(initialized, signed):
     before = initialized("matrix", "status", "--at", (NOW - timedelta(hours=1)).isoformat())
     after = initialized("matrix", "status", "--at", (NOW + timedelta(days=60)).isoformat())
 
-    assert "implantada: no" in line_of(before.output, ONE_CLAUSE)
+    assert "implantada: sin revisar" in line_of(before.output, ONE_CLAUSE)
     assert "revisión regular: no" in line_of(after.output, ONE_CLAUSE)
 
 
@@ -572,7 +573,7 @@ def test_status_indica_que_los_checks_estan_pendientes_en_la_medida_con_check(in
     result = initialized("matrix", "status")
 
     assert f"    {CHECKS_PENDING}" in result.output
-    assert "check_no_results" in result.output
+    assert "aún no tiene ejecución completa" in result.output
 
 
 def test_status_sin_matriz_ni_declaracion_vigente_sale_con_1(ens_cli, signed):
@@ -581,7 +582,8 @@ def test_status_sin_matriz_ni_declaracion_vigente_sale_con_1(ens_cli, signed):
     result = ens_cli("matrix", "status")
 
     assert result.exit_code == 1
-    assert "UNDETERMINED_APPLICABILITY" in result.output
+    assert "la Declaración de Aplicabilidad ya no vale" in result.output
+    assert "todas las medidas bloqueadas" in result.output
 
 
 # --- la Declaración no se toca ----------------------------------------------------------------
@@ -641,8 +643,8 @@ def test_documento_aprobado_sin_revision_sigue_bloqueado(initialized, signed):
     status = initialized("matrix", "status")
 
     line = line_of(status.output, "org.1")
-    assert "implantada: no" in line and "revisión regular: no" in line
-    assert "bloqueo: MISSING_REVIEW review_missing" in status.output
+    assert "implantada: sin revisar" in line and "revisión regular: no" in line
+    assert "bloqueo: sin revisar" in status.output
 
 
 def test_documento_sin_aprobar_no_permite_registrar_compliant(initialized, signed):
@@ -798,8 +800,9 @@ def test_show_annotated_anade_el_estado_de_cada_medida(initialized):
     result = initialized("applicability", "show", "--annotated")
 
     assert result.exit_code == 0, result.output
-    assert "En la matriz: no consta como implantada" in result.output
-    assert "MISSING\\_REVIEW review\\_missing" in result.output
+    assert "En la matriz: sin revisar" in result.output
+    assert "sin revisar: nadie ha valorado esta medida todavía" in result.output
+    assert "MISSING\\_REVIEW" not in result.output
 
 
 def test_show_save_guarda_la_misma_vista_en_el_workspace(ens_cli, signed):
@@ -840,3 +843,74 @@ def test_show_sin_declaracion_firmada_sale_con_1_y_no_guarda(tmp_path, workspace
     assert "NOT_APPROVED" in result.output
     assert "no se guarda" in result.output
     assert workspace.list("evidence/reports") == []
+
+
+# --- ronda 1 -----------------------------------------------------------------------------------
+
+
+def test_review_compliant_con_un_at_anterior_a_la_evidencia_se_rechaza(initialized, signed):
+    configured(initialized)
+    linked_evidence(initialized, signed)
+    before_the_evidence = (NOW - timedelta(days=3)).isoformat()
+
+    result = review(
+        initialized, ONE_CLAUSE, "--assessment", "COMPLIANT", "--at", before_the_evidence
+    )
+
+    assert result.exit_code == 1
+    assert "es anterior a evidencia" in result.output
+    assert read_reviews(signed, ONE_CLAUSE)[0] == []
+
+
+def test_review_de_una_no_aplicable_sin_responsable_se_rechaza(initialized, signed):
+    initialized("matrix", "set", NOT_APPLICABLE, "--every", "90")
+
+    result = review(initialized, NOT_APPLICABLE)
+
+    assert result.exit_code == 1
+    assert "falta el responsable" in result.output
+    assert read_reviews(signed, NOT_APPLICABLE)[0] == []
+
+
+def test_status_traduce_los_bloqueos_con_el_siguiente_paso_y_sin_codigos(initialized):
+    result = initialized("matrix", "status", ONE_CLAUSE)
+
+    assert result.exit_code == 1
+    assert "bloqueo: sin responsable. Siguiente paso: matrix set op.exp.1 --owner" in result.output
+    assert "bloqueo: sin periodicidad de revisión. Siguiente paso: matrix set op.exp.1 --every" in (
+        result.output
+    )
+    assert "matrix review op.exp.1" in result.output
+    assert "NOT_COMPLIANT" not in result.output and "MISSING_REVIEW" not in result.output
+    assert "bloqueo: sin revisar" in result.output
+
+
+def test_status_agrupa_las_clausulas_sin_evidencia_en_una_linea(initialized):
+    result = initialized("matrix", "status", TWO_CLAUSES)
+
+    assert "faltan evidencias en 2 cláusulas: op.ext.4.1, op.ext.4.2" in result.output
+
+
+def test_status_de_una_compensada_nombra_las_medidas_compensatorias(initialized):
+    result = initialized("matrix", "status", "op.pl.1")
+
+    assert "compensada por: Segregación de red adicional" in result.output
+
+
+def test_link_dice_lo_que_declara_con_el_campo_declared(initialized, signed):
+    configured(initialized)
+    evidence_id = manual_evidence(signed, valid_until=NOW + timedelta(days=365))
+
+    result = initialized(
+        "matrix", "link", ONE_CLAUSE, "--evidence", evidence_id, "--covers", "base"
+    )
+
+    assert "Cubre: op.exp.1.1." in result.output
+
+
+def test_el_runbook_dice_donde_leer_el_texto_de_cada_clausula():
+    from pathlib import Path
+
+    runbook = Path(__file__).parents[2] / "docs/runbooks/matriz-de-cumplimiento.md"
+
+    assert "catalog show" in runbook.read_text(encoding="utf-8")

@@ -52,6 +52,29 @@
       "title": "Review",
       "type": "object"
     },
+    "ReviewedClause": {
+      "additionalProperties": false,
+      "description": "Cl\u00e1usula que la revisi\u00f3n confirm\u00f3 y las fuentes (`tipo:destino`) que la cubren.",
+      "properties": {
+        "clause": {
+          "minLength": 1,
+          "title": "Clause",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "clause"
+      ],
+      "title": "ReviewedClause",
+      "type": "object"
+    },
     "ReviewedDocument": {
       "additionalProperties": false,
       "properties": {
@@ -109,6 +132,14 @@
             "type": "string"
           },
           "title": "Clauses",
+          "type": "array"
+        },
+        "coverage": {
+          "description": "Qu\u00e9 fuentes cubr\u00edan cada cl\u00e1usula al revisar.",
+          "items": {
+            "$ref": "#/$defs/ReviewedClause"
+          },
+          "title": "Coverage",
           "type": "array"
         },
         "documents": {

@@ -254,21 +254,18 @@ def measure_blockers(measure: Measure, now: AwareDatetime) -> list[Blocker]:
             return _evidence_blockers(measure, now) + _review_blockers(measure, now)
 
 
-def _identity(blocker: Blocker) -> tuple[BlockerKind, str | None, str]:
-    return (blocker.kind, blocker.measure_id, blocker.detail)
+def unique_blockers(blockers: list[Blocker]) -> list[Blocker]:
+    """Quita los repetidos (mismo tipo, medida y detalle) conservando el orden."""
+    return list({(b.kind, b.measure_id, b.detail): b for b in blockers}.values())
 
 
 def evaluate_readiness(data: ReadinessInput) -> ReadinessResult:
-    blockers = [
-        blocker
-        for measure in data.measures
-        for blocker in measure_blockers(measure, data.evaluated_at)
-    ]
-    seen = {_identity(b) for b in blockers}
-    for gap in data.coverage_gaps:
-        if _identity(gap) not in seen:
-            seen.add(_identity(gap))
-            blockers.append(gap)
+    blockers = unique_blockers(
+        [
+            *(b for measure in data.measures for b in measure_blockers(measure, data.evaluated_at)),
+            *data.coverage_gaps,
+        ]
+    )
     blockers += [
         Blocker(kind=BlockerKind.OPEN_FINDING, detail=finding.id) for finding in data.open_findings
     ]

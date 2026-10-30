@@ -64,8 +64,8 @@ def test_una_medida_con_evidencia_y_sin_revision_aparece_como_bloqueo(cli, tmp_p
     exported = row(export(cli), ONE_CLAUSE)
 
     assert status.exit_code == 1
-    assert "implantada: no" in line_of(status.output, ONE_CLAUSE)
-    assert "bloqueo: MISSING_REVIEW review_missing" in status.output
+    assert "implantada: sin revisar" in line_of(status.output, ONE_CLAUSE)
+    assert "bloqueo: sin revisar" in status.output
     assert ("MISSING_REVIEW", "review_missing") in blocker_details(exported)
     assert exported["manual"][0]["counts"] is True  # la evidencia es válida: falta la persona
     assert exported["last_review"] is None and exported["implemented"] is False
