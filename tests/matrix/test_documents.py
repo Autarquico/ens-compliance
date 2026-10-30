@@ -248,3 +248,43 @@ def test_un_documento_aprobado_sin_huella_se_rechaza_en_vez_de_romper():
         BlockerKind.MISSING_EVIDENCE,
         f"document_not_approved:{POLICY}:no_sha",
     )
+
+
+def corrupt_latest_approval(store, name=POLICY):
+    key = sorted(store.list(f"org/docs/approvals/{name}/"))[-1]
+    store.write_text(key, "approved_by: [")
+    return key
+
+
+def test_una_aprobacion_ilegible_no_reactiva_la_anterior(built):
+    approve(built)
+    approve(built, at=DOCUMENT_APPROVED_AT + timedelta(hours=1))
+    assert support(built).counts
+
+    corrupt_latest_approval(built)
+    result = support(built)
+
+    assert only_blocker(result) == (
+        BlockerKind.MISSING_EVIDENCE,
+        f"org_document_unreadable:{POLICY}",
+    )
+
+
+def test_un_registro_de_aprobacion_ilegible_no_sustenta_a_otros_documentos(built):
+    approve(built)
+    approve(built, "designacion-responsables")
+    corrupt_latest_approval(built)
+
+    result = support(built, "designacion-responsables")
+
+    assert result.counts
+
+
+def test_el_adaptador_expone_los_registros_ilegibles(built):
+    approve(built)
+    key = corrupt_latest_approval(built)
+
+    document = documents_snapshot(built, AT).documents[POLICY]
+
+    assert document.unreadable == (key,)
+    assert document.state != "APPROVED"

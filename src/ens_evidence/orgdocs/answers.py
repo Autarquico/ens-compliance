@@ -27,6 +27,7 @@ from ens_evidence.orgdocs.template import (
     all_questions,
 )
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 NOT_APPLICABLE = "not_applicable"
 REASON = "reason"
@@ -330,7 +331,7 @@ def read_answers(store: WorkspaceStore) -> Any:
     except NotText:
         raise ValueError(f"{ANSWERS_KEY} no es texto UTF-8") from None
     try:
-        return yaml.safe_load(text)
+        return safe_load_unique(text)
     except yaml.YAMLError:
         raise ValueError(f"{ANSWERS_KEY} no es YAML válido") from None
 

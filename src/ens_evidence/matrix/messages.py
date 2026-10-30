@@ -58,6 +58,10 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "la medida ha cambiado desde la última revisión (decisión de la Declaración, refuerzos, "
         "compensación o texto del catálogo). Hay que revisarla de nuevo: matrix review {m}"
     ),
+    (BlockerKind.MISSING_REVIEW, "declaration_history_unreadable"): (
+        "una copia archivada de la Declaración no se puede leer ({a}); podría haber cambiado el "
+        "contexto de la medida. Restaura el fichero o revisa la medida de nuevo: matrix review {m}"
+    ),
     (BlockerKind.EXPIRED_REVIEW, "links_changed"): (
         "los enlaces de evidencia han cambiado desde la última revisión. Vuelve a revisarla: "
         "matrix review {m}"
@@ -89,6 +93,15 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
     ),
     (BlockerKind.MISSING_EVIDENCE, "evidence_in_future"): (
         "la evidencia {a} es posterior a la fecha evaluada"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "evidence_inconsistent"): (
+        "la evidencia {a} es posterior al resultado del check que la cita: no puede ser la que "
+        "vio la ejecución. Vuelve a ejecutar el conector para recoger evidencia nueva"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "org_document_unreadable"): (
+        "el historial de aprobaciones del documento {a} tiene un registro ilegible y no se sabe "
+        "si revoca la aprobación anterior. Restaura el registro o vuelve a aprobar: "
+        "docs approve {a}"
     ),
     (BlockerKind.MISSING_EVIDENCE, "evidence_no_validity"): (
         "la evidencia {a} no tiene caducidad y la medida no tiene periodicidad. "

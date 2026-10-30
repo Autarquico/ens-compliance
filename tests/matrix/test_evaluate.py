@@ -3,6 +3,7 @@ from datetime import timedelta
 import pytest
 import yaml
 
+from ens_evidence.applicability import declaration_status
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.matrix import (
     CheckLink,
@@ -23,6 +24,7 @@ from ens_evidence.models import (
     ReadinessInput,
     evaluate_readiness,
 )
+from ens_evidence.workspace import LocalStore
 
 from .evaluate_helpers import (
     ADDITIONAL,
@@ -655,4 +657,95 @@ def test_extender_la_vigencia_de_una_evidencia_caducada_no_reactiva_la_revision(
     row = row_of(assess_now(signed, later), ONE_CLAUSE)
 
     assert (EXPIRED_REVIEW, f"evidence_changed:{evidence_id}") in details(row)
+    assert not row_status(row).implemented
+
+
+# --- ronda 2: volver a un contexto anterior, aprobaciones documentales y claves repetidas ------
+
+
+def test_ida_y_vuelta_sin_revision_ni_evaluacion_entre_medias_no_revive_la_revision(signed):
+    evidence_id, link = evidence_link(signed)
+    matrix_entry = entry(ADDITIONAL, link, every=30)
+    configure(signed, matrix_entry)
+    reviewed = record(signed, matrix_entry, evidence_ids=[evidence_id])
+    assert row_of(assess_now(signed), ADDITIONAL).blockers == ()
+
+    # A -> B -> A, dos firmas de la Declaración y ni una evaluación ni una revisión entre medias.
+    re_decide(signed, ADDITIONAL, Applicability.NOT_APPLICABLE, NOW - timedelta(hours=3))
+    re_decide(signed, ADDITIONAL, Applicability.APPLICABLE, NOW - timedelta(hours=1))
+    assert _context(signed, ADDITIONAL) == reviewed.measure_context_sha256
+
+    row = row_of(assess_now(signed), ADDITIONAL)
+
+    assert row.spec.kind.value == "selected"
+    assert (EXPIRED_REVIEW, "context_changed") in details(row)
+    assert not row_status(row).implemented
+
+
+def test_volver_a_firmar_con_el_mismo_contexto_no_caduca_la_revision(signed):
+    reviewed_measure(signed)
+    re_decide(signed, ADDITIONAL, Applicability.APPLICABLE, NOW - timedelta(hours=1))
+
+    assert row_of(assess_now(signed), ONE_CLAUSE).blockers == ()
+
+
+def test_el_cambio_de_contexto_de_una_medida_no_caduca_la_revision_de_otra(signed):
+    reviewed_measure(signed)
+    re_decide(signed, ADDITIONAL, Applicability.NOT_APPLICABLE, NOW - timedelta(hours=3))
+    re_decide(signed, ADDITIONAL, Applicability.APPLICABLE, NOW - timedelta(hours=1))
+
+    assert row_of(assess_now(signed), ONE_CLAUSE).blockers == ()
+
+
+def test_la_declaracion_vigente_cuenta_aunque_se_firmara_antes_del_archivo(signed, tmp_path):
+    current = declaration_status(signed, NOW).declaration
+
+    signings = evaluate_module.read_signings(LocalStore(tmp_path / "vacio"), current)
+
+    assert signings.declarations == (current,)
+
+
+def test_una_copia_ilegible_de_una_firma_bloquea_las_medidas_revisadas(signed):
+    reviewed_measure(signed)
+    key = "controls/declarations/20260101T000000000000Z-zzzzzzzzzzzz.yaml"
+    signed.write_text(key, "approved_at: [")
+
+    result = assess_now(signed)
+    row = row_of(result, ONE_CLAUSE)
+
+    assert (MISSING_REVIEW, f"declaration_history_unreadable:{key}") in details(row)
+    assert any(key in error for error in result.errors)
+    assert not row_status(row).implemented
+
+
+def test_dos_claves_assessment_en_una_revision_posterior_bloquean_la_medida(signed):
+    matrix_entry, evidence_id = reviewed_measure(signed)
+    later = record(
+        signed,
+        matrix_entry,
+        evidence_ids=[evidence_id],
+        recorded_at=RECORDED + timedelta(hours=1),
+        assessment=MeasureAssessment.NON_COMPLIANT,
+    )
+    key = sorted(signed.list(f"controls/reviews/{ONE_CLAUSE}"))[-1]
+    assert later.assessment is MeasureAssessment.NON_COMPLIANT
+    signed.write_text(key, signed.read_text(key) + "assessment: COMPLIANT\n")
+
+    result = assess_now(signed)
+    row = row_of(result, ONE_CLAUSE)
+
+    assert (MISSING_REVIEW, f"review_unreadable:{key}") in details(row)
+    assert any(key in error for error in result.errors)
+    assert not row_status(row).implemented
+
+
+def test_una_clave_repetida_anidada_en_una_revision_tambien_bloquea(signed):
+    reviewed_measure(signed)
+    key = sorted(signed.list(f"controls/reviews/{ONE_CLAUSE}"))[-1]
+    text = signed.read_text(key).replace("  reviewer:", "  reviewer: Otra\n  reviewer:", 1)
+    signed.write_text(key, text)
+
+    row = row_of(assess_now(signed), ONE_CLAUSE)
+
+    assert (MISSING_REVIEW, f"review_unreadable:{key}") in details(row)
     assert not row_status(row).implemented

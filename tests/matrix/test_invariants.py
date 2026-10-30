@@ -236,3 +236,25 @@ def test_una_medida_con_todo_en_verde_salvo_la_periodicidad_bloquea_la_preparaci
     blockers = {(b.kind, b.detail) for b in result.readiness.blockers if b.measure_id == "org.1"}
     assert blockers == {(BlockerKind.MISSING_REVIEW, "review_every_days_missing")}
     assert result.readiness.readiness is Readiness.NOT_READY
+
+
+def test_una_aprobacion_documental_ilegible_bloquea_y_sale_en_status_y_export(
+    cli, signed, tmp_path
+):
+    cli("matrix", "init")
+    configure_measure(cli, "org.1")
+    link(cli, "org.1", "evidence", import_manual_evidence(cli, tmp_path), "org.1.1")
+    link(cli, "org.1", "document", POLICY, "org.1.2,org.1.3,org.1.4,org.1.5")
+    reviewed = review(cli, "org.1")
+    assert reviewed.exit_code == 0, reviewed.output
+    key = sorted(signed.list(f"org/docs/approvals/{POLICY}/"))[-1]
+    signed.write_text(key, "approved_by: [")
+
+    status = cli("matrix", "status")
+    export = cli("matrix", "export", "--format", "md")
+
+    assert status.exit_code == 1
+    assert key in status.output
+    report = signed.read_text(export.output.strip())
+    assert key in report
+    assert "historial de aprobaciones del documento politica-seguridad" in report

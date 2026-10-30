@@ -37,7 +37,10 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
     íntegro. Si no indica hasta cuándo vale, solo cuenta si se recogió dentro
     de la periodicidad de la medida.
   - **Check:** la última ejecución completa de su conector, con todos los
-    sujetos esperados en PASS y evidencia de menos de 30 días.
+    sujetos esperados en PASS y evidencia de menos de 30 días. La evidencia
+    no puede ser posterior al resultado que la cita ni al fin de su ejecución
+    (`evidence_inconsistent`): retocar `collected_at` no rejuvenece un PASS
+    antiguo, hace falta una ejecución nueva.
   - **Documento organizativo:** aprobado y vigente (ADR 0010), y solo para las
     cláusulas que cubre.
 - **La revisión caduca.** Una revisión deja de valer:
@@ -54,13 +57,24 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
   y cuando cambia el alcance la Declaración se vuelve a firmar.
 - **Revisión vigente:** de cada medida vale la revisión más reciente, sea de
   implantación o de aplicabilidad, y solo para el contexto en que se hizo:
-  volver a un contexto anterior no la recupera. Cada revisión guarda, por
+  volver a un contexto anterior no la recupera. Para que sea determinista, cada
+  firma de la Declaración se archiva en `controls/declarations/` (solo
+  adición, junto a la vigente en `controls/applicability.yaml`) y una revisión
+  solo vale si ninguna firma posterior a su registro dio a la medida otro
+  contexto, aunque nadie ejecutara `matrix` entre medias. Una copia archivada
+  ilegible bloquea las medidas revisadas (`declaration_history_unreadable`).
+  Cada revisión guarda, por
   obligación, las fuentes y las cláusulas que la persona confirmó; el export
   las muestra junto con su conclusión. Si el historial de una medida contiene
   un fichero ilegible, su contenido es desconocido (podría revocar la
   revisión anterior): la medida queda bloqueada con `review_unreadable:<clave>`,
   las revisiones legibles se muestran pero no la satisfacen y el fallo sale en
-  el export y en el código de salida de `matrix status`.
+  el export y en el código de salida de `matrix status`. Lo mismo con el
+  historial de aprobaciones de un documento organizativo: un registro ilegible
+  (`org_document_unreadable:<nombre>`) impide que el documento sustente
+  medidas, y `docs status` lo muestra. Los YAML editados a mano que lee la
+  matriz (revisiones, `matrix.yaml`, aprobaciones) se rechazan si repiten una
+  clave, también anidada: `safe_load` se quedaría con la última.
 - **Una sola regla de preparación.** `matrix.assess()` es el único punto de
   integración. Aplica la regla compartida de `models/readiness.py`
   (`measure_blockers`, `evaluate_readiness`) y le añade los huecos de la

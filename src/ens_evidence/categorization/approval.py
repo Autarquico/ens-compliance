@@ -25,6 +25,7 @@ from ens_evidence.scope.inventory import Inventory
 from ens_evidence.scope.messages import SEPARATOR, describe_validation
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 CATEGORIZATION_KEY = "scope/categorization.yaml"
 APPROVAL_KEY = "scope/categorization-approval.yaml"
@@ -134,7 +135,7 @@ def _load(
     except NotText:
         return None, [f"{CATEGORIZATION_KEY}: no es texto UTF-8; guárdalo como UTF-8"]
     try:
-        raw: Any = yaml.safe_load(text)
+        raw: Any = safe_load_unique(text)
     except yaml.YAMLError:
         return None, [f"{CATEGORIZATION_KEY}: no es YAML válido; revisa la sintaxis"]
     leaked = find_secrets(raw)

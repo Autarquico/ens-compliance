@@ -9,6 +9,7 @@ from ens_evidence.evidence.layout import MANIFESTS_PREFIX, manifest_key
 from ens_evidence.models.contracts import EvidenceManifest
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 
 class ManifestError(Exception):
@@ -32,7 +33,7 @@ def render_manifest(manifest: EvidenceManifest) -> bytes:
 
 def load_manifest(store: WorkspaceStore, key: str) -> EvidenceManifest:
     try:
-        raw = yaml.safe_load(store.read_text(key))
+        raw = safe_load_unique(store.read_text(key))
     except NotFound:
         raise ManifestError([f"{key}: el manifiesto no existe"]) from None
     except NotText:

@@ -32,6 +32,7 @@ from ens_evidence.scope import load_assets
 from ens_evidence.scope.models import AssetType
 from ens_evidence.workspace import NotFound, WorkspaceError, WorkspaceStore
 from ens_evidence.workspace.settings import BackupSettings, Settings
+from ens_evidence.yaml_unique import safe_load_unique
 
 SOURCE = "restic"
 
@@ -180,7 +181,7 @@ def _read_keyed[T: BaseModel](
             continue
         try:
             raw = store.read_bytes(key)
-            records.append(model.model_validate(yaml.safe_load(raw)))
+            records.append(model.model_validate(safe_load_unique(raw)))
             digests.append(sha256_hex(raw))
         except (ValidationError, yaml.YAMLError, NotFound):
             unreadable.append(key)

@@ -10,7 +10,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel
 
-from ens_evidence.approvals import load_model
+from ens_evidence.approvals import load_model, safe_load_unique
 from ens_evidence.matrix.model import ApplicabilityReview, MatrixFile, MeasureReviewRecord
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
 
@@ -72,7 +72,7 @@ def add_review(store: WorkspaceStore, record: Record) -> str:
 
 def _axis(store: WorkspaceStore, key: str) -> str | None:
     try:
-        raw: Any = yaml.safe_load(store.read_text(key))
+        raw: Any = safe_load_unique(store.read_text(key))
     except (NotFound, NotText, yaml.YAMLError):
         return None
     return raw.get("axis") if isinstance(raw, dict) else None

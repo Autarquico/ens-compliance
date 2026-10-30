@@ -84,7 +84,12 @@ def test_dos_activos_con_resultado_cuentan(store):
 
 
 def test_una_ejecucion_parcial_no_cuenta_ni_oculta_a_la_completa_anterior(store):
-    complete = run([check_result(store)], run_id="ok", finished_at=AT - timedelta(days=2))
+    two_days = AT - timedelta(days=2)
+    complete = run(
+        [check_result(store, evaluated_at=two_days, collected_at=two_days)],
+        run_id="ok",
+        finished_at=two_days,
+    )
     partial = run(
         [check_result(store, status=CheckStatus.FAIL, evidence_ids=[])],
         run_id="parcial",
@@ -122,7 +127,13 @@ def test_gana_la_ejecucion_completa_mas_reciente(store):
 
 def test_dos_conectores_ejecutados_por_separado_son_independientes(store):
     github = run([check_result(store)], connector="github", run_id="g")
-    restic_result = check_result(store, "repo-r", check_id=OTHER_CHECK)
+    restic_result = check_result(
+        store,
+        "repo-r",
+        check_id=OTHER_CHECK,
+        evaluated_at=AT - timedelta(days=5),
+        collected_at=AT - timedelta(days=5),
+    )
     restic = run(
         [restic_result],
         connector="restic",
@@ -291,3 +302,56 @@ def test_known_checks_coincide_con_las_constantes_de_cada_modulo(module, connect
 
     assert declared == _constants(module, pattern)
     assert declared
+
+
+def _collected_at(store, evidence_id, moment):
+    key = manifest_key(evidence_id)
+    data = yaml.safe_load(store.read_text(key))
+    data["collected_at"] = moment.isoformat()
+    store.write_text(key, yaml.safe_dump(data, sort_keys=False))
+
+
+def test_cambiar_collected_at_no_rejuvenece_un_pass_antiguo(store):
+    old = AT - timedelta(days=31)
+    result = check_result(store, evaluated_at=old, collected_at=old)
+    stale = run([result], finished_at=old)
+    assert [b.kind for b in support(store, [stale]).blockers] == [BlockerKind.EXPIRED_EVIDENCE]
+
+    _collected_at(store, result.evidence_ids[0], AT - timedelta(days=1))
+    forged = support(store, [stale])
+
+    assert not forged.counts
+    assert details(forged) == [
+        (BlockerKind.MISSING_EVIDENCE, f"evidence_inconsistent:{result.evidence_ids[0]}")
+    ]
+
+
+def test_la_evidencia_posterior_al_fin_de_la_ejecucion_es_incoherente(store):
+    result = check_result(store, evaluated_at=AT - timedelta(days=1))
+    _collected_at(store, result.evidence_ids[0], AT - timedelta(hours=6))
+
+    forged = support(store, [run([result], finished_at=AT - timedelta(hours=12))])
+
+    assert details(forged) == [
+        (BlockerKind.MISSING_EVIDENCE, f"evidence_inconsistent:{result.evidence_ids[0]}")
+    ]
+
+
+def test_una_ejecucion_reciente_con_evidencia_reciente_si_cuenta(store):
+    result = check_result(
+        store, evaluated_at=AT - timedelta(hours=2), collected_at=AT - timedelta(hours=3)
+    )
+
+    assert support(store, [run([result], finished_at=AT - timedelta(hours=1))]).counts
+
+
+def test_un_manifiesto_con_una_clave_repetida_no_cuenta(store):
+    result = check_result(store)
+    key = manifest_key(result.evidence_ids[0])
+    store.write_text(key, store.read_text(key) + f"collected_at: {AT.isoformat()}\n")
+
+    forged = support(store, [run([result])])
+
+    assert details(forged) == [
+        (BlockerKind.MISSING_EVIDENCE, f"evidence_unverified:{result.evidence_ids[0]}")
+    ]

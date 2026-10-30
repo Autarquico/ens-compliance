@@ -77,6 +77,7 @@ class ObligationPlan:
     state: DeclarationState
     errors: list[str] = field(default_factory=list)
     rows: tuple[MatrixRowSpec, ...] = ()
+    declaration: Declaration | None = None
 
     @property
     def current(self) -> bool:
@@ -170,7 +171,10 @@ def plan_obligations(store: WorkspaceStore, now: datetime) -> ObligationPlan:
     if status.declaration is None:
         return ObligationPlan(status.state, list(status.errors))
     return ObligationPlan(
-        status.state, list(status.errors), rows_from_declaration(status.declaration)
+        status.state,
+        list(status.errors),
+        rows_from_declaration(status.declaration),
+        status.declaration,
     )
 
 

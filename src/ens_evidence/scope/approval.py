@@ -13,6 +13,7 @@ from ens_evidence.models.enums import Role
 from ens_evidence.scope.inventory import fingerprint, load_inventory
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 APPROVAL_KEY = "scope/approval.yaml"
 
@@ -85,7 +86,7 @@ def scope_status(store: WorkspaceStore) -> ScopeStatus:
             ScopeState.INVALID, [f"{APPROVAL_KEY}: no es texto UTF-8; vuelve a aprobar"], current
         )
     try:
-        raw = yaml.safe_load(text)
+        raw = safe_load_unique(text)
         if isinstance(raw, dict) and "revoked" in raw:
             Revocation.model_validate(raw)
             return ScopeStatus(ScopeState.NOT_APPROVED, fingerprint=current)

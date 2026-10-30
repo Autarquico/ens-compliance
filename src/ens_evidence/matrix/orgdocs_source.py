@@ -22,6 +22,7 @@ class OrgdocsSource:
                 approved_at=approval.approved_at if approval else None,
                 document_sha256=approval.document_sha256 if approval else None,
                 reasons=tuple(status.reasons),
+                unreadable=tuple(status.unreadable),
                 measures={
                     measure_id: MeasureCoverage(
                         frozenset(by_document[status.name].covered_clauses),

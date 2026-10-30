@@ -3,6 +3,7 @@ from datetime import timedelta
 import pytest
 import yaml
 
+from ens_evidence.approvals import safe_load_unique
 from ens_evidence.matrix import (
     MATRIX_KEY,
     ApplicabilityReview,
@@ -222,3 +223,37 @@ class TestTemporalSelection:
         add_review(store, applicability_review(recorded_at=self.at(1)))
         found = effective_reviews(store, "org.1", self.at(2))
         assert found.implementation.record.assessment is MeasureAssessment.COMPLIANT
+
+
+class TestDuplicateKeys:
+    def test_matrix_yaml_con_una_clave_repetida_no_se_lee(self, store):
+        store.write_text(
+            MATRIX_KEY,
+            yaml.safe_dump({"catalog_version": CATALOG, "entries": []})
+            + "entries:\n  - id: org.1\n",
+        )
+
+        loaded, errors = read_matrix(store)
+
+        assert loaded is None and "repite una clave" in errors[0]
+
+    def test_la_clave_repetida_anidada_tambien_se_rechaza(self):
+        with pytest.raises(yaml.YAMLError, match="clave duplicada: 'b'"):
+            safe_load_unique("a:\n  b: 1\n  b: 2\n")
+
+    def test_las_claves_repetidas_en_listas_de_mapas_se_rechazan(self):
+        with pytest.raises(yaml.YAMLError):
+            safe_load_unique("a:\n  - x: 1\n    x: 2\n")
+
+    def test_un_yaml_sin_repeticiones_se_lee_igual_que_con_safe_load(self):
+        text = "a: 1\nb:\n  - c: 2\n  - c: 3\nd: {e: [1, 2]}\n"
+        assert safe_load_unique(text) == yaml.safe_load(text)
+
+    def test_una_revision_con_axis_repetido_es_ilegible(self, store):
+        add_review(store, measure_review("org.1"))
+        key = store.list("controls/reviews/org.1")[0]
+        store.write_text(key, store.read_text(key) + "axis: applicability\n")
+
+        reviews = effective_reviews(store, "org.1", RECORDED + timedelta(days=1))
+
+        assert reviews.implementation is None and reviews.unreadable == [key]

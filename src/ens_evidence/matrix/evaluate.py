@@ -11,7 +11,7 @@ from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import NamedTuple
 
-from ens_evidence.applicability import DeclarationState
+from ens_evidence.applicability import Declaration, DeclarationState, declaration_history
 from ens_evidence.catalog.controls import MeasuresFileError, load_measures
 from ens_evidence.matrix.documents import (
     DocumentsSnapshot,
@@ -25,7 +25,7 @@ from ens_evidence.matrix.evidence import (
     manual_support,
     verified_manifest,
 )
-from ens_evidence.matrix.fingerprint import links_sha256
+from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
 from ens_evidence.matrix.model import (
     CheckLink,
     DocumentLink,
@@ -208,12 +208,40 @@ def _changed_sources(
     return changed
 
 
+@dataclass(frozen=True)
+class Signings:
+    """Todas las Declaraciones firmadas (las archivadas y la vigente) y las copias ilegibles."""
+
+    declarations: tuple[Declaration, ...] = ()
+    unreadable: tuple[str, ...] = ()
+
+    def contexts_since(self, measure_id: str, since: datetime) -> set[str | None]:
+        """Contexto de la medida en cada firma posterior a `since`; None si ya no figuraba."""
+        contexts: set[str | None] = set()
+        for declaration in self.declarations:
+            if declaration.approved_at <= since:
+                continue
+            try:
+                contexts.add(measure_context_sha256(declaration, measure_id))
+            except LookupError:
+                contexts.add(None)
+        return contexts
+
+
+def read_signings(store: WorkspaceStore, current: Declaration | None) -> Signings:
+    """El historial archivado al firmar más la vigente (que puede ser anterior al archivo)."""
+    archived, unreadable = declaration_history(store)
+    declarations = [*archived, *([current] if current and current not in archived else [])]
+    return Signings(tuple(sorted(declarations, key=lambda d: d.approved_at)), tuple(unreadable))
+
+
 def _review_gaps(
     store: WorkspaceStore,
     row: MatrixRowSpec,
     entry: MatrixEntry,
     stored: StoredReview | None,
     snapshot: DocumentsSnapshot,
+    signings: Signings,
 ) -> list[Blocker]:
     selected = row.kind is RowKind.SELECTED
     if stored is None:
@@ -223,8 +251,19 @@ def _review_gaps(
     record = stored.record
     gaps: list[Blocker] = []
     axis_matches = isinstance(record, MeasureReviewRecord) is selected
-    if not axis_matches or record.measure_context_sha256 != row.measure_context_sha256:
+    # Una revisión solo vale si, entre su registro y ahora, la medida no tuvo otro contexto en
+    # ninguna firma de la Declaración: volver al contexto original no la recupera.
+    contexts = signings.contexts_since(row.measure_id, record.recorded_at)
+    if (
+        not axis_matches
+        or record.measure_context_sha256 != row.measure_context_sha256
+        or contexts - {record.measure_context_sha256}
+    ):
         gaps.append(_gap(BlockerKind.EXPIRED_REVIEW, row.measure_id, "context_changed"))
+    gaps += [
+        _gap(BlockerKind.MISSING_REVIEW, row.measure_id, f"declaration_history_unreadable:{key}")
+        for key in signings.unreadable
+    ]
     if selected and isinstance(record, MeasureReviewRecord):
         if record.links_sha256 != links_sha256(entry):
             gaps.append(_gap(BlockerKind.EXPIRED_REVIEW, row.measure_id, "links_changed"))
@@ -277,6 +316,7 @@ def _assess_row(
     decision: Measure | None,
     runs: tuple[CheckRun, ...],
     snapshot: DocumentsSnapshot,
+    signings: Signings,
     now: datetime,
 ) -> tuple[AssessmentRow, list[Blocker], list[str]]:
     selected = row.kind is RowKind.SELECTED
@@ -306,7 +346,7 @@ def _assess_row(
         gaps.append(_gap(BlockerKind.MISSING_REVIEW, row.measure_id, "owner_missing"))
     if entry.review_every_days is None:
         gaps.append(_gap(BlockerKind.MISSING_REVIEW, row.measure_id, "review_every_days_missing"))
-    gaps += _review_gaps(store, row, entry, stored, snapshot)
+    gaps += _review_gaps(store, row, entry, stored, snapshot, signings)
     gaps += _coverage_gaps(row, covered)
     gaps += [b for s in supports for b in s.blockers]
 
@@ -346,6 +386,15 @@ def assess(
     errors = [*plan.errors, *errors, *decision_errors]
     runs = tuple((checks or NoCheckResults()).runs(store, now))
     snapshot = documents_snapshot(store, now, documents)
+    errors += [
+        f"{key}: registro de aprobación ilegible (documento {name})"
+        for name, document in sorted(snapshot.documents.items())
+        for key in document.unreadable
+    ]
+    signings = read_signings(store, plan.declaration)
+    errors += [
+        f"{key}: copia de una firma de la Declaración ilegible" for key in signings.unreadable
+    ]
 
     rows: list[AssessmentRow] = []
     gaps: list[Blocker] = []
@@ -357,6 +406,7 @@ def assess(
             decisions.get(spec.measure_id),
             runs,
             snapshot,
+            signings,
             now,
         )
         rows.append(assessed)

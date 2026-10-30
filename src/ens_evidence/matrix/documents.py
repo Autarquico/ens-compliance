@@ -29,13 +29,16 @@ class MeasureCoverage:
 @dataclass(frozen=True)
 class OrgDocumentEvidence:
     """`state` es el del documento (`APPROVED`, `OBSOLETE`…); solo `APPROVED` cuenta.
-    `document_sha256` es el de la versión aprobada, si la hay."""
+    `document_sha256` es el de la versión aprobada, si la hay. `unreadable`: registros de
+    aprobación que no se pueden leer; podrían revocar la aprobación anterior, así que el
+    documento no sustenta nada mientras existan."""
 
     name: str
     state: str
     approved_at: datetime | None = None
     document_sha256: str | None = None
     reasons: tuple[str, ...] = ()
+    unreadable: tuple[str, ...] = ()
     measures: Mapping[str, MeasureCoverage] = field(default_factory=dict)
 
 
@@ -80,6 +83,8 @@ def document_support(
     if entry is None:
         return rejected(BlockerKind.MISSING_EVIDENCE, f"document_unknown:{name}")
     document, coverage = entry
+    if document.unreadable:
+        return rejected(BlockerKind.MISSING_EVIDENCE, f"org_document_unreadable:{name}")
     if document.state == OBSOLETE:
         return rejected(BlockerKind.EXPIRED_EVIDENCE, f"document_not_approved:{name}:OBSOLETE")
     if document.state != APPROVED:

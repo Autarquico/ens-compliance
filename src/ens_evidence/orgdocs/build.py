@@ -13,6 +13,7 @@ from ens_evidence.orgdocs.meta import DocumentMeta
 from ens_evidence.orgdocs.template import load_templates
 from ens_evidence.scope import require_approved_scope
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 HISTORY_HASH_CHARS = 16
 
@@ -58,7 +59,7 @@ def _recorded_sha(meta_text: str | None) -> str | None:
     if meta_text is None:
         return None
     try:
-        return DocumentMeta.model_validate(yaml.safe_load(meta_text)).document_sha256
+        return DocumentMeta.model_validate(safe_load_unique(meta_text)).document_sha256
     except (yaml.YAMLError, ValidationError):
         return None
 

@@ -10,7 +10,11 @@ import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
+import yaml
+
+from ens_evidence.approvals import safe_load_unique
 from ens_evidence.evidence.importer import MANUAL_SOURCE
+from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.evidence.manifests import ManifestError, load_manifest_by_id
 from ens_evidence.evidence.verify import verify_one
 from ens_evidence.matrix.model import (
@@ -22,7 +26,7 @@ from ens_evidence.matrix.model import (
 from ens_evidence.matrix.obligations import MatrixRowSpec, expand_covers
 from ens_evidence.models.contracts import EvidenceManifest, ProvenanceKind
 from ens_evidence.models.readiness import Blocker, BlockerKind, EvidenceRef
-from ens_evidence.workspace import WorkspaceStore
+from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
 
 
 @dataclass(frozen=True)
@@ -66,9 +70,21 @@ def manifest_sha256(manifest: EvidenceManifest) -> str:
     return hashlib.sha256(canonical.encode()).hexdigest()
 
 
+def _repeats_a_key(store: WorkspaceStore, evidence_id: str) -> bool:
+    """Un manifiesto con una clave repetida (p. ej. dos `collected_at`) es ambiguo: el cargador
+    de evidencias se queda con la última."""
+    try:
+        safe_load_unique(store.read_text(manifest_key(evidence_id)))
+    except yaml.YAMLError:
+        return True
+    except (NotFound, NotText):
+        return False
+    return False
+
+
 def verified_manifest(store: WorkspaceStore, evidence_id: str) -> EvidenceManifest | None:
     """El manifiesto si él y su artefacto están íntegros; None si algo no cuadra."""
-    if not verify_one(store, evidence_id).ok:
+    if not verify_one(store, evidence_id).ok or _repeats_a_key(store, evidence_id):
         return None
     try:
         return load_manifest_by_id(store, evidence_id)

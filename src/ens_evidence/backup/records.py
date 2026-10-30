@@ -8,6 +8,7 @@ from pydantic import AwareDatetime, Field, StringConstraints, model_validator
 from ens_evidence.evidence.layout import BACKUP_META_PREFIX, BACKUPS_PREFIX
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.workspace import NotFound, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 IMMUTABILITY_PREFIX = f"{BACKUPS_PREFIX}/immutability"
 CHECKS_PREFIX = f"{BACKUPS_PREFIX}/checks"
@@ -269,7 +270,7 @@ def _list_records[T: BackupRun | IntegrityCheck | RestoreRecord](
         if "/" in key.removeprefix(f"{prefix}/"):
             continue
         try:
-            records.append(model.model_validate(yaml.safe_load(store.read_bytes(key))))
+            records.append(model.model_validate(safe_load_unique(store.read_bytes(key))))
         except (ValueError, yaml.YAMLError, NotFound):
             unreadable.append(key)
     return sorted(records, key=lambda record: record.started_at), unreadable

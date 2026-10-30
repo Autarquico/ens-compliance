@@ -12,6 +12,7 @@ from ens_evidence.models.enums import Role
 from ens_evidence.scope.messages import SEPARATOR, describe_validation
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 
 class Rejected(Exception):
@@ -68,14 +69,14 @@ def read_record[M: BaseModel](
     `redo` es la acción que repara el registro ("vuelve a aprobar").
     """
     try:
-        raw: Any = yaml.safe_load(store.read_text(key))
+        raw: Any = safe_load_unique(store.read_text(key))
         return model.model_validate(raw), []
     except NotFound:
         return None, []
     except NotText:
         return None, [f"{key}: no es texto UTF-8; {redo}"]
     except yaml.YAMLError:
-        return None, [f"{key}: no es YAML válido; {redo}"]
+        return None, [f"{key}: no es YAML válido o repite una clave; {redo}"]
     except ValidationError as exc:
         return None, describe_validation(key, exc)
 
@@ -93,9 +94,9 @@ def load_model[M: BaseModel](
         errors.append(f"{key}: no es texto UTF-8; guárdalo como UTF-8")
         return None
     try:
-        raw: Any = yaml.safe_load(text)
+        raw: Any = safe_load_unique(text)
     except yaml.YAMLError:
-        errors.append(f"{key}: no es YAML válido; revisa la sintaxis")
+        errors.append(f"{key}: no es YAML válido o repite una clave; revisa la sintaxis")
         return None
     if leaked := find_secrets(raw):
         errors.extend(

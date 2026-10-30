@@ -135,7 +135,7 @@ def _results_by_subject(run: CheckRun, check_id: str, at: datetime) -> dict[str,
 
 
 def _pass_evidence_blockers(
-    store: WorkspaceStore, row: MatrixRowSpec, result: CheckResult, at: datetime
+    store: WorkspaceStore, row: MatrixRowSpec, result: CheckResult, run: CheckRun, at: datetime
 ) -> tuple[list[Blocker], list[EvidenceRef]]:
     blockers: list[Blocker] = []
     refs: list[EvidenceRef] = []
@@ -148,6 +148,12 @@ def _pass_evidence_blockers(
         elif manifest.collected_at > at:
             blockers.append(
                 blocker(BlockerKind.MISSING_EVIDENCE, row, f"evidence_in_future:{evidence_id}")
+            )
+        elif manifest.collected_at > min(result.evaluated_at, run.finished_at):
+            # La evidencia es anterior al resultado que la cita: si no, o se ha editado su
+            # fecha para rejuvenecerla o no es la que el check vio. Hace falta una ejecución nueva.
+            blockers.append(
+                blocker(BlockerKind.MISSING_EVIDENCE, row, f"evidence_inconsistent:{evidence_id}")
             )
         elif technical_valid_until(manifest.collected_at, manifest.valid_until) <= at:
             blockers.append(
@@ -165,7 +171,7 @@ def _pass_evidence_blockers(
 
 
 def _result_blockers(
-    store: WorkspaceStore, row: MatrixRowSpec, result: CheckResult, at: datetime
+    store: WorkspaceStore, row: MatrixRowSpec, result: CheckResult, run: CheckRun, at: datetime
 ) -> tuple[list[Blocker], list[EvidenceRef]]:
     where = f"{result.check_id}:{subject_of(result)}"
     match result.status:
@@ -175,7 +181,7 @@ def _result_blockers(
             detail = f"check_{result.status.value.lower()}:{where}"
             return [blocker(BlockerKind.MISSING_EVIDENCE, row, detail)], []
         case CheckStatus.PASS:
-            return _pass_evidence_blockers(store, row, result, at)
+            return _pass_evidence_blockers(store, row, result, run, at)
 
 
 def technical_support(
@@ -213,7 +219,7 @@ def technical_support(
     ]
     refs: dict[str, EvidenceRef] = {}
     for subject in sorted(results):
-        result_blockers, result_refs = _result_blockers(store, row, results[subject], at)
+        result_blockers, result_refs = _result_blockers(store, row, results[subject], run, at)
         found += result_blockers
         refs.update((ref.id, ref) for ref in result_refs)
     unique = tuple({(b.kind, b.detail): b for b in found}.values())
