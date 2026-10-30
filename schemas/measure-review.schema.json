@@ -1,0 +1,207 @@
+{
+  "$defs": {
+    "MeasureAssessment": {
+      "enum": [
+        "COMPLIANT",
+        "NON_COMPLIANT",
+        "REQUIRES_REVIEW",
+        "NOT_ASSESSED"
+      ],
+      "title": "MeasureAssessment",
+      "type": "string"
+    },
+    "Review": {
+      "additionalProperties": false,
+      "properties": {
+        "conclusion": {
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "reviewer": {
+          "title": "Reviewer",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reviewer",
+        "role",
+        "reviewed_at",
+        "valid_until",
+        "conclusion"
+      ],
+      "title": "Review",
+      "type": "object"
+    },
+    "ReviewedDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "document_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Document Sha256",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "document_sha256"
+      ],
+      "title": "ReviewedDocument",
+      "type": "object"
+    },
+    "ReviewedEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "artifact_sha256"
+      ],
+      "title": "ReviewedEvidence",
+      "type": "object"
+    },
+    "ReviewedObligation": {
+      "additionalProperties": false,
+      "description": "Fuentes que la persona revisora vio para una obligaci\u00f3n de la medida.",
+      "properties": {
+        "checks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "clauses": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Clauses",
+          "type": "array"
+        },
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/ReviewedDocument"
+          },
+          "title": "Documents",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ReviewedEvidence"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "obligation": {
+          "minLength": 1,
+          "title": "Obligation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "obligation"
+      ],
+      "title": "ReviewedObligation",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Revisi\u00f3n del eje de implantaci\u00f3n; nunca NOT_ASSESSED.",
+  "properties": {
+    "assessment": {
+      "$ref": "#/$defs/MeasureAssessment"
+    },
+    "axis": {
+      "const": "implementation",
+      "default": "implementation",
+      "title": "Axis",
+      "type": "string"
+    },
+    "links_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Links Sha256",
+      "type": "string"
+    },
+    "measure_context_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Measure Context Sha256",
+      "type": "string"
+    },
+    "measure_id": {
+      "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+      "title": "Measure Id",
+      "type": "string"
+    },
+    "obligations": {
+      "items": {
+        "$ref": "#/$defs/ReviewedObligation"
+      },
+      "title": "Obligations",
+      "type": "array"
+    },
+    "recorded_at": {
+      "description": "Cu\u00e1ndo se registr\u00f3; la fecha del registro.",
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "review": {
+      "$ref": "#/$defs/Review"
+    }
+  },
+  "required": [
+    "measure_id",
+    "review",
+    "recorded_at",
+    "measure_context_sha256",
+    "assessment",
+    "links_sha256"
+  ],
+  "title": "MeasureReviewRecord",
+  "type": "object"
+}

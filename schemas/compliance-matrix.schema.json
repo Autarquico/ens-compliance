@@ -1,0 +1,244 @@
+{
+  "$defs": {
+    "CatalogVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "consolidation_date": {
+          "format": "date",
+          "title": "Consolidation Date",
+          "type": "string"
+        },
+        "snapshot_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_sha256",
+        "consolidation_date"
+      ],
+      "title": "CatalogVersion",
+      "type": "object"
+    },
+    "CheckLink": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "minLength": 1,
+          "title": "Check Id",
+          "type": "string"
+        },
+        "covers": {
+          "description": "Qu\u00e9 cubre la fuente: ids de cl\u00e1usula o los atajos `base`, `Rn` y `compensation`. Es obligatorio y expl\u00edcito.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Covers",
+          "type": "array"
+        },
+        "kind": {
+          "const": "check",
+          "default": "check",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "covers",
+        "check_id"
+      ],
+      "title": "CheckLink",
+      "type": "object"
+    },
+    "DocumentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "covers": {
+          "description": "Qu\u00e9 cubre la fuente: ids de cl\u00e1usula o los atajos `base`, `Rn` y `compensation`. Es obligatorio y expl\u00edcito.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Covers",
+          "type": "array"
+        },
+        "document": {
+          "minLength": 1,
+          "title": "Document",
+          "type": "string"
+        },
+        "kind": {
+          "const": "org_document",
+          "default": "org_document",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "covers",
+        "document"
+      ],
+      "title": "DocumentLink",
+      "type": "object"
+    },
+    "ManualEvidenceLink": {
+      "additionalProperties": false,
+      "properties": {
+        "covers": {
+          "description": "Qu\u00e9 cubre la fuente: ids de cl\u00e1usula o los atajos `base`, `Rn` y `compensation`. Es obligatorio y expl\u00edcito.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Covers",
+          "type": "array"
+        },
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "kind": {
+          "const": "evidence",
+          "default": "evidence",
+          "title": "Kind",
+          "type": "string"
+        }
+      },
+      "required": [
+        "covers",
+        "evidence_id"
+      ],
+      "title": "ManualEvidenceLink",
+      "type": "object"
+    },
+    "MatrixEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Id",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "discriminator": {
+              "mapping": {
+                "check": "#/$defs/CheckLink",
+                "evidence": "#/$defs/ManualEvidenceLink",
+                "org_document": "#/$defs/DocumentLink"
+              },
+              "propertyName": "kind"
+            },
+            "oneOf": [
+              {
+                "$ref": "#/$defs/ManualEvidenceLink"
+              },
+              {
+                "$ref": "#/$defs/CheckLink"
+              },
+              {
+                "$ref": "#/$defs/DocumentLink"
+              }
+            ]
+          },
+          "title": "Links",
+          "type": "array"
+        },
+        "notes": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Notes"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Owner"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "review_every_days": {
+          "anyOf": [
+            {
+              "maximum": 365,
+              "minimum": 1,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Periodicidad de revisi\u00f3n en d\u00edas; expl\u00edcita, sin valor por defecto.",
+          "title": "Review Every Days"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "MatrixEntry",
+      "type": "object"
+    },
+    "Owner": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        }
+      },
+      "required": [
+        "name",
+        "role"
+      ],
+      "title": "Owner",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "catalog_version": {
+      "$ref": "#/$defs/CatalogVersion"
+    },
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/MatrixEntry"
+      },
+      "title": "Entries",
+      "type": "array"
+    }
+  },
+  "required": [
+    "catalog_version"
+  ],
+  "title": "MatrixFile",
+  "type": "object"
+}

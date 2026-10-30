@@ -11,6 +11,7 @@ from ens_evidence.backup.restore_test import RestoreTest, RestoreTestDeclaration
 from ens_evidence.catalog import MeasureCard
 from ens_evidence.catalog.controls import MeasuresFile
 from ens_evidence.categorization import CategorizationApproval, CategorizationFile
+from ens_evidence.matrix import ApplicabilityReview, MatrixFile, MeasureReviewRecord
 from ens_evidence.models import (
     CheckResult,
     CollectionResult,
@@ -32,6 +33,7 @@ from ens_evidence.scope import (
 
 CONTRACTS: dict[str, type[BaseModel]] = {
     "applicability-declaration": Declaration,
+    "applicability-review": ApplicabilityReview,
     "backup-run": BackupRun,
     "backup-check": IntegrityCheck,
     "backup-restore": RestoreRecord,
@@ -43,9 +45,11 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "categorization-approval": CategorizationApproval,
     "check-result": CheckResult,
     "collection-result": CollectionResult,
+    "compliance-matrix": MatrixFile,
     "controls-measures": MeasuresFile,
     "dossier": Dossier,
     "evidence-manifest": EvidenceManifest,
+    "measure-review": MeasureReviewRecord,
     "readiness-input": ReadinessInput,
     "readiness-result": ReadinessResult,
     "review": Review,

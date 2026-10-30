@@ -1,0 +1,95 @@
+{
+  "$defs": {
+    "Review": {
+      "additionalProperties": false,
+      "properties": {
+        "conclusion": {
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "reviewer": {
+          "title": "Reviewer",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reviewer",
+        "role",
+        "reviewed_at",
+        "valid_until",
+        "conclusion"
+      ],
+      "title": "Review",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Revisi\u00f3n del eje de aplicabilidad (medida no aplicable); no lleva valoraci\u00f3n.",
+  "properties": {
+    "axis": {
+      "const": "applicability",
+      "default": "applicability",
+      "title": "Axis",
+      "type": "string"
+    },
+    "measure_context_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Measure Context Sha256",
+      "type": "string"
+    },
+    "measure_id": {
+      "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+      "title": "Measure Id",
+      "type": "string"
+    },
+    "recorded_at": {
+      "description": "Cu\u00e1ndo se registr\u00f3; la fecha del registro.",
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "review": {
+      "$ref": "#/$defs/Review"
+    }
+  },
+  "required": [
+    "measure_id",
+    "review",
+    "recorded_at",
+    "measure_context_sha256"
+  ],
+  "title": "ApplicabilityReview",
+  "type": "object"
+}
