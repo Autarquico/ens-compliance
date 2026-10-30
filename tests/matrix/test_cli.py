@@ -1,4 +1,5 @@
 import hashlib
+import json
 from datetime import timedelta
 
 import pytest
@@ -6,7 +7,8 @@ import yaml
 from orgdocs.orgdocs_helpers import SIGNATORY, fixture_answers, write_answers
 from typer.testing import CliRunner
 
-from ens_evidence.catalog.controls import CatalogVersion
+from ens_evidence.catalog import load_catalog
+from ens_evidence.catalog.controls import CatalogVersion, current_catalog_version
 from ens_evidence.cli import app
 from ens_evidence.matrix import (
     MATRIX_KEY,
@@ -121,7 +123,7 @@ def test_init_avisa_de_las_entradas_que_sobran_sin_borrarlas(ens_cli, signed):
     assert "op.zzz.9" in entries(signed)
 
 
-def test_init_avisa_si_la_version_del_catalogo_no_coincide(ens_cli, signed):
+def test_init_actualiza_la_version_del_catalogo_y_lo_informa(ens_cli, signed):
     ens_cli("matrix", "init")
     matrix, _ = read_matrix(signed)
     other = CatalogVersion(snapshot_sha256="f" * 64, consolidation_date="2020-01-01")
@@ -129,8 +131,30 @@ def test_init_avisa_si_la_version_del_catalogo_no_coincide(ens_cli, signed):
 
     result = ens_cli("matrix", "init")
 
-    assert result.exit_code == 0
-    assert "otra versión del catálogo" in result.output
+    current = current_catalog_version(load_catalog())
+    assert result.exit_code == 0, result.output
+    assert (
+        f"pasa de la versión del catálogo 2020-01-01 a la actual {current.consolidation_date}"
+        in (result.output)
+    )
+    updated, _ = read_matrix(signed)
+    assert updated.catalog_version == current
+    assert updated.entries == matrix.entries
+    assert "pasa de la versión" not in ens_cli("matrix", "init").output
+
+
+def test_init_no_toca_la_version_si_la_declaracion_no_esta_vigente(ens_cli, signed):
+    ens_cli("matrix", "init")
+    matrix, _ = read_matrix(signed)
+    other = CatalogVersion(snapshot_sha256="f" * 64, consolidation_date="2020-01-01")
+    save_matrix(signed, matrix.model_copy(update={"catalog_version": other}))
+    key = "controls/measures.yaml"
+    signed.write_text(key, signed.read_text(key) + "\n")
+
+    result = ens_cli("matrix", "init")
+
+    assert result.exit_code == 1
+    assert read_matrix(signed)[0].catalog_version == other
 
 
 def test_init_exige_la_declaracion_vigente(tmp_path, workspace, monkeypatch):
@@ -640,3 +664,179 @@ def test_matrix_yaml_tiene_el_formato_esperado(initialized, signed):
     assert {e.id for e in loaded.entries} == {
         r.measure_id for r in plan_obligations(signed, NOW).rows
     }
+
+
+# --- status <medida> --------------------------------------------------------------------------
+
+
+def test_status_con_medida_muestra_solo_esa_fila(initialized):
+    result = initialized("matrix", "status", ONE_CLAUSE)
+
+    assert result.exit_code == 1
+    assert f"{ONE_CLAUSE}  " in result.output
+    assert f"{TWO_CLAUSES}  " not in result.output
+    assert "Preparación:" not in result.output
+
+
+def test_status_con_medida_sale_con_0_si_esa_medida_no_tiene_bloqueos(initialized, signed):
+    configured(initialized)
+    linked_evidence(initialized, signed)
+    review(initialized, ONE_CLAUSE, "--assessment", "COMPLIANT")
+
+    result = initialized("matrix", "status", ONE_CLAUSE)
+
+    assert result.exit_code == 0, result.output
+    assert "implantada: sí" in line_of(result.output, ONE_CLAUSE)
+    assert initialized("matrix", "status").exit_code == 1
+
+
+def test_status_con_una_medida_ajena_a_la_declaracion_sale_con_1(initialized):
+    result = initialized("matrix", "status", "op.zzz.9")
+
+    assert result.exit_code == 1
+    assert "no es una medida de la Declaración" in result.output
+
+
+# --- export -----------------------------------------------------------------------------------
+
+
+def reports(store, prefix: str) -> list[str]:
+    return store.list(prefix)
+
+
+def test_export_json_guarda_la_copia_en_el_workspace_e_imprime_la_clave(initialized, signed):
+    result = initialized("matrix", "export")
+
+    key = result.output.strip()
+    assert result.exit_code == 0, result.output
+    assert key.startswith("evidence/reports/matrix/") and key.endswith(".json")
+    assert reports(signed, "evidence/reports/matrix") == [key]
+    document = json.loads(signed.read_text(key))
+    assert document["generated_at"].startswith("2026-10-30T12:00:00")
+    rows = {r.measure_id for r in plan_obligations(signed, NOW).rows}
+    assert {r["measure_id"] for r in document["rows"]} == rows
+
+
+def test_export_md_guarda_la_tabla(initialized, signed):
+    result = initialized("matrix", "export", "--format", "md")
+
+    key = result.output.strip()
+    assert result.exit_code == 0, result.output
+    assert key.endswith(".md")
+    text = signed.read_text(key)
+    assert "| Medida | Requisitos (cláusulas) |" in text
+    assert text.rstrip().endswith("la valoración es de la persona que revisa.")
+
+
+def test_export_con_un_formato_desconocido_es_un_error_de_uso(initialized, signed):
+    result = initialized("matrix", "export", "--format", "xml")
+
+    assert result.exit_code == 2
+    assert reports(signed, "evidence/reports/matrix") == []
+
+
+def test_export_stdout_imprime_sin_guardar(initialized, signed):
+    result = initialized("matrix", "export", "--stdout")
+
+    assert result.exit_code == 0, result.output
+    assert json.loads(result.output)["product_version"]
+    assert reports(signed, "evidence/reports/matrix") == []
+
+
+def test_export_con_at_evalua_en_ese_instante(initialized):
+    result = initialized("matrix", "export", "--stdout", "--at", "2026-10-30T11:00:00+00:00")
+
+    document = json.loads(result.output)
+    assert result.exit_code == 0, result.output
+    assert document["evaluated_at"].startswith("2026-10-30T11:00:00")
+    assert document["generated_at"].startswith("2026-10-30T12:00:00")
+
+
+def test_export_con_at_sin_zona_es_un_error_de_uso(initialized):
+    assert initialized("matrix", "export", "--at", "2026-10-30T11:00:00").exit_code == 2
+
+
+def test_export_no_sobrescribe_una_copia_anterior(initialized, signed):
+    first = initialized("matrix", "export")
+    before = signed.read_bytes(first.output.strip())
+
+    again = initialized("matrix", "export")
+
+    assert again.exit_code == 2
+    assert signed.read_bytes(first.output.strip()) == before
+    assert len(reports(signed, "evidence/reports/matrix")) == 1
+
+
+def test_export_sin_declaracion_firmada_sale_con_1_y_no_guarda(tmp_path, workspace, monkeypatch):
+    monkeypatch.setattr("ens_evidence.cli.clock", lambda: NOW)
+    settings = tmp_path / "s.yaml"
+    settings.write_text(
+        yaml.safe_dump({"workspace": {"backend": "local", "local": {"path": str(tmp_path / "ws")}}})
+    )
+
+    result = CliRunner().invoke(app, ["--settings", str(settings), "matrix", "export"])
+
+    assert result.exit_code == 1
+    assert "No hay Declaración de Aplicabilidad legible" in result.output
+    assert workspace.list("evidence/reports") == []
+
+
+# --- applicability show -----------------------------------------------------------------------
+
+
+def test_show_imprime_la_declaracion_sin_guardar(ens_cli, signed):
+    result = ens_cli("applicability", "show")
+
+    assert result.exit_code == 0, result.output
+    assert "# Declaración de Aplicabilidad" in result.output
+    assert "Luis Pardo" in result.output
+    assert "En la matriz" not in result.output
+    assert signed.list("evidence/reports/declaration") == []
+
+
+def test_show_annotated_anade_el_estado_de_cada_medida(initialized):
+    result = initialized("applicability", "show", "--annotated")
+
+    assert result.exit_code == 0, result.output
+    assert "En la matriz: no consta como implantada" in result.output
+    assert "MISSING\\_REVIEW review\\_missing" in result.output
+
+
+def test_show_save_guarda_la_misma_vista_en_el_workspace(ens_cli, signed):
+    result = ens_cli("applicability", "show", "--save")
+
+    (key,) = signed.list("evidence/reports/declaration")
+    assert result.exit_code == 0, result.output
+    assert key.endswith(".md")
+    saved = signed.read_text(key)
+    assert saved.startswith("# Declaración de Aplicabilidad")
+    assert saved in result.output
+    assert f"Guardada en {key}" in result.output
+
+
+def test_show_de_una_declaracion_obsoleta_la_muestra_con_su_estado_y_sale_con_1(ens_cli, signed):
+    key = "controls/measures.yaml"
+    signed.write_text(key, signed.read_text(key) + "\n")
+
+    result = ens_cli("applicability", "show", "--save")
+
+    assert result.exit_code == 1
+    assert "Estado: STALE" in result.output
+    assert len(signed.list("evidence/reports/declaration")) == 1
+
+
+def test_show_sin_declaracion_firmada_sale_con_1_y_no_guarda(tmp_path, workspace, monkeypatch):
+    monkeypatch.setattr("ens_evidence.cli.clock", lambda: NOW)
+    settings = tmp_path / "s.yaml"
+    settings.write_text(
+        yaml.safe_dump({"workspace": {"backend": "local", "local": {"path": str(tmp_path / "ws")}}})
+    )
+
+    result = CliRunner().invoke(
+        app, ["--settings", str(settings), "applicability", "show", "--save"]
+    )
+
+    assert result.exit_code == 1
+    assert "NOT_APPROVED" in result.output
+    assert "no se guarda" in result.output
+    assert workspace.list("evidence/reports") == []

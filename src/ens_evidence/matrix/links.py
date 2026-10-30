@@ -64,7 +64,8 @@ class InitOutcome:
     current_catalog: CatalogVersion
 
     @property
-    def catalog_differs(self) -> bool:
+    def catalog_updated(self) -> bool:
+        """`matrix.yaml` tenía otra versión del catálogo y ahora lleva la actual."""
         return self.file_catalog != self.current_catalog
 
 
@@ -121,7 +122,11 @@ def _replaced(matrix: MatrixFile, entry: MatrixEntry) -> MatrixFile:
 
 
 def init_matrix(store: WorkspaceStore, now: datetime) -> InitOutcome:
-    """Una entrada por fila de la Declaración; conserva lo existente y no escribe si no hay nada."""
+    """Una entrada por fila de la Declaración y el catálogo actual; conserva lo existente.
+
+    Solo escribe si hay algo que cambiar. La Declaración vigente ya se firmó con el catálogo
+    actual, así que alinear la versión de `matrix.yaml` con él no reabre ninguna revisión.
+    """
     plan = require_current(store, now)
     current = current_catalog_version(load_catalog())
     matrix, errors = read_matrix(store)
@@ -131,11 +136,18 @@ def init_matrix(store: WorkspaceStore, now: datetime) -> InitOutcome:
     known = {e.id for e in existing.entries}
     wanted = [r.measure_id for r in plan.rows]
     created = tuple(i for i in wanted if i not in known)
-    if created or matrix is None:
+    outcome = InitOutcome(
+        created,
+        len(known & set(wanted)),
+        tuple(sorted(known - set(wanted))),
+        existing.catalog_version,
+        current,
+    )
+    if created or matrix is None or outcome.catalog_updated:
         entries = [*existing.entries, *(MatrixEntry(id=i) for i in created)]
-        save_matrix(store, existing.model_copy(update={"entries": entries}))
-    extra = tuple(sorted(known - set(wanted)))
-    return InitOutcome(created, len(known) - len(extra), extra, existing.catalog_version, current)
+        update = {"entries": entries, "catalog_version": current}
+        save_matrix(store, existing.model_copy(update=update))
+    return outcome
 
 
 def parse_role(text: str) -> Role:

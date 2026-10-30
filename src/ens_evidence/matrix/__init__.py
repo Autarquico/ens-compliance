@@ -1,5 +1,6 @@
 """Matriz de cumplimiento por medida (anexo III, 2.1.a del RD 311/2022)."""
 
+from ens_evidence.matrix.declaration_view import render_declaration
 from ens_evidence.matrix.documents import (
     DocumentsSnapshot,
     MeasureCoverage,
@@ -51,6 +52,16 @@ from ens_evidence.matrix.obligations import (
     rows_from_declaration,
 )
 from ens_evidence.matrix.orgdocs_source import OrgdocsSource
+from ens_evidence.matrix.render import (
+    DECLARATION_REPORTS_PREFIX,
+    MATRIX_REPORTS_PREFIX,
+    ExportRejected,
+    MatrixExport,
+    build_export,
+    render_json,
+    render_markdown,
+    save_report,
+)
 from ens_evidence.matrix.review import (
     CHECKS_PENDING,
     ReviewPlan,
@@ -81,6 +92,15 @@ from ens_evidence.matrix.technical import (
 )
 
 __all__ = [
+    "DECLARATION_REPORTS_PREFIX",
+    "MATRIX_REPORTS_PREFIX",
+    "ExportRejected",
+    "MatrixExport",
+    "build_export",
+    "render_declaration",
+    "render_json",
+    "render_markdown",
+    "save_report",
     "AssessmentResult",
     "AssessmentRow",
     "assess",

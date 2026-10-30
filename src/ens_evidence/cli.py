@@ -3,6 +3,7 @@ import os
 import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime
+from enum import StrEnum
 from importlib.resources import files
 from pathlib import Path
 from typing import Annotated, Any
@@ -77,10 +78,15 @@ from ens_evidence.evidence import (
 from ens_evidence.evidence.importer import import_collected
 from ens_evidence.matrix import (
     CHECKS_PENDING,
+    DECLARATION_REPORTS_PREFIX,
+    MATRIX_REPORTS_PREFIX,
+    ExportRejected,
     MatrixRejected,
     ReviewPlan,
     RowStatus,
     add_link,
+    assess,
+    build_export,
     build_link,
     init_matrix,
     link_label,
@@ -89,6 +95,10 @@ from ens_evidence.matrix import (
     prepare_review,
     record_review,
     remove_link,
+    render_declaration,
+    render_json,
+    render_markdown,
+    save_report,
     set_entry,
 )
 from ens_evidence.models.enums import CollectionStatus, Role
@@ -850,6 +860,32 @@ def applicability_show_status(ctx: typer.Context) -> None:
         raise typer.Exit(1)
 
 
+@applicability_app.command("show")
+@handled
+def applicability_show(
+    ctx: typer.Context,
+    annotated: Annotated[
+        bool, typer.Option("--annotated", help="Añade el estado de cada medida en la matriz.")
+    ] = False,
+    save: Annotated[
+        bool, typer.Option("--save", help="Guarda una copia en evidence/reports/declaration/.")
+    ] = False,
+) -> None:
+    """Muestra la Declaración de Aplicabilidad en forma legible. Sale con 1 si no está vigente."""
+    store = open_workspace(ctx)
+    now = clock()
+    status = declaration_status(store, now)
+    text = render_declaration(store, now, evaluation=assess(store, now) if annotated else None)
+    typer.echo(text, nl=False)
+    if save and status.declaration is not None:
+        key = save_report(store, DECLARATION_REPORTS_PREFIX, now, "md", text)
+        typer.echo(f"Guardada en {key}", err=True)
+    elif save:
+        typer.echo("No hay Declaración firmada y legible: no se guarda.", err=True)
+    if status.state is not DeclarationState.CURRENT:
+        raise typer.Exit(1)
+
+
 def backup_settings(ctx: typer.Context) -> BackupSettings:
     configured = load_settings(resolve_settings_path(ctx.obj)).backup
     if configured is None:
@@ -1458,12 +1494,11 @@ def matrix_init(ctx: typer.Context) -> None:
             + " (se conservan).",
             err=True,
         )
-    if outcome.catalog_differs:
+    if outcome.catalog_updated:
         typer.echo(
-            "Aviso: matrix.yaml se creó con otra versión del catálogo "
-            f"({outcome.file_catalog.consolidation_date}) que la actual "
-            f"({outcome.current_catalog.consolidation_date}).",
-            err=True,
+            "matrix.yaml pasa de la versión del catálogo "
+            f"{outcome.file_catalog.consolidation_date} a la actual "
+            f"{outcome.current_catalog.consolidation_date}."
         )
 
 
@@ -1631,23 +1666,66 @@ def print_row_status(status: RowStatus) -> None:
 @handled
 def matrix_show_status(
     ctx: typer.Context,
+    measure: Annotated[
+        str | None, typer.Argument(help="Solo esta medida (p. ej. op.acc.5); por defecto, todas.")
+    ] = None,
     at: Annotated[str | None, typer.Option("--at", help="Instante a evaluar.")] = None,
 ) -> None:
     """Estado de cada medida y resultado de preparación. Sale con 1 si hay bloqueos."""
     instant = parse_instant("--at", at) or clock()
     result, rows = matrix_status(open_workspace(ctx), instant)
+    shown = [s for s in rows if measure is None or s.row.spec.measure_id == measure]
+    if measure is not None and not shown:
+        raise fail(f"{measure} no es una medida de la Declaración de Aplicabilidad.", 1)
     typer.echo(f"Declaración de Aplicabilidad: {result.declaration_state.value}.")
     typer.echo(f"Aviso: {CHECKS_PENDING}.")
-    for status in rows:
+    for status in shown:
         print_row_status(status)
     print_errors(list(result.errors))
     readiness = result.readiness
-    typer.echo(
-        f"Preparación: {readiness.readiness.value}, {len(readiness.blockers)} bloqueos. "
-        "La herramienta no declara conformidad; la valoración es de la persona que revisa."
-    )
-    if readiness.blockers:
+    if measure is None:
+        typer.echo(
+            f"Preparación: {readiness.readiness.value}, {len(readiness.blockers)} bloqueos. "
+            "La herramienta no declara conformidad; la valoración es de la persona que revisa."
+        )
+    blocked = bool(readiness.blockers) if measure is None else any(s.blockers for s in shown)
+    if blocked:
         raise typer.Exit(1)
+
+
+class ExportFormat(StrEnum):
+    JSON = "json"
+    MD = "md"
+
+
+@matrix_app.command("export")
+@handled
+def matrix_export(
+    ctx: typer.Context,
+    fmt: Annotated[
+        ExportFormat, typer.Option("--format", help="Formato de la exportación.")
+    ] = ExportFormat.JSON,
+    at: Annotated[str | None, typer.Option("--at", help="Instante a evaluar.")] = None,
+    stdout: Annotated[
+        bool, typer.Option("--stdout", help="Imprime en vez de guardar en el workspace.")
+    ] = False,
+) -> None:
+    """Exporta la matriz con sus fuentes y marcas de tiempo a `evidence/reports/matrix/`.
+    Falla si falta alguna fila de la Declaración. No declara conformidad."""
+    store = open_workspace(ctx)
+    generated_at = clock()
+    evaluation = assess(store, parse_instant("--at", at) or generated_at)
+    try:
+        export = build_export(store, evaluation, generated_at=generated_at)
+    except ExportRejected as exc:
+        typer.echo("No se exporta la matriz:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    text = render_json(export) if fmt is ExportFormat.JSON else render_markdown(export)
+    if stdout:
+        typer.echo(text, nl=False)
+        return
+    typer.echo(save_report(store, MATRIX_REPORTS_PREFIX, generated_at, fmt.value, text))
 
 
 def connector_registry() -> ConnectorRegistry:

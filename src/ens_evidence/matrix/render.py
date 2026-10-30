@@ -1,0 +1,527 @@
+"""Exportación de la matriz de cumplimiento (regla 11: fuentes y timestamps).
+
+`build_export` congela una `AssessmentResult` en un `MatrixExport` con todo lo que permite
+reconstruir de dónde sale cada fila: fuentes por evidencia, check, documento y revisión. La
+exportación falla si falta una fila de la Declaración (nunca sale una matriz con huecos). Con
+las mismas entradas y el mismo `generated_at`, los bytes son idénticos. Nada de aquí declara
+conformidad (regla 12): la valoración es de la persona que revisa.
+"""
+
+import hashlib
+import json
+import re
+from datetime import UTC, datetime
+from typing import Literal
+
+from pydantic import AwareDatetime
+
+from ens_evidence import __version__
+from ens_evidence.applicability import DeclarationState, declaration_status
+from ens_evidence.catalog import load_catalog
+from ens_evidence.catalog.controls import CatalogVersion, current_catalog_version
+from ens_evidence.evidence.layout import manifest_key
+from ens_evidence.evidence.manifests import ManifestError, load_manifest_by_id
+from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow
+from ens_evidence.matrix.model import MeasureReviewRecord, Owner
+from ens_evidence.matrix.obligations import RowKind
+from ens_evidence.matrix.review import RowStatus, row_status
+from ens_evidence.matrix.store import MATRIX_KEY
+from ens_evidence.matrix.technical import KNOWN_CHECKS
+from ens_evidence.models.contracts import Provenance, Strict
+from ens_evidence.models.enums import Category, MeasureAssessment, Readiness, Role
+from ens_evidence.models.readiness import Blocker
+from ens_evidence.workspace import WorkspaceStore
+
+MATRIX_REPORTS_PREFIX = "evidence/reports/matrix"
+DECLARATION_REPORTS_PREFIX = "evidence/reports/declaration"
+DISCLAIMER = "La herramienta no declara conformidad; la valoración es de la persona que revisa."
+
+_MARKDOWN_SPECIALS = re.compile(r"([\\`*_\[\]<>|~&#])")
+
+
+class ExportRejected(Exception):
+    """No se puede exportar; `errors` dice por qué, una razón por línea."""
+
+    def __init__(self, *errors: str) -> None:
+        super().__init__("; ".join(errors))
+        self.errors = list(errors)
+
+
+class ExportedDeclaration(Strict):
+    state: DeclarationState
+    approved_by: str
+    role: Role
+    approved_at: AwareDatetime
+    category: Category
+    catalog_version: CatalogVersion
+    measures_sha256: str
+    categorization_sha256: str
+    scope_fingerprint: str
+
+
+class ExportedLink(Strict):
+    kind: Literal["evidence", "check", "org_document"]
+    target: str
+    covers: list[str]
+    counts: bool
+
+
+class ExportedObligation(Strict):
+    id: str
+    clauses: list[str]
+    replaces: list[str]
+
+
+class ExportedReview(Strict):
+    key: str
+    axis: Literal["implementation", "applicability"]
+    assessment: MeasureAssessment | None
+    reviewer: str
+    role: Role
+    reviewed_at: AwareDatetime
+    valid_until: AwareDatetime
+    recorded_at: AwareDatetime
+
+
+class ExportedRow(Strict):
+    measure_id: str
+    name: str
+    kind: RowKind
+    obligations: list[ExportedObligation]
+    technical: list[ExportedLink]
+    manual: list[ExportedLink]
+    owner: Owner | None
+    review_every_days: int | None
+    last_review: ExportedReview | None
+    implemented: bool
+    review_current: bool
+    blockers: list[Blocker]
+
+
+class EvidenceSource(Strict):
+    id: str
+    manifest_key: str
+    source: str
+    artifact_sha256: str
+    provenance: Provenance
+    collected_at: AwareDatetime
+    valid_until: AwareDatetime | None
+
+
+class CheckSource(Strict):
+    check_id: str
+    connector: str | None
+    measures: list[str]
+    last_run_at: AwareDatetime | None
+    evidence_ids: list[str]
+
+
+class DocumentSource(Strict):
+    name: str
+    document_sha256: str
+    approved_at: AwareDatetime | None
+    measures: list[str]
+
+
+class ReviewSource(Strict):
+    measure_id: str
+    key: str
+
+
+class ExportSources(Strict):
+    evidence: list[EvidenceSource]
+    checks: list[CheckSource]
+    documents: list[DocumentSource]
+    reviews: list[ReviewSource]
+
+
+class MatrixExport(Strict):
+    generated_at: AwareDatetime
+    evaluated_at: AwareDatetime
+    product_version: str
+    catalog_version: CatalogVersion
+    declaration: ExportedDeclaration
+    matrix_sha256: str | None
+    readiness: Readiness
+    blockers: list[Blocker]
+    rows: list[ExportedRow]
+    sources: ExportSources
+    disclaimer: str = DISCLAIMER
+
+
+# --- construcción -----------------------------------------------------------------------------
+
+
+def _blocker_key(blocker: Blocker) -> tuple[str, str, str]:
+    return (blocker.measure_id or "", blocker.kind.value, blocker.detail)
+
+
+def _links(row: AssessmentRow, kinds: set[str]) -> list[ExportedLink]:
+    counting = {s.link.target for s in row.supports if s.counts}
+    links = row.entry.links if row.entry else []
+    return [
+        ExportedLink(
+            kind=link.kind,
+            target=link.target[1],
+            covers=list(link.covers),
+            counts=link.target in counting,
+        )
+        for link in links
+        if link.kind in kinds
+    ]
+
+
+def _exported_review(row: AssessmentRow) -> ExportedReview | None:
+    stored = row.review
+    if stored is None:
+        return None
+    record = stored.record
+    effective = row.measure.review or record.review
+    return ExportedReview(
+        key=stored.key,
+        axis=record.axis,
+        assessment=record.assessment if isinstance(record, MeasureReviewRecord) else None,
+        reviewer=record.review.reviewer,
+        role=record.review.role,
+        reviewed_at=record.review.reviewed_at,
+        valid_until=effective.valid_until,
+        recorded_at=record.recorded_at,
+    )
+
+
+def export_row(status: RowStatus, name: str) -> ExportedRow:
+    row = status.row
+    return ExportedRow(
+        measure_id=row.spec.measure_id,
+        name=name,
+        kind=row.spec.kind,
+        obligations=[
+            ExportedObligation(id=o.id, clauses=list(o.clause_ids), replaces=list(o.replaces))
+            for o in row.spec.obligations
+        ],
+        technical=_links(row, {"check"}),
+        manual=_links(row, {"evidence", "org_document"}),
+        owner=row.entry.owner if row.entry else None,
+        review_every_days=row.entry.review_every_days if row.entry else None,
+        last_review=_exported_review(row),
+        implemented=status.implemented,
+        review_current=status.regularly_reviewed,
+        blockers=sorted(status.blockers, key=_blocker_key),
+    )
+
+
+def _declaration_rows(store: WorkspaceStore, at: datetime):
+    status = declaration_status(store, at)
+    declaration = status.declaration
+    if declaration is None:
+        raise ExportRejected(
+            f"No hay Declaración de Aplicabilidad legible ({status.state.value}): "
+            "no hay filas que exportar.",
+            *status.errors,
+        )
+    expected = [
+        *(m.id for m in declaration.selected),
+        *(m.id for m in declaration.not_selected),
+        *(m.id for m in declaration.required_but_absent_assets),
+    ]
+    return status.state, declaration, expected
+
+
+def _check_complete(expected: list[str], rows: tuple[AssessmentRow, ...]) -> None:
+    found = [r.spec.measure_id for r in rows]
+    missing = sorted(set(expected) - set(found))
+    repeated = sorted({i for i in found if found.count(i) > 1})
+    extra = sorted(set(found) - set(expected))
+    problems = [
+        *(f"{i}: falta la fila de la Declaración." for i in missing),
+        *(f"{i}: fila duplicada." for i in repeated),
+        *(f"{i}: fila que no está en la Declaración." for i in extra),
+    ]
+    if problems:
+        raise ExportRejected(*problems)
+
+
+def _evidence_source(store: WorkspaceStore, evidence_id: str) -> EvidenceSource | None:
+    try:
+        manifest = load_manifest_by_id(store, evidence_id)
+    except ManifestError:
+        return None
+    return EvidenceSource(
+        id=manifest.id,
+        manifest_key=manifest_key(manifest.id),
+        source=manifest.source,
+        artifact_sha256=manifest.artifact.sha256,
+        provenance=manifest.provenance,
+        collected_at=manifest.collected_at,
+        valid_until=manifest.valid_until,
+    )
+
+
+def _build_sources(store: WorkspaceStore, rows: tuple[AssessmentRow, ...]) -> ExportSources:
+    evidence_ids: set[str] = set()
+    checks: dict[str, dict] = {}
+    documents: dict[str, dict] = {}
+    reviews: list[ReviewSource] = []
+    for row in rows:
+        measure = row.spec.measure_id
+        for support in row.supports:
+            link = support.link
+            if link.kind == "evidence":
+                evidence_ids.add(link.evidence_id)
+            elif link.kind == "check":
+                found = checks.setdefault(
+                    link.check_id, {"measures": set(), "last_run_at": None, "evidence": set()}
+                )
+                found["measures"].add(measure)
+                if support.counts:
+                    found["evidence"].update(ref.id for ref in support.evidence)
+                    evidence_ids.update(ref.id for ref in support.evidence)
+                    runs = [t for t in (found["last_run_at"], support.available_at) if t]
+                    found["last_run_at"] = max(runs, default=None)
+            elif support.counts and support.reviewed_document is not None:
+                found = documents.setdefault(
+                    link.document,
+                    {
+                        "sha": support.reviewed_document.document_sha256,
+                        "approved_at": support.available_at,
+                        "measures": set(),
+                    },
+                )
+                found["measures"].add(measure)
+        if row.review is not None:
+            reviews.append(ReviewSource(measure_id=measure, key=row.review.key))
+            record = row.review.record
+            if isinstance(record, MeasureReviewRecord):
+                evidence_ids.update(e.evidence_id for o in record.obligations for e in o.evidence)
+    sources = (_evidence_source(store, i) for i in sorted(evidence_ids))
+    return ExportSources(
+        evidence=[s for s in sources if s is not None],
+        checks=[
+            CheckSource(
+                check_id=check_id,
+                connector=KNOWN_CHECKS.get(check_id),
+                measures=sorted(found["measures"]),
+                last_run_at=found["last_run_at"],
+                evidence_ids=sorted(found["evidence"]),
+            )
+            for check_id, found in sorted(checks.items())
+        ],
+        documents=[
+            DocumentSource(
+                name=name,
+                document_sha256=found["sha"],
+                approved_at=found["approved_at"],
+                measures=sorted(found["measures"]),
+            )
+            for name, found in sorted(documents.items())
+        ],
+        reviews=sorted(reviews, key=lambda r: (r.measure_id, r.key)),
+    )
+
+
+def _matrix_sha256(store: WorkspaceStore) -> str | None:
+    if not store.exists(MATRIX_KEY):
+        return None
+    return hashlib.sha256(store.read_bytes(MATRIX_KEY)).hexdigest()
+
+
+def build_export(
+    store: WorkspaceStore, evaluation: AssessmentResult, *, generated_at: datetime
+) -> MatrixExport:
+    """Congela la evaluación; `ExportRejected` si falta o sobra alguna fila de la Declaración."""
+    state, declaration, expected = _declaration_rows(store, evaluation.evaluated_at)
+    _check_complete(expected, evaluation.rows)
+    catalog = load_catalog()
+    names = {m.id: m.name for m in catalog.measures}
+    rows = sorted(
+        (export_row(row_status(r), names.get(r.spec.measure_id, "")) for r in evaluation.rows),
+        key=lambda r: r.measure_id,
+    )
+    return MatrixExport(
+        generated_at=generated_at,
+        evaluated_at=evaluation.evaluated_at,
+        product_version=__version__,
+        catalog_version=current_catalog_version(catalog),
+        declaration=ExportedDeclaration(
+            state=state,
+            approved_by=declaration.approved_by,
+            role=declaration.role,
+            approved_at=declaration.approved_at,
+            category=declaration.category,
+            catalog_version=declaration.catalog_version,
+            measures_sha256=declaration.measures_sha256,
+            categorization_sha256=declaration.categorization_sha256,
+            scope_fingerprint=declaration.scope_fingerprint,
+        ),
+        matrix_sha256=_matrix_sha256(store),
+        readiness=evaluation.readiness.readiness,
+        blockers=sorted(evaluation.readiness.blockers, key=_blocker_key),
+        rows=rows,
+        sources=_build_sources(store, evaluation.rows),
+    )
+
+
+# --- render -----------------------------------------------------------------------------------
+
+
+def md_escape(text: str) -> str:
+    """Texto libre en una sola línea y sin sintaxis Markdown activa."""
+    return _MARKDOWN_SPECIALS.sub(r"\\\1", " ".join(text.split()))
+
+
+def render_json(export: MatrixExport) -> str:
+    document = export.model_dump(mode="json")
+    return json.dumps(document, indent=2, ensure_ascii=False) + "\n"
+
+
+def _day(moment: datetime) -> str:
+    return moment.astimezone(UTC).date().isoformat()
+
+
+def _instant(moment: datetime) -> str:
+    return moment.astimezone(UTC).isoformat()
+
+
+def _owner_text(owner: Owner | None) -> str:
+    return "—" if owner is None else f"{md_escape(owner.name)} ({owner.role.value})"
+
+
+def _links_text(links: list[ExportedLink]) -> str:
+    if not links:
+        return "—"
+    return "; ".join(
+        md_escape(link.target) + ("" if link.counts else " (no cuenta)") for link in links
+    )
+
+
+def review_text(review: ExportedReview | None) -> str:
+    if review is None:
+        return "sin revisión"
+    value = f" · {review.assessment.value}" if review.assessment else " · aplicabilidad"
+    return f"{md_escape(review.reviewer)} ({review.role.value}), {_day(review.reviewed_at)}{value}"
+
+
+def requirements_text(row: ExportedRow) -> str:
+    if not row.obligations:
+        return "—"
+    parts = []
+    for obligation in row.obligations:
+        clauses = ", ".join(obligation.clauses) or "sin cláusulas con id"
+        parts.append(f"{obligation.id}: {clauses}")
+    return md_escape("; ".join(parts))
+
+
+def blockers_text(blockers: list[Blocker]) -> str:
+    if not blockers:
+        return "—"
+    return md_escape("; ".join(f"{b.kind.value} {b.detail}".strip() for b in blockers))
+
+
+def _yes_no(row: ExportedRow, value: bool, *, applies_to_selected_only: bool = False) -> str:
+    if applies_to_selected_only and row.kind is not RowKind.SELECTED:
+        return "n/a"
+    return "sí" if value else "no"
+
+
+def _row_line(row: ExportedRow) -> str:
+    suffix = "" if row.kind is RowKind.SELECTED else f" ({row.kind.value})"
+    cells = [
+        f"{md_escape(row.measure_id)} {md_escape(row.name)}{suffix}",
+        requirements_text(row),
+        _links_text(row.technical),
+        _links_text(row.manual),
+        _owner_text(row.owner),
+        "—" if row.review_every_days is None else f"{row.review_every_days} días",
+        review_text(row.last_review),
+        _yes_no(row, row.implemented, applies_to_selected_only=True),
+        _yes_no(row, row.review_current),
+        blockers_text(row.blockers),
+    ]
+    return "| " + " | ".join(cells) + " |"
+
+
+TABLE_HEADER = (
+    "| Medida | Requisitos (cláusulas) | Evidencias técnicas | Evidencias manuales y documentos "
+    "| Responsable | Periodicidad | Última revisión | ¿Implantada? | ¿Revisión vigente? "
+    "| Bloqueos |\n" + "|" + "---|" * 10
+)
+
+
+def _source_lines(sources: ExportSources) -> list[str]:
+    lines = ["## Fuentes", "", "### Evidencias", ""]
+    for e in sources.evidence:
+        valid = _instant(e.valid_until) if e.valid_until else "sin caducidad"
+        lines.append(
+            f"- {e.id} · manifiesto `{e.manifest_key}` · origen {md_escape(e.source)} · "
+            f"sha256 `{e.artifact_sha256}` · procedencia {e.provenance.kind.value} "
+            f"({md_escape(e.provenance.submitted_by)}, {_instant(e.provenance.submitted_at)}) · "
+            f"recogida {_instant(e.collected_at)} · válida hasta {valid}"
+        )
+    lines += ["", "### Checks", ""]
+    for c in sources.checks:
+        run = _instant(c.last_run_at) if c.last_run_at else "sin ejecución que cuente"
+        lines.append(
+            f"- {md_escape(c.check_id)} · conector {md_escape(c.connector or 'desconocido')} · "
+            f"última ejecución {run} · medidas {', '.join(c.measures)}"
+            + (f" · evidencias {', '.join(c.evidence_ids)}" if c.evidence_ids else "")
+        )
+    lines += ["", "### Documentos", ""]
+    for d in sources.documents:
+        approved = _instant(d.approved_at) if d.approved_at else "sin aprobar"
+        lines.append(
+            f"- {md_escape(d.name)} · sha256 `{d.document_sha256}` · aprobado {approved} · "
+            f"medidas {', '.join(d.measures)}"
+        )
+    lines += ["", "### Revisiones", ""]
+    lines += [f"- {r.measure_id} · registro `{r.key}`" for r in sources.reviews]
+    return lines
+
+
+def render_markdown(export: MatrixExport) -> str:
+    d = export.declaration
+    matrix_sha = f"`{export.matrix_sha256}`" if export.matrix_sha256 else "sin matriz"
+    lines = [
+        "# Matriz de cumplimiento por medida",
+        "",
+        f"- Generada: {_instant(export.generated_at)}",
+        f"- Evaluada: {_instant(export.evaluated_at)}",
+        f"- Versión del producto: {export.product_version}",
+        f"- Catálogo actual: consolidado el {export.catalog_version.consolidation_date}, "
+        f"sha256 `{export.catalog_version.snapshot_sha256}`",
+        f"- Declaración de Aplicabilidad: {d.state.value}, firmada por {md_escape(d.approved_by)} "
+        f"({d.role.value}) el {_instant(d.approved_at)}; categoría {d.category.value}",
+        f"- Huellas de la Declaración: medidas `{d.measures_sha256}`, categorización "
+        f"`{d.categorization_sha256}`, alcance `{d.scope_fingerprint}`",
+        f"- Matriz (`controls/matrix.yaml`) sha256: {matrix_sha}",
+        f"- Preparación: {export.readiness.value}, {len(export.blockers)} bloqueos",
+        "",
+        f"> {export.disclaimer}",
+        "",
+        "## Medidas",
+        "",
+        TABLE_HEADER,
+        *(_row_line(row) for row in export.rows),
+    ]
+    if export.blockers:
+        lines += ["", "## Bloqueos", ""]
+        lines += [
+            f"- {md_escape((b.measure_id or 'global') + ': ' + b.kind.value + ' ' + b.detail)}"
+            for b in export.blockers
+        ]
+    lines += ["", *_source_lines(export.sources), "", export.disclaimer, ""]
+    return "\n".join(lines)
+
+
+# --- almacenamiento ---------------------------------------------------------------------------
+
+
+def report_key(prefix: str, at: datetime, extension: str) -> str:
+    stamp = at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    return f"{prefix}/{stamp}.{extension}"
+
+
+def save_report(store: WorkspaceStore, prefix: str, at: datetime, extension: str, text: str) -> str:
+    """Copia nueva e independiente (ADR 0008): nunca sobrescribe. Devuelve la clave."""
+    key = report_key(prefix, at, extension)
+    store.create_bytes(key, text.encode("utf-8"))
+    return key
