@@ -61,7 +61,7 @@ def test_la_aprobacion_vale_un_ano(store):
     assert approval.valid_until == NOW.replace(year=NOW.year + 1)
     just_before = approval.valid_until - timedelta(seconds=1)
     assert risk_status(store, just_before).state is RiskState.APPROVED
-    assert risk_status(store, approval.valid_until).state is RiskState.EXPIRED
+    assert risk_status(store, approval.valid_until).state is not RiskState.APPROVED
 
 
 @pytest.mark.parametrize("key", RISK_FILES)
@@ -186,20 +186,36 @@ def test_cambiar_la_categorizacion_vigente_deja_la_aprobacion_obsoleta(store):
     assert any("categorización" in reason for reason in status.errors)
 
 
-def test_sin_categorizacion_se_aprueba_y_se_registra_que_no_habia(store):
-    approval = approve_risk(store, "Marta Gil", NOW)
+def test_sin_categorizacion_vigente_no_se_aprueba(store):
+    write_category(store, "ALTO")
 
-    assert approval.categorization_sha256 is None
-    assert risk_status(store, NOW).state is RiskState.APPROVED
+    with pytest.raises(RiskApprovalRejected) as raised:
+        approve_risk(store, "Marta Gil", NOW)
+
+    assert any("categorización" in reason for reason in raised.value.errors)
+    assert not store.exists(APPROVAL_KEY)
+
+
+def test_un_registro_antiguo_sin_huella_de_categorizacion_esta_obsoleto(store):
+    approve_risk(store, "Marta Gil", NOW)
+    record = yaml.safe_load(store.read_text(APPROVAL_KEY))
+    record.pop("categorization_sha256")
+    store.write_text(APPROVAL_KEY, yaml.safe_dump(record))
+
+    status = risk_status(store, NOW)
+
+    assert status.state is RiskState.STALE
+    assert any("categorización" in reason for reason in status.errors)
 
 
 def test_aprobada_un_29_de_febrero_vence_el_28_de_febrero_siguiente(store):
     leap_day = datetime(2028, 2, 29, 9, 0, tzinfo=UTC)
+    approve_categorization(store, "Marta Gil", leap_day)
 
     approval = approve_risk(store, "Marta Gil", leap_day)
 
     assert approval.valid_until == datetime(2029, 2, 28, 9, 0, tzinfo=UTC)
-    assert risk_status(store, approval.valid_until).state is RiskState.EXPIRED
+    assert risk_status(store, approval.valid_until).state is not RiskState.APPROVED
 
 
 def test_una_aprobacion_con_fecha_futura_no_esta_vigente(store):

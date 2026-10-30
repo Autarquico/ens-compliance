@@ -60,6 +60,9 @@ class AbsentAssetsRecord(Strict):
 
 class CompensationRecord(Strict):
     replaces: str = Field(description="Medida del anexo II que se sustituye.")
+    obligations: list[str] = Field(
+        description="Obligaciones de la medida que sustituyen: `base` y/o refuerzos."
+    )
     measures: list[str]
     justification: str
 
@@ -139,6 +142,7 @@ def _build(
             compensations.append(
                 CompensationRecord(
                     replaces=measure.id,
+                    obligations=list(measure.compensation.replaces),
                     measures=measure.compensation.measures,
                     justification=measure.compensation.justification,
                 )

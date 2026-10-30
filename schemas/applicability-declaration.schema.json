@@ -74,6 +74,14 @@
           "title": "Measures",
           "type": "array"
         },
+        "obligations": {
+          "description": "Obligaciones de la medida que sustituyen: `base` y/o refuerzos.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Obligations",
+          "type": "array"
+        },
         "replaces": {
           "description": "Medida del anexo II que se sustituye.",
           "title": "Replaces",
@@ -82,6 +90,7 @@
       },
       "required": [
         "replaces",
+        "obligations",
         "measures",
         "justification"
       ],

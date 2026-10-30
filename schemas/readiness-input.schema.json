@@ -55,10 +55,20 @@
           "minItems": 1,
           "title": "Measures",
           "type": "array"
+        },
+        "replaces": {
+          "description": "Obligaciones de la medida que sustituyen: `base` y/o ids de refuerzo (R1...). Citar un refuerzo de un grupo alternativo sustituye la elecci\u00f3n de ese grupo.",
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Replaces",
+          "type": "array"
         }
       },
       "required": [
         "measures",
+        "replaces",
         "justification"
       ],
       "title": "Compensation",

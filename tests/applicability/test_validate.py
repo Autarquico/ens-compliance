@@ -21,11 +21,13 @@ from .helpers import (
     decide,
     decide_all_undetermined,
     measures_by_id,
+    prepared_workspace,
     uniform,
 )
 
 MEASURES_KEY = "controls/measures.yaml"
 COMPENSATION = Compensation(
+    replaces=["base"],
     measures=["Segregación de red adicional con monitorización reforzada"],
     justification="Protege igual o mejor frente al riesgo de acceso indebido.",
 )
@@ -513,3 +515,65 @@ def test_una_propuesta_editada_a_mano_con_proposed_activo_es_un_error(proposed):
     save_measures(proposed, document.model_copy(update={"measures": updated}))
 
     assert any("op.pl.1" in e and "proposed" in e for e in errors_of(proposed))
+
+
+def _compensate(store, measure_id: str, replaces: list[str], chosen: list[str]) -> None:
+    decide(
+        store,
+        measure_id,
+        Applicability.APPLICABLE,
+        "Sustituida por compensatorias (art. 28.3).",
+        compensation=COMPENSATION.model_copy(update={"replaces": replaces}),
+        chosen_reinforcements=chosen,
+    )
+
+
+@pytest.fixture
+def high_category(tmp_path):
+    store = prepared_workspace(tmp_path / "ws-alta", uniform("ALTO"))
+    propose_applicability(store, LATER)
+    decide_all_undetermined(store)
+    return store
+
+
+def test_una_medida_compensada_integramente_no_exige_elegir_refuerzo_alternativo(high_category):
+    _compensate(high_category, "mp.com.4", ["base", "R4", "R2"], [])
+
+    assert [e for e in errors_of(high_category) if "mp.com.4" in e] == []
+
+
+def test_una_compensacion_parcial_sigue_exigiendo_elegir_refuerzo_alternativo(high_category):
+    _compensate(high_category, "mp.com.4", ["base"], [])
+
+    errors = [e for e in errors_of(high_category) if "mp.com.4" in e]
+
+    assert any("elige exactamente un refuerzo" in e for e in errors)
+
+
+def test_la_compensacion_solo_sustituye_obligaciones_de_la_medida(high_category):
+    _compensate(high_category, "mp.com.4", ["base", "R9"], [])
+
+    errors = [e for e in errors_of(high_category) if "mp.com.4" in e]
+
+    assert any("compensation.replaces: R9" in e for e in errors)
+
+
+def test_la_compensacion_debe_decir_que_sustituye():
+    with pytest.raises(ValidationError, match="replaces"):
+        Compensation(measures=["x"], justification="y")
+
+
+def test_un_sistema_con_discos_fijos_y_copias_sin_usb_no_excluye_mp_si_2_ni_mp_si_3(decided):
+    for measure_id in ("mp.si.2", "mp.si.3", "mp.si.4"):
+        decide(
+            decided,
+            measure_id,
+            Applicability.NOT_APPLICABLE,
+            ABSENT,
+            absent_assets=absent("soportes de información removibles"),
+        )
+
+    errors = errors_of(decided)
+
+    for measure_id in ("mp.si.2", "mp.si.3", "mp.si.4"):
+        assert any(measure_id in e and "no se refiere a un tipo de activo" in e for e in errors)

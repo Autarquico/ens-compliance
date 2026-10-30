@@ -77,7 +77,9 @@ def test_la_regla_de_preparacion_sigue_aplicando_con_compensacion_y_fundamento()
         id="op.pl.1",
         applicability=Applicability.APPLICABLE,
         justification="Compensada.",
-        compensation=Compensation(measures=["Otra medida"], justification="Protege igual."),
+        compensation=Compensation(
+            replaces=["base"], measures=["Otra medida"], justification="Protege igual."
+        ),
         selection=SelectionBasis(category="MEDIA", catalog_snapshot_sha256="a" * 64),
         assessment=MeasureAssessment.COMPLIANT,
     )

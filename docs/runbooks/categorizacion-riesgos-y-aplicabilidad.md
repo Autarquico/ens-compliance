@@ -73,6 +73,10 @@ ens-evidence risk approve --by "Nombre Apellido"   # responsable de la seguridad
 ens-evidence risk status
 ```
 
+`risk approve` exige alcance y categorización aprobados y vigentes, y guarda
+la huella de la categorización; si esta cambia o caduca, la aprobación queda
+obsoleta.
+
 La herramienta nunca pone valores de riesgo: los decide la organización.
 
 ## 3. Aplicabilidad y Declaración
@@ -96,8 +100,12 @@ registrar». Una medida exigida solo tiene tres salidas:
   (`R1 o R2 o …`), indica en `chosen_reinforcements` cuál adoptas en cada
   grupo.
 - **La reemplazas:** `APPLICABLE` con `compensation`: las medidas
-  compensatorias que tienes implantadas y por qué protegen igual o mejor
-  (art. 28.3).
+  compensatorias que tienes implantadas, en `replaces` qué obligaciones
+  sustituyen (`base` y/o refuerzos como `R4`) y por qué protegen igual o mejor
+  (art. 28.3). Citar un refuerzo de un grupo alternativo (`R2 o R3`) sustituye
+  la elección de ese grupo; los grupos que no cites siguen exigiendo
+  `chosen_reinforcements`. La Declaración muestra qué sustituye cada
+  compensatoria.
 - **El tipo de activo no existe en tu sistema:** `NOT_APPLICABLE` con
   `absent_assets` (anexo II, 2.1.a):
 
@@ -110,10 +118,11 @@ registrar». Una medida exigida solo tiene tres salidas:
   Solo vale para las medidas de una lista cerrada que fija el producto
   (`src/ens_evidence/applicability/absent_asset_types.yaml`; no es texto
   legal): `op.acc.5`, `op.ext.*`, `op.nub.1`, `mp.if.*`, `mp.eq.3`, `mp.eq.4`,
-  `mp.si.2` a `mp.si.4` (soportes removibles), `mp.sw.1`, `mp.info.1`,
+  `mp.sw.1`, `mp.info.1`,
   `mp.info.4` (información susceptible de ser evidencia electrónica), `mp.s.1`
-  y `mp.s.2`. Quedan fuera `mp.si.1`, `mp.si.5` y `mp.info.3`: se aplican o se
-  compensan. Nunca las organizativas ni de proceso (`org.*`, `op.pl.*`,
+  y `mp.s.2`. Quedan fuera `mp.si.*` (la custodia, el cifrado de copias y el transporte
+  alcanzan también a soportes y copias que no son removibles) y `mp.info.3`:
+  se aplican o se compensan. Nunca las organizativas ni de proceso (`org.*`, `op.pl.*`,
   `op.exp.*`, `op.cont.*`, `op.mon.*`, `mp.per.*`). `asset_type` es el de la
   lista de esa medida, la justificación tiene al menos 20 caracteres y no
   puede ser genérica («n/a», «no aplica»), y el inventario no puede

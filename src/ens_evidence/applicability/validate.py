@@ -5,9 +5,10 @@ from datetime import datetime
 
 from ens_evidence.applicability.absent import Exclusion, absent_asset_errors, absent_asset_warnings
 from ens_evidence.applicability.context import Context, load_context
-from ens_evidence.applicability.selection import is_own_proposal
+from ens_evidence.applicability.selection import Selection, is_own_proposal
 from ens_evidence.approvals import Rejected, load_model
 from ens_evidence.catalog.controls import MeasuresFile, MeasuresFileError, load_measures
+from ens_evidence.catalog.model import BASE
 from ens_evidence.models.enums import Applicability
 from ens_evidence.models.readiness import Measure
 from ens_evidence.risk.models import REGISTER_KEY, RegisterFile
@@ -126,7 +127,8 @@ def _measure_errors(measure: Measure, context: Context, assets: list[Asset]) -> 
     errors.extend(absent_asset_errors(measure, where, assets))
     if measure.compensation and not selection.required:
         errors.append(f"{where}: `compensation` solo sustituye una medida exigida por el anexo II")
-    errors.extend(_reinforcement_errors(measure, selection.alternatives, where))
+    errors.extend(_compensation_errors(measure, selection, where))
+    errors.extend(_reinforcement_errors(measure, _uncovered_groups(measure, selection), where))
     if measure.selection != context.basis(measure.id):
         confirm = f"`applicability propose --confirm {measure.id}`"
         if measure.selection is None:
@@ -141,6 +143,28 @@ def _measure_errors(measure: Measure, context: Context, assets: list[Asset]) -> 
             f"{where}: la justificación propuesta se editó; quita `proposed` para conservarla"
         )
     return errors
+
+
+def _uncovered_groups(measure: Measure, selection: Selection) -> tuple[tuple[str, ...], ...]:
+    """Grupos alternativos que la compensación no sustituye: siguen exigiendo elegir un refuerzo."""
+    replaced = set(measure.compensation.replaces) if measure.compensation else set()
+    return tuple(group for group in selection.alternatives if replaced.isdisjoint(group))
+
+
+def _compensation_errors(measure: Measure, selection: Selection, where: str) -> list[str]:
+    if measure.compensation is None:
+        return []
+    obligations = {
+        BASE,
+        *selection.reinforcements,
+        *(ref for group in selection.alternatives for ref in group),
+    }
+    return [
+        f"{where}: compensation.replaces: {item} no es una obligación de esta medida "
+        f"({', '.join(sorted(obligations))})"
+        for item in measure.compensation.replaces
+        if item not in obligations
+    ]
 
 
 def _reinforcement_errors(

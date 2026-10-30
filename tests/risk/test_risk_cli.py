@@ -5,6 +5,7 @@ import pytest
 import yaml
 from typer.testing import CliRunner
 
+from ens_evidence.categorization import approve_categorization
 from ens_evidence.cli import app
 from ens_evidence.models.enums import Role
 from ens_evidence.scope import approve_scope
@@ -20,6 +21,7 @@ from .helpers import (
     adopted_methodology,
     dump,
     risk,
+    write_category,
     write_risks,
 )
 
@@ -50,6 +52,8 @@ def workspace(settings, tmp_path) -> LocalStore:
     shutil.copytree(EXAMPLE_SCOPE, tmp_path / "ws" / "scope")
     store = LocalStore(tmp_path / "ws")
     approve_scope(store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
+    write_category(store, "MEDIO")
+    approve_categorization(store, "Marta Gil", NOW)
     return store
 
 

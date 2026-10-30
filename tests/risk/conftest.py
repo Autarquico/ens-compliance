@@ -1,5 +1,6 @@
 import pytest
 
+from ens_evidence.categorization import approve_categorization
 from ens_evidence.models.enums import Role
 from ens_evidence.risk import init_risk
 from ens_evidence.scope import approve_scope
@@ -15,6 +16,7 @@ from .helpers import (
     adopted_methodology,
     dump,
     risk,
+    write_category,
     write_risks,
 )
 
@@ -32,7 +34,9 @@ def inventory_store(tmp_path) -> LocalStore:
 
 @pytest.fixture
 def store(inventory_store) -> LocalStore:
-    """Alcance aprobado y análisis válido: metodología documentada, un riesgo y una acción."""
+    """Alcance y categorización aprobados; análisis válido (metodología, un riesgo y una acción)."""
+    write_category(inventory_store, "MEDIO")
+    approve_categorization(inventory_store, "Marta Gil", NOW)
     init_risk(inventory_store)
     inventory_store.write_text(METHODOLOGY_MD, "# Metodología\n\nLa que usa la organización.\n")
     dump(inventory_store, METHODOLOGY, adopted_methodology())

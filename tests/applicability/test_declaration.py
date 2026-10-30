@@ -38,6 +38,7 @@ from .helpers import (
 MEASURES_KEY = "controls/measures.yaml"
 SIGNED_AT = LATER + timedelta(hours=1)
 COMPENSATION = Compensation(
+    replaces=["base"],
     measures=["Segregación de red adicional con monitorización reforzada"],
     justification="Protege igual o mejor frente al riesgo de acceso indebido.",
 )
@@ -212,6 +213,7 @@ def test_la_declaracion_detalla_la_correspondencia_de_las_compensatorias(signed)
     record = signed.compensations[0]
     assert record.replaces == "op.pl.1"
     assert record.measures == COMPENSATION.measures
+    assert record.obligations == COMPENSATION.replaces
     assert record.justification == COMPENSATION.justification
 
 

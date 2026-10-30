@@ -32,6 +32,13 @@ class Compensation(Strict):
     measures: list[str] = Field(
         min_length=1, description="Medidas compensatorias, descritas una a una."
     )
+    replaces: list[str] = Field(
+        min_length=1,
+        description=(
+            "Obligaciones de la medida que sustituyen: `base` y/o ids de refuerzo (R1...). "
+            "Citar un refuerzo de un grupo alternativo sustituye la elección de ese grupo."
+        ),
+    )
     justification: str = Field(
         description="Por qué protegen igual o mejor frente al riesgo que la medida sustituida."
     )

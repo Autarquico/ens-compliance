@@ -70,15 +70,18 @@ BOE) fija:
   `mp.eq.3`, aplicación con dominio en `mp.s.2`, con repositorio o alojamiento de código en
   `mp.sw.1`, proveedor en `op.ext.*`). Un servidor desplegado con `mp.if.*` excluida no es
   error sino aviso («confirma que no está en instalaciones propias»). La lista
-  no incluye `mp.si.1`, `mp.si.5` ni `mp.info.3`: no tratan de un activo que
-  pueda faltar. `validate` y `approve` muestran las exclusiones y avisos antes
+  no incluye ninguna `mp.si.*` (`mp.si.3.1` cubre todos los soportes bajo
+  responsabilidad de la organización, `mp.si.2.r2.1` cifra las copias de
+  seguridad y `mp.si.4` el transporte de dispositivos, removibles o no) ni
+  `mp.info.3`: no tratan de un activo que pueda faltar. `validate` y `approve` muestran las exclusiones y avisos antes
   de firmar.
   El anexo III, 1.1.e lo confirma: la auditoría constata el anexo II "en
   función de las condiciones de aplicación en cada caso".
 - **Declaración de Aplicabilidad** en `controls/applicability.yaml`: registro
   firmado por un `security_officer` con la relación de medidas seleccionadas,
   sus refuerzos (incluido el refuerzo elegido en cada alternativa), la
-  correspondencia de las compensatorias y, aparte, las medidas exigidas no
+  correspondencia de las compensatorias (con las obligaciones, `base` o
+  refuerzos, que sustituyen cada una) y, aparte, las medidas exigidas no
   aplicables por ausencia de activos, atado al sha256
   de `controls/measures.yaml`, a la categorización aprobada, a la versión del
   catálogo y a la huella del alcance. Deja de estar vigente si cambia

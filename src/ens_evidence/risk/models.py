@@ -186,7 +186,7 @@ class RiskApproval(Strict):
     categorization_sha256: str | None = Field(
         default=None,
         pattern=SHA256_PATTERN,
-        description="Categorización vigente al aprobar; None si aún no había ninguna.",
+        description="Categorización vigente al aprobar; un registro sin ella queda obsoleto.",
     )
     files: dict[str, str]
 

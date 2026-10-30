@@ -62,9 +62,18 @@ def _methodology_is_template(store: WorkspaceStore) -> bool:
 def approve_risk(store: WorkspaceStore, by: str, now: datetime) -> RiskApproval:
     """Aprueba el análisis vigente por un año como `security_officer`. `by` es declarado.
 
-    Lanza `ScopeNotApproved` si el alcance no está aprobado ahora.
+    Lanza `ScopeNotApproved` si el alcance no está aprobado ahora y `RiskApprovalRejected`
+    si no hay una categorización vigente.
     """
     scope = require_approved_scope(store)
+    categorization = categorization_status(store, now)
+    if categorization.state is not CategorizationState.CURRENT or categorization.approval is None:
+        raise RiskApprovalRejected(
+            [
+                f"la categorización no está vigente ({categorization.state.value}); "
+                "apruébala antes (categorization approve)"
+            ]
+        )
     analysis, errors = validate_risk(store, now)
     if analysis is None:
         raise RiskApprovalRejected(errors)
@@ -80,7 +89,7 @@ def approve_risk(store: WorkspaceStore, by: str, now: datetime) -> RiskApproval:
             valid_until=one_year_after(now),
             scope_fingerprint=scope.fingerprint or "",
             catalog_version=current_catalog_version(load_catalog()),
-            categorization_sha256=_current_categorization_sha256(store, now),
+            categorization_sha256=categorization.approval.file_sha256,
             files=file_hashes(store, RISK_FILES),
         )
     except ValidationError as exc:
@@ -100,7 +109,8 @@ def _stale_reasons(store: WorkspaceStore, approval: RiskApproval, now: datetime)
         reasons.append("el alcance cambió desde que se aprobó el análisis")
     if current_catalog_version(load_catalog()) != approval.catalog_version:
         reasons.append("la versión del catálogo cambió desde que se aprobó el análisis")
-    if _current_categorization_sha256(store, now) != approval.categorization_sha256:
+    current = _current_categorization_sha256(store, now)
+    if approval.categorization_sha256 is None or current != approval.categorization_sha256:
         reasons.append("la categorización vigente cambió desde que se aprobó el análisis")
     return reasons
 

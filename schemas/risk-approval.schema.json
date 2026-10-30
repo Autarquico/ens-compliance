@@ -59,7 +59,7 @@
         }
       ],
       "default": null,
-      "description": "Categorizaci\u00f3n vigente al aprobar; None si a\u00fan no hab\u00eda ninguna.",
+      "description": "Categorizaci\u00f3n vigente al aprobar; un registro sin ella queda obsoleto.",
       "title": "Categorization Sha256"
     },
     "files": {
