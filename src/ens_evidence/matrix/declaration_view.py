@@ -82,7 +82,7 @@ def _compensation_of(row: ExportedRow) -> list[str]:
     return [m for o in row.obligations if o.id == COMPENSATION for m in o.compensating_measures]
 
 
-def _annotation(row: ExportedRow) -> list[str]:
+def _annotation(row: ExportedRow, declaration_current: bool = True) -> list[str]:
     owner = "sin responsable"
     if row.owner is not None:
         owner = f"{md_escape(row.owner.name)} ({role_label(row.owner.role)})"
@@ -112,18 +112,26 @@ def _annotation(row: ExportedRow) -> list[str]:
     else:
         verdict = "no consta como implantada"
     current = [link.target for link in (*row.technical, *row.manual) if link.counts]
+    current_text = (
+        _list(current, "ninguna")
+        if declaration_current
+        else "no evaluadas (la Declaración no está vigente)"
+    )
     return [
         f"  - En la matriz: {verdict}",
         f"  - Responsable: {owner}; periodicidad: {every}",
         f"  - Última revisión: {review_text(review)}",
-        f"  - Evidencias vigentes: {_list(current, 'ninguna')}",
+        f"  - Evidencias vigentes: {current_text}",
         f"  - Bloqueos: {blockers_text(row)}",
     ]
 
 
 class _View:
-    def __init__(self, declaration: Declaration, evaluation: AssessmentResult | None) -> None:
+    def __init__(
+        self, declaration: Declaration, state: DeclarationState, evaluation: AssessmentResult | None
+    ) -> None:
         self.declaration = declaration
+        self.current = state is DeclarationState.CURRENT
         self.names = _Names()
         self.rows = (
             {r.spec.measure_id: export_row(row_status(r), "") for r in evaluation.rows}
@@ -136,7 +144,7 @@ class _View:
         row = self.rows.get(measure_id)
         if row is None:
             return ["  - En la matriz: sin fila evaluada"] if self.rows else []
-        return _annotation(row)
+        return _annotation(row, self.current)
 
     def selected(self, measure: SelectedMeasure) -> list[str]:
         origin = (
@@ -234,7 +242,7 @@ def render_declaration(
             "No hay una Declaración firmada y legible que mostrar.",
         ]
         return "\n".join(lines) + "\n"
-    view = _View(status.declaration, evaluation)
+    view = _View(status.declaration, status.state, evaluation)
     lines = _header(status.declaration, status.state, list(status.errors), now)
     if evaluation is not None:
         lines.append(f"- Estado en la matriz evaluado el {evaluation.evaluated_at.isoformat()}")

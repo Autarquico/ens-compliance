@@ -10,7 +10,7 @@ from collections.abc import Iterable
 
 from ens_evidence.applicability import DeclarationState
 from ens_evidence.matrix.obligations import COMPENSATION, RowKind
-from ens_evidence.models.enums import MeasureAssessment, Readiness, Role
+from ens_evidence.models.enums import Category, MeasureAssessment, Readiness, Role
 from ens_evidence.models.readiness import Blocker, BlockerKind
 
 REVIEW_STEP = (
@@ -163,6 +163,15 @@ DECLARATION_LABELS = {
     DeclarationState.NOT_APPROVED: "sin firmar",
     DeclarationState.INVALID: "no válida",
 }
+
+DECLARATION_REASONS = {
+    DeclarationState.CURRENT: "vigente",
+    DeclarationState.STALE: "algo cambió después de firmarla",
+    DeclarationState.NOT_APPROVED: "no está firmada",
+    DeclarationState.INVALID: "no es válida",
+}
+
+CATEGORY_LABELS = {Category.BASICA: "básica", Category.MEDIA: "media", Category.ALTA: "alta"}
 
 READINESS_LABELS = {Readiness.READY: "preparada", Readiness.NOT_READY: "no preparada"}
 

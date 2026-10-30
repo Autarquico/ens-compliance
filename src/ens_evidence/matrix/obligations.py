@@ -61,6 +61,11 @@ class MatrixRowSpec:
     obligations: tuple[Obligation, ...]
     measure_context_sha256: str
 
+    @property
+    def compensated_clauses(self) -> frozenset[str]:
+        """Cláusulas del anexo II que sustituye la compensación."""
+        return frozenset(c for o in self.obligations if o.id == COMPENSATION for c in o.clause_ids)
+
     def obligation(self, obligation_id: str) -> Obligation | None:
         return next((o for o in self.obligations if o.id == obligation_id), None)
 

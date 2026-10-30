@@ -117,11 +117,6 @@ Declaración (`applicability status` dice cómo): no hace falta repetir
 Si una compensación sustituye cláusulas del anexo II, la evidencia se enlaza
 con `--covers compensation`, no con las cláusulas sustituidas.
 
-Compatibilidad: las revisiones registradas guardan, por obligación, la
-cobertura por cláusula (`coverage`). Las escritas antes, con la lista
-`clauses`, se siguen leyendo (como cobertura sin fuente atribuida por
-cláusula); no se reescriben. En el JSON exportado ya no hay `clauses`.
-
 La exportación lista cada medida de la Declaración, en el orden del catálogo, con:
 
 - sus requisitos (y, en una compensación, las medidas compensatorias);

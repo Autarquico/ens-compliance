@@ -11,7 +11,6 @@ from ens_evidence.matrix import (
     MatrixEntry,
     MatrixFile,
     Owner,
-    ReviewedObligation,
 )
 from ens_evidence.models import MeasureAssessment, Role
 
@@ -239,26 +238,3 @@ class TestApplicabilityReview:
                 recorded_at=RECORDED,
                 measure_context_sha256=SHA,
             )
-
-
-class TestReviewedObligationCompatibility:
-    def test_clauses_are_derived_from_the_coverage(self):
-        loaded = ReviewedObligation(
-            obligation="base",
-            coverage=[
-                {"clause": "org.1.1", "sources": ["evidence:EV-1"]},
-                {"clause": "org.1.2", "sources": []},
-            ],
-        )
-
-        assert loaded.clauses == ["org.1.1", "org.1.2"]
-        assert "clauses" not in loaded.model_dump()
-
-    def test_a_record_written_with_clauses_only_still_loads(self):
-        loaded = ReviewedObligation.model_validate(
-            {"obligation": "base", "clauses": ["org.1.1", "org.1.2"]}
-        )
-
-        assert loaded.clauses == ["org.1.1", "org.1.2"]
-        assert [c.sources for c in loaded.coverage] == [[], []]
-        assert "clauses" not in loaded.model_dump()

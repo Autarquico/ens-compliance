@@ -14,6 +14,7 @@ from ens_evidence.catalog.controls import CatalogVersion, current_catalog_versio
 from ens_evidence.evidence.importer import MANUAL_SOURCE
 from ens_evidence.matrix.documents import DocumentsSnapshot, OrgDocumentSource, documents_snapshot
 from ens_evidence.matrix.evidence import verified_manifest
+from ens_evidence.matrix.messages import DECLARATION_REASONS
 from ens_evidence.matrix.model import (
     MAX_REVIEW_EVERY_DAYS,
     CheckLink,
@@ -78,7 +79,7 @@ def require_current(store: WorkspaceStore, now: datetime) -> ObligationPlan:
     plan = plan_obligations(store, now)
     if not plan.current:
         raise MatrixRejected(
-            f"La Declaración de Aplicabilidad no está vigente ({plan.state.value}); "
+            f"La Declaración de Aplicabilidad no está vigente: {DECLARATION_REASONS[plan.state]}; "
             "ver `applicability status`.",
             *plan.errors,
         )

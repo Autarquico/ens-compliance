@@ -25,7 +25,9 @@ from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow
 from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE, source_label
 from ens_evidence.matrix.messages import (
     ASSESSMENT_LABELS,
+    CATEGORY_LABELS,
     DECLARATION_LABELS,
+    DECLARATION_REASONS,
     READINESS_LABELS,
     ROW_KIND_LABELS,
     blocker_lines,
@@ -109,6 +111,7 @@ class ExportedRow(Strict):
     name: str
     kind: RowKind
     obligations: list[ExportedObligation]
+    compensated_clauses: list[str]
     technical: list[ExportedLink]
     manual: list[ExportedLink]
     owner: Owner | None
@@ -229,6 +232,7 @@ def export_row(status: RowStatus, name: str, store: WorkspaceStore | None = None
             )
             for o in row.spec.obligations
         ],
+        compensated_clauses=sorted(row.spec.compensated_clauses),
         technical=_links(row, {CHECK}),
         manual=_links(row, {EVIDENCE, DOCUMENT}),
         owner=row.entry.owner if row.entry else None,
@@ -290,7 +294,7 @@ def _evidence_source(store: WorkspaceStore, evidence_id: str) -> EvidenceSource 
 def _build_sources(store: WorkspaceStore, rows: tuple[AssessmentRow, ...]) -> ExportSources:
     evidence_ids: set[str] = set()
     checks: dict[str, dict] = {}
-    documents: dict[str, dict] = {}
+    documents: dict[tuple[str, str], dict] = {}
     reviews: list[ReviewSource] = []
     for row in rows:
         measure = row.spec.measure_id
@@ -310,12 +314,8 @@ def _build_sources(store: WorkspaceStore, rows: tuple[AssessmentRow, ...]) -> Ex
                     found["last_run_at"] = max(runs, default=None)
             elif support.counts and support.reviewed_document is not None:
                 found = documents.setdefault(
-                    link.document,
-                    {
-                        "sha": support.reviewed_document.document_sha256,
-                        "approved_at": support.available_at,
-                        "measures": set(),
-                    },
+                    (link.document, support.reviewed_document.document_sha256),
+                    {"approved_at": support.available_at, "measures": set()},
                 )
                 found["measures"].add(measure)
         if row.review is not None:
@@ -323,6 +323,12 @@ def _build_sources(store: WorkspaceStore, rows: tuple[AssessmentRow, ...]) -> Ex
             record = row.review.record
             if isinstance(record, MeasureReviewRecord):
                 evidence_ids.update(e.evidence_id for o in record.obligations for e in o.evidence)
+                for reviewed in (d for o in record.obligations for d in o.documents):
+                    found = documents.setdefault(
+                        (reviewed.name, reviewed.document_sha256),
+                        {"approved_at": None, "measures": set()},
+                    )
+                    found["measures"].add(measure)
     sources = (_evidence_source(store, i) for i in sorted(evidence_ids))
     return ExportSources(
         evidence=[s for s in sources if s is not None],
@@ -339,11 +345,11 @@ def _build_sources(store: WorkspaceStore, rows: tuple[AssessmentRow, ...]) -> Ex
         documents=[
             DocumentSource(
                 name=name,
-                document_sha256=found["sha"],
+                document_sha256=sha,
                 approved_at=found["approved_at"],
                 measures=sorted(found["measures"]),
             )
-            for name, found in sorted(documents.items())
+            for (name, sha), found in sorted(documents.items())
         ],
         reviews=sorted(reviews, key=lambda r: (r.measure_id, r.key)),
     )
@@ -460,14 +466,10 @@ def requirements_text(row: ExportedRow) -> str:
     return md_escape("; ".join(parts))
 
 
-def _compensated_clauses(row: ExportedRow) -> frozenset[str]:
-    return frozenset(c for o in row.obligations if o.id == COMPENSATION for c in o.clauses)
-
-
 def blockers_text(row: ExportedRow) -> str:
     if not row.blockers:
         return "—"
-    return md_escape("; ".join(blocker_lines(row.blockers, _compensated_clauses(row))))
+    return md_escape("; ".join(blocker_lines(row.blockers, frozenset(row.compensated_clauses))))
 
 
 def _yes_no(row: ExportedRow, value: bool, *, applies_to_selected_only: bool = False) -> str:
@@ -556,14 +558,21 @@ def _review_lines(measure_id: str, review: ExportedReview) -> list[str]:
     return lines
 
 
+def _pending(export: MatrixExport) -> list[tuple[str | None, str]]:
+    """Bloqueos para personas: sin repetir el texto de cada medida y en el orden del catálogo."""
+    order = {row.measure_id: i for i, row in enumerate(export.rows)}
+    texts = {(b.measure_id, blocker_text(b)) for b in export.blockers}
+    return sorted(texts, key=lambda t: (order.get(t[0], -1), t[0] or "", t[1]))
+
+
 def _readiness_line(export: MatrixExport) -> str:
     if export.declaration.state is not DeclarationState.CURRENT:
         return (
             f"- Preparación: {READINESS_LABELS[export.readiness]}; todas las medidas quedan "
-            "bloqueadas: la Declaración de Aplicabilidad no está vigente "
-            f"({DECLARATION_LABELS[export.declaration.state]})"
+            "bloqueadas: la Declaración de Aplicabilidad no está vigente: "
+            f"{DECLARATION_REASONS[export.declaration.state]}"
         )
-    count = len(export.blockers)
+    count = len(_pending(export))
     noun = "bloqueo" if count == 1 else "bloqueos"
     return f"- Preparación: {READINESS_LABELS[export.readiness]}, {count} {noun}"
 
@@ -581,7 +590,7 @@ def render_markdown(export: MatrixExport) -> str:
         f"sha256 `{export.catalog_version.snapshot_sha256}`",
         f"- Declaración de Aplicabilidad: {DECLARATION_LABELS[d.state]}, firmada por "
         f"{md_escape(d.approved_by)} ({role_label(d.role)}) el {_instant(d.approved_at)}; "
-        f"categoría {d.category.value}",
+        f"categoría {CATEGORY_LABELS[d.category]}",
         f"- Huellas de la Declaración: medidas `{d.measures_sha256}`, categorización "
         f"`{d.categorization_sha256}`, alcance `{d.scope_fingerprint}`",
         f"- Matriz (`controls/matrix.yaml`) sha256: {matrix_sha}",
@@ -600,8 +609,8 @@ def render_markdown(export: MatrixExport) -> str:
     if export.blockers:
         lines += ["", "## Bloqueos", ""]
         lines += [
-            f"- {md_escape((b.measure_id or 'global') + ': ' + blocker_text(b))}"
-            for b in export.blockers
+            f"- {md_escape((measure_id or 'global') + ': ' + text)}"
+            for measure_id, text in _pending(export)
         ]
     lines += ["", *_source_lines(export.sources, export.rows), "", export.disclaimer, ""]
     return "\n".join(lines)

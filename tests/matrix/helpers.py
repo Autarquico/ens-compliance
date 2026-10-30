@@ -5,6 +5,7 @@ from applicability.helpers import LATER
 from ens_evidence.matrix import (
     ApplicabilityReview,
     MeasureReviewRecord,
+    ReviewedClause,
     ReviewedEvidence,
     ReviewedObligation,
 )
@@ -37,7 +38,9 @@ def review(
 
 def obligation(*, sources: bool = True) -> ReviewedObligation:
     evidence = [ReviewedEvidence(evidence_id=EVIDENCE_ID, artifact_sha256=SHA)] if sources else []
-    return ReviewedObligation(obligation="base", clauses=["org.1.1"], evidence=evidence)
+    return ReviewedObligation(
+        obligation="base", coverage=[ReviewedClause(clause="org.1.1")], evidence=evidence
+    )
 
 
 def measure_review(

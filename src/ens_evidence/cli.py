@@ -78,7 +78,6 @@ from ens_evidence.evidence import (
 from ens_evidence.evidence.importer import import_collected
 from ens_evidence.matrix import (
     CHECKS_PENDING,
-    COMPENSATION,
     DECLARATION_REPORTS_PREFIX,
     MATRIX_REPORTS_PREFIX,
     ExportRejected,
@@ -108,6 +107,7 @@ from ens_evidence.matrix.messages import (
     DECLARATION_LABELS,
     READINESS_LABELS,
     blocker_lines,
+    obligation_label,
 )
 from ens_evidence.models.enums import CollectionStatus, Role
 from ens_evidence.orgdocs import (
@@ -1476,7 +1476,7 @@ def matrix_rejected(title: str, exc: MatrixRejected) -> typer.Exit:
 
 def print_coverage(plan: ReviewPlan) -> None:
     for obligation in plan.attribution:
-        typer.echo(f"  {obligation.obligation}:")
+        typer.echo(f"  {obligation_label(obligation.obligation)}:")
         for clause in obligation.clauses:
             sources = ", ".join(clause.sources) or "sin fuente que cuente"
             typer.echo(f"    {clause.unit}  <- {sources}")
@@ -1671,10 +1671,7 @@ def print_row_status(status: RowStatus) -> None:
                 "    compensada por: " + "; ".join(obligation.compensating_measures) + ". "
                 "La evidencia ha de mostrar esas medidas, no las cláusulas que sustituyen."
             )
-    compensated = frozenset(
-        c for o in spec.obligations if o.id == COMPENSATION for c in o.clause_ids
-    )
-    for text in blocker_lines(status.blockers, compensated):
+    for text in blocker_lines(status.blockers, spec.compensated_clauses):
         typer.echo(f"    bloqueo: {text}")
 
 

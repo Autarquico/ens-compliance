@@ -546,3 +546,60 @@ def test_la_compensacion_se_nombra_como_compensacion_y_no_como_su_id_interno(sig
     assert "compensación (art. 28.3)" in line and "compensation" not in line
     op_pl_1 = next(r for r in export.rows if r.measure_id == "op.pl.1")
     assert "compensation" in [o.id for o in op_pl_1.obligations]
+
+
+# --- ronda 3: bloqueos sin repetir, fuentes de una Declaración obsoleta, copy -------------------
+
+
+def test_los_bloqueos_del_markdown_no_repiten_texto_salen_en_orden_del_catalogo_y_se_cuentan(basic):
+    from ens_evidence.catalog import load_catalog
+
+    export = export_of(basic)
+    text = render_markdown(export)
+
+    section = text[text.index("## Bloqueos") :].split("\n\n")[1].splitlines()
+    measures = [line[2:].split(":")[0] for line in section]
+    order = [m.id for m in load_catalog().measures]
+    assert len(section) == len(set(section))
+    assert len(section) < len(export.blockers)
+    assert measures == sorted(measures, key=order.index)
+    assert f"{len(section)} bloqueos" in text
+    assert len(json.loads(render_json(export))["blockers"]) == len(export.blockers)
+
+
+def test_con_la_declaracion_obsoleta_el_documento_revisado_sigue_en_las_fuentes(sourced):
+    store = sourced["store"]
+    key = "controls/measures.yaml"
+    store.write_text(key, store.read_text(key) + "\n")
+
+    export = export_of(store, checks=sourced["checks"], documents=sourced["documents"])
+    text = render_markdown(export)
+
+    (document,) = export.sources.documents
+    assert document.name == DOCUMENT and document.measures == [TWO_CLAUSES]
+    assert document.document_sha256 in text[text.index("### Documentos") :]
+
+
+def test_el_encabezado_de_una_declaracion_obsoleta_no_anida_parentesis(signed):
+    key = "controls/measures.yaml"
+    signed.write_text(key, signed.read_text(key) + "\n")
+
+    text = render_markdown(export_of(signed))
+
+    assert "(no vigente (" not in text and "no está vigente: algo cambió" in text
+
+
+def test_la_categoria_se_escribe_con_su_etiqueta(basic):
+    text = render_markdown(export_of(basic))
+
+    assert "categoría básica" in text and "BASICA" not in text
+
+
+def test_las_cláusulas_compensadas_salen_de_una_sola_regla(signed):
+    from ens_evidence.matrix import plan_obligations
+
+    spec = plan_obligations(signed, NOW).row("op.pl.1")
+    row = next(r for r in export_of(signed).rows if r.measure_id == "op.pl.1")
+
+    assert spec.compensated_clauses
+    assert set(row.compensated_clauses) == set(spec.compensated_clauses)

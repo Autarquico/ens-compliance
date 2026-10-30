@@ -387,7 +387,7 @@ def test_review_compliant_registra_la_revision_con_fuentes_y_huellas(initialized
     assert record.recorded_at == NOW
     (obligation,) = record.obligations
     assert [e.evidence_id for e in obligation.evidence] == [evidence_id]
-    assert obligation.clauses == ["op.exp.1.1"]
+    assert [c.clause for c in obligation.coverage] == ["op.exp.1.1"]
 
 
 def test_review_compliant_sin_cobertura_se_rechaza_y_lista_lo_que_falta(initialized, signed):
@@ -1002,3 +1002,37 @@ def test_el_siguiente_paso_de_una_compensada_enlaza_con_compensation(initialized
     covers = step.split("--covers ")[1].split(" ")[0].split(",")
     assert "compensation" in covers
     assert not set(replaced) & set(covers)
+
+
+def test_con_la_declaracion_no_vigente_la_vista_anotada_no_dice_que_no_hay_evidencias(
+    reviewed_then_stale,
+):
+    ens_cli, _ = reviewed_then_stale
+
+    text = ens_cli("applicability", "show", "--annotated").output
+
+    assert "Evidencias vigentes: no evaluadas (la Declaración no está vigente)" in text
+    assert "Evidencias vigentes: ninguna" not in text
+
+
+def test_las_ordenes_con_la_declaracion_no_vigente_no_sacan_el_enum(reviewed_then_stale):
+    ens_cli, _ = reviewed_then_stale
+
+    result = ens_cli("matrix", "init")
+
+    assert result.exit_code != 0
+    assert "STALE" not in result.output and "no está vigente: algo cambió" in result.output
+
+
+def test_la_cobertura_atribuida_nombra_la_compensacion_como_el_export(initialized, signed):
+    evidence_id = manual_evidence(signed, valid_until=NOW + timedelta(days=365))
+    configured(initialized, "op.pl.1")
+    linked = initialized(
+        "matrix", "link", "op.pl.1", "--evidence", evidence_id, "--covers", "compensation"
+    )
+    assert linked.exit_code == 0, linked.output
+
+    result = review(initialized, "op.pl.1", "--assessment", "COMPLIANT")
+
+    assert "compensación (art. 28.3):" in result.output
+    assert "compensation:" not in result.output
