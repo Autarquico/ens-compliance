@@ -49,6 +49,11 @@ Mezclar ejes en un mismo enum permite estados absurdos (un check
 
 ### Roles
 
+`Role` recoge los responsables que diferencia el art. 11 del RD 311/2022
+(responsable de la información `information_owner`, del servicio
+`service_owner`, de la seguridad `security_officer` y del sistema
+`system_owner`), más el administrador del sistema y su delegado. Las
+facultades de categorización (art. 41) están en 0009.
 `management` es la dirección u órgano con las máximas competencias
 ejecutivas, que aprueba la política (art. 2.3) y las normas de seguridad
 (art. 15.2); ver 0010.

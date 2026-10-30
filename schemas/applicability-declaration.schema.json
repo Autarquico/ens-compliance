@@ -1,0 +1,266 @@
+{
+  "$defs": {
+    "AbsentAssetsRecord": {
+      "additionalProperties": false,
+      "description": "Medida exigida por el anexo II que no aplica porque no existe el tipo de activo.",
+      "properties": {
+        "asset_type": {
+          "title": "Asset Type",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "justification": {
+          "title": "Justification",
+          "type": "string"
+        },
+        "required_by": {
+          "title": "Required By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "required_by",
+        "asset_type",
+        "justification"
+      ],
+      "title": "AbsentAssetsRecord",
+      "type": "object"
+    },
+    "CatalogVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "consolidation_date": {
+          "format": "date",
+          "title": "Consolidation Date",
+          "type": "string"
+        },
+        "snapshot_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_sha256",
+        "consolidation_date"
+      ],
+      "title": "CatalogVersion",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "BASICA",
+        "MEDIA",
+        "ALTA"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "CompensationRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "justification": {
+          "title": "Justification",
+          "type": "string"
+        },
+        "measures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Measures",
+          "type": "array"
+        },
+        "obligations": {
+          "description": "Obligaciones de la medida que sustituyen: `base` y/o refuerzos.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Obligations",
+          "type": "array"
+        },
+        "replaces": {
+          "description": "Medida del anexo II que se sustituye.",
+          "title": "Replaces",
+          "type": "string"
+        }
+      },
+      "required": [
+        "replaces",
+        "obligations",
+        "measures",
+        "justification"
+      ],
+      "title": "CompensationRecord",
+      "type": "object"
+    },
+    "NotSelected": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "justification": {
+          "title": "Justification",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "justification"
+      ],
+      "title": "NotSelected",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "management",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "SelectedMeasure": {
+      "additionalProperties": false,
+      "properties": {
+        "alternatives": {
+          "items": {
+            "items": {
+              "type": "string"
+            },
+            "type": "array"
+          },
+          "title": "Alternatives",
+          "type": "array"
+        },
+        "chosen_reinforcements": {
+          "description": "Refuerzo que adopta la organizaci\u00f3n en cada grupo.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Chosen Reinforcements",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "required_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Por qu\u00e9 la exige el anexo II; None si es adicional (art. 28.2).",
+          "title": "Required By"
+        },
+        "required_reinforcements": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Required Reinforcements",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "SelectedMeasure",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "approved_at": {
+      "format": "date-time",
+      "title": "Approved At",
+      "type": "string"
+    },
+    "approved_by": {
+      "title": "Approved By",
+      "type": "string"
+    },
+    "catalog_version": {
+      "$ref": "#/$defs/CatalogVersion"
+    },
+    "categorization_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Categorization Sha256",
+      "type": "string"
+    },
+    "category": {
+      "$ref": "#/$defs/Category"
+    },
+    "compensations": {
+      "items": {
+        "$ref": "#/$defs/CompensationRecord"
+      },
+      "title": "Compensations",
+      "type": "array"
+    },
+    "measures_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Measures Sha256",
+      "type": "string"
+    },
+    "not_selected": {
+      "items": {
+        "$ref": "#/$defs/NotSelected"
+      },
+      "title": "Not Selected",
+      "type": "array"
+    },
+    "required_but_absent_assets": {
+      "description": "Exigidas por el anexo II y no aplicables por ausencia del tipo de activo.",
+      "items": {
+        "$ref": "#/$defs/AbsentAssetsRecord"
+      },
+      "title": "Required But Absent Assets",
+      "type": "array"
+    },
+    "role": {
+      "$ref": "#/$defs/Role"
+    },
+    "scope_fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Scope Fingerprint",
+      "type": "string"
+    },
+    "selected": {
+      "items": {
+        "$ref": "#/$defs/SelectedMeasure"
+      },
+      "title": "Selected",
+      "type": "array"
+    }
+  },
+  "required": [
+    "measures_sha256",
+    "categorization_sha256",
+    "category",
+    "catalog_version",
+    "scope_fingerprint",
+    "selected",
+    "not_selected",
+    "required_but_absent_assets",
+    "compensations",
+    "approved_by",
+    "role",
+    "approved_at"
+  ],
+  "title": "Declaration",
+  "type": "object"
+}

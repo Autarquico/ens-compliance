@@ -5,10 +5,12 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from ens_evidence.applicability import Declaration
 from ens_evidence.backup.records import BackupRun, ImmutabilityCheck, IntegrityCheck, RestoreRecord
 from ens_evidence.backup.restore_test import RestoreTest, RestoreTestDeclaration
 from ens_evidence.catalog import MeasureCard
 from ens_evidence.catalog.controls import MeasuresFile
+from ens_evidence.categorization import CategorizationApproval, CategorizationFile
 from ens_evidence.models import (
     CheckResult,
     CollectionResult,
@@ -20,6 +22,7 @@ from ens_evidence.models import (
 )
 from ens_evidence.orgdocs.approval import DocumentApproval
 from ens_evidence.orgdocs.meta import DocumentMeta
+from ens_evidence.risk import Methodology, RegisterFile, RiskApproval, TreatmentPlanFile
 from ens_evidence.scope import (
     Approval,
     AssetsFile,
@@ -30,6 +33,7 @@ from ens_evidence.scope import (
 )
 
 CONTRACTS: dict[str, type[BaseModel]] = {
+    "applicability-declaration": Declaration,
     "backup-run": BackupRun,
     "backup-check": IntegrityCheck,
     "backup-restore": RestoreRecord,
@@ -37,6 +41,8 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "backup-restore-test-declaration": RestoreTestDeclaration,
     "immutability-check": ImmutabilityCheck,
     "catalog-measure": MeasureCard,
+    "categorization": CategorizationFile,
+    "categorization-approval": CategorizationApproval,
     "check-result": CheckResult,
     "collection-result": CollectionResult,
     "controls-measures": MeasuresFile,
@@ -45,6 +51,10 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "readiness-input": ReadinessInput,
     "readiness-result": ReadinessResult,
     "review": Review,
+    "risk-approval": RiskApproval,
+    "risk-methodology": Methodology,
+    "risk-register": RegisterFile,
+    "risk-treatment-plan": TreatmentPlanFile,
     "scope-approval": Approval,
     "scope-assets": AssetsFile,
     "scope-dependencies": DependenciesFile,

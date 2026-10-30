@@ -1,0 +1,70 @@
+{
+  "$defs": {
+    "Category": {
+      "enum": [
+        "BASICA",
+        "MEDIA",
+        "ALTA"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "management",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "approved_at": {
+      "format": "date-time",
+      "title": "Approved At",
+      "type": "string"
+    },
+    "approved_by": {
+      "title": "Approved By",
+      "type": "string"
+    },
+    "category": {
+      "$ref": "#/$defs/Category"
+    },
+    "file_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "File Sha256",
+      "type": "string"
+    },
+    "role": {
+      "$ref": "#/$defs/Role"
+    },
+    "scope_fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Scope Fingerprint",
+      "type": "string"
+    },
+    "valid_until": {
+      "format": "date-time",
+      "title": "Valid Until",
+      "type": "string"
+    }
+  },
+  "required": [
+    "file_sha256",
+    "scope_fingerprint",
+    "category",
+    "approved_by",
+    "role",
+    "approved_at",
+    "valid_until"
+  ],
+  "title": "CategorizationApproval",
+  "type": "object"
+}
