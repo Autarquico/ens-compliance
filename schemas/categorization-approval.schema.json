@@ -15,6 +15,7 @@
         "system_administrator_delegate",
         "security_officer",
         "system_owner",
+        "management",
         "information_owner",
         "service_owner"
       ],

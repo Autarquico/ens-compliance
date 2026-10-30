@@ -53,5 +53,6 @@ class Role(StrEnum):
     SYSTEM_ADMINISTRATOR_DELEGATE = "system_administrator_delegate"
     SECURITY_OFFICER = "security_officer"
     SYSTEM_OWNER = "system_owner"
+    MANAGEMENT = "management"
     INFORMATION_OWNER = "information_owner"
     SERVICE_OWNER = "service_owner"

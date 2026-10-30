@@ -1,0 +1,108 @@
+id: normativa-seguridad
+title: "Normativa de seguridad"
+questions:
+  - id: organizacion
+    text: "¿Cómo se llama la organización y a qué se dedica?"
+    clause: org.1.1
+    help: "Nombre legal y una frase sobre qué hace. Ejemplo: «Talleres Norte S.L., fabricación de piezas para clientes industriales»."
+  - id: direccion
+    text: "¿Quién ostenta las máximas competencias ejecutivas y aprueba estos documentos?"
+    clause: art.2.3
+    help: "Persona u órgano que decide en última instancia (gerencia, consejo de administración). La política la aprueba ese órgano (art. 2.3) y las normas de seguridad, la dirección (art. 15.2)."
+  - id: uso_equipos
+    text: "¿Qué reglas de uso correcto tienen los equipos?"
+    type: list
+    clause: org.2.1
+    help: "Ordenadores, móviles, impresoras... Una regla concreta por línea. Ejemplo: «no instalar programas sin permiso del responsable del sistema»."
+  - id: uso_servicios
+    text: "¿Qué reglas de uso correcto tienen los servicios?"
+    type: list
+    clause: org.2.1
+    help: "Correo, internet, nube, aplicaciones corporativas. Una regla concreta por línea."
+  - id: uso_instalaciones
+    text: "¿Qué reglas de uso correcto tienen las instalaciones?"
+    type: list
+    clause: org.2.1
+    help: "Oficinas, sala de servidores, acceso de visitas. Una regla concreta por línea."
+  - id: uso_indebido
+    text: "¿Qué se considera uso indebido?"
+    type: list
+    clause: org.2.1
+    help: "Conductas concretas que la organización no admite. Una por línea."
+  - id: derechos_personal
+    text: "¿Qué derechos tiene el personal respecto a la seguridad?"
+    type: list
+    clause: org.2.2
+    help: "Por ejemplo, a recibir formación o a consultar dudas. Un derecho por línea."
+  - id: deberes_personal
+    text: "¿Qué deberes tiene el personal?"
+    type: list
+    clause: org.2.2
+    help: "Obligaciones concretas, como comunicar incidentes o custodiar sus credenciales. Un deber por línea."
+  - id: medidas_disciplinarias
+    text: "¿Qué medidas disciplinarias se aplican si se incumple la normativa?"
+    clause: org.2.2
+    help: "Según la legislación vigente y el convenio aplicable: qué se considera falta, qué sanciones caben y quién las decide."
+  - id: firmante_direccion
+    text: "¿Quién firma en nombre de la dirección?"
+    clause: art.2.3
+    help: "Una persona concreta, con el nombre que figura en la lista de personas, que aprueba los documentos en nombre de la dirección aunque esta sea un órgano (por ejemplo, un consejo de administración). Si no ocupa ningún cargo de seguridad, añádela igualmente a esa lista."
+sections:
+  - id: introduccion
+    title: "Introducción"
+    covers: [org.2.intro]
+    body: |
+      Organización: {{organizacion}}
+  - id: uso_correcto
+    title: "Uso correcto de equipos, servicios e instalaciones"
+    covers: [org.2.1]
+    body: |
+      ### Equipos
+
+      {{#each uso_equipos}}
+      - {{.}}
+      {{/each}}
+
+      ### Servicios
+
+      {{#each uso_servicios}}
+      - {{.}}
+      {{/each}}
+
+      ### Instalaciones
+
+      {{#each uso_instalaciones}}
+      - {{.}}
+      {{/each}}
+
+      ### Uso indebido
+
+      {{#each uso_indebido}}
+      - {{.}}
+      {{/each}}
+  - id: responsabilidad
+    title: "Responsabilidad del personal"
+    covers: [org.2.2]
+    body: |
+      ### Derechos
+
+      {{#each derechos_personal}}
+      - {{.}}
+      {{/each}}
+
+      ### Deberes
+
+      {{#each deberes_personal}}
+      - {{.}}
+      {{/each}}
+
+      ### Medidas disciplinarias
+
+      {{medidas_disciplinarias}}
+  - id: aprobacion
+    title: "Aprobación"
+    covers: [art.15.2]
+    body: |
+      Aprueba esta normativa: {{direccion}}
+
+      Firma por la dirección: {{firmante_direccion}}

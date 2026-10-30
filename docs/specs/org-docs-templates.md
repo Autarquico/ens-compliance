@@ -2,17 +2,17 @@
 codename: ens-compliance
 title: Plantillas de documentación organizativa
 type: task
-status: active
+status: shipped
 priority: P0
 size: L
 issue: 21
-prs: []
+prs: [47]
 related_issues: [21]
 depends_on: [repo-foundation]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-30
 ---
 
 # Plantillas de documentación organizativa

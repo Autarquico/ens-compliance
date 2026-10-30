@@ -19,6 +19,7 @@
 - #16 Inventario y alcance
 - #17 Categorización, riesgos y aplicabilidad
 - #19 Evidencia de endpoints con script guiado
+- #21 Plantillas de documentación organizativa
 <!-- /pm-sync:done-this-week -->
 
 ---
