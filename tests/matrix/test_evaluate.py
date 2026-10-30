@@ -1,5 +1,9 @@
 from datetime import timedelta
 
+import pytest
+import yaml
+
+from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.matrix import (
     CheckLink,
     DocumentLink,
@@ -9,6 +13,7 @@ from ens_evidence.matrix import (
     prepare_review,
 )
 from ens_evidence.matrix import evaluate as evaluate_module
+from ens_evidence.matrix.status import row_status
 from ens_evidence.models import (
     Applicability,
     BlockerKind,
@@ -557,3 +562,97 @@ def test_assess_acepta_checks_y_documentos_sin_indicar(signed):
     result = evaluate_module.assess(signed, NOW, checks=None, documents=FakeDocuments())
 
     assert result.rows
+
+
+# --- historial ilegible y huellas del manifiesto ----------------------------------------------
+
+
+def damage(store, name="zzz.yaml", text="axis: implementation\n"):
+    key = f"controls/reviews/{ONE_CLAUSE}/{name}"
+    store.write_text(key, text)
+    return key
+
+
+def test_un_registro_ilegible_no_reactiva_la_revision_favorable_anterior(signed):
+    matrix_entry, evidence_id = reviewed_measure(signed)
+    record(
+        signed,
+        matrix_entry,
+        evidence_ids=[evidence_id],
+        recorded_at=RECORDED + timedelta(hours=1),
+        assessment=MeasureAssessment.NON_COMPLIANT,
+    )
+    key = damage(signed)
+
+    result = assess_now(signed)
+    row = row_of(result, ONE_CLAUSE)
+
+    assert (MISSING_REVIEW, f"review_unreadable:{key}") in details(row)
+    assert any(key in error for error in result.errors)
+    assert row.measure.review is None and not row_status(row).implemented
+
+
+@pytest.mark.parametrize("name,text", [("zzz.yaml", "axis: implementation\n"), ("x.yml", "{}\n")])
+def test_cualquier_fichero_ilegible_del_historial_bloquea_la_medida_aunque_haya_una_revision_valida(
+    signed, name, text
+):
+    reviewed_measure(signed)
+    assert row_of(assess_now(signed), ONE_CLAUSE).blockers == ()
+    key = damage(signed, name, text)
+
+    row = row_of(assess_now(signed), ONE_CLAUSE)
+
+    assert (MISSING_REVIEW, f"review_unreadable:{key}") in details(row)
+    assert row.review is not None  # se sigue mostrando para consulta
+    assert not row_status(row).implemented
+
+
+def test_el_historial_ilegible_de_una_medida_no_bloquea_a_las_demas(signed):
+    reviewed_measure(signed)
+    damage(signed)
+
+    other = row_of(assess_now(signed), TWO_CLAUSES)
+
+    assert not any(d.startswith("review_unreadable") for _, d in details(other))
+
+
+def evidence_manifest_edit(store, evidence_id, edit):
+    key = manifest_key(evidence_id)
+    data = yaml.safe_load(store.read_text(key))
+    edit(data)
+    store.write_text(key, yaml.safe_dump(data, sort_keys=False))
+
+
+@pytest.mark.parametrize(
+    "edit",
+    [
+        lambda d: d.update(valid_until=(NOW + timedelta(days=700)).isoformat()),
+        lambda d: d.update(collected_at=(NOW - timedelta(days=2)).isoformat()),
+        lambda d: d["provenance"].update(submitted_by="Otra persona"),
+    ],
+    ids=["valid_until", "collected_at", "procedencia"],
+)
+def test_evidence_changed_si_cambia_la_vigencia_o_la_procedencia_del_manifiesto(signed, edit):
+    _, evidence_id = reviewed_measure(signed)
+    assert row_of(assess_now(signed), ONE_CLAUSE).blockers == ()
+
+    evidence_manifest_edit(signed, evidence_id, edit)
+    row = row_of(assess_now(signed), ONE_CLAUSE)
+
+    assert (EXPIRED_REVIEW, f"evidence_changed:{evidence_id}") in details(row)
+
+
+def test_extender_la_vigencia_de_una_evidencia_caducada_no_reactiva_la_revision(signed):
+    evidence_id, link = evidence_link(signed, valid_until=NOW + timedelta(days=10))
+    matrix_entry = entry(ONE_CLAUSE, link)
+    configure(signed, matrix_entry)
+    record(signed, matrix_entry, evidence_ids=[evidence_id])
+    later = NOW + timedelta(days=20)
+    assert row_of(assess_now(signed, later), ONE_CLAUSE).blockers
+
+    extended = (later + timedelta(days=90)).isoformat()
+    evidence_manifest_edit(signed, evidence_id, lambda d: d.update(valid_until=extended))
+    row = row_of(assess_now(signed, later), ONE_CLAUSE)
+
+    assert (EXPIRED_REVIEW, f"evidence_changed:{evidence_id}") in details(row)
+    assert not row_status(row).implemented

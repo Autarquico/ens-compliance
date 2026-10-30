@@ -555,6 +555,21 @@ def test_status_de_una_medida_revisada_la_da_por_implantada_y_revisada(initializ
     assert result.exit_code == 1  # el resto de la matriz sigue bloqueado
 
 
+def test_status_sale_con_1_si_hay_ficheros_ilegibles_aunque_la_medida_este_limpia(
+    initialized, signed
+):
+    configured(initialized)
+    linked_evidence(initialized, signed)
+    review(initialized, ONE_CLAUSE, "--assessment", "COMPLIANT")
+    assert initialized("matrix", "status", ONE_CLAUSE).exit_code == 0
+
+    signed.write_text(f"controls/reviews/{TWO_CLAUSES}/zzz.yaml", "axis: implementation\n")
+    result = initialized("matrix", "status", ONE_CLAUSE)
+
+    assert result.exit_code == 1
+    assert "zzz.yaml" in result.output
+
+
 def test_status_con_at_anterior_a_la_revision_no_la_ve(initialized, signed):
     configured(initialized)
     linked_evidence(initialized, signed)

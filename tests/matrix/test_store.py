@@ -126,6 +126,17 @@ class TestAppendOnlyReviews:
         assert any("zzz.yaml: no es una revisión" in e for e in errors)
         assert any(e.startswith("controls/reviews/org.1/aaa.yaml") for e in errors)
 
+    def test_effective_reviews_list_the_unreadable_keys(self, store):
+        add_review(store, measure_review())
+        store.write_text("controls/reviews/org.1/aaa.yaml", "axis: implementation\n")
+        store.write_text("controls/reviews/org.1/notes.txt", "hola\n")
+        found = effective_reviews(store, "org.1", RECORDED + timedelta(days=1))
+        assert found.implementation is not None
+        assert found.unreadable == [
+            "controls/reviews/org.1/aaa.yaml",
+            "controls/reviews/org.1/notes.txt",
+        ]
+
     def test_secrets_in_a_review_are_rejected(self, store):
         add_review(store, measure_review())
         key = "controls/reviews/org.1/20260610T120000000000Z.yaml"

@@ -42,7 +42,9 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
     cláusulas que cubre.
 - **La revisión caduca.** Una revisión deja de valer:
   - al vencer su periodicidad (obligatoria, como máximo 365 días);
-  - si cambian los enlaces, una evidencia manual o un documento revisado;
+  - si cambian los enlaces, una evidencia manual o un documento revisado. De
+    la evidencia se guarda la huella del manifiesto completo (vigencia,
+    fechas, procedencia y artefacto), no solo la del artefacto;
   - si cambia el contexto de la medida: su entrada en la Declaración, la
     justificación, los refuerzos, la compensación o el texto de la ficha del
     catálogo.
@@ -54,7 +56,11 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
   implantación o de aplicabilidad, y solo para el contexto en que se hizo:
   volver a un contexto anterior no la recupera. Cada revisión guarda, por
   obligación, las fuentes y las cláusulas que la persona confirmó; el export
-  las muestra junto con su conclusión.
+  las muestra junto con su conclusión. Si el historial de una medida contiene
+  un fichero ilegible, su contenido es desconocido (podría revocar la
+  revisión anterior): la medida queda bloqueada con `review_unreadable:<clave>`,
+  las revisiones legibles se muestran pero no la satisfacen y el fallo sale en
+  el export y en el código de salida de `matrix status`.
 - **Una sola regla de preparación.** `matrix.assess()` es el único punto de
   integración. Aplica la regla compartida de `models/readiness.py`
   (`measure_blockers`, `evaluate_readiness`) y le añade los huecos de la

@@ -23,6 +23,14 @@ from ens_evidence.workspace import WorkspaceStore
 
 TECHNICAL_MAX_AGE = timedelta(days=30)
 
+
+def technical_valid_until(collected_at: datetime, valid_until: datetime | None) -> datetime:
+    """La evidencia técnica nunca vale más de 30 días desde su recogida (D2): alargar el
+    `valid_until` del manifiesto no reactiva un PASS antiguo."""
+    limit = collected_at + TECHNICAL_MAX_AGE
+    return limit if valid_until is None else min(valid_until, limit)
+
+
 # check_id -> conector que lo ejecuta. Un test lo compara con las constantes de `checks.py`.
 KNOWN_CHECKS: Mapping[str, str] = MappingProxyType(
     {
@@ -141,7 +149,7 @@ def _pass_evidence_blockers(
             blockers.append(
                 blocker(BlockerKind.MISSING_EVIDENCE, row, f"evidence_in_future:{evidence_id}")
             )
-        elif (manifest.valid_until or manifest.collected_at + TECHNICAL_MAX_AGE) <= at:
+        elif technical_valid_until(manifest.collected_at, manifest.valid_until) <= at:
             blockers.append(
                 blocker(BlockerKind.EXPIRED_EVIDENCE, row, f"evidence_expired:{evidence_id}")
             )
@@ -149,7 +157,7 @@ def _pass_evidence_blockers(
             refs.append(
                 EvidenceRef(
                     id=evidence_id,
-                    valid_until=manifest.valid_until,
+                    valid_until=technical_valid_until(manifest.collected_at, manifest.valid_until),
                     collected_at=manifest.collected_at,
                 )
             )

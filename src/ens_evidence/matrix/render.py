@@ -13,7 +13,7 @@ import re
 from datetime import UTC, datetime
 from typing import Literal
 
-from pydantic import AwareDatetime
+from pydantic import AwareDatetime, Field
 
 from ens_evidence import __version__
 from ens_evidence.applicability import DeclarationState, declaration_status
@@ -170,6 +170,10 @@ class MatrixExport(Strict):
     blockers: list[Blocker]
     rows: list[ExportedRow]
     sources: ExportSources
+    errors: list[str] = Field(
+        default_factory=list,
+        description="Ficheros ilegibles al evaluar; cada uno bloquea lo que afecta.",
+    )
     disclaimer: str = DISCLAIMER
 
 
@@ -398,6 +402,7 @@ def build_export(
         blockers=sorted(evaluation.readiness.blockers, key=_blocker_key),
         rows=rows,
         sources=_build_sources(store, evaluation.rows),
+        errors=list(evaluation.errors),
     )
 
 
@@ -612,6 +617,9 @@ def render_markdown(export: MatrixExport) -> str:
             f"- {md_escape((measure_id or 'global') + ': ' + text)}"
             for measure_id, text in _pending(export)
         ]
+    if export.errors:
+        lines += ["", "## Errores de lectura", ""]
+        lines += [f"- {md_escape(error)}" for error in export.errors]
     lines += ["", *_source_lines(export.sources, export.rows), "", export.disclaimer, ""]
     return "\n".join(lines)
 

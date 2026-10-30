@@ -107,11 +107,18 @@
         "evidence_id": {
           "title": "Evidence Id",
           "type": "string"
+        },
+        "manifest_sha256": {
+          "description": "Huella del manifiesto completo revisado (procedencia, vigencia, artefacto).",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
         }
       },
       "required": [
         "evidence_id",
-        "artifact_sha256"
+        "artifact_sha256",
+        "manifest_sha256"
       ],
       "title": "ReviewedEvidence",
       "type": "object"

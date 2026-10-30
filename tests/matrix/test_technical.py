@@ -3,7 +3,9 @@ import re
 from datetime import timedelta
 
 import pytest
+import yaml
 
+from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.matrix import (
     KNOWN_CHECKS,
     TECHNICAL_MAX_AGE,
@@ -181,6 +183,18 @@ def test_la_evidencia_sin_valid_until_caduca_a_los_30_dias(store):
     expired = support(store, [run([stale])])
     assert [b.kind for b in expired.blockers] == [BlockerKind.EXPIRED_EVIDENCE]
     assert expired.blockers[0].detail.startswith("evidence_expired:EV-")
+
+
+def test_alargar_valid_until_no_reactiva_evidencia_tecnica_de_mas_de_30_dias(store):
+    stale = check_result(store, collected_at=AT - TECHNICAL_MAX_AGE - timedelta(days=1))
+    key = manifest_key(stale.evidence_ids[0])
+    data = yaml.safe_load(store.read_text(key))
+    data["valid_until"] = (AT + timedelta(days=365)).isoformat()
+    store.write_text(key, yaml.safe_dump(data, sort_keys=False))
+
+    expired = support(store, [run([stale])])
+
+    assert [b.kind for b in expired.blockers] == [BlockerKind.EXPIRED_EVIDENCE]
 
 
 def test_un_resultado_futuro_se_ignora(store):

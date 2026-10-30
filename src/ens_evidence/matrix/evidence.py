@@ -5,6 +5,8 @@ cobertura que sustenta de forma válida en el instante `at`, o los bloqueos que 
 cuentan los manifiestos íntegros (`verify_one`); la ausencia de evidencia nunca es cumplimiento.
 """
 
+import hashlib
+import json
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 
@@ -53,6 +55,15 @@ def link_units(row: MatrixRowSpec, link: Link) -> tuple[frozenset[str], tuple[Bl
     expansion = expand_covers(link.covers, row)
     blockers = tuple(blocker(BlockerKind.MISSING_EVIDENCE, row, e) for e in expansion.errors)
     return expansion.units, blockers
+
+
+def manifest_sha256(manifest: EvidenceManifest) -> str:
+    """Huella del manifiesto completo (procedencia, vigencia y artefacto): si algo cambia, la
+    revisión que lo vio ya no describe lo que hay."""
+    canonical = json.dumps(
+        manifest.model_dump(mode="json"), sort_keys=True, separators=(",", ":"), ensure_ascii=False
+    )
+    return hashlib.sha256(canonical.encode()).hexdigest()
 
 
 def verified_manifest(store: WorkspaceStore, evidence_id: str) -> EvidenceManifest | None:
@@ -106,7 +117,11 @@ def manual_support(
             ),
         ),
         reviewed_evidence=(
-            ReviewedEvidence(evidence_id=evidence_id, artifact_sha256=manifest.artifact.sha256),
+            ReviewedEvidence(
+                evidence_id=evidence_id,
+                artifact_sha256=manifest.artifact.sha256,
+                manifest_sha256=manifest_sha256(manifest),
+            ),
         ),
         available_at=manifest.provenance.submitted_at,
     )

@@ -37,7 +37,11 @@ def review(
 
 
 def obligation(*, sources: bool = True) -> ReviewedObligation:
-    evidence = [ReviewedEvidence(evidence_id=EVIDENCE_ID, artifact_sha256=SHA)] if sources else []
+    evidence = (
+        [ReviewedEvidence(evidence_id=EVIDENCE_ID, artifact_sha256=SHA, manifest_sha256=OTHER_SHA)]
+        if sources
+        else []
+    )
     return ReviewedObligation(
         obligation="base", coverage=[ReviewedClause(clause="org.1.1")], evidence=evidence
     )

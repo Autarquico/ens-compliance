@@ -1684,7 +1684,7 @@ def matrix_show_status(
     ] = None,
     at: Annotated[str | None, typer.Option("--at", help="Instante a evaluar.")] = None,
 ) -> None:
-    """Estado de cada medida y resultado de preparación. Sale con 1 si hay bloqueos."""
+    """Estado de cada medida y preparación. Sale con 1 si hay bloqueos o ficheros ilegibles."""
     instant = parse_instant("--at", at) or clock()
     result, rows = matrix_status(open_workspace(ctx), instant)
     shown = [s for s in rows if measure is None or s.row.spec.measure_id == measure]
@@ -1706,7 +1706,7 @@ def matrix_show_status(
             "La herramienta no declara conformidad; la valoración es de la persona que revisa."
         )
     blocked = bool(readiness.blockers) if measure is None else any(s.blockers for s in shown)
-    if blocked:
+    if blocked or result.errors:
         raise typer.Exit(1)
 
 

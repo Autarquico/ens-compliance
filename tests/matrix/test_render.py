@@ -603,3 +603,24 @@ def test_las_cláusulas_compensadas_salen_de_una_sola_regla(signed):
 
     assert spec.compensated_clauses
     assert set(row.compensated_clauses) == set(spec.compensated_clauses)
+
+
+def test_los_errores_de_lectura_salen_en_el_json_y_en_el_markdown(sourced):
+    store = sourced["store"]
+    key = f"controls/reviews/{ONE_CLAUSE}/zzz.yaml"
+    store.write_text(key, "axis: implementation\n")
+
+    export = sourced_export(sourced)
+
+    assert any(key in error for error in export.errors)
+    assert any(key in error for error in json.loads(render_json(export))["errors"])
+    markdown = render_markdown(export)
+    assert "## Errores de lectura" in markdown and "zzz" in markdown
+    assert f"review_unreadable:{key}" in json.dumps(json.loads(render_json(export))["blockers"])
+
+
+def test_sin_errores_de_lectura_el_markdown_no_tiene_la_seccion(sourced):
+    export = sourced_export(sourced)
+
+    assert export.errors == []
+    assert "Errores de lectura" not in render_markdown(export)

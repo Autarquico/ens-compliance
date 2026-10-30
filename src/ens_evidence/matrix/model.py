@@ -143,6 +143,9 @@ class _ReviewRecord(Strict):
 class ReviewedEvidence(Strict):
     evidence_id: str
     artifact_sha256: Sha256
+    manifest_sha256: Sha256 = Field(
+        description="Huella del manifiesto completo revisado (procedencia, vigencia, artefacto)."
+    )
 
 
 class ReviewedDocument(Strict):

@@ -19,7 +19,12 @@ from ens_evidence.matrix.documents import (
     document_support,
     documents_snapshot,
 )
-from ens_evidence.matrix.evidence import LinkSupport, manual_support, verified_manifest
+from ens_evidence.matrix.evidence import (
+    LinkSupport,
+    manifest_sha256,
+    manual_support,
+    verified_manifest,
+)
 from ens_evidence.matrix.fingerprint import links_sha256
 from ens_evidence.matrix.model import (
     CheckLink,
@@ -189,7 +194,10 @@ def _changed_sources(
     changed: list[Blocker] = []
     for reviewed in {e.evidence_id: e for o in record.obligations for e in o.evidence}.values():
         manifest = verified_manifest(store, reviewed.evidence_id)
-        if manifest is None or manifest.artifact.sha256 != reviewed.artifact_sha256:
+        if manifest is None or (
+            manifest.artifact.sha256,
+            manifest_sha256(manifest),
+        ) != (reviewed.artifact_sha256, reviewed.manifest_sha256):
             detail = f"evidence_changed:{reviewed.evidence_id}"
             changed.append(_gap(BlockerKind.EXPIRED_REVIEW, measure_id, detail))
     for reviewed_doc in {d.name: d for o in record.obligations for d in o.documents}.values():
@@ -275,7 +283,12 @@ def _assess_row(
     entry = entry or MatrixEntry(id=row.measure_id)
     reviews = effective_reviews(store, row.measure_id, now)
     stored = _latest(reviews.implementation, reviews.applicability)
-    record = stored.record if stored else None
+    # Un registro ilegible podría revocar lo anterior: lo legible se muestra pero no satisface.
+    unreadable = [
+        _gap(BlockerKind.MISSING_REVIEW, row.measure_id, f"review_unreadable:{key}")
+        for key in reviews.unreadable
+    ]
+    record = stored.record if stored and not unreadable else None
     implementation = record if selected and isinstance(record, MeasureReviewRecord) else None
 
     supports = (
@@ -288,7 +301,7 @@ def _assess_row(
     )
     covered = covered_units(supports)
 
-    gaps: list[Blocker] = []
+    gaps: list[Blocker] = [*unreadable]
     if entry.owner is None:
         gaps.append(_gap(BlockerKind.MISSING_REVIEW, row.measure_id, "owner_missing"))
     if entry.review_every_days is None:

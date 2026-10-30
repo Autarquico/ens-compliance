@@ -735,11 +735,18 @@
         "evidence_id": {
           "title": "Evidence Id",
           "type": "string"
+        },
+        "manifest_sha256": {
+          "description": "Huella del manifiesto completo revisado (procedencia, vigencia, artefacto).",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
         }
       },
       "required": [
         "evidence_id",
-        "artifact_sha256"
+        "artifact_sha256",
+        "manifest_sha256"
       ],
       "title": "ReviewedEvidence",
       "type": "object"
@@ -831,6 +838,14 @@
       "default": "La herramienta no declara conformidad; la valoraci\u00f3n es de la persona que revisa.",
       "title": "Disclaimer",
       "type": "string"
+    },
+    "errors": {
+      "description": "Ficheros ilegibles al evaluar; cada uno bloquea lo que afecta.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
     },
     "evaluated_at": {
       "format": "date-time",

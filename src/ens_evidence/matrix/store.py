@@ -3,7 +3,7 @@
 `matrix.yaml` no está en `SYNCED_KEYS`: un push no debe revocar el alcance ni la Declaración.
 """
 
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
 
@@ -38,6 +38,7 @@ class EffectiveReviews:
     implementation: StoredReview[MeasureReviewRecord] | None
     applicability: StoredReview[ApplicabilityReview] | None
     errors: list[str]
+    unreadable: list[str] = field(default_factory=list)
 
 
 def _dump(model: BaseModel) -> str:
@@ -77,36 +78,62 @@ def _axis(store: WorkspaceStore, key: str) -> str | None:
     return raw.get("axis") if isinstance(raw, dict) else None
 
 
-def read_reviews(store: WorkspaceStore, measure_id: str) -> tuple[list[StoredReview], list[str]]:
-    """Todas las revisiones legibles de la medida, ordenadas por (recorded_at, clave)."""
+@dataclass(frozen=True)
+class ReviewScan:
+    """`unreadable`: claves del historial que no se pueden leer. Su contenido es desconocido
+    (podría ser una revisión posterior que revoca la anterior), así que bloquean la medida."""
+
+    found: list[StoredReview]
+    errors: list[str]
+    unreadable: list[str]
+
+
+def scan_reviews(store: WorkspaceStore, measure_id: str) -> ReviewScan:
     found: list[StoredReview] = []
     errors: list[str] = []
+    unreadable: list[str] = []
     for key in store.list(reviews_prefix(measure_id)):
-        if not key.endswith(".yaml"):
-            continue
-        model = _MODELS.get(_axis(store, key) or "")
-        if model is None:
-            errors.append(f"{key}: no es una revisión de la matriz reconocible")
-            continue
-        record = load_model(store, key, model, errors)
-        if record is None:
-            continue
-        if record.measure_id != measure_id:
-            errors.append(f"{key}: la revisión es de otra medida ({record.measure_id})")
-            continue
-        found.append(StoredReview(key, record))
+        before = len(errors)
+        stored = _read_one(store, measure_id, key, errors)
+        if stored is not None:
+            found.append(stored)
+        if len(errors) > before:
+            unreadable.append(key)
     found.sort(key=lambda s: (s.record.recorded_at, s.key))
-    return found, errors
+    return ReviewScan(found, errors, unreadable)
+
+
+def _read_one(
+    store: WorkspaceStore, measure_id: str, key: str, errors: list[str]
+) -> StoredReview | None:
+    model = _MODELS.get(_axis(store, key) or "") if key.endswith(".yaml") else None
+    if model is None:
+        errors.append(f"{key}: no es una revisión de la matriz reconocible")
+        return None
+    record = load_model(store, key, model, errors)
+    if record is None:
+        return None
+    if record.measure_id != measure_id:
+        errors.append(f"{key}: la revisión es de otra medida ({record.measure_id})")
+        return None
+    return StoredReview(key, record)
+
+
+def read_reviews(store: WorkspaceStore, measure_id: str) -> tuple[list[StoredReview], list[str]]:
+    """Todas las revisiones legibles de la medida, ordenadas por (recorded_at, clave)."""
+    scan = scan_reviews(store, measure_id)
+    return scan.found, scan.errors
 
 
 def effective_reviews(store: WorkspaceStore, measure_id: str, at: datetime) -> EffectiveReviews:
     """La última revisión de cada eje registrada en o antes de `at` (las posteriores no existen)."""
-    reviews, errors = read_reviews(store, measure_id)
-    visible = [s for s in reviews if s.record.recorded_at <= at]
+    scan = scan_reviews(store, measure_id)
+    visible = [s for s in scan.found if s.record.recorded_at <= at]
     implementation = [s for s in visible if isinstance(s.record, MeasureReviewRecord)]
     applicability = [s for s in visible if isinstance(s.record, ApplicabilityReview)]
     return EffectiveReviews(
         implementation[-1] if implementation else None,
         applicability[-1] if applicability else None,
-        errors,
+        scan.errors,
+        scan.unreadable,
     )

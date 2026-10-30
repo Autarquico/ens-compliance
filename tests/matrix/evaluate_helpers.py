@@ -23,6 +23,7 @@ from ens_evidence.matrix import (
     plan_obligations,
     save_matrix,
 )
+from ens_evidence.matrix.evidence import manifest_sha256
 from ens_evidence.models import MeasureAssessment, Review, Role
 
 from .helpers import SHA
@@ -95,7 +96,9 @@ def review_record(
         obligation="base",
         evidence=[
             ReviewedEvidence(
-                evidence_id=i, artifact_sha256=load_manifest_by_id(store, i).artifact.sha256
+                evidence_id=i,
+                artifact_sha256=load_manifest_by_id(store, i).artifact.sha256,
+                manifest_sha256=manifest_sha256(load_manifest_by_id(store, i)),
             )
             for i in evidence_ids
         ],
