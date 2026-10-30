@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Categorización, riesgos y aplicabilidad
 type: task
-status: active
+status: shipped
 priority: P0
 size: L
 issue: 17
