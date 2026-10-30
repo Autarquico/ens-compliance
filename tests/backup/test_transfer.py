@@ -170,6 +170,20 @@ def test_import_all_revoca_la_aprobacion_si_el_alcance_importado_es_distinto(tmp
     assert scope_status(destination).state is not ScopeState.APPROVED
 
 
+def test_import_all_de_claves_ajenas_al_alcance_conserva_la_aprobacion(tmp_path):
+    destination = approved_workspace(tmp_path / "destino")
+    export = tmp_path / "export"
+    other = LocalStore(tmp_path / "otro")
+    shutil.copytree(EXAMPLE_SCOPE, tmp_path / "otro" / "scope")
+    other.write_text("org/answers.yaml", "organizacion: Taller Norte\n")
+    export_all(other, LocalStore(export))
+
+    report = import_all(destination, LocalStore(export), datetime.now(UTC))
+
+    assert not report.approval_revoked
+    assert scope_status(destination).state is ScopeState.APPROVED
+
+
 def test_import_all_no_resucita_una_aprobacion_revocada_del_destino(tmp_path):
     origin = approved_workspace(tmp_path / "origen")
     export_all(origin, LocalStore(tmp_path / "export"))

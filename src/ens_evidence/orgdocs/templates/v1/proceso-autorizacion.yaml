@@ -1,0 +1,237 @@
+id: proceso-autorizacion
+title: "Proceso de autorización"
+questions:
+  - id: organizacion
+    text: "¿Cómo se llama la organización y a qué se dedica?"
+    clause: org.1.1
+    help: "Nombre legal y una frase sobre qué hace. Ejemplo: «Talleres Norte S.L., fabricación de piezas para clientes industriales»."
+  - id: aut_instalaciones
+    text: "¿Cómo se autoriza la utilización de las instalaciones habituales?"
+    type: records
+    clause: org.4.1
+    help: "Cláusula org.4.1. Oficinas y otros lugares de trabajo del día a día. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_instalaciones_alt
+    text: "¿Cómo se autoriza la utilización de instalaciones alternativas?"
+    type: records
+    clause: org.4.1
+    help: "Cláusula org.4.1. Teletrabajo, locales de contingencia. Si no se usan, indica el motivo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    allow_not_applicable: true
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_equipos
+    text: "¿Cómo se autoriza la entrada de equipos en producción?"
+    type: records
+    clause: org.4.2
+    help: "Cláusula org.4.2. Ordenadores, servidores y dispositivos de red antes de usarlos en el trabajo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_criptografia
+    text: "¿Cómo se autoriza la entrada de equipos que involucran criptografía?"
+    type: records
+    clause: org.4.2
+    help: "Cláusula org.4.2. Cifrado de discos, VPN, tarjetas. Si no hay, indica el motivo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    allow_not_applicable: true
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_aplicaciones
+    text: "¿Cómo se autoriza la entrada de aplicaciones en producción?"
+    type: records
+    clause: org.4.3
+    help: "Cláusula org.4.3. Instalar o contratar un programa o servicio nuevo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_enlaces
+    text: "¿Cómo se autoriza el establecimiento de enlaces de comunicaciones con otros sistemas?"
+    type: records
+    clause: org.4.4
+    help: "Cláusula org.4.4. Conexiones con sistemas de clientes o proveedores. Si no hay, indica el motivo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    allow_not_applicable: true
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_comunicaciones
+    text: "¿Cómo se autoriza la utilización de medios de comunicación habituales?"
+    type: records
+    clause: org.4.5
+    help: "Cláusula org.4.5. Correo, mensajería, videoconferencia. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_comunicaciones_alt
+    text: "¿Cómo se autoriza la utilización de medios de comunicación alternativos?"
+    type: records
+    clause: org.4.5
+    help: "Cláusula org.4.5. Los que se usan si fallan los habituales. Si no hay, indica el motivo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    allow_not_applicable: true
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_soportes
+    text: "¿Cómo se autoriza la utilización de soportes de información?"
+    type: records
+    clause: org.4.6
+    help: "Cláusula org.4.6. Memorias USB, discos externos. Si no se permiten, indica el motivo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    allow_not_applicable: true
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_moviles
+    text: "¿Cómo se autoriza la utilización de equipos móviles?"
+    type: records
+    clause: org.4.7
+    help: "Cláusula org.4.7. Portátiles, tabletas y teléfonos. Si no se usan, indica el motivo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    allow_not_applicable: true
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: aut_terceros
+    text: "¿Cómo se autoriza la utilización de servicios de terceros?"
+    type: records
+    clause: org.4.8
+    help: "Cláusula org.4.8. Servicios bajo contrato, convenio o encargo. Si no hay, indica el motivo. Una fila por tipo de autorización: quién autoriza, cómo se pide y qué queda registrado."
+    allow_not_applicable: true
+    fields:
+      - {id: elemento, text: "Qué se autoriza"}
+      - {id: quien, text: "Quién autoriza"}
+      - {id: solicitud, text: "Cómo se pide"}
+      - {id: registro, text: "Qué queda registrado"}
+  - id: autoridad_procedimientos
+    text: "¿Quién aprueba los procedimientos y el proceso de autorización?"
+    clause: org.3.r1.1
+    help: "Autoridad que valida los procedimientos (org.3 R1: validación por la autoridad correspondiente); para el proceso de autorización es una decisión de esta herramienta. Se registra en la aprobación del documento. Escribe una de estas opciones: la dirección, el responsable de la seguridad o el responsable del sistema."
+    choices: ["la dirección", "el responsable de la seguridad", "el responsable del sistema"]
+  - id: firmante_direccion
+    text: "¿Quién firma en nombre de la dirección?"
+    clause: art.2.3
+    help: "Una persona concreta, con el nombre que figura en la lista de personas, que aprueba los documentos en nombre de la dirección aunque esta sea un órgano (por ejemplo, un consejo de administración). Si no ocupa ningún cargo de seguridad, añádela igualmente a esa lista."
+sections:
+  - id: introduccion
+    title: "Introducción"
+    covers: [org.4.intro]
+    body: |
+      Organización: {{organizacion}}
+  - id: org_4_1
+    title: "Instalaciones"
+    covers: [org.4.1]
+    body: |
+      ### Instalaciones habituales
+
+      {{#each aut_instalaciones}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+
+      ### Instalaciones alternativas
+
+      {{#each aut_instalaciones_alt}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+  - id: org_4_2
+    title: "Equipos"
+    covers: [org.4.2]
+    body: |
+      ### Equipos en producción
+
+      {{#each aut_equipos}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+
+      ### Equipos que involucran criptografía
+
+      {{#each aut_criptografia}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+  - id: org_4_3
+    title: "Aplicaciones"
+    covers: [org.4.3]
+    body: |
+      {{#each aut_aplicaciones}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+  - id: org_4_4
+    title: "Enlaces con otros sistemas"
+    covers: [org.4.4]
+    body: |
+      {{#each aut_enlaces}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+  - id: org_4_5
+    title: "Medios de comunicación"
+    covers: [org.4.5]
+    body: |
+      ### Medios de comunicación habituales
+
+      {{#each aut_comunicaciones}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+
+      ### Medios de comunicación alternativos
+
+      {{#each aut_comunicaciones_alt}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+  - id: org_4_6
+    title: "Soportes de información"
+    covers: [org.4.6]
+    body: |
+      {{#each aut_soportes}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+  - id: org_4_7
+    title: "Equipos móviles"
+    covers: [org.4.7]
+    body: |
+      {{#each aut_moviles}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+  - id: org_4_8
+    title: "Servicios de terceros"
+    covers: [org.4.8]
+    body: |
+      {{#each aut_terceros}}
+      - {{.elemento}}: autoriza {{.quien}}. Se pide así: {{.solicitud}}. Queda registrado: {{.registro}}
+      {{/each}}
+  - id: aprobacion_direccion
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["la dirección"]}
+    body: |
+      Lo aprueba: la dirección, en cuyo nombre firma {{firmante_direccion}}.
+  - id: aprobacion_seguridad
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["el responsable de la seguridad"]}
+    body: |
+      Lo aprueba: el responsable de la seguridad.
+  - id: aprobacion_sistema
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["el responsable del sistema"]}
+    body: |
+      Lo aprueba: el responsable del sistema.

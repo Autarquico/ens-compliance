@@ -1,0 +1,103 @@
+{
+  "$defs": {
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "management",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "TemplateRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "TemplateRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Qui\u00e9n aprob\u00f3 qu\u00e9: persona declarada (no autenticada), rol y los hashes que fijan el\ndocumento, las respuestas, la plantilla, el cat\u00e1logo, la fuente y el alcance de entonces.",
+  "properties": {
+    "answers_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Answers Sha256",
+      "type": "string"
+    },
+    "approved_at": {
+      "format": "date-time",
+      "title": "Approved At",
+      "type": "string"
+    },
+    "approved_by": {
+      "title": "Approved By",
+      "type": "string"
+    },
+    "articulado_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Articulado Sha256",
+      "type": "string"
+    },
+    "catalog_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Catalog Sha256",
+      "type": "string"
+    },
+    "document": {
+      "title": "Document",
+      "type": "string"
+    },
+    "document_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Document Sha256",
+      "type": "string"
+    },
+    "renderer_version": {
+      "title": "Renderer Version",
+      "type": "integer"
+    },
+    "role": {
+      "$ref": "#/$defs/Role"
+    },
+    "scope_fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Scope Fingerprint",
+      "type": "string"
+    },
+    "template": {
+      "$ref": "#/$defs/TemplateRef"
+    }
+  },
+  "required": [
+    "document",
+    "approved_by",
+    "role",
+    "approved_at",
+    "document_sha256",
+    "answers_sha256",
+    "template",
+    "renderer_version",
+    "catalog_sha256",
+    "articulado_sha256",
+    "scope_fingerprint"
+  ],
+  "title": "DocumentApproval",
+  "type": "object"
+}

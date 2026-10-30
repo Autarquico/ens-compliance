@@ -54,6 +54,9 @@ Mezclar ejes en un mismo enum permite estados absurdos (un check
 `service_owner`, de la seguridad `security_officer` y del sistema
 `system_owner`), más el administrador del sistema y su delegado. Las
 facultades de categorización (art. 41) están en 0009.
+`management` es la dirección u órgano con las máximas competencias
+ejecutivas, que aprueba la política (art. 2.3) y las normas de seguridad
+(art. 15.2); ver 0010.
 
 ### Revisión humana
 

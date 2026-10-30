@@ -26,7 +26,7 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-_(nada)_
+- #21 Plantillas de documentación organizativa
 <!-- /pm-sync:in-progress -->
 
 ---

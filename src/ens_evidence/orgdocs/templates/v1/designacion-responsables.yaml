@@ -1,0 +1,172 @@
+id: designacion-responsables
+title: "Designación de responsables de seguridad"
+questions:
+  - id: organizacion
+    text: "¿Cómo se llama la organización y a qué se dedica?"
+    clause: org.1.1
+    help: "Nombre legal y una frase sobre qué hace. Ejemplo: «Talleres Norte S.L., fabricación de piezas para clientes industriales»."
+  - id: direccion
+    text: "¿Quién ostenta las máximas competencias ejecutivas y aprueba estos documentos?"
+    clause: art.2.3
+    help: "Persona u órgano que decide en última instancia (gerencia, consejo de administración). La política la aprueba ese órgano (art. 2.3) y las normas de seguridad, la dirección (art. 15.2)."
+  - id: personas
+    text: "¿Qué personas intervienen en la seguridad (responsables y quien firma por la dirección)?"
+    type: records
+    clause: org.1.3
+    help: "Declara aquí a cada persona una sola vez; en el resto de respuestas usa su nombre tal y como aparece aquí."
+    fields:
+      - {id: nombre, text: "Nombre y apellidos"}
+      - {id: cargo, text: "Cargo o puesto en la organización"}
+      - {id: contacto, text: "Correo o teléfono"}
+  - id: resp_informacion
+    text: "¿Quién es el responsable de la información?"
+    clause: org.1.3
+    help: "Nombre y apellidos, tal y como figura en la lista de personas. Debe ser una persona concreta, no un departamento."
+  - id: resp_informacion_funciones
+    text: "¿Qué hace en la práctica el responsable de la información?"
+    clause: art.13.2
+    help: "Art. 13.2.a: determina los requisitos de la información que se trata. Describe sus tareas y decisiones reales en esta organización, no repitas la ley."
+  - id: resp_servicio
+    text: "¿Quién es el responsable del servicio?"
+    clause: org.1.3
+    help: "Nombre y apellidos, tal y como figura en la lista de personas. Debe ser una persona concreta, no un departamento."
+  - id: resp_servicio_funciones
+    text: "¿Qué hace en la práctica el responsable del servicio?"
+    clause: art.13.2
+    help: "Art. 13.2.b: determina los requisitos de los servicios que se prestan. Describe sus tareas y decisiones reales en esta organización, no repitas la ley."
+  - id: resp_seguridad
+    text: "¿Quién es el responsable de la seguridad?"
+    clause: org.1.3
+    help: "Nombre y apellidos, tal y como figura en la lista de personas. Debe ser una persona concreta, no un departamento."
+  - id: resp_seguridad_funciones
+    text: "¿Qué hace en la práctica el responsable de la seguridad?"
+    clause: art.13.2
+    help: "Art. 13.2.c: determina las decisiones para cumplir los requisitos de seguridad y supervisa las medidas. Describe sus tareas y decisiones reales en esta organización, no repitas la ley."
+  - id: resp_sistema
+    text: "¿Quién es el responsable del sistema?"
+    clause: org.1.3
+    help: "Nombre y apellidos, tal y como figura en la lista de personas. Debe ser una persona concreta, no un departamento."
+  - id: resp_sistema_funciones
+    text: "¿Qué hace en la práctica el responsable del sistema?"
+    clause: art.13.2
+    help: "Art. 13.2.d: determina cómo se implementa la seguridad y la operación diaria del sistema. Describe sus tareas y decisiones reales en esta organización, no repitas la ley."
+  - id: designacion_procedimiento
+    text: "¿Cómo se nombra a cada responsable?"
+    clause: org.1.3
+    help: "Quién decide el nombramiento, cómo se comunica a la persona y al resto del personal y dónde queda constancia."
+  - id: renovacion_procedimiento
+    text: "¿Cómo y cuándo se renueva o se sustituye a un responsable?"
+    clause: org.1.3
+    help: "Cada cuánto se revisa el nombramiento y qué se hace si la persona se va, cambia de puesto o no puede ejercer."
+  - id: coordinacion
+    text: "¿Cómo se coordinan los responsables entre sí?"
+    clause: art.11.3
+    help: "Reuniones (con qué frecuencia), canal habitual y qué se documenta. Art. 11.3: la política debe detallar los mecanismos de coordinación."
+  - id: resolucion_conflictos
+    text: "Si dos responsables no se ponen de acuerdo, ¿quién decide y cómo?"
+    clause: art.11.3
+    help: "Persona u órgano que resuelve, en qué plazo y dónde queda la decisión (art. 11.3)."
+  - id: relacion_seguridad_sistema
+    text: "¿Qué relación hay entre el responsable de la seguridad y el del sistema?"
+    clause: art.13.3
+    help: "Art. 13.3: deben ser personas distintas, sin dependencia jerárquica entre ellas. Responde «distintas y sin dependencia jerárquica», «misma persona» o «dependencia jerárquica»."
+    choices: ["distintas y sin dependencia jerárquica", "misma persona", "dependencia jerárquica"]
+  - id: causa_ausencia_recursos
+    text: "¿Qué falta de recursos concreta impide separar ambas funciones?"
+    clause: art.13.3
+    help: "Art. 13.3: solo cabe la excepción por ausencia justificada de recursos. Indica cuántas personas hay, qué se ha intentado y por qué no es posible."
+    required_if: {question: relacion_seguridad_sistema, any_of: ["misma persona", "dependencia jerárquica"]}
+  - id: medidas_compensatorias
+    text: "¿Qué medidas compensan la falta de separación?"
+    type: records
+    clause: art.13.3
+    help: "Cada medida debe poder comprobarse: qué se hace, quién la verifica y cómo. Ejemplo: «revisión trimestral de los accesos de administración por la gerencia, con acta»."
+    required_if: {question: relacion_seguridad_sistema, any_of: ["misma persona", "dependencia jerárquica"]}
+    fields:
+      - {id: medida, text: "Medida"}
+      - {id: verifica, text: "Quién la verifica"}
+      - {id: verificacion, text: "Cómo se comprueba que se aplica"}
+  - id: firmante_direccion
+    text: "¿Quién firma en nombre de la dirección?"
+    clause: art.2.3
+    help: "Una persona concreta, con el nombre que figura en la lista de personas, que aprueba los documentos en nombre de la dirección aunque esta sea un órgano (por ejemplo, un consejo de administración). Si no ocupa ningún cargo de seguridad, añádela igualmente a esa lista."
+sections:
+  - id: introduccion
+    title: "Introducción"
+    covers: []
+    body: |
+      Organización: {{organizacion}}
+
+      Aprueba este documento: {{direccion}}
+
+      Firma por la dirección: {{firmante_direccion}}
+  - id: personas
+    title: "Personas"
+    covers: []
+    body: |
+      {{#each personas}}
+      - {{.nombre}}, {{.cargo}} ({{.contacto}})
+      {{/each}}
+  - id: roles
+    title: "Responsables y sus funciones"
+    covers: [org.1.3, art.13.2]
+    body: |
+      ### Responsable de la información
+
+      {{resp_informacion}}. {{resp_informacion_funciones}}
+
+      ### Responsable del servicio
+
+      {{resp_servicio}}. {{resp_servicio_funciones}}
+
+      ### Responsable de la seguridad
+
+      {{resp_seguridad}}. {{resp_seguridad_funciones}}
+
+      ### Responsable del sistema
+
+      {{resp_sistema}}. {{resp_sistema_funciones}}
+  - id: procedimiento
+    title: "Designación y renovación"
+    covers: [org.1.3]
+    body: |
+      Designación: {{designacion_procedimiento}}
+
+      Renovación: {{renovacion_procedimiento}}
+  - id: coordinacion
+    title: "Coordinación y resolución de conflictos"
+    covers: [art.11.3]
+    body: |
+      Coordinación: {{coordinacion}}
+
+      Resolución de conflictos: {{resolucion_conflictos}}
+  - id: diferenciacion_distintas
+    title: "Diferenciación entre seguridad y sistema"
+    covers: [art.13.3]
+    when: {question: relacion_seguridad_sistema, any_of: ["distintas y sin dependencia jerárquica"]}
+    body: |
+      El responsable de la seguridad y el del sistema son personas distintas y no existe dependencia jerárquica entre ellas.
+  - id: diferenciacion_misma_persona
+    title: "Diferenciación entre seguridad y sistema"
+    covers: [art.13.3]
+    when: {question: relacion_seguridad_sistema, any_of: ["misma persona"]}
+    body: |
+      El responsable de la seguridad y el del sistema son la misma persona. Se acoge a la excepción por falta de recursos que se describe más abajo.
+  - id: diferenciacion_jerarquica
+    title: "Diferenciación entre seguridad y sistema"
+    covers: [art.13.3]
+    when: {question: relacion_seguridad_sistema, any_of: ["dependencia jerárquica"]}
+    body: |
+      Existe dependencia jerárquica entre el responsable de la seguridad y el del sistema. Se acoge a la excepción por falta de recursos que se describe más abajo.
+  - id: excepcion
+    title: "Excepción por falta de recursos"
+    covers: []
+    when: {question: relacion_seguridad_sistema, any_of: ["misma persona", "dependencia jerárquica"]}
+    body: |
+      Causa: {{causa_ausencia_recursos}}
+
+      Medidas compensatorias:
+
+      {{#each medidas_compensatorias}}
+      - {{.medida}}. Lo verifica {{.verifica}}: {{.verificacion}}
+      {{/each}}
