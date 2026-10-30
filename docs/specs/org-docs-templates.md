@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Plantillas de documentación organizativa
 type: task
-status: active
+status: shipped
 priority: P0
 size: L
 issue: 21
