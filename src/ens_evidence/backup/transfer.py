@@ -20,7 +20,7 @@ from ens_evidence.evidence.layout import (
     sha256_hex,
 )
 from ens_evidence.scope import APPROVAL_KEY, revoke_approval
-from ens_evidence.scope.sync import SYNCED_KEYS
+from ens_evidence.scope.sync import SCOPE_KEYS
 from ens_evidence.workspace.errors import AlreadyExists, NotFound, WorkspaceError
 from ens_evidence.workspace.store import WorkspaceStore
 
@@ -79,7 +79,7 @@ def import_all(destination: WorkspaceStore, source: WorkspaceStore, now: datetim
             "no se importa nada: ya existen estas evidencias con contenido distinto: "
             + ", ".join(conflicts)
         )
-    scope_changes = any(existing[key] != contents[key] for key in SYNCED_KEYS if key in contents)
+    scope_changes = any(existing[key] != contents[key] for key in SCOPE_KEYS if key in contents)
     revoked = scope_changes and revoke_approval(destination, "workspace import", now)
     written = 0
     for key in keys:

@@ -1,0 +1,186 @@
+# Respuestas de una pyme ficticia (Gestoría Aurora S.L.) para probar `docs build`.
+organizacion: Gestoría Aurora S.L., asesoría fiscal y laboral para pequeñas empresas
+direccion: La gerente, Marta Ibáñez Soler, administradora única de Gestoría Aurora S.L.
+firmante_direccion: Marta Ibáñez Soler
+mision: Llevamos la contabilidad, los impuestos y las nóminas de unas 60 pequeñas empresas y autónomos de Zaragoza.
+objetivos_seguridad:
+  - Que los datos fiscales y laborales de los clientes no se filtren ni se pierdan.
+  - Poder presentar impuestos y nóminas en plazo aunque falle un equipo o el servicio en la nube.
+  - Que cada persona de la plantilla sepa qué puede y qué no puede hacer con los sistemas.
+marco_legal:
+  - Reglamento General de Protección de Datos (RGPD) y Ley Orgánica 3/2018 (LOPDGDD).
+  - Real Decreto 311/2022 (ENS), exigido por contrato por un cliente del sector público.
+  - Contratos de encargo de tratamiento firmados con cada cliente.
+riesgos_datos_personales: >-
+  Tratamos DNI, domicilios, IBAN, datos de nóminas y de salud (bajas laborales) de empleados de
+  nuestros clientes. Una filtración podría causar fraude con las cuentas bancarias o discriminación
+  laboral, y una pérdida impediría pagar nóminas a tiempo.
+resp_informacion: Marta Ibáñez Soler
+resp_informacion_funciones: Decide qué información de clientes se trata, quién puede acceder a ella y cuánto tiempo se conserva.
+resp_servicio: Raúl Campos Vidal
+resp_servicio_funciones: Fija los plazos y la disponibilidad que exigimos al servicio de gestión que damos a los clientes.
+resp_seguridad: Lucía Navarro Gil
+resp_seguridad_funciones: Decide las medidas de seguridad, revisa cada trimestre que se cumplen e informa a la gerencia de las incidencias.
+resp_sistema: Hugo Serrano Ortiz
+resp_sistema_funciones: Administra los equipos y la nube, aplica las medidas que decide la responsable de seguridad y supervisa la operación diaria.
+designacion_procedimiento: La gerente nombra por escrito a cada responsable, se lo comunica por correo a toda la plantilla y guarda el nombramiento firmado en la carpeta Seguridad del servidor.
+renovacion_procedimiento: La gerente revisa los nombramientos cada enero y los sustituye si la persona se va o cambia de puesto, con un nuevo escrito y aviso a la plantilla.
+coordinacion: Los cuatro responsables se reúnen el primer lunes de cada mes y Lucía Navarro redacta un acta breve que se guarda en la carpeta Seguridad.
+resolucion_conflictos: Decide la gerente en un plazo de cinco días laborables y lo anota en el acta de la reunión siguiente.
+comite:
+  - nombre: Comité de Seguridad
+    ambito: Revisión mensual de incidencias, accesos y copias de seguridad.
+    integrantes: Marta Ibáñez Soler, Raúl Campos Vidal, Lucía Navarro Gil, Hugo Serrano Ortiz
+    relacion: Informa a la gerencia; Hugo Serrano traslada sus decisiones al proveedor informático externo.
+documentacion_estructura: Cinco documentos (política, designación, normativa, procedimientos y proceso de autorización), todos en la carpeta Seguridad del servidor, con versión y fecha en el nombre del fichero.
+documentacion_gestion: Lucía Navarro custodia los documentos, los revisa cada año o tras un cambio importante y conserva las versiones anteriores en la subcarpeta Histórico.
+documentacion_acceso: Todo el personal puede leerlos desde la carpeta Seguridad; solo Lucía Navarro y la gerente pueden modificarlos.
+difusion_personal: Se entrega por correo a cada persona al incorporarse y tras cada cambio, y se pide respuesta de «leído»; Lucía Navarro guarda esas respuestas.
+servicios_externalizados: "sí"
+poc_servicios:
+  - servicio: Asesoría laboral y nóminas
+    cliente: Ayuntamiento de Utebo
+    poc: Lucía Navarro Gil, lucia@gestoriaaurora.example
+    relacion: Es la propia responsable de la seguridad de Gestoría Aurora S.L.
+personas:
+  - nombre: Marta Ibáñez Soler
+    cargo: Gerente
+    contacto: marta@gestoriaaurora.example
+  - nombre: Raúl Campos Vidal
+    cargo: Jefe de administración
+    contacto: raul@gestoriaaurora.example
+  - nombre: Lucía Navarro Gil
+    cargo: Técnica de calidad y cumplimiento
+    contacto: lucia@gestoriaaurora.example
+  - nombre: Hugo Serrano Ortiz
+    cargo: Administrador de sistemas
+    contacto: hugo@gestoriaaurora.example
+relacion_seguridad_sistema: distintas y sin dependencia jerárquica
+uso_equipos:
+  - Los equipos de la oficina se usan solo para trabajo; no se instala ningún programa sin permiso de Hugo Serrano.
+  - Los portátiles se bloquean al levantarse de la mesa y se guardan bajo llave al terminar la jornada.
+uso_servicios:
+  - El correo corporativo se usa solo para trabajo y nunca para enviar datos de clientes a cuentas personales.
+  - Los documentos de clientes se guardan únicamente en el servidor o en la nube contratada, no en servicios personales.
+uso_instalaciones:
+  - La puerta de la oficina se cierra con llave al salir y la alarma se activa por la última persona.
+  - Las visitas esperan en recepción y no se quedan solas en las zonas de trabajo.
+uso_indebido:
+  - Compartir la contraseña con otra persona, incluso de confianza.
+  - Copiar datos de clientes a un pendrive o a un servicio de almacenamiento personal.
+derechos_personal:
+  - Recibir formación en seguridad al incorporarse y una vez al año.
+  - Consultar a Lucía Navarro cualquier duda sin que suponga una sanción.
+deberes_personal:
+  - Comunicar de inmediato cualquier incidente o sospecha.
+  - Custodiar las credenciales y cambiarlas si se sospecha que se conocen.
+medidas_disciplinarias: Según el convenio colectivo de oficinas y despachos de Zaragoza y el Estatuto de los Trabajadores. La gerente califica la falta (leve, grave o muy grave) y decide la sanción tras oír a la persona afectada.
+procedimientos:
+  - tarea: Alta y baja de usuarios
+    quien: Administrador de sistemas
+    pasos: Recibe la petición firmada por el jefe de administración, crea o desactiva la cuenta y revisa permisos el mismo día.
+    herramienta: Formulario interno de petición y consola de administración
+    evidencia: Petición firmada y registro de cambios de la consola
+  - tarea: Copia de seguridad diaria
+    quien: Administrador de sistemas
+    pasos: Comprueba cada mañana el informe de la copia nocturna y repite la copia si ha fallado.
+    herramienta: Servicio de copias en la nube y correo de informe
+    evidencia: Correo de informe archivado y anotación de incidencias
+  - tarea: Actualización de equipos
+    quien: Administrador de sistemas
+    pasos: Aplica las actualizaciones el primer jueves de mes tras probarlas en un equipo, y reinicia los demás fuera de horario.
+    herramienta: Gestor de actualizaciones del sistema operativo
+    evidencia: Informe mensual de equipos actualizados
+anomalias_identificacion:
+  - Correos que piden contraseñas o pagos urgentes.
+  - Un equipo que se ralentiza o muestra ventanas que no se han abierto.
+  - Ficheros de clientes que han cambiado de nombre o han desaparecido.
+anomalias_comunicacion: Se avisa por teléfono a Lucía Navarro o por correo a seguridad@gestoriaaurora.example en cuanto se detecta, y como máximo el mismo día.
+anomalias_registro: Lucía Navarro anota fecha, persona que avisa y descripción en el registro de incidencias del servidor.
+info_acceso:
+  - informacion: Datos de clientes (nivel medio)
+    quien: Responsable de la información
+    pasos: Solo se da acceso a las carpetas de los clientes asignados a cada persona y se revisa cada trimestre.
+    herramienta: Permisos de carpetas del servidor
+    evidencia: Acta de revisión trimestral de accesos
+info_almacenamiento:
+  - informacion: Datos de clientes (nivel medio)
+    quien: Administrador de sistemas
+    pasos: Se guardan en el servidor con disco cifrado y nunca en el escritorio de los equipos.
+    herramienta: Servidor de ficheros con cifrado de disco
+    evidencia: Informe de configuración del cifrado
+info_copias:
+  - informacion: Datos de clientes (nivel medio)
+    quien: Administrador de sistemas
+    pasos: Copia nocturna a la nube y prueba de restauración de una carpeta cada trimestre.
+    herramienta: Servicio de copias en la nube
+    evidencia: Informe de copia y acta de la prueba de restauración
+info_etiquetado:
+  - informacion: Soportes con datos de clientes
+    quien: Técnica de calidad y cumplimiento
+    pasos: Cada soporte lleva una etiqueta con su nivel y su responsable, y se anota en el inventario.
+    herramienta: Etiquetas impresas e inventario de soportes
+    evidencia: Inventario de soportes actualizado
+info_transmision:
+  - informacion: Datos de clientes (nivel medio)
+    quien: Todo el personal
+    pasos: Se envían solo mediante el portal de clientes o por correo cifrado, nunca por mensajería personal.
+    herramienta: Portal de clientes y correo cifrado
+    evidencia: Registro del portal de clientes
+info_otras:
+  not_applicable: true
+  reason: No hay otras actividades de tratamiento; la destrucción de papel se recoge en el procedimiento de soportes.
+aut_instalaciones:
+  - elemento: Oficina principal de Zaragoza
+    quien: Gerente
+    solicitud: Petición por correo a la gerente
+    registro: Correo archivado en la carpeta Seguridad
+aut_instalaciones_alt:
+  - elemento: Teletrabajo desde domicilio
+    quien: Jefe de administración
+    solicitud: Petición por correo indicando persona y fechas
+    registro: Autorización de teletrabajo firmada
+aut_equipos:
+  - elemento: Ordenadores y servidor nuevos
+    quien: Responsable del sistema
+    solicitud: Ficha de alta del equipo con su configuración
+    registro: Inventario de equipos actualizado
+aut_criptografia:
+  - elemento: VPN y cifrado de discos
+    quien: Responsable de la seguridad
+    solicitud: Petición razonada por escrito
+    registro: Registro de configuración criptográfica
+aut_aplicaciones:
+  - elemento: Programas contables y servicios en la nube
+    quien: Responsable del sistema
+    solicitud: Petición por el formulario interno
+    registro: Registro de aplicaciones autorizadas
+aut_enlaces:
+  - elemento: Conexión con el portal de la administración tributaria de un cliente
+    quien: Responsable de la seguridad
+    solicitud: Petición por escrito con la finalidad del enlace
+    registro: Registro de enlaces autorizados
+aut_comunicaciones:
+  - elemento: Correo corporativo y videoconferencia
+    quien: Responsable del sistema
+    solicitud: Alta por el formulario interno
+    registro: Registro de servicios autorizados
+aut_comunicaciones_alt:
+  not_applicable: true
+  reason: No se usan medios alternativos; si el correo falla se llama por teléfono a los clientes.
+aut_soportes:
+  - elemento: Discos externos para copias puntuales
+    quien: Responsable del sistema
+    solicitud: Petición por correo indicando uso y duración
+    registro: Inventario de soportes
+aut_moviles:
+  - elemento: Portátiles y teléfonos corporativos
+    quien: Responsable del sistema
+    solicitud: Petición firmada por el jefe de administración
+    registro: Inventario de equipos móviles
+aut_terceros:
+  - elemento: Proveedor informático externo y asesoría laboral colaboradora
+    quien: Gerente
+    solicitud: Propuesta y contrato firmado
+    registro: Contrato archivado y registro de proveedores
+autoridad_procedimientos: el responsable de la seguridad

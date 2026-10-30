@@ -56,9 +56,26 @@ from ens_evidence.evidence import (
 )
 from ens_evidence.evidence.importer import import_collected
 from ens_evidence.models.enums import CollectionStatus, Role
+from ens_evidence.orgdocs import (
+    ANSWERS_KEY,
+    AnswersInvalid,
+    BuildStatus,
+    DocumentApprovalRejected,
+    DocumentState,
+    TemplateError,
+    UnknownDocument,
+    all_questions,
+    all_statuses,
+    approve_document,
+    build_documents,
+    load_templates,
+    requirement_label,
+    skeleton,
+)
 from ens_evidence.scope import (
     ObservedInputError,
     ScopeApprovalRejected,
+    ScopeNotApproved,
     ScopeState,
     approve_scope,
     load_assets,
@@ -71,7 +88,7 @@ from ens_evidence.scope import (
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.models import Deployment
 from ens_evidence.scope.secrets import find_secrets
-from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SYNCED_KEYS
+from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SCOPE_KEYS, synced_keys
 from ens_evidence.workspace import (
     BackupSettings,
     LocalStore,
@@ -104,6 +121,7 @@ backup_app.add_typer(restore_test_app, name="restore-test")
 catalog_app = typer.Typer(help="Catálogo de medidas del anexo II.", no_args_is_help=True)
 controls_app = typer.Typer(help="Estado de las medidas de la organización.", no_args_is_help=True)
 endpoint_app = typer.Typer(help="Evidencia de endpoints con script guiado.", no_args_is_help=True)
+docs_app = typer.Typer(help="Documentación organizativa.", no_args_is_help=True)
 app.add_typer(report_app, name="report")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
@@ -115,6 +133,7 @@ app.add_typer(backup_app, name="backup")
 app.add_typer(catalog_app, name="catalog")
 app.add_typer(controls_app, name="controls")
 app.add_typer(endpoint_app, name="endpoint")
+app.add_typer(docs_app, name="docs")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -159,6 +178,8 @@ def handled[**P, R](command: Callable[P, R]) -> Callable[P, R]:
             return command(*args, **kwargs)
         except WorkspaceError as exc:
             raise fail(f"Error: {exc}") from None
+        except TemplateError as exc:
+            raise fail(f"Las plantillas empaquetadas no son válidas: {exc}") from None
         except (OSError, ValueError) as exc:
             raise fail(f"Error al leer o escribir ficheros: {type(exc).__name__}") from None
 
@@ -315,7 +336,7 @@ def workspace_pull(
     reject_inside_product(directory)
     source = open_workspace(ctx)
     target = LocalStore(directory)
-    keys = [key for key in SYNCED_KEYS if source.exists(key)]
+    keys = synced_keys(source)
     if not force:
         differing = differing_keys(source, target, keys)
         if differing:
@@ -348,7 +369,7 @@ def workspace_push(ctx: typer.Context, directory: Path) -> None:
         typer.echo("No se publica nada: el alcance no es válido.", err=True)
         print_errors(loaded.errors)
         raise typer.Exit(1)
-    keys = [key for key in SYNCED_KEYS if source.exists(key)]
+    keys = synced_keys(source)
     contents = {key: source.read_text(key) for key in keys}
     leaked = [key for key, text in contents.items() if find_secrets(text)]
     if leaked:
@@ -361,7 +382,8 @@ def workspace_push(ctx: typer.Context, directory: Path) -> None:
     if not changing:
         typer.echo("Nada que publicar: el destino ya es idéntico.")
         return
-    if revoke_approval(destination, "workspace push", datetime.now(UTC)):
+    scope_changed = bool(changing & SCOPE_KEYS)
+    if scope_changed and revoke_approval(destination, "workspace push", datetime.now(UTC)):
         typer.echo("Se revoca la aprobación del destino; tras publicar hay que aprobar de nuevo.")
     for key, text in contents.items():
         destination.write_text(key, text)
@@ -928,6 +950,138 @@ def controls_init(ctx: typer.Context) -> None:
             f"La versión del catálogo cambió (consolidado {replaced.consolidation_date} → "
             f"{result.version.consolidation_date}); revisa las medidas afectadas."
         )
+
+
+def print_scope_block(exc: ScopeNotApproved) -> None:
+    state = exc.status.state
+    match state:
+        case ScopeState.INVALID:
+            typer.echo("  El alcance no es válido; corrige estos errores:", err=True)
+        case ScopeState.STALE:
+            typer.echo(
+                "  El alcance cambió después de aprobarse; apruébalo de nuevo con "
+                "`ens-evidence scope approve`.",
+                err=True,
+            )
+        case _:
+            typer.echo(
+                "  El alcance está pendiente de aprobación; apruébalo con "
+                "`ens-evidence scope approve`.",
+                err=True,
+            )
+    print_errors(exc.status.errors)
+
+
+@docs_app.command("questions")
+@handled
+def docs_questions() -> None:
+    """Lista las preguntas que las plantillas piden a la organización."""
+    templates = load_templates()
+    for question in all_questions(templates):
+        documents = [
+            t.id for t in templates if any(q.id == question.id for q in t.template.questions)
+        ]
+        typer.echo(
+            f"{question.id} [{question.type.value}, {requirement_label(question)}] {question.text}"
+        )
+        typer.echo(f"  cláusula {question.clause}; documentos: {', '.join(documents)}")
+        if question.help:
+            typer.echo(f"  {question.help}")
+
+
+@docs_app.command("init")
+@handled
+def docs_init(ctx: typer.Context) -> None:
+    """Crea org/answers.yaml con todas las preguntas vacías; no sobrescribe."""
+    if write_if_absent(open_workspace(ctx), ANSWERS_KEY, skeleton(load_templates())):
+        typer.echo(f"Creado: {ANSWERS_KEY}. Rellénalo y ejecuta `ens-evidence docs build`.")
+    else:
+        typer.echo(f"{ANSWERS_KEY} ya existe y se conserva.")
+
+
+@docs_app.command("build")
+@handled
+def docs_build(ctx: typer.Context) -> None:
+    """Genera los documentos en org/docs/. Exige alcance aprobado y respuestas completas."""
+    try:
+        report = build_documents(open_workspace(ctx))
+    except ScopeNotApproved as exc:
+        typer.echo("No se genera nada:", err=True)
+        print_scope_block(exc)
+        raise typer.Exit(1) from None
+    except AnswersInvalid as exc:
+        typer.echo("No se genera nada: faltan respuestas o no son válidas.", err=True)
+        print_errors(exc.report.errors())
+        raise typer.Exit(1) from None
+    for warning in report.warnings:
+        typer.echo(f"Aviso: {warning}", err=True)
+    labels = {
+        BuildStatus.CREATED: "creado",
+        BuildStatus.UPDATED: "actualizado",
+        BuildStatus.UNCHANGED: "sin cambios",
+    }
+    for result in report.documents:
+        typer.echo(f"{result.name}: {labels[result.status]} (sha256 {result.document_sha256})")
+        if result.edited_by_hand:
+            typer.echo(
+                f"  Aviso: {result.name} no coincidía con su registro (edición manual o "
+                "escritura interrumpida); la versión anterior queda en org/docs/history/.",
+                err=True,
+            )
+
+
+@docs_app.command("approve")
+@handled
+def docs_approve(
+    ctx: typer.Context,
+    document: Annotated[str, typer.Argument(help="Documento (ver `docs status`).")],
+    by: Annotated[str, typer.Option("--by", help="Nombre de quien aprueba (declarado).")],
+    role: Annotated[Role, typer.Option(help="Rol de quien aprueba.")],
+) -> None:
+    """Aprueba un documento generado. El rol exigido depende del documento."""
+    try:
+        approval = approve_document(open_workspace(ctx), document, by, role, clock())
+    except UnknownDocument:
+        raise fail(f"Documento desconocido: {document}") from None
+    except ScopeNotApproved as exc:
+        typer.echo("No se aprueba el documento:", err=True)
+        print_scope_block(exc)
+        raise typer.Exit(1) from None
+    except DocumentApprovalRejected as exc:
+        typer.echo("No se aprueba el documento:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(
+        f"{document} aprobado por {approval.approved_by} ({approval.role.value}) "
+        f"el {approval.approved_at.isoformat()}. sha256 {approval.document_sha256}\n"
+        "El nombre es declarado; no se autentica. Aprobar un documento no cambia el estado "
+        "de ninguna medida."
+    )
+
+
+@docs_app.command("status")
+@handled
+def docs_status(ctx: typer.Context) -> None:
+    """Estado de cada documento: sin generar, generado, aprobado (vigente) u obsoleto."""
+    labels = {
+        DocumentState.NOT_GENERATED: "sin generar",
+        DocumentState.GENERATED: "generado, sin aprobar",
+        DocumentState.APPROVED: "aprobado y vigente",
+        DocumentState.OBSOLETE: "aprobado pero obsoleto",
+    }
+    statuses = all_statuses(open_workspace(ctx))
+    for status in statuses:
+        typer.echo(f"{status.name}: {labels[status.state]}")
+        if status.approval:
+            approval = status.approval
+            typer.echo(
+                f"  aprobado por {approval.approved_by} ({approval.role.value}) "
+                f"el {approval.approved_at.isoformat()}"
+            )
+        for reason in status.reasons:
+            typer.echo(f"  - {reason}")
+    if any(s.state is not DocumentState.APPROVED for s in statuses):
+        raise typer.Exit(1)
 
 
 def connector_registry() -> ConnectorRegistry:

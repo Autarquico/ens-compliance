@@ -18,6 +18,8 @@ from ens_evidence.models import (
     ReadinessResult,
     Review,
 )
+from ens_evidence.orgdocs.approval import DocumentApproval
+from ens_evidence.orgdocs.meta import DocumentMeta
 from ens_evidence.scope import (
     Approval,
     AssetsFile,
@@ -49,6 +51,8 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "scope-services": ServicesFile,
     "scope-system": SystemScope,
     "observed-hosts": ObservedHosts,
+    "org-document-meta": DocumentMeta,
+    "org-document-approval": DocumentApproval,
 }
 
 

@@ -1,0 +1,157 @@
+{
+  "$defs": {
+    "SupportedClause": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "origin": {
+          "enum": [
+            "catalog",
+            "articulado"
+          ],
+          "title": "Origin",
+          "type": "string"
+        },
+        "section": {
+          "title": "Section",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "origin",
+        "section"
+      ],
+      "title": "SupportedClause",
+      "type": "object"
+    },
+    "SupportedMeasure": {
+      "additionalProperties": false,
+      "properties": {
+        "covered_clauses": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Covered Clauses",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "missing_clauses": {
+          "description": "Cl\u00e1usulas del cuerpo de la medida que el documento no cubre.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Missing Clauses",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "covered_clauses",
+        "missing_clauses"
+      ],
+      "title": "SupportedMeasure",
+      "type": "object"
+    },
+    "TemplateRef": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "version": {
+          "title": "Version",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "id",
+        "version"
+      ],
+      "title": "TemplateRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Cubrir una cl\u00e1usula no acredita que la medida est\u00e9 implantada.",
+  "properties": {
+    "answers_sha256": {
+      "description": "Sha256 de las respuestas que usa este documento.",
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Answers Sha256",
+      "type": "string"
+    },
+    "articulado_consolidation_date": {
+      "format": "date",
+      "title": "Articulado Consolidation Date",
+      "type": "string"
+    },
+    "articulado_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Articulado Sha256",
+      "type": "string"
+    },
+    "catalog_consolidation_date": {
+      "format": "date",
+      "title": "Catalog Consolidation Date",
+      "type": "string"
+    },
+    "catalog_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Catalog Sha256",
+      "type": "string"
+    },
+    "clauses": {
+      "items": {
+        "$ref": "#/$defs/SupportedClause"
+      },
+      "title": "Clauses",
+      "type": "array"
+    },
+    "document": {
+      "title": "Document",
+      "type": "string"
+    },
+    "document_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Document Sha256",
+      "type": "string"
+    },
+    "measures": {
+      "items": {
+        "$ref": "#/$defs/SupportedMeasure"
+      },
+      "title": "Measures",
+      "type": "array"
+    },
+    "renderer_version": {
+      "title": "Renderer Version",
+      "type": "integer"
+    },
+    "template": {
+      "$ref": "#/$defs/TemplateRef"
+    }
+  },
+  "required": [
+    "document",
+    "template",
+    "renderer_version",
+    "catalog_sha256",
+    "catalog_consolidation_date",
+    "articulado_sha256",
+    "articulado_consolidation_date",
+    "answers_sha256",
+    "document_sha256",
+    "clauses",
+    "measures"
+  ],
+  "title": "DocumentMeta",
+  "type": "object"
+}

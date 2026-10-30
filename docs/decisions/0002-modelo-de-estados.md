@@ -47,6 +47,12 @@ Mezclar ejes en un mismo enum permite estados absurdos (un check
 - `REVIEW` (`:274`) es `MeasureAssessment.REQUIRES_REVIEW`.
 - `NOT_APPLICABLE` (`:274`) es aplicabilidad, nunca resultado de un check.
 
+### Roles
+
+`management` es la dirección u órgano con las máximas competencias
+ejecutivas, que aprueba la política (art. 2.3) y las normas de seguridad
+(art. 15.2); ver 0010.
+
 ### Revisión humana
 
 `Review`: `reviewer`, `role`, `reviewed_at`, `valid_until`, `conclusion`,

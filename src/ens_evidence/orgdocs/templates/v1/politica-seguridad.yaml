@@ -1,0 +1,226 @@
+id: politica-seguridad
+title: "Política de seguridad de la información"
+questions:
+  - id: organizacion
+    text: "¿Cómo se llama la organización y a qué se dedica?"
+    clause: org.1.1
+    help: "Nombre legal y una frase sobre qué hace. Ejemplo: «Talleres Norte S.L., fabricación de piezas para clientes industriales»."
+  - id: mision
+    text: "¿Cuál es la misión de la organización y qué servicios presta?"
+    clause: org.1.1
+    help: "Para quién trabaja y qué necesitan de la organización. Ejemplo: «gestionamos nóminas de 40 pymes»."
+  - id: objetivos_seguridad
+    text: "¿Qué quiere proteger la organización con su seguridad?"
+    type: list
+    clause: org.1.1
+    help: "Una lista de objetivos concretos: qué información o servicios son críticos y qué se quiere evitar."
+  - id: marco_legal
+    text: "¿Qué leyes, normas y contratos obligan a la organización en materia de seguridad?"
+    type: list
+    clause: org.1.2
+    help: "Además del ENS, por ejemplo RGPD, LOPDGDD, requisitos de clientes o del sector público. Una norma o contrato por línea."
+  - id: riesgos_datos_personales
+    text: "¿Qué datos personales trata la organización y qué riesgos corren las personas si se pierden o se filtran?"
+    clause: art.12.1.f
+    help: "Art. 12.1.f: categorías de datos y de personas afectadas, y el daño que podrían sufrir. Es una descripción, no el análisis de riesgos completo."
+  - id: resp_informacion
+    text: "¿Quién es el responsable de la información?"
+    clause: org.1.3
+    help: "Nombre y apellidos, tal y como figura en la lista de personas. Debe ser una persona concreta, no un departamento."
+  - id: resp_informacion_funciones
+    text: "¿Qué hace en la práctica el responsable de la información?"
+    clause: art.13.2
+    help: "Art. 13.2.a: determina los requisitos de la información que se trata. Describe sus tareas y decisiones reales en esta organización, no repitas la ley."
+  - id: resp_servicio
+    text: "¿Quién es el responsable del servicio?"
+    clause: org.1.3
+    help: "Nombre y apellidos, tal y como figura en la lista de personas. Debe ser una persona concreta, no un departamento."
+  - id: resp_servicio_funciones
+    text: "¿Qué hace en la práctica el responsable del servicio?"
+    clause: art.13.2
+    help: "Art. 13.2.b: determina los requisitos de los servicios que se prestan. Describe sus tareas y decisiones reales en esta organización, no repitas la ley."
+  - id: resp_seguridad
+    text: "¿Quién es el responsable de la seguridad?"
+    clause: org.1.3
+    help: "Nombre y apellidos, tal y como figura en la lista de personas. Debe ser una persona concreta, no un departamento."
+  - id: resp_seguridad_funciones
+    text: "¿Qué hace en la práctica el responsable de la seguridad?"
+    clause: art.13.2
+    help: "Art. 13.2.c: determina las decisiones para cumplir los requisitos de seguridad y supervisa las medidas. Describe sus tareas y decisiones reales en esta organización, no repitas la ley."
+  - id: resp_sistema
+    text: "¿Quién es el responsable del sistema?"
+    clause: org.1.3
+    help: "Nombre y apellidos, tal y como figura en la lista de personas. Debe ser una persona concreta, no un departamento."
+  - id: resp_sistema_funciones
+    text: "¿Qué hace en la práctica el responsable del sistema?"
+    clause: art.13.2
+    help: "Art. 13.2.d: determina cómo se implementa la seguridad y la operación diaria del sistema. Describe sus tareas y decisiones reales en esta organización, no repitas la ley."
+  - id: designacion_procedimiento
+    text: "¿Cómo se nombra a cada responsable?"
+    clause: org.1.3
+    help: "Quién decide el nombramiento, cómo se comunica a la persona y al resto del personal y dónde queda constancia."
+  - id: renovacion_procedimiento
+    text: "¿Cómo y cuándo se renueva o se sustituye a un responsable?"
+    clause: org.1.3
+    help: "Cada cuánto se revisa el nombramiento y qué se hace si la persona se va, cambia de puesto o no puede ejercer."
+  - id: coordinacion
+    text: "¿Cómo se coordinan los responsables entre sí?"
+    clause: art.11.3
+    help: "Reuniones (con qué frecuencia), canal habitual y qué se documenta. Art. 11.3: la política debe detallar los mecanismos de coordinación."
+  - id: resolucion_conflictos
+    text: "Si dos responsables no se ponen de acuerdo, ¿quién decide y cómo?"
+    clause: art.11.3
+    help: "Persona u órgano que resuelve, en qué plazo y dónde queda la decisión (art. 11.3)."
+  - id: comite
+    text: "¿Qué comités gestionan y coordinan la seguridad?"
+    type: records
+    clause: org.1.4
+    help: "Aunque sea una reunión de dos o tres personas. Indica ámbito, integrantes (con nombre) y relación con otros elementos de la organización."
+    fields:
+      - {id: nombre, text: "Nombre del comité"}
+      - {id: ambito, text: "Ámbito de responsabilidad"}
+      - {id: integrantes, text: "Integrantes"}
+      - {id: relacion, text: "Relación con otros elementos de la organización"}
+  - id: documentacion_estructura
+    text: "¿Cómo se organiza la documentación de seguridad?"
+    clause: org.1.5
+    help: "Qué documentos existen (política, normativa, procedimientos...) y cómo se relacionan entre sí."
+  - id: documentacion_gestion
+    text: "¿Quién gestiona la documentación de seguridad y cómo se mantiene?"
+    clause: org.1.5
+    help: "Persona que la custodia, cada cuánto se revisa y cómo se controlan las versiones."
+  - id: documentacion_acceso
+    text: "¿Quién puede leer y quién puede modificar la documentación de seguridad, y dónde está?"
+    clause: org.1.5
+    help: "Ubicación (carpeta, intranet) y permisos. Todo el personal debe poder leer lo que le afecta."
+  - id: difusion_personal
+    text: "¿Cómo se da a conocer la política a todo el personal?"
+    clause: art.13.2
+    help: "Art. 13.2: debe ser conocida por todas las personas de la organización. Indica medio, cuándo (alta, cambios) y cómo se deja constancia de que se ha leído."
+  - id: servicios_externalizados
+    text: "¿Prestáis servicios a una administración u otra entidad que se apoyan en vuestros sistemas?"
+    clause: art.13.5
+    help: "Es el caso habitual de quien entra en el ENS por contrato con el sector público (art. 2.3): por ejemplo, gestionáis las nóminas de un ayuntamiento o alojáis sus datos. En ese caso el art. 13.5 obliga a designar un punto de contacto de seguridad (POC). Responde «sí» o «no»."
+    choices: ["sí", "no"]
+  - id: poc_servicios
+    text: "¿Quién es el punto de contacto (POC) de seguridad de cada servicio prestado a otra entidad?"
+    type: records
+    clause: art.13.5
+    help: "Art. 13.5: el POC canaliza y supervisa los requisitos de seguridad, las comunicaciones y los incidentes del servicio, y es el responsable de seguridad de la organización, forma parte de su área o tiene comunicación directa con él. En «relación» indica si el POC es el propio responsable, forma parte de su área o tiene comunicación directa con él, y cómo. Solo se puede no designar POC por causa justificada y documentada: en ese caso responde {not_applicable: true, reason: <causa concreta>}."
+    required_if: {question: servicios_externalizados, any_of: ["sí"]}
+    allow_not_applicable: true
+    not_applicable_label: "No se designa punto de contacto. Causa justificada"
+    fields:
+      - {id: servicio, text: "Servicio"}
+      - {id: cliente, text: "Entidad destinataria"}
+      - {id: poc, text: "Nombre y contacto del POC"}
+      - {id: relacion, text: "Relación con el responsable de la seguridad"}
+  - id: direccion
+    text: "¿Quién ostenta las máximas competencias ejecutivas y aprueba estos documentos?"
+    clause: art.2.3
+    help: "Persona u órgano que decide en última instancia (gerencia, consejo de administración). La política la aprueba ese órgano (art. 2.3) y las normas de seguridad, la dirección (art. 15.2)."
+  - id: firmante_direccion
+    text: "¿Quién firma en nombre de la dirección?"
+    clause: art.2.3
+    help: "Una persona concreta, con el nombre que figura en la lista de personas, que aprueba los documentos en nombre de la dirección aunque esta sea un órgano (por ejemplo, un consejo de administración). Si no ocupa ningún cargo de seguridad, añádela igualmente a esa lista."
+sections:
+  - id: introduccion
+    title: "Introducción"
+    covers: [org.1.intro]
+    body: |
+      Organización: {{organizacion}}
+  - id: objetivos
+    title: "Objetivos y misión"
+    covers: [org.1.1]
+    body: |
+      {{mision}}
+
+      Objetivos de seguridad:
+
+      {{#each objetivos_seguridad}}
+      - {{.}}
+      {{/each}}
+  - id: marco
+    title: "Marco legal y regulatorio"
+    covers: [org.1.2]
+    body: |
+      {{#each marco_legal}}
+      - {{.}}
+      {{/each}}
+  - id: datos_personales
+    title: "Riesgos del tratamiento de datos personales"
+    covers: [art.12.1.f]
+    body: |
+      {{riesgos_datos_personales}}
+  - id: roles
+    title: "Roles de seguridad"
+    covers: [org.1.3, art.13.2, art.11.3]
+    body: |
+      - Responsable de la información: {{resp_informacion}}. {{resp_informacion_funciones}}
+      - Responsable del servicio: {{resp_servicio}}. {{resp_servicio_funciones}}
+      - Responsable de la seguridad: {{resp_seguridad}}. {{resp_seguridad_funciones}}
+      - Responsable del sistema: {{resp_sistema}}. {{resp_sistema_funciones}}
+
+      Designación: {{designacion_procedimiento}}
+
+      Renovación: {{renovacion_procedimiento}}
+  - id: coordinacion
+    title: "Coordinación y resolución de conflictos"
+    covers: [art.11.3]
+    body: |
+      Coordinación: {{coordinacion}}
+
+      Resolución de conflictos: {{resolucion_conflictos}}
+  - id: comite
+    title: "Comités de seguridad"
+    covers: [org.1.4]
+    body: |
+      {{#each comite}}
+      ### {{.nombre}}
+
+      - Ámbito: {{.ambito}}
+      - Integrantes: {{.integrantes}}
+      - Relación con otros elementos: {{.relacion}}
+
+      {{/each}}
+  - id: documentacion
+    title: "Documentación de seguridad"
+    covers: [org.1.5]
+    body: |
+      Estructura: {{documentacion_estructura}}
+
+      Gestión: {{documentacion_gestion}}
+
+      Acceso: {{documentacion_acceso}}
+  - id: difusion
+    title: "Conocimiento por el personal"
+    covers: [art.13.2]
+    body: |
+      {{difusion_personal}}
+  - id: externalizados_si
+    title: "Servicios prestados a otras entidades"
+    covers: []
+    when: {question: servicios_externalizados, any_of: ["sí"]}
+    body: |
+      La organización presta servicios a otras entidades que se apoyan en sus sistemas.
+  - id: externalizados_no
+    title: "Servicios prestados a otras entidades"
+    covers: []
+    when: {question: servicios_externalizados, any_of: ["no"]}
+    body: |
+      La organización no presta servicios a otras entidades que se apoyen en sus sistemas.
+  - id: poc
+    title: "Punto de contacto de seguridad"
+    covers: [art.13.5]
+    when: {question: servicios_externalizados, any_of: ["sí"]}
+    body: |
+      {{#each poc_servicios}}
+      - {{.servicio}} ({{.cliente}}): {{.poc}}. Relación con el responsable de la seguridad: {{.relacion}}
+      {{/each}}
+  - id: aprobacion
+    title: "Aprobación"
+    covers: [art.2.3]
+    body: |
+      Aprueba esta política: {{direccion}}
+
+      Firma por la dirección: {{firmante_direccion}}

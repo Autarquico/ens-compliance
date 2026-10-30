@@ -1,0 +1,137 @@
+regulation: Real Decreto 311/2022, de 3 de mayo
+url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
+consolidation_date: '2024-11-06'
+snapshot: articulado.html
+snapshot_sha256: d97c9326865454708b7c9ef7c16185ac6970f10acb387d2455856b93dcc67fef
+clauses:
+- id: art.2.3
+  reference: RD 311/2022, art. 2.3
+  text: '3. Este real decreto también se aplica a los sistemas de información de las entidades del sector
+    privado, incluida la obligación de contar con la política de seguridad a que se refiere el artículo
+    12, cuando, de acuerdo con la normativa aplicable y en virtud de una relación contractual, presten
+    servicios o provean soluciones a las entidades del sector público para el ejercicio por estas de sus
+    competencias y potestades administrativas.
+
+
+    La política de seguridad a que se refiere el artículo 12 será aprobada en el caso de estas entidades
+    por el órgano que ostente las máximas competencias ejecutivas.
+
+
+    Los pliegos de prescripciones administrativas o técnicas de los contratos que celebren las entidades
+    del sector público incluidas en el ámbito de aplicación de este real decreto contemplarán todos aquellos
+    requisitos necesarios para asegurar la conformidad con el ENS de los sistemas de información en los
+    que se sustenten los servicios prestados por los contratistas, tales como la presentación de las correspondientes
+    Declaraciones o Certificaciones de Conformidad con el ENS.
+
+
+    Esta cautela se extenderá también a la cadena de suministro de dichos contratistas, en la medida que
+    sea necesario y de acuerdo con los resultados del correspondiente análisis de riesgos.'
+- id: art.11
+  reference: RD 311/2022, art. 11
+  text: '1. En los sistemas de información se diferenciará el responsable de la información, el responsable
+    del servicio, el responsable de la seguridad y el responsable del sistema.
+
+
+    2. La responsabilidad de la seguridad de los sistemas de información estará diferenciada de la responsabilidad
+    sobre la explotación de los sistemas de información concernidos.
+
+
+    3. La política de seguridad de la organización detallará las atribuciones de cada responsable y los
+    mecanismos de coordinación y resolución de conflictos.'
+- id: art.11.3
+  reference: RD 311/2022, art. 11.3
+  text: 3. La política de seguridad de la organización detallará las atribuciones de cada responsable
+    y los mecanismos de coordinación y resolución de conflictos.
+- id: art.12.1
+  reference: RD 311/2022, art. 12.1
+  text: '1. La política de seguridad de la información es el conjunto de directrices que rigen la forma
+    en que una organización gestiona y protege la información que trata y los servicios que presta. A
+    tal efecto, el instrumento que apruebe dicha política de seguridad deberá incluir, como mínimo, los
+    siguientes extremos:
+
+
+    a) Los objetivos o misión de la organización.
+
+
+    b) El marco regulatorio en el que se desarrollarán las actividades.
+
+
+    c) Los roles o funciones de seguridad, definiendo para cada uno, sus deberes y responsabilidades,
+    así como el procedimiento para su designación y renovación.
+
+
+    d) La estructura y composición del comité o los comités para la gestión y coordinación de la seguridad,
+    detallando su ámbito de responsabilidad y la relación con otros elementos de la organización.
+
+
+    e) Las directrices para la estructuración de la documentación de seguridad del sistema, su gestión
+    y acceso.
+
+
+    f) Los riesgos que se derivan del tratamiento de los datos personales.'
+- id: art.12.1.f
+  reference: RD 311/2022, art. 12.1.f
+  text: f) Los riesgos que se derivan del tratamiento de los datos personales.
+- id: art.12.2
+  reference: RD 311/2022, art. 12.2
+  text: '2. Cada administración pública contará con una política de seguridad formalmente aprobada por
+    el órgano competente. Asimismo, cada órgano o entidad con personalidad jurídica propia comprendido
+    en el ámbito subjetivo del artículo 2 deberá contar con una política de seguridad formalmente aprobada
+    por el órgano competente.
+
+
+    No obstante, la totalidad o una parte de los sujetos de un sector público institucional podrán quedar
+    incluidos en el ámbito subjetivo de la política de seguridad aprobada por la Administración con la
+    que guarden relación de vinculación, dependencia o adscripción, cuando así lo determinen los órganos
+    competentes en el ejercicio de las potestades de organización.'
+- id: art.13.2
+  reference: RD 311/2022, art. 13.2
+  text: '2. La política de seguridad, en aplicación del principio de diferenciación de responsabilidades
+    a que se refiere el artículo 11 y según se detalla en la sección 3.1 del anexo II, deberá ser conocida
+    por todas las personas que formen parte de la organización e identificar de forma inequívoca a los
+    responsables de velar por su cumplimiento, los cuales tendrán las siguientes funciones:
+
+
+    a) El responsable de la información determinará los requisitos de la información tratada
+
+
+    b) El responsable del servicio determinará los requisitos de los servicios prestados.
+
+
+    c) El responsable de la seguridad determinará las decisiones para satisfacer los requisitos de seguridad
+    de la información y de los servicios, supervisará la implantación de las medidas necesarias para garantizar
+    que se satisfacen los requisitos y reportará sobre estas cuestiones.
+
+
+    d) El responsable del sistema, por sí o a través de recursos propios o contratados, se encargará de
+    desarrollar la forma concreta de implementar la seguridad en el sistema y de la supervisión de la
+    operación diaria del mismo, pudiendo delegar en administradores u operadores bajo su responsabilidad.'
+- id: art.13.3
+  reference: RD 311/2022, art. 13.3
+  text: 3. El responsable de la seguridad será distinto del responsable del sistema, no debiendo existir
+    dependencia jerárquica entre ambos. En aquellas situaciones excepcionales en las que la ausencia justificada
+    de recursos haga necesario que ambas funciones recaigan en la misma persona o en distintas personas
+    entre las que exista relación jerárquica, deberán aplicarse medidas compensatorias para garantizar
+    la finalidad del principio de diferenciación de responsabilidades previsto en el artículo 11.
+- id: art.13.5
+  reference: RD 311/2022, art. 13.5
+  text: '5. En el caso de servicios externalizados, salvo por causa justificada y documentada, la organización
+    prestataria de dichos servicios deberá designar un POC (Punto o Persona de Contacto) para la seguridad
+    de la información tratada y el servicio prestado, que cuente con el apoyo de los órganos de dirección,
+    y que canalice y supervise, tanto el cumplimiento de los requisitos de seguridad del servicio que
+    presta o solución que provea, como las comunicaciones relativas a la seguridad de la información y
+    la gestión de los incidentes para el ámbito de dicho servicio.
+
+
+    Dicho POC de seguridad será el propio Responsable de Seguridad de la organización contratada, formará
+    parte de su área o tendrá comunicación directa con la misma. Todo ello sin perjuicio de que la responsabilidad
+    última resida en la entidad del sector público destinataria de los citados servicios.'
+- id: art.15.2
+  reference: RD 311/2022, art. 15.2
+  text: 2. El significado y alcance del uso seguro del sistema se concretará y plasmará en unas normas
+    de seguridad que serán aprobadas por la dirección o el órgano superior correspondiente.
+- id: anexo-iii.1.1.f
+  reference: RD 311/2022, anexo III, 1.1.f
+  text: f) Que existe un sistema de gestión de la seguridad de la información, documentado y con un proceso
+    regular de aprobación por la dirección, tomando como base la Declaración de Aplicabilidad regulada
+    en el artículo 28 de este real decreto.
