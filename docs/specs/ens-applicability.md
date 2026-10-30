@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: L
 issue: 17
-prs: []
+prs: [46]
 related_issues: [17]
 depends_on: [ens-catalog, discovery-inventory]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-10-30
 ---
 
 # Categorización, riesgos y aplicabilidad
