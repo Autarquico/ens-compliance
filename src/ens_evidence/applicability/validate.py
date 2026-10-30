@@ -3,7 +3,7 @@
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from ens_evidence.applicability.absent import Exclusion, absent_asset_errors, absent_asset_warnings
+from ens_evidence.applicability.absent import Exclusion, absent_asset_errors
 from ens_evidence.applicability.context import Context, load_context
 from ens_evidence.applicability.selection import Selection, is_own_proposal
 from ens_evidence.approvals import Rejected, load_model
@@ -69,7 +69,6 @@ def validate_applicability(store: WorkspaceStore, now: datetime) -> Validation:
     assets = assets_file.assets if assets_file else []
     errors = [e for m in document.measures for e in _measure_errors(m, context, assets)]
     risk_errors, warnings = safeguard_findings(store, document)
-    warnings = [*warnings, *absent_asset_warnings(document.measures, assets)]
     return Validation(
         context, document, [*errors, *risk_errors], warnings, _exclusions(document, context)
     )

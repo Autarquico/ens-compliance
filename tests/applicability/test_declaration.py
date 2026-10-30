@@ -387,21 +387,6 @@ def test_la_pista_de_una_declaracion_obsoleta_incluye_risk_approve(ready, ens_cl
     assert "risk approve" in result.output
 
 
-def test_approve_por_cli_muestra_el_aviso_de_servidor_desplegado(ready, ens_cli):
-    decide(
-        ready,
-        "mp.if.1",
-        Applicability.NOT_APPLICABLE,
-        ABSENT_REASON,
-        absent_assets=absent("instalaciones propias que alberguen el sistema"),
-    )
-
-    signed = ens_cli("applicability", "approve", "--by", "Luis Pardo")
-
-    assert signed.exit_code == 0, signed.output
-    assert "hay un servidor desplegado" in signed.output
-
-
 def test_la_declaracion_por_cli_se_firma_con_by_y_no_admite_otro_rol(ready, ens_cli):
     refused = ens_cli("applicability", "approve", "--by", "Luis Pardo", "--role", "system_owner")
     signed_ok = ens_cli("applicability", "approve", "--by", "Luis Pardo")

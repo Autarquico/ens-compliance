@@ -3,14 +3,13 @@ import yaml
 from pydantic import ValidationError
 
 from ens_evidence.applicability import propose_applicability, validate_applicability
-from ens_evidence.applicability.absent import absent_asset_errors, absent_asset_types
+from ens_evidence.applicability.absent import absent_asset_types
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import load_measures, save_measures
 from ens_evidence.categorization import CategorizationNotCurrent
 from ens_evidence.models.enums import Applicability
 from ens_evidence.models.readiness import AbsentAssets, Compensation, Measure
 from ens_evidence.scope import ScopeNotApproved, revoke_approval
-from ens_evidence.scope.models import Asset, AssetType, Deployment
 
 from .helpers import (
     ABSENT_REASON,
@@ -297,7 +296,6 @@ def test_absent_assets_declara_un_tipo_de_activo_de_la_lista_de_la_medida(decide
     [
         ("mp.eq.3", "dispositivos portátiles"),
         ("mp.s.2", "servicios y aplicaciones web"),
-        ("mp.sw.1", "desarrollo propio de aplicaciones"),
         ("op.ext.1", "servicios prestados por terceros"),
     ],
 )
@@ -317,7 +315,10 @@ def test_absent_assets_no_excluye_lo_que_el_inventario_dice_que_existe(
     assert any("el inventario dice que ese tipo de activo existe" in e for e in errors)
 
 
-@pytest.mark.parametrize("measure_id", ["mp.si.1", "mp.si.5", "mp.info.3"])
+@pytest.mark.parametrize(
+    "measure_id",
+    ["mp.si.1", "mp.si.5", "mp.info.3", "mp.sw.1", "op.ext.3", "mp.if.1", "mp.if.7", "mp.info.4"],
+)
 def test_absent_assets_no_excluye_una_medida_que_no_trata_de_un_activo_que_pueda_faltar(
     decided, measure_id
 ):
@@ -332,64 +333,6 @@ def test_absent_assets_no_excluye_una_medida_que_no_trata_de_un_activo_que_pueda
     errors = [e for e in errors_of(decided) if measure_id in e]
 
     assert any("no se refiere a un tipo de activo que pueda faltar" in e for e in errors)
-
-
-def test_un_alojamiento_de_codigo_desplegado_desmiente_la_exclusion_de_mp_sw_1():
-    hosting = Asset(
-        id="gh",
-        type=AssetType.CODE_HOSTING,
-        deployment=Deployment.DEPLOYED,
-        account="taller",
-        repos=["taller/app"],
-        actions="activadas",
-    )
-    measure = Measure(
-        id="mp.sw.1",
-        applicability=Applicability.NOT_APPLICABLE,
-        justification=ABSENT,
-        absent_assets=absent("desarrollo propio de aplicaciones"),
-    )
-
-    errors = absent_asset_errors(measure, "mp.sw.1", [hosting])
-
-    assert any("el inventario dice que ese tipo de activo existe" in e for e in errors)
-
-
-def test_el_aviso_de_servidor_es_uno_por_servidor_con_todas_las_mp_if_excluidas(decided):
-    for measure_id in ("mp.if.1", "mp.if.2"):
-        decide(
-            decided,
-            measure_id,
-            Applicability.NOT_APPLICABLE,
-            ABSENT,
-            absent_assets=absent("instalaciones propias que alberguen el sistema"),
-        )
-
-    validation = validate_applicability(decided, LATER)
-
-    server_warnings = [w for w in validation.warnings if "servidor desplegado" in w]
-    assert len(server_warnings) == 1
-    assert "mp.if.1, mp.if.2" in server_warnings[0]
-
-
-def test_un_servidor_desplegado_avisa_sin_invalidar_la_exclusion_de_mp_if(decided):
-    decide(
-        decided,
-        "mp.if.1",
-        Applicability.NOT_APPLICABLE,
-        ABSENT,
-        absent_assets=absent("instalaciones propias que alberguen el sistema"),
-    )
-
-    validation = validate_applicability(decided, LATER)
-
-    assert [e for e in validation.errors if "mp.if.1" in e] == []
-    assert any(
-        "mp.if.1" in w
-        and "hay un servidor desplegado (srv-app, Oficina, Gijón)" in w
-        and "confirma que no está en instalaciones propias" in w
-        for w in validation.warnings
-    )
 
 
 def test_la_lista_de_absent_assets_no_incluye_marco_ni_proceso():

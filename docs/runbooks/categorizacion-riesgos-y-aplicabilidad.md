@@ -117,11 +117,11 @@ registrar». Una medida exigida solo tiene tres salidas:
 
   Solo vale para las medidas de una lista cerrada que fija el producto
   (`src/ens_evidence/applicability/absent_asset_types.yaml`; no es texto
-  legal): `op.acc.5`, `op.ext.*`, `op.nub.1`, `mp.if.*`, `mp.eq.3`, `mp.eq.4`,
-  `mp.sw.1`, `mp.info.1`,
-  `mp.info.4` (información susceptible de ser evidencia electrónica), `mp.s.1`
-  y `mp.s.2`. Quedan fuera `mp.si.*` (la custodia, el cifrado de copias y el transporte
-  alcanzan también a soportes y copias que no son removibles) y `mp.info.3`:
+  legal): `op.acc.5`, `op.ext.1`, `op.ext.2`, `op.ext.4`, `op.nub.1`, `mp.eq.3`, `mp.eq.4`, `mp.info.1`, `mp.s.1` y `mp.s.2`. Criterio: solo entra
+  una medida cuya base y todos sus refuerzos tratan exclusivamente de ese tipo de activo.
+  Quedan fuera `mp.si.*` (la custodia, el cifrado de copias y el transporte
+  alcanzan también a soportes y copias que no son removibles), `mp.info.3`, `op.ext.3`,
+  `mp.if.*` (hablan de los locales donde se ubican los sistemas, que existen aunque no haya CPD), `mp.sw.1` y `mp.info.4` (alguna cláusula sobrevive sin el activo):
   se aplican o se compensan. Nunca las organizativas ni de proceso (`org.*`, `op.pl.*`,
   `op.exp.*`, `op.cont.*`, `op.mon.*`, `mp.per.*`). `asset_type` es el de la
   lista de esa medida, la justificación tiene al menos 20 caracteres y no

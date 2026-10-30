@@ -38,32 +38,10 @@ def _contradicting_asset(measure_id: str, assets: list[Asset]) -> str | None:
     if measure_id == "mp.s.2":
         found = any(a.type is AssetType.APPLICATION and a.domain for a in deployed)
         return "una aplicación con dominio" if found else None
-    if measure_id == "mp.sw.1":
-        if any(a.type is AssetType.APPLICATION and a.repo for a in deployed):
-            return "una aplicación con repositorio"
-        if any(a.type is AssetType.CODE_HOSTING for a in deployed):
-            return "un alojamiento de código"
-        return None
     if measure_id.startswith("op.ext."):
         found = any(a.type is AssetType.PROVIDER for a in deployed)
         return "un proveedor" if found else None
     return None
-
-
-def absent_asset_warnings(measures: list[Measure], assets: list[Asset]) -> list[str]:
-    """Señales del inventario que no desmienten la ausencia pero que conviene confirmar.
-
-    Un aviso por servidor desplegado, con todas las mp.if.* excluidas por ausencia.
-    """
-    excluded = [m.id for m in measures if m.absent_assets is not None and m.id.startswith("mp.if.")]
-    if not excluded:
-        return []
-    return [
-        f"hay un servidor desplegado ({a.id}, {a.location or 'sin ubicación'}); "
-        f"confirma que no está en instalaciones propias antes de excluir {', '.join(excluded)}"
-        for a in assets
-        if a.type is AssetType.SERVER and a.deployment is Deployment.DEPLOYED
-    ]
 
 
 def absent_asset_errors(measure: Measure, where: str, assets: list[Asset]) -> list[str]:

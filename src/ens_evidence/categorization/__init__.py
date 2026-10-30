@@ -20,6 +20,12 @@ from ens_evidence.categorization.calculation import (
     commitment_notice,
     compute,
 )
+from ens_evidence.categorization.dossier import (
+    DossierCategoryMismatch,
+    OpenedDossier,
+    open_dossier,
+    require_dossier_category,
+)
 from ens_evidence.categorization.models import (
     CategorizationFile,
     Information,
@@ -40,14 +46,18 @@ __all__ = [
     "CategorizationStatus",
     "Computation",
     "DimensionLevel",
+    "DossierCategoryMismatch",
     "Information",
+    "OpenedDossier",
     "Rating",
     "ServiceRating",
     "approve_categorization",
     "init_categorization",
+    "open_dossier",
     "categorization_status",
     "commitment",
     "commitment_notice",
     "compute",
     "require_current_categorization",
+    "require_dossier_category",
 ]

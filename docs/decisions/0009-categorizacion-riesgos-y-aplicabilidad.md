@@ -62,19 +62,34 @@ BOE) fija:
   Qué medidas pueden quedar sin objeto por falta de un activo, y de cuál, lo
   decide el producto, no el texto legal: es una lista cerrada en
   `src/ens_evidence/applicability/absent_asset_types.yaml` (el catálogo sale
-  del BOE y no se toca, 0007). Nunca entran `org.*`, `op.pl.*`, `op.exp.*`,
+  del BOE y no se toca, 0007). Criterio: una medida entra solo si su base y
+  todos sus refuerzos tratan exclusivamente del tipo de activo nombrado, de
+  modo que su ausencia deja sin objeto cada obligación; basta una cláusula
+  que sobreviva sin el activo para dejarla fuera (`op.ext.3`: productos y
+  componentes de la cadena de suministro, `mp.if.*`: locales donde se ubican los
+  sistemas o hay equipamiento esencial, que existen aunque no haya CPD ni
+  instalaciones propias, `mp.sw.1`: pruebas previas a implantar o
+  modificar cualquier sistema y componentes de producto adquirido,
+  `mp.info.4`: sellos cualificados y productos certificados sin atarlos a la
+  evidencia electrónica). `tests/applicability/test_absent_criterion.py`
+  fija por entrada las cláusulas que lo justifican y las compara con el
+  catálogo. Nunca entran `org.*`, `op.pl.*`, `op.exp.*`,
   `op.cont.*`, `op.mon.*` ni `mp.per.*`: son marco o proceso, no activos que
   puedan faltar. `validate` rechaza `absent_assets` fuera de la lista, con un
   tipo ajeno o con una justificación genérica (menos de 20 caracteres, «n/a»,
   «no aplica»), y cuando el inventario desmiente la ausencia (portátil en
-  `mp.eq.3`, aplicación con dominio en `mp.s.2`, con repositorio o alojamiento de código en
-  `mp.sw.1`, proveedor en `op.ext.*`). Un servidor desplegado con `mp.if.*` excluida no es
-  error sino aviso («confirma que no está en instalaciones propias»). La lista
+  `mp.eq.3`, aplicación con dominio en `mp.s.2`, proveedor en `op.ext.*`).
+  La lista
   no incluye ninguna `mp.si.*` (`mp.si.3.1` cubre todos los soportes bajo
   responsabilidad de la organización, `mp.si.2.r2.1` cifra las copias de
   seguridad y `mp.si.4` el transporte de dispositivos, removibles o no) ni
   `mp.info.3`: no tratan de un activo que pueda faltar. `validate` y `approve` muestran las exclusiones y avisos antes
   de firmar.
+  El expediente se ata a la categoría aprobada vigente:
+  `categorization.open_dossier` lo crea con su categoría y su compromiso, y
+  `require_dossier_category` rechaza un `Dossier` de otra categoría. MEDIA y
+  ALTA quedan «preparado para certificación»; `DECLARED` sigue siendo solo
+  BASICA (guarda de 0002).
   El anexo III, 1.1.e lo confirma: la auditoría constata el anexo II "en
   función de las condiciones de aplicación en cada caso".
 - **Declaración de Aplicabilidad** en `controls/applicability.yaml`: registro
