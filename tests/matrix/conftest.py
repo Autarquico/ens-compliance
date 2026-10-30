@@ -48,3 +48,9 @@ def ready(workspace):
 @pytest.fixture
 def declaration(ready):
     return approve_declaration(ready, "Luis Pardo", SIGNED_AT)
+
+
+@pytest.fixture
+def signed(declaration, ready):
+    """El almacén con la Declaración de Aplicabilidad firmada y vigente."""
+    return ready

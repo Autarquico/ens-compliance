@@ -29,6 +29,50 @@
       "title": "Applicability",
       "type": "string"
     },
+    "Blocker": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/BlockerKind"
+        },
+        "measure_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measure Id"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Blocker",
+      "type": "object"
+    },
+    "BlockerKind": {
+      "enum": [
+        "UNDETERMINED_APPLICABILITY",
+        "NOT_APPLICABLE_WITHOUT_JUSTIFICATION",
+        "MISSING_EVIDENCE",
+        "EXPIRED_EVIDENCE",
+        "MISSING_REVIEW",
+        "EXPIRED_REVIEW",
+        "NOT_COMPLIANT",
+        "OPEN_FINDING"
+      ],
+      "title": "BlockerKind",
+      "type": "string"
+    },
     "Category": {
       "enum": [
         "BASICA",
@@ -351,6 +395,14 @@
   },
   "additionalProperties": false,
   "properties": {
+    "coverage_gaps": {
+      "description": "Huecos que un llamante (la matriz de cumplimiento) a\u00f1ade a la regla de cada medida; cada uno nombra una medida de `measures`.",
+      "items": {
+        "$ref": "#/$defs/Blocker"
+      },
+      "title": "Coverage Gaps",
+      "type": "array"
+    },
     "evaluated_at": {
       "format": "date-time",
       "title": "Evaluated At",

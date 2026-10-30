@@ -17,6 +17,7 @@ from ens_evidence.models.readiness import BlockerKind
 from ens_evidence.workspace import WorkspaceStore
 
 APPROVED = "APPROVED"
+OBSOLETE = "OBSOLETE"
 
 
 @dataclass(frozen=True)
@@ -79,13 +80,15 @@ def document_support(
     if entry is None:
         return rejected(BlockerKind.MISSING_EVIDENCE, f"document_unknown:{name}")
     document, coverage = entry
+    if document.state == OBSOLETE:
+        return rejected(BlockerKind.EXPIRED_EVIDENCE, f"document_not_approved:{name}:OBSOLETE")
     if document.state != APPROVED:
         return rejected(
-            BlockerKind.EXPIRED_EVIDENCE, f"document_not_approved:{name}:{document.state}"
+            BlockerKind.MISSING_EVIDENCE, f"document_not_approved:{name}:{document.state}"
         )
     if document.approved_at is None or document.approved_at > at:
         return rejected(
-            BlockerKind.EXPIRED_EVIDENCE, f"document_not_approved:{name}:approved_after_query"
+            BlockerKind.MISSING_EVIDENCE, f"document_not_approved:{name}:approved_after_query"
         )
     covered = units & coverage.covered_clauses if coverage else frozenset()
     if not covered:

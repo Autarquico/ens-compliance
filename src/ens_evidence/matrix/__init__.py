@@ -9,6 +9,7 @@ from ens_evidence.matrix.documents import (
     document_support,
     documents_snapshot,
 )
+from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess, effective_review
 from ens_evidence.matrix.evidence import LinkSupport, manual_support
 from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
 from ens_evidence.matrix.model import (
@@ -60,6 +61,10 @@ from ens_evidence.matrix.technical import (
 )
 
 __all__ = [
+    "AssessmentResult",
+    "AssessmentRow",
+    "assess",
+    "effective_review",
     "COMPENSATION",
     "KNOWN_CHECKS",
     "TECHNICAL_MAX_AGE",

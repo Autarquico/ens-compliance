@@ -111,7 +111,7 @@ def test_clausulas_fuera_de_las_cubiertas_no_cuentan(built):
 
 def test_un_documento_generado_sin_aprobar_no_cuenta(built):
     assert only_blocker(support(built)) == (
-        BlockerKind.EXPIRED_EVIDENCE,
+        BlockerKind.MISSING_EVIDENCE,
         f"document_not_approved:{POLICY}:GENERATED",
     )
 
@@ -120,7 +120,7 @@ def test_un_documento_no_generado_no_cuenta(tmp_path):
     empty = LocalStore(tmp_path / "vacio")
 
     assert only_blocker(support(empty)) == (
-        BlockerKind.EXPIRED_EVIDENCE,
+        BlockerKind.MISSING_EVIDENCE,
         f"document_not_approved:{POLICY}:NOT_GENERATED",
     )
 

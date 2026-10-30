@@ -26,6 +26,7 @@ from ens_evidence.models.readiness import (
     ReadinessInput,
     ReadinessResult,
     evaluate_readiness,
+    measure_blockers,
 )
 
 __all__ = [
@@ -51,6 +52,7 @@ __all__ = [
     "Role",
     "TransitionError",
     "evaluate_readiness",
+    "measure_blockers",
     "transition",
     "translate_collection",
     "unresolved_evidence_ids",
