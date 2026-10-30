@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: L
 issue: 20
-prs: []
+prs: [48]
 related_issues: [20]
 depends_on: [ens-applicability, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-30
 ---
 
 # Matriz de cumplimiento por medida
