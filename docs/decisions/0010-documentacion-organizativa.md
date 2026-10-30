@@ -55,8 +55,8 @@ mínimo y quién aprueba:
   cambia cualquiera; un build idéntico la conserva. Se conserva el historial.
 - **Cobertura no es implantación:** aprobar un documento nunca cambia la
   evaluación de ninguna medida. `approved_coverage()` dice qué documento
-  aprobado y vigente cubre cada cláusula; lo consultan la matriz
-  (`compliance-matrix`) y el expediente (`assessment-dossier`).
+  aprobado y vigente cubre cada cláusula; lo consultarán la matriz
+  (`compliance-matrix`, task T4) y el expediente (`assessment-dossier`).
 - **Vigencia del firmante:** la aprobación deja de estar vigente si quien
   firmó deja de ser la persona declarada para ese rol, o si cambia el rol que
   aprueba el documento, aunque el texto no cambie.
