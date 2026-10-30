@@ -6,6 +6,8 @@ un fragmento por cláusula (o uno para toda la medida, tomado del título, el pr
 introducción de la ficha). Si el catálogo cambia y el fragmento desaparece, el test falla.
 """
 
+import hashlib
+import json
 import re
 
 import pytest
@@ -110,6 +112,39 @@ def texts_of(card) -> dict[str, str]:
 def clause_ids(card) -> list[str]:
     clauses = [c for c in card.base] + [c for r in card.reinforcements for c in r.clauses]
     return [c.id for c in clauses if c.id]
+
+
+# sha256 del texto de preámbulo, base y refuerzos de cada ficha tal como se revisó con el
+# criterio estricto. Si el catálogo cambia una cláusula, hay que volver a revisar la entrada.
+REVIEWED_CARD_SHA256 = {
+    "mp.eq.3": "08695b4bd291d371e418aca0fb36ff8faef7cc2195b0a259ff1577c5b69d8953",
+    "mp.eq.4": "c7ca7bda8520202cb874c563e24f16a2e515b690ec12a0cf799b9b65c7055da4",
+    "mp.info.1": "26153b24be57c403caabd2722553e41ba779076247bc50461a40a5fbc40c5201",
+    "mp.s.1": "9616b4256cdd6f08a81c8393c2fb1d56c3743b8f5ea9ff2142f9b41e6f043637",
+    "mp.s.2": "fa10cbb54d41a644060a1a383c8c92b8ad2c93b4d1b789818cf8cd1ef0f60a2f",
+    "op.acc.5": "89b0a0c4a90f5f85aff0b2066486f923e4c9c9f7e38e29bd89d4615c7f065766",
+    "op.ext.1": "f399a729e40557073f2e48e4a7f6789d35a7195e256cd5e919817fac60ecbbc1",
+    "op.ext.2": "38d3be67d5fd62c6dec5977436684cd35b6011ddb0a90225ae7830388baf22e1",
+    "op.ext.4": "0b46665d1f38a9240a06cbb04b35cd92763f057c8a7d7b59ebd286cdad536032",
+    "op.nub.1": "3c183f4b7b9f528adc6e421a38adb7c19feac9b2fd942acba78d9167ee3a92bd",
+}
+
+
+def reviewed_text(card) -> str:
+    parts = [("preamble", text) for text in card.preamble or []]
+    parts += [(clause.id or "", clause.text) for clause in card.base]
+    parts += [(clause.id or "", clause.text) for r in card.reinforcements for clause in r.clauses]
+    return json.dumps(parts, ensure_ascii=False, sort_keys=True)
+
+
+@pytest.mark.parametrize("measure_id", sorted(JUSTIFIED))
+def test_la_ficha_es_la_que_se_reviso(measure_id):
+    card = load_catalog().get(measure_id)
+    digest = hashlib.sha256(reviewed_text(card).encode()).hexdigest()
+
+    assert digest == REVIEWED_CARD_SHA256[measure_id], (
+        f"{measure_id}: la ficha del catálogo cambió; revisa la entrada con el criterio estricto"
+    )
 
 
 def test_la_tabla_cubre_exactamente_la_lista():

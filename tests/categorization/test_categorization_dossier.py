@@ -35,21 +35,20 @@ def test_categorizacion_media_aprobada_abre_un_expediente_media_preparado_para_c
 def test_el_expediente_media_no_admite_declared(store):
     approved(store, "MEDIO")
     dossier = open_dossier(store, NOW).dossier
-
-    with pytest.raises(TransitionError):
+    for state, role, extra in (
+        (DossierState.SELF_ASSESSED, Role.SYSTEM_ADMINISTRATOR, {}),
+        (DossierState.ANALYZED, Role.SECURITY_OFFICER, {"conclusions": "Revisado"}),
+    ):
         dossier = transition(
-            dossier,
-            DossierState.SELF_ASSESSED,
-            actor="x",
-            role=Role.SYSTEM_ADMINISTRATOR,
-            at=NOW,
-            dossier_sha256=SHA,
+            dossier, state, actor="x", role=role, at=NOW, dossier_sha256=SHA, **extra
         )
+
+    with pytest.raises(TransitionError, match="only allowed for category BASICA"):
         transition(
             dossier,
             DossierState.DECLARED,
             actor="x",
-            role=Role.SECURITY_OFFICER,
+            role=Role.SYSTEM_OWNER,
             at=NOW,
             dossier_sha256=SHA,
             readiness=READY,
