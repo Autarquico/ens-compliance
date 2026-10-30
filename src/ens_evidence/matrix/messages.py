@@ -8,8 +8,9 @@ revisado figura como «sin revisar», nunca como «no conforme». Nada declara c
 
 from collections.abc import Iterable
 
-from ens_evidence.matrix.obligations import RowKind
-from ens_evidence.models.enums import MeasureAssessment, Role
+from ens_evidence.applicability import DeclarationState
+from ens_evidence.matrix.obligations import COMPENSATION, RowKind
+from ens_evidence.models.enums import MeasureAssessment, Readiness, Role
 from ens_evidence.models.readiness import Blocker, BlockerKind
 
 REVIEW_STEP = (
@@ -156,6 +157,17 @@ ASSESSMENT_LABELS = {
     MeasureAssessment.NOT_ASSESSED: "sin revisar",
 }
 
+DECLARATION_LABELS = {
+    DeclarationState.CURRENT: "vigente",
+    DeclarationState.STALE: "no vigente (algo cambió después de firmarla)",
+    DeclarationState.NOT_APPROVED: "sin firmar",
+    DeclarationState.INVALID: "no válida",
+}
+
+READINESS_LABELS = {Readiness.READY: "preparada", Readiness.NOT_READY: "no preparada"}
+
+COMPENSATION_LABEL = "compensación (art. 28.3)"
+
 ROLE_LABELS = {
     Role.SYSTEM_ADMINISTRATOR: "administrador del sistema",
     Role.SYSTEM_ADMINISTRATOR_DELEGATE: "delegado del administrador del sistema",
@@ -167,6 +179,11 @@ ROLE_LABELS = {
 }
 
 _GROUPED = {"clause": "cláusulas", "obligation": "obligaciones"}
+_GROUPED_ONE = {"clause": "la cláusula", "obligation": "la obligación"}
+
+
+def obligation_label(obligation_id: str) -> str:
+    return COMPENSATION_LABEL if obligation_id == COMPENSATION else obligation_id
 
 
 def role_label(role: Role) -> str:
@@ -191,8 +208,12 @@ def blocker_text(blocker: Blocker) -> str:
     return _fill(template, blocker.measure_id, args)
 
 
-def blocker_lines(blockers: Iterable[Blocker]) -> list[str]:
-    """Textos sin repetir, con las cláusulas o las obligaciones sin evidencia en una sola línea."""
+def blocker_lines(
+    blockers: Iterable[Blocker], compensated: frozenset[str] = frozenset()
+) -> list[str]:
+    """Textos sin repetir, con las cláusulas o las obligaciones sin evidencia en una sola línea.
+    `compensated`: cláusulas que sustituye la compensación; se enlazan con
+    `--covers compensation`."""
     grouped: dict[tuple[str | None, str], list[str]] = {}
     texts: list[str] = []
     for blocker in blockers:
@@ -204,19 +225,30 @@ def blocker_lines(blockers: Iterable[Blocker]) -> list[str]:
         if text not in texts:
             texts.append(text)
     for (measure_id, head), units in grouped.items():
-        first = Blocker(
-            kind=BlockerKind.MISSING_EVIDENCE, measure_id=measure_id, detail=f"{head}:{units[0]}"
-        )
-        if len(units) == 1:
-            texts.append(blocker_text(first))
+        covers = [u for u in units if u not in compensated]
+        if len(covers) < len(units):
+            covers.append(COMPENSATION)
+        if len(units) == 1 and covers == units:
+            texts.append(
+                blocker_text(
+                    Blocker(
+                        kind=BlockerKind.MISSING_EVIDENCE,
+                        measure_id=measure_id,
+                        detail=f"{head}:{units[0]}",
+                    )
+                )
+            )
             continue
         step = _fill(
             "Siguiente paso: matrix link {m} --evidence EV-… --covers {a} (texto de cada "
             "cláusula: catalog show {m})",
             measure_id,
-            [",".join(units)],
+            [",".join(covers)],
         )
-        texts.append(
-            f"faltan evidencias en {len(units)} {_GROUPED[head]}: {', '.join(units)}. {step}"
+        subject = (
+            f"falta evidencia en {_GROUPED_ONE[head]} {units[0]}"
+            if len(units) == 1
+            else f"faltan evidencias en {len(units)} {_GROUPED[head]}: {', '.join(units)}"
         )
+        texts.append(f"{subject}. {step}")
     return texts

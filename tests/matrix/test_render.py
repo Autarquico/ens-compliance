@@ -166,6 +166,19 @@ def test_el_export_con_la_declaracion_obsoleta_la_marca_y_bloquea_todo(signed):
     )
 
 
+def test_con_la_declaracion_obsoleta_las_fuentes_salen_como_no_evaluadas(sourced):
+    store = sourced["store"]
+    key = "controls/measures.yaml"
+    store.write_text(key, store.read_text(key) + "\n")
+
+    text = render_markdown(
+        export_of(store, checks=sourced["checks"], documents=sourced["documents"])
+    )
+
+    assert "(no evaluada)" in text
+    assert "(no cuenta)" not in text
+
+
 # --- fuentes y timestamps ---------------------------------------------------------------------
 
 
@@ -412,7 +425,8 @@ def test_el_markdown_muestra_la_conclusion_y_cada_clausula_con_su_fuente(reviewe
 
     revisions = text[text.index("### Revisiones") :]
     assert "conclusión: Inventario completo y contrastado" in revisions
-    assert f"cláusula op.exp.1.1 ← evidence:{evidence_id}" in revisions
+    assert f"cláusula op.exp.1.1 ← evidencia {evidence_id}" in revisions
+    assert "evidence:" not in revisions
     assert f"registro `{key}`" in revisions
     assert "sha256 `" in revisions
 
@@ -469,7 +483,7 @@ def test_las_cifras_del_markdown_van_en_singular_y_sin_caducidad_se_explica(revi
         }
     )
 
-    assert "- Preparación: NOT_READY, 1 bloqueo\n" in render_markdown(one)
+    assert "- Preparación: no preparada, 1 bloqueo\n" in render_markdown(one)
     assert "1 bloqueos" not in render_markdown(one)
     assert "cuenta dentro de la periodicidad de la medida" in render_markdown(none_expiring)
 
@@ -481,3 +495,54 @@ def test_un_hueco_de_cobertura_agrupa_las_clausulas_en_una_linea(signed):
 
     line = next(line for line in text.splitlines() if line.startswith(f"| {TWO_CLAUSES} "))
     assert "faltan evidencias en 2 cláusulas: op.ext.4.1, op.ext.4.2" in line
+
+
+def test_el_markdown_traduce_los_estados_y_las_fuentes_y_el_json_conserva_los_codigos(reviewed):
+    store, evidence_id, _ = reviewed
+    export = export_of(store)
+
+    text = render_markdown(export)
+    document = json.loads(render_json(export))
+
+    assert "- Declaración de Aplicabilidad: vigente, firmada por" in text
+    assert "- Preparación: no preparada," in text
+    for code in ("CURRENT", "NOT_READY", "cobertura confirmada", "válida hasta sin fecha"):
+        assert code not in text
+    assert ": fuentes revisadas" in text
+    assert document["declaration"]["state"] == "CURRENT" and document["readiness"] == "NOT_READY"
+    row = next(r for r in document["rows"] if r["measure_id"] == ONE_CLAUSE)
+    (obligation,) = row["last_review"]["obligations"]
+    assert obligation["coverage"][0]["sources"] == [f"evidence:{evidence_id}"]
+    assert "clauses" not in obligation
+
+
+def test_una_evidencia_sin_caducidad_no_dice_valida_hasta(reviewed):
+    store, _, _ = reviewed
+    export = export_of(store)
+    expiring = export.sources.evidence[0]
+    never = export.model_copy(
+        update={
+            "sources": export.sources.model_copy(
+                update={"evidence": [expiring.model_copy(update={"valid_until": None})]}
+            )
+        }
+    )
+
+    assert "válida hasta sin" not in render_markdown(never)
+    assert f"· válida hasta {expiring.valid_until.isoformat()}" in render_markdown(export)
+
+
+def test_la_compensacion_se_nombra_como_compensacion_y_no_como_su_id_interno(signed):
+    evidence_id = manual_evidence(signed, valid_until=NOW + timedelta(days=365))
+    configure(
+        signed,
+        entry("op.pl.1", ManualEvidenceLink(evidence_id=evidence_id, covers=["compensation"])),
+    )
+
+    export = export_of(signed)
+    text = render_markdown(export)
+
+    line = next(x for x in text.splitlines() if x.startswith("| op.pl.1 "))
+    assert "compensación (art. 28.3)" in line and "compensation" not in line
+    op_pl_1 = next(r for r in export.rows if r.measure_id == "op.pl.1")
+    assert "compensation" in [o.id for o in op_pl_1.obligations]

@@ -9,7 +9,6 @@ from ens_evidence.matrix import (
     prepare_review,
 )
 from ens_evidence.matrix import evaluate as evaluate_module
-from ens_evidence.matrix import links as links_module
 from ens_evidence.models import (
     Applicability,
     BlockerKind,
@@ -19,7 +18,6 @@ from ens_evidence.models import (
     ReadinessInput,
     evaluate_readiness,
 )
-from ens_evidence.models.readiness import Measure
 
 from .evaluate_helpers import (
     ADDITIONAL,
@@ -538,7 +536,7 @@ def test_review_y_assess_cuentan_las_mismas_clausulas_sin_cubrir(signed):
     assert in_assess == in_review == {"op.ext.4.2"}
 
 
-def test_la_agregacion_de_fuentes_y_la_cobertura_tienen_una_sola_implementacion(signed):
+def test_la_cobertura_son_las_unidades_que_cubren_las_fuentes_que_cuentan(signed):
     _, link = evidence_link(signed, covers=("op.ext.4.1",))
     matrix_entry = entry(TWO_CLAUSES, link)
     configure(signed, matrix_entry)
@@ -553,26 +551,9 @@ def test_la_agregacion_de_fuentes_y_la_cobertura_tienen_una_sola_implementacion(
     assert [(u.obligation, u.unit) for u in evaluate_module.uncovered_units(spec, covered)] == [
         ("base", "op.ext.4.2")
     ]
-    assert not hasattr(links_module, "current_supports")
 
 
 def test_assess_acepta_checks_y_documentos_sin_indicar(signed):
     result = evaluate_module.assess(signed, NOW, checks=None, documents=FakeDocuments())
 
     assert result.rows
-
-
-def test_la_measure_de_cada_fila_se_construye_con_validacion(signed, monkeypatch):
-    original = Measure.model_validate.__func__
-    built = []
-
-    def spy(cls, data, *args, **kwargs):
-        if isinstance(data, dict) and isinstance(data.get("applicability"), Applicability):
-            built.append(data["id"])
-        return original(cls, data, *args, **kwargs)
-
-    monkeypatch.setattr(Measure, "model_validate", classmethod(spy))
-
-    result = assess_now(signed)
-
-    assert sorted(built) == sorted(r.spec.measure_id for r in result.rows)

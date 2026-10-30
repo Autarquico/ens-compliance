@@ -39,6 +39,7 @@ from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 EVIDENCE = "evidence"
 CHECK = "check"
 DOCUMENT = "org_document"
+KIND_LABELS = {EVIDENCE: "evidencia", CHECK: "check", DOCUMENT: "documento"}
 
 
 class MatrixRejected(Exception):
@@ -312,10 +313,9 @@ def remove_link(
 
 
 def link_label(link: Link) -> str:
-    match link:
-        case ManualEvidenceLink():
-            return f"evidencia {link.evidence_id}"
-        case CheckLink():
-            return f"check {link.check_id}"
-        case DocumentLink():
-            return f"documento {link.document}"
+    return source_label(*link.target)
+
+
+def source_label(kind: str, target: str) -> str:
+    """La fuente para personas: «evidencia EV-…», «check …», «documento …»."""
+    return f"{KIND_LABELS.get(kind, kind)} {target}"

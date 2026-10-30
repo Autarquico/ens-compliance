@@ -104,8 +104,23 @@ ens-evidence applicability show --annotated --save
 
 `status`, la exportación en Markdown y la vista de la Declaración muestran
 cada bloqueo en castellano y con el comando del siguiente paso. Una medida que
-nadie ha revisado figura como «sin revisar», no como «no conforme». El JSON
-conserva los códigos internos.
+nadie ha revisado figura como «sin revisar», no como «no conforme». Los estados
+de la Declaración y de la preparación salen traducidos («vigente», «no
+vigente», «no preparada»). El JSON conserva los códigos internos.
+
+Con la Declaración no vigente, cada medida conserva el responsable, la
+periodicidad y la última revisión registrados, tal como están. La medida sigue
+sin implantar y sin revisión regular hasta que se vuelva a firmar la
+Declaración (`applicability status` dice cómo): no hace falta repetir
+`matrix set` ni `matrix review`.
+
+Si una compensación sustituye cláusulas del anexo II, la evidencia se enlaza
+con `--covers compensation`, no con las cláusulas sustituidas.
+
+Compatibilidad: las revisiones registradas guardan, por obligación, la
+cobertura por cláusula (`coverage`). Las escritas antes, con la lista
+`clauses`, se siguen leyendo (como cobertura sin fuente atribuida por
+cláusula); no se reescriben. En el JSON exportado ya no hay `clauses`.
 
 La exportación lista cada medida de la Declaración, en el orden del catálogo, con:
 

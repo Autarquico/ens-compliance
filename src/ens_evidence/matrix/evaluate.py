@@ -90,23 +90,34 @@ def effective_review(review: Review, review_every_days: int | None) -> Review:
     return review.model_copy(update={"valid_until": min(review.valid_until, periodic)})
 
 
-def _not_current(plan, now: datetime) -> AssessmentResult:
+def _not_current(store: WorkspaceStore, plan, now: datetime) -> AssessmentResult:
     # No pasa por `evaluate_readiness`: con la Declaración sin vigencia puede no haber filas y
     # `ReadinessInput.measures` no admite una lista vacía. Nada abre aquí un camino a READY.
+    # Las filas conservan la entrada y la última revisión para mostrarlas tal como están: lo que
+    # la Declaración deja sin efecto es la medida, no lo que la persona registró.
     detail = f"declaration_{plan.state.value.lower()}"
     glob = Blocker(kind=BlockerKind.UNDETERMINED_APPLICABILITY, detail=detail)
-    rows = tuple(
-        AssessmentRow(
-            row,
-            Measure(id=row.measure_id, applicability=Applicability.UNDETERMINED),
-            (_gap(BlockerKind.UNDETERMINED_APPLICABILITY, row.measure_id, detail),),
+    matrix, errors = read_matrix(store)
+    entries = {e.id: e for e in matrix.entries} if matrix else {}
+    rows: list[AssessmentRow] = []
+    for row in plan.rows:
+        reviews = effective_reviews(store, row.measure_id, now)
+        errors += reviews.errors
+        rows.append(
+            AssessmentRow(
+                row,
+                Measure(id=row.measure_id, applicability=Applicability.UNDETERMINED),
+                (_gap(BlockerKind.UNDETERMINED_APPLICABILITY, row.measure_id, detail),),
+                entries.get(row.measure_id) or MatrixEntry(id=row.measure_id),
+                _latest(reviews.implementation, reviews.applicability),
+            )
         )
-        for row in plan.rows
-    )
     readiness = ReadinessResult(
         readiness=Readiness.NOT_READY, blockers=[glob], pending_human_review=True
     )
-    return AssessmentResult(now, plan.state, rows, (glob,), readiness, tuple(plan.errors))
+    return AssessmentResult(
+        now, plan.state, tuple(rows), (glob,), readiness, (*plan.errors, *errors)
+    )
 
 
 def _decisions(store: WorkspaceStore) -> tuple[Mapping[str, Measure], list[str]]:
@@ -314,7 +325,7 @@ def assess(
     """Filas, bloqueos de la matriz y `ReadinessResult` en `now`; único punto de integración."""
     plan = plan_obligations(store, now)
     if not plan.current:
-        return _not_current(plan, now)
+        return _not_current(store, plan, now)
 
     matrix, errors = read_matrix(store)
     entries = {e.id: e for e in matrix.entries} if matrix else {}

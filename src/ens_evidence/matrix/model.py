@@ -7,7 +7,7 @@ humanas son registros aparte, de solo adición. Dos ejes distintos (ADR 0002): l
 
 import re
 from collections import Counter
-from typing import Annotated, Literal, Self
+from typing import Annotated, Any, Literal, Self
 
 from pydantic import AwareDatetime, Field, model_validator
 
@@ -158,16 +158,33 @@ class ReviewedClause(Strict):
 
 
 class ReviewedObligation(Strict):
-    """Fuentes que la persona revisora vio para una obligación de la medida."""
+    """Fuentes que la persona revisora vio para una obligación de la medida.
+
+    `coverage` es la única lista de cláusulas confirmadas; `clauses` se deriva de ella. Los
+    registros escritos antes de existir `coverage` traen `clauses`: se leen como cobertura sin
+    fuentes atribuidas por cláusula, sin reescribirlos (son de solo adición)."""
 
     obligation: str = Field(min_length=1)
-    clauses: list[str] = Field(default_factory=list)
     coverage: list[ReviewedClause] = Field(
         default_factory=list, description="Qué fuentes cubrían cada cláusula al revisar."
     )
     evidence: list[ReviewedEvidence] = Field(default_factory=list)
     checks: list[str] = Field(default_factory=list)
     documents: list[ReviewedDocument] = Field(default_factory=list)
+
+    @model_validator(mode="before")
+    @classmethod
+    def _read_legacy_clauses(cls, data: Any) -> Any:
+        if isinstance(data, dict) and "clauses" in data:
+            data = dict(data)
+            legacy = data.pop("clauses")
+            if not data.get("coverage"):
+                data["coverage"] = [{"clause": clause} for clause in legacy]
+        return data
+
+    @property
+    def clauses(self) -> list[str]:
+        return [c.clause for c in self.coverage]
 
     @property
     def has_sources(self) -> bool:

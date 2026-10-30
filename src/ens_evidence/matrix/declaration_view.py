@@ -17,7 +17,7 @@ from ens_evidence.applicability.declaration import (
 )
 from ens_evidence.catalog import load_catalog
 from ens_evidence.matrix.evaluate import AssessmentResult
-from ens_evidence.matrix.messages import role_label
+from ens_evidence.matrix.messages import DECLARATION_LABELS, role_label
 from ens_evidence.matrix.obligations import COMPENSATION, RowKind
 from ens_evidence.matrix.render import (
     ExportedRow,
@@ -72,7 +72,7 @@ def _header(
         f"sha256 `{version.snapshot_sha256}`",
         f"- Huellas: medidas `{declaration.measures_sha256}`, categorización "
         f"`{declaration.categorization_sha256}`, alcance `{declaration.scope_fingerprint}`",
-        f"- Estado: {state.value}",
+        f"- Estado: {DECLARATION_LABELS[state]}",
     ]
     lines += [f"  - {md_escape(reason)}" for reason in reasons]
     return lines
@@ -117,7 +117,7 @@ def _annotation(row: ExportedRow) -> list[str]:
         f"  - Responsable: {owner}; periodicidad: {every}",
         f"  - Última revisión: {review_text(review)}",
         f"  - Evidencias vigentes: {_list(current, 'ninguna')}",
-        f"  - Bloqueos: {blockers_text(row.blockers)}",
+        f"  - Bloqueos: {blockers_text(row)}",
     ]
 
 
@@ -228,7 +228,7 @@ def render_declaration(
             "# Declaración de Aplicabilidad",
             "",
             f"- Generada: {now.isoformat()} a partir de `{DECLARATION_KEY}`",
-            f"- Estado: {status.state.value}",
+            f"- Estado: {DECLARATION_LABELS[status.state]}",
             *(f"  - {md_escape(reason)}" for reason in status.errors),
             "",
             "No hay una Declaración firmada y legible que mostrar.",

@@ -118,20 +118,13 @@
     },
     "ReviewedObligation": {
       "additionalProperties": false,
-      "description": "Fuentes que la persona revisora vio para una obligaci\u00f3n de la medida.",
+      "description": "Fuentes que la persona revisora vio para una obligaci\u00f3n de la medida.\n\n`coverage` es la \u00fanica lista de cl\u00e1usulas confirmadas; `clauses` se deriva de ella. Los\nregistros escritos antes de existir `coverage` traen `clauses`: se leen como cobertura sin\nfuentes atribuidas por cl\u00e1usula, sin reescribirlos (son de solo adici\u00f3n).",
       "properties": {
         "checks": {
           "items": {
             "type": "string"
           },
           "title": "Checks",
-          "type": "array"
-        },
-        "clauses": {
-          "items": {
-            "type": "string"
-          },
-          "title": "Clauses",
           "type": "array"
         },
         "coverage": {

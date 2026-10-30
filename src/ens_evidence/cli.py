@@ -78,6 +78,7 @@ from ens_evidence.evidence import (
 from ens_evidence.evidence.importer import import_collected
 from ens_evidence.matrix import (
     CHECKS_PENDING,
+    COMPENSATION,
     DECLARATION_REPORTS_PREFIX,
     MATRIX_REPORTS_PREFIX,
     ExportRejected,
@@ -103,7 +104,11 @@ from ens_evidence.matrix import (
     set_entry,
 )
 from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE
-from ens_evidence.matrix.messages import blocker_lines
+from ens_evidence.matrix.messages import (
+    DECLARATION_LABELS,
+    READINESS_LABELS,
+    blocker_lines,
+)
 from ens_evidence.models.enums import CollectionStatus, Role
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
@@ -1666,7 +1671,10 @@ def print_row_status(status: RowStatus) -> None:
                 "    compensada por: " + "; ".join(obligation.compensating_measures) + ". "
                 "La evidencia ha de mostrar esas medidas, no las cláusulas que sustituyen."
             )
-    for text in blocker_lines(status.blockers):
+    compensated = frozenset(
+        c for o in spec.obligations if o.id == COMPENSATION for c in o.clause_ids
+    )
+    for text in blocker_lines(status.blockers, compensated):
         typer.echo(f"    bloqueo: {text}")
 
 
@@ -1685,7 +1693,7 @@ def matrix_show_status(
     shown = [s for s in rows if measure is None or s.row.spec.measure_id == measure]
     if measure is not None and not shown:
         raise fail(f"{measure} no es una medida de la Declaración de Aplicabilidad.", 1)
-    typer.echo(f"Declaración de Aplicabilidad: {result.declaration_state.value}.")
+    typer.echo(f"Declaración de Aplicabilidad: {DECLARATION_LABELS[result.declaration_state]}.")
     typer.echo(f"Aviso: {CHECKS_PENDING}.")
     for status in shown:
         print_row_status(status)
@@ -1697,7 +1705,7 @@ def matrix_show_status(
         if result.declaration_state is not DeclarationState.CURRENT:
             blocked_by = "todas las medidas bloqueadas: la Declaración no está vigente"
         typer.echo(
-            f"Preparación: {readiness.readiness.value}, {blocked_by}. "
+            f"Preparación: {READINESS_LABELS[readiness.readiness]}, {blocked_by}. "
             "La herramienta no declara conformidad; la valoración es de la persona que revisa."
         )
     blocked = bool(readiness.blockers) if measure is None else any(s.blockers for s in shown)

@@ -538,7 +538,7 @@ def test_status_sin_revisiones_sale_con_1_y_lista_los_bloqueos(initialized):
     assert "implantada: sin revisar" in line_of(result.output, ONE_CLAUSE)
     assert "bloqueo: sin revisar" in result.output
     assert "NOT_COMPLIANT" not in result.output and "no conforme" not in result.output
-    assert "Preparación: NOT_READY" in result.output
+    assert "Preparación: no preparada" in result.output and "NOT_READY" not in result.output
     assert "no declara conformidad" in result.output
 
 
@@ -824,7 +824,7 @@ def test_show_de_una_declaracion_obsoleta_la_muestra_con_su_estado_y_sale_con_1(
     result = ens_cli("applicability", "show", "--save")
 
     assert result.exit_code == 1
-    assert "Estado: STALE" in result.output
+    assert "Estado: no vigente" in result.output and "STALE" not in result.output
     assert len(signed.list("evidence/reports/declaration")) == 1
 
 
@@ -840,7 +840,7 @@ def test_show_sin_declaracion_firmada_sale_con_1_y_no_guarda(tmp_path, workspace
     )
 
     assert result.exit_code == 1
-    assert "NOT_APPROVED" in result.output
+    assert "Estado: sin firmar" in result.output and "NOT_APPROVED" not in result.output
     assert "no se guarda" in result.output
     assert workspace.list("evidence/reports") == []
 
@@ -914,3 +914,91 @@ def test_el_runbook_dice_donde_leer_el_texto_de_cada_clausula():
     runbook = Path(__file__).parents[2] / "docs/runbooks/matriz-de-cumplimiento.md"
 
     assert "catalog show" in runbook.read_text(encoding="utf-8")
+
+
+# --- Declaración no vigente: lo registrado se muestra tal como está ---------------------------
+
+
+@pytest.fixture
+def reviewed_then_stale(initialized, signed):
+    configured(initialized)
+    evidence_id = linked_evidence(initialized, signed)
+    assert review(initialized, ONE_CLAUSE, "--assessment", "COMPLIANT").exit_code == 0
+    key = "controls/measures.yaml"
+    signed.write_text(key, signed.read_text(key) + "\n")
+    return initialized, evidence_id
+
+
+def test_status_con_la_declaracion_no_vigente_conserva_la_revision_y_no_implanta(
+    reviewed_then_stale,
+):
+    ens_cli, _ = reviewed_then_stale
+
+    result = ens_cli("matrix", "status", ONE_CLAUSE)
+
+    line = line_of(result.output, ONE_CLAUSE)
+    assert result.exit_code == 1
+    assert "implantada: no" in line and "sin revisar" not in line
+    assert "revisión regular: no" in line
+    assert "la Declaración de Aplicabilidad ya no vale" in result.output
+    assert "Declaración de Aplicabilidad: no vigente" in result.output
+
+
+def test_el_export_con_la_declaracion_no_vigente_lleva_responsable_y_revision(
+    reviewed_then_stale,
+):
+    ens_cli, evidence_id = reviewed_then_stale
+
+    document = json.loads(ens_cli("matrix", "export", "--stdout").output)
+    text = ens_cli("matrix", "export", "--stdout", "--format", "md").output
+
+    row = next(r for r in document["rows"] if r["measure_id"] == ONE_CLAUSE)
+    assert document["declaration"]["state"] == "STALE"
+    assert row["owner"]["name"] == "Ana" and row["review_every_days"] == 30
+    assert row["last_review"]["assessment"] == "COMPLIANT" and row["last_review"]["record_sha256"]
+    assert row["implemented"] is False and row["review_current"] is False
+    line = next(x for x in text.splitlines() if x.startswith(f"| {ONE_CLAUSE} "))
+    assert "Ana (administrador del sistema)" in line and "30 días" in line
+    assert "sin revisar" not in line
+    revisions = text[text.index("### Revisiones") :]
+    assert f"cláusula op.exp.1.1 ← evidencia {evidence_id}" in revisions
+
+
+def test_la_vista_anotada_con_la_declaracion_no_vigente_conserva_la_revision(
+    reviewed_then_stale,
+):
+    ens_cli, _ = reviewed_then_stale
+
+    text = ens_cli("applicability", "show", "--annotated").output
+
+    block = text[text.index("**op.exp.1") :]
+    block = block[: block.index("\n- **", 1)] if "\n- **" in block[1:] else block
+    assert "Responsable: Ana (administrador del sistema); periodicidad: 30 días" in block
+    assert "Última revisión: Ana (administrador del sistema)" in block
+    assert "En la matriz: no consta como implantada" in block
+    assert "sin revisar" not in block and "sin responsable" not in block
+
+
+# --- Copy para personas ------------------------------------------------------------------------
+
+
+def test_status_y_vista_no_sacan_enums_sin_traducir(initialized, signed):
+    status = initialized("matrix", "status").output
+    shown = initialized("applicability", "show", "--annotated").output
+
+    for output in (status, shown):
+        for code in ("CURRENT", "STALE", "NOT_APPROVED", "READY", "NOT_COMPLIANT"):
+            assert code not in output
+    assert "Preparación: no preparada" in status
+
+
+def test_el_siguiente_paso_de_una_compensada_enlaza_con_compensation(initialized, signed):
+    spec = plan_obligations(signed, NOW).row("op.pl.1")
+    replaced = next(o for o in spec.obligations if o.id == "compensation").clause_ids
+
+    result = initialized("matrix", "status", "op.pl.1")
+
+    step = next(line for line in result.output.splitlines() if "matrix link op.pl.1" in line)
+    covers = step.split("--covers ")[1].split(" ")[0].split(",")
+    assert "compensation" in covers
+    assert not set(replaced) & set(covers)

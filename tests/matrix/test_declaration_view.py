@@ -78,7 +78,7 @@ def test_la_cabecera_lleva_firmante_rol_fecha_categoria_catalogo_huellas_y_estad
         declaration.scope_fingerprint,
     ):
         assert f"`{fingerprint}`" in text
-    assert "Estado: CURRENT" in text
+    assert "Estado: vigente" in text
     assert NOW.isoformat() in text
     assert "no se autentica" in text
 
@@ -106,7 +106,7 @@ def test_con_la_declaracion_obsoleta_el_estado_lleva_sus_motivos(signed):
 
     text = view(signed)
 
-    assert "Estado: STALE" in text
+    assert "Estado: no vigente (algo cambió después de firmarla)" in text
     assert status.errors
     assert all(f"  - {error}" in text for error in status.errors)
 
@@ -117,7 +117,7 @@ def test_sin_declaracion_firmada_solo_muestra_el_estado(request, prepare):
 
     text = view(store)
 
-    assert "Estado: NOT_APPROVED" in text
+    assert "Estado: sin firmar" in text
     assert "No hay una Declaración firmada y legible que mostrar." in text
     assert "## Medidas" not in text
 

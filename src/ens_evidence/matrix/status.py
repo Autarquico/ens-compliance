@@ -15,7 +15,11 @@ from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.workspace import WorkspaceStore
 
 CHECKS_PENDING = "evidencia técnica: pendiente del motor de checks"
-REVIEW_BLOCKERS = {BlockerKind.MISSING_REVIEW, BlockerKind.EXPIRED_REVIEW}
+IRREGULAR_REVIEW_BLOCKERS = {
+    BlockerKind.MISSING_REVIEW,
+    BlockerKind.EXPIRED_REVIEW,
+    BlockerKind.UNDETERMINED_APPLICABILITY,
+}
 
 
 @dataclass(frozen=True)
@@ -33,12 +37,14 @@ class RowStatus:
 
 def row_status(row: AssessmentRow) -> RowStatus:
     """Implantada: revisión COMPLIANT sin ningún bloqueo. Revisión regular: responsable,
-    periodicidad y revisión vigente (sin `MISSING_REVIEW` ni `EXPIRED_REVIEW`)."""
+    periodicidad y revisión vigente: sin bloqueos de revisión, y con la Declaración vigente."""
     selected = row.spec.kind is RowKind.SELECTED
     implemented = (
         selected and row.measure.assessment is MeasureAssessment.COMPLIANT and not row.blockers
     )
-    regular = row.review is not None and not any(b.kind in REVIEW_BLOCKERS for b in row.blockers)
+    regular = row.review is not None and not any(
+        b.kind in IRREGULAR_REVIEW_BLOCKERS for b in row.blockers
+    )
     links = row.entry.links if row.entry else []
     return RowStatus(
         row,

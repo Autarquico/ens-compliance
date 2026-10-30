@@ -32,7 +32,7 @@ from ens_evidence.matrix.model import (
     ReviewedEvidence,
     ReviewedObligation,
 )
-from ens_evidence.matrix.obligations import MatrixRowSpec, RowKind
+from ens_evidence.matrix.obligations import MatrixRowSpec, Obligation, RowKind
 from ens_evidence.matrix.store import add_review
 from ens_evidence.matrix.technical import CheckResultsSource, NoCheckResults
 from ens_evidence.models.contracts import Review
@@ -105,32 +105,39 @@ def _check_inputs(
     return errors
 
 
-def _attribution(
+def _covering(
     row: MatrixRowSpec, supports: Iterable[LinkSupport]
-) -> tuple[ObligationAttribution, ...]:
+) -> list[tuple[Obligation, dict[str, list[LinkSupport]]]]:
+    """Por obligación y unidad, las fuentes que cuentan y la cubren: el único cálculo de qué
+    fuente respalda qué, del que salen la atribución que se muestra y la que se registra."""
     counting = [s for s in supports if s.counts]
+    return [
+        (o, {unit: [s for s in counting if unit in s.clauses] for unit in o.units})
+        for o in row.obligations
+    ]
+
+
+def _attribution(
+    covering: list[tuple[Obligation, dict[str, list[LinkSupport]]]],
+) -> tuple[ObligationAttribution, ...]:
     return tuple(
         ObligationAttribution(
             o.id,
             tuple(
-                ClauseAttribution(
-                    unit, tuple(link_label(s.link) for s in counting if unit in s.clauses)
-                )
-                for unit in o.units
+                ClauseAttribution(unit, tuple(link_label(s.link) for s in found))
+                for unit, found in by_unit.items()
             ),
         )
-        for o in row.obligations
+        for o, by_unit in covering
     )
 
 
 def _reviewed_obligations(
-    row: MatrixRowSpec, supports: Iterable[LinkSupport]
+    covering: list[tuple[Obligation, dict[str, list[LinkSupport]]]],
 ) -> list[ReviewedObligation]:
-    counting = [s for s in supports if s.counts]
     reviewed: list[ReviewedObligation] = []
-    for obligation in row.obligations:
-        units = set(obligation.units)
-        used = [s for s in counting if s.clauses & units]
+    for obligation, by_unit in covering:
+        used = [s for found in by_unit.values() for s in found]
         evidence: dict[str, ReviewedEvidence] = {}
         documents: dict[str, ReviewedDocument] = {}
         for support in used:
@@ -140,19 +147,17 @@ def _reviewed_obligations(
         reviewed.append(
             ReviewedObligation(
                 obligation=obligation.id,
-                clauses=sorted(u for u in units if any(u in s.clauses for s in used)),
-                evidence=list(evidence.values()),
                 coverage=[
                     ReviewedClause(
                         clause=unit,
                         sources=[
-                            f"{kind}:{target}"
-                            for kind, target in (s.link.target for s in used if unit in s.clauses)
+                            f"{kind}:{target}" for kind, target in (s.link.target for s in found)
                         ],
                     )
-                    for unit in sorted(units)
-                    if any(unit in s.clauses for s in used)
+                    for unit, found in sorted(by_unit.items())
+                    if found
                 ],
+                evidence=list(evidence.values()),
                 checks=sorted({s.link.check_id for s in used if isinstance(s.link, CheckLink)}),
                 documents=list(documents.values()),
             )
@@ -237,7 +242,8 @@ def prepare_review(
     notes = tuple(
         f"{link_label(s.link)}: {b.kind.value} {b.detail}" for s in supports for b in s.blockers
     )
-    attribution = _attribution(row, supports)
+    covering = _covering(row, supports)
+    attribution = _attribution(covering)
     if problems:
         return ReviewPlan(row, attribution, notes, tuple(problems), None)
 
@@ -257,7 +263,7 @@ def prepare_review(
             review=review,
             recorded_at=now,
             assessment=verdict,
-            obligations=_reviewed_obligations(row, supports),
+            obligations=_reviewed_obligations(covering),
             links_sha256=links_sha256(entry),
             measure_context_sha256=row.measure_context_sha256,
         )
