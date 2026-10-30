@@ -12,6 +12,16 @@ import yaml
 from pydantic import ValidationError
 
 from ens_evidence import __version__, schemas
+from ens_evidence.applicability import (
+    ApplicabilityRejected,
+    DeclarationRejected,
+    DeclarationState,
+    Exclusion,
+    approve_declaration,
+    declaration_status,
+    propose_applicability,
+    validate_applicability,
+)
 from ens_evidence.backup import (
     IMMUTABILITY_PREFIX,
     BackupError,
@@ -40,6 +50,16 @@ from ens_evidence.backup.transfer import export_all, import_all
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import MeasuresFileError, init_measures
 from ens_evidence.catalog.model import Catalog, Group, MeasureCard
+from ens_evidence.categorization import (
+    CategorizationApprovalRejected,
+    CategorizationNotCurrent,
+    CategorizationState,
+    approve_categorization,
+    categorization_status,
+    commitment,
+    commitment_notice,
+    init_categorization,
+)
 from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.connectors.registry import ConnectorLoadError, ConnectorRegistry
 from ens_evidence.endpoint.bundle import BundleTargetError, write_bundle
@@ -56,9 +76,18 @@ from ens_evidence.evidence import (
 )
 from ens_evidence.evidence.importer import import_collected
 from ens_evidence.models.enums import CollectionStatus, Role
+from ens_evidence.risk import (
+    RiskApprovalRejected,
+    RiskState,
+    approve_risk,
+    init_risk,
+    risk_status,
+    validate_risk,
+)
 from ens_evidence.scope import (
     ObservedInputError,
     ScopeApprovalRejected,
+    ScopeNotApproved,
     ScopeState,
     approve_scope,
     load_assets,
@@ -96,6 +125,12 @@ workspace_app = typer.Typer(
     help="Sincroniza el workspace con una carpeta local.", no_args_is_help=True
 )
 scope_app = typer.Typer(help="Alcance del sistema y su aprobación.", no_args_is_help=True)
+categorization_app = typer.Typer(
+    help="Categorización del sistema y su aprobación.", no_args_is_help=True
+)
+applicability_app = typer.Typer(
+    help="Aplicabilidad de las medidas y Declaración de Aplicabilidad.", no_args_is_help=True
+)
 backup_app = typer.Typer(help="Copia independiente de las evidencias.", no_args_is_help=True)
 restore_test_app = typer.Typer(
     help="Pruebas de restauración declaradas por una persona.", no_args_is_help=True
@@ -104,6 +139,7 @@ backup_app.add_typer(restore_test_app, name="restore-test")
 catalog_app = typer.Typer(help="Catálogo de medidas del anexo II.", no_args_is_help=True)
 controls_app = typer.Typer(help="Estado de las medidas de la organización.", no_args_is_help=True)
 endpoint_app = typer.Typer(help="Evidencia de endpoints con script guiado.", no_args_is_help=True)
+risk_app = typer.Typer(help="Análisis de riesgos y su aprobación anual.", no_args_is_help=True)
 app.add_typer(report_app, name="report")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
@@ -111,10 +147,13 @@ app.add_typer(schema_app, name="schema")
 app.add_typer(inventory_app, name="inventory")
 app.add_typer(workspace_app, name="workspace")
 app.add_typer(scope_app, name="scope")
+app.add_typer(categorization_app, name="categorization")
+app.add_typer(applicability_app, name="applicability")
 app.add_typer(backup_app, name="backup")
 app.add_typer(catalog_app, name="catalog")
 app.add_typer(controls_app, name="controls")
 app.add_typer(endpoint_app, name="endpoint")
+app.add_typer(risk_app, name="risk")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -557,8 +596,216 @@ def scope_show_status(ctx: typer.Context) -> None:
         raise typer.Exit(1)
 
 
+@categorization_app.command("init")
+@handled
+def categorization_init(ctx: typer.Context) -> None:
+    """Crea scope/categorization.yaml con los servicios del alcance aprobado, sin sobrescribir."""
+    try:
+        created = init_categorization(open_workspace(ctx))
+    except ScopeNotApproved:
+        typer.echo("No se crea: el alcance no está aprobado ahora (scope approve).", err=True)
+        raise typer.Exit(1) from None
+    if created:
+        typer.echo(
+            "Creado scope/categorization.yaml; rellena las valoraciones "
+            "(los criterios del anexo I, 3 están en los comentarios)."
+        )
+    else:
+        typer.echo("Se conserva scope/categorization.yaml.")
+
+
+@categorization_app.command("approve")
+@handled
+def categorization_approve(
+    ctx: typer.Context,
+    by: Annotated[str, typer.Option("--by", help="Nombre del responsable de la seguridad.")],
+) -> None:
+    """Aprueba la categorización. Solo la aprueba el responsable de la seguridad."""
+    store = open_workspace(ctx)
+    try:
+        approval = approve_categorization(store, by, clock())
+    except ScopeNotApproved:
+        typer.echo("No se aprueba: el alcance no está aprobado ahora (scope approve).", err=True)
+        raise typer.Exit(1) from None
+    except CategorizationApprovalRejected as exc:
+        typer.echo("No se aprueba la categorización:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(
+        f"Categoría {approval.category.value} aprobada por {approval.approved_by} "
+        f"({approval.role.value}); vigente hasta {approval.valid_until.date().isoformat()}.\n"
+        "El nombre es declarado; no se autentica."
+    )
+
+
+@categorization_app.command("status")
+@handled
+def categorization_show_status(ctx: typer.Context) -> None:
+    """Muestra niveles, categoría, vigencia y compromiso. Sale con 1 si no está vigente."""
+    status = categorization_status(open_workspace(ctx), clock())
+    typer.echo(f"{status.state.value}")
+    if status.computation is not None:
+        for item in status.computation.levels:
+            level = item.level.value if item.level else "sin nivel"
+            by = f" (determinado por {', '.join(item.determined_by)})" if item.determined_by else ""
+            typer.echo(f"  {item.dimension.value}: {level}{by}")
+        category = status.computation.category
+        typer.echo(f"Categoría calculada: {category.value if category else 'indeterminada'}")
+        if category is not None and status.state is CategorizationState.CURRENT:
+            typer.echo(f"Compromiso: {commitment(category)}. {commitment_notice(category)}")
+        else:
+            typer.echo("Compromiso: sin compromiso hasta aprobar la categorización.")
+    if status.approval is not None:
+        typer.echo(
+            f"Aprobada por {status.approval.approved_by} el "
+            f"{status.approval.approved_at.date().isoformat()}; válida hasta "
+            f"{status.approval.valid_until.date().isoformat()}."
+        )
+    print_errors(status.pending)
+    print_errors(status.errors)
+    if status.state is not CategorizationState.CURRENT:
+        raise typer.Exit(1)
+
+
 def clock() -> datetime:
     return datetime.now(UTC)
+
+
+def report_missing_context(exc: ScopeNotApproved | CategorizationNotCurrent) -> typer.Exit:
+    if isinstance(exc, ScopeNotApproved):
+        typer.echo("El alcance no está aprobado ahora (scope approve).", err=True)
+    else:
+        typer.echo(
+            f"La categorización no está vigente ({exc.status.state.value}); "
+            "ver categorization status.",
+            err=True,
+        )
+        print_errors([*exc.status.errors, *exc.status.pending])
+    return typer.Exit(1)
+
+
+@applicability_app.command("propose")
+@handled
+def applicability_propose(
+    ctx: typer.Context,
+    confirm: Annotated[
+        list[str] | None,
+        typer.Option("--confirm", help="Medida cuya decisión humana revisada se confirma."),
+    ] = None,
+) -> None:
+    """Marca APPLICABLE lo que el anexo II exige para la categorización vigente.
+
+    Nunca marca NOT_APPLICABLE ni decide por una persona: una decisión sin fundamento registrado
+    o con fundamento distinto queda pendiente hasta confirmarla con --confirm.
+    """
+    try:
+        result = propose_applicability(open_workspace(ctx), clock(), confirm or [])
+    except (ScopeNotApproved, CategorizationNotCurrent) as exc:
+        raise report_missing_context(exc) from None
+    except ApplicabilityRejected as exc:
+        typer.echo("No se propone la aplicabilidad:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(
+        f"Propuestas {len(result.proposed)} medidas exigidas, "
+        f"actualizadas {len(result.refreshed)}, "
+        f"retiradas {len(result.retracted)}, "
+        f"confirmadas {len(result.confirmed)}; sin cambios {result.unchanged}. "
+        "Es una selección, no una conformidad: las demás las decide una persona."
+    )
+    if result.unconfirmed:
+        typer.echo(
+            "No confirmadas: "
+            + ", ".join(result.unconfirmed)
+            + " (no existen o no tienen revisión pendiente).",
+            err=True,
+        )
+    if result.pending_review:
+        typer.echo(
+            "Revisión pendiente (decisión sin fundamento o con fundamento distinto): "
+            + ", ".join(result.pending_review)
+            + ". Revísalas y confírmalas con `applicability propose --confirm <id>`.",
+            err=True,
+        )
+
+
+def print_exclusions(exclusions: list[Exclusion]) -> None:
+    """Las exigidas por el anexo II que se dejan sin aplicar, a la vista antes de firmar."""
+    if not exclusions:
+        return
+    typer.echo("Exigidas por el anexo II y excluidas por ausencia del tipo de activo (2.1.a):")
+    for item in exclusions:
+        typer.echo(f"  - {item.id} {item.name} [{item.asset_type}]: {item.justification}")
+
+
+@applicability_app.command("validate")
+@handled
+def applicability_validate(ctx: typer.Context) -> None:
+    """Toda medida con estado y justificación; lo exigido, nunca NOT_APPLICABLE. Falla con 1."""
+    try:
+        validation = validate_applicability(open_workspace(ctx), clock())
+    except (ScopeNotApproved, CategorizationNotCurrent) as exc:
+        raise report_missing_context(exc) from None
+    if validation.errors:
+        typer.echo("La aplicabilidad no es válida:", err=True)
+        print_errors(validation.errors)
+        raise typer.Exit(1)
+    assert validation.measures is not None
+    for warning in validation.warnings:
+        typer.echo(f"Aviso: {warning}", err=True)
+    print_exclusions(validation.exclusions)
+    typer.echo(f"Válida: {len(validation.measures.measures)} medidas con estado y justificación.")
+
+
+@applicability_app.command("approve")
+@handled
+def applicability_approve(
+    ctx: typer.Context,
+    by: Annotated[str, typer.Option("--by", help="Nombre del responsable de la seguridad.")],
+) -> None:
+    """Firma la Declaración de Aplicabilidad (art. 28.2) si la aplicabilidad es válida."""
+    store = open_workspace(ctx)
+    try:
+        validation = validate_applicability(store, clock())
+        for warning in validation.warnings:
+            typer.echo(f"Aviso: {warning}", err=True)
+        print_exclusions(validation.exclusions)
+        declaration = approve_declaration(store, by, clock())
+    except (ScopeNotApproved, CategorizationNotCurrent) as exc:
+        raise report_missing_context(exc) from None
+    except DeclarationRejected as exc:
+        typer.echo("No se firma la Declaración de Aplicabilidad:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(
+        f"Declaración firmada por {declaration.approved_by} ({declaration.role.value}): "
+        f"{len(declaration.selected)} medidas seleccionadas, "
+        f"{len(declaration.compensations)} compensadas, "
+        f"{len(declaration.required_but_absent_assets)} exigidas sin aplicar por ausencia del "
+        "tipo de activo (revísalas en la Declaración antes de darla por buena).\n"
+        "El nombre es declarado; no se autentica."
+    )
+
+
+@applicability_app.command("status")
+@handled
+def applicability_show_status(ctx: typer.Context) -> None:
+    """Muestra si la Declaración de Aplicabilidad está vigente. Sale con 1 si no lo está."""
+    status = declaration_status(open_workspace(ctx), clock())
+    hints = {
+        DeclarationState.CURRENT: "La Declaración está firmada y nada ha cambiado.",
+        DeclarationState.NOT_APPROVED: "Falta firmar la Declaración (applicability approve).",
+        DeclarationState.STALE: (
+            "Algo cambió después de firmarla (abajo, qué). Para volver a firmarla, en orden: "
+            "scope approve → categorization approve → risk approve → applicability propose y "
+            "validate → applicability approve (salta los pasos que no necesites):"
+        ),
+        DeclarationState.INVALID: "La Declaración no es válida:",
+    }
+    typer.echo(f"{status.state.value}: {hints[status.state]}")
+    print_errors(status.errors)
+    if status.state is not DeclarationState.CURRENT:
+        raise typer.Exit(1)
 
 
 def backup_settings(ctx: typer.Context) -> BackupSettings:
@@ -928,6 +1175,79 @@ def controls_init(ctx: typer.Context) -> None:
             f"La versión del catálogo cambió (consolidado {replaced.consolidation_date} → "
             f"{result.version.consolidation_date}); revisa las medidas afectadas."
         )
+
+
+@risk_app.command("init")
+@handled
+def risk_init(ctx: typer.Context) -> None:
+    """Crea las plantillas de risk/ sin sobrescribir lo existente. No genera valores de riesgo."""
+    created, kept = init_risk(open_workspace(ctx))
+    for key in created:
+        typer.echo(f"Creado {key} (propuesta editable).")
+    for key in kept:
+        typer.echo(f"Se conserva {key}.")
+    typer.echo("Siguiente paso: declara tu metodología en risk/methodology.yaml.")
+
+
+@risk_app.command("validate")
+@handled
+def risk_validate(ctx: typer.Context) -> None:
+    """Valida risk/ contra metodología, inventario y catálogo. Sale con 1 si hay errores."""
+    try:
+        analysis, errors = validate_risk(open_workspace(ctx), clock())
+    except ScopeNotApproved:
+        typer.echo("No se valida: el alcance no está aprobado ahora (scope approve).", err=True)
+        raise typer.Exit(1) from None
+    if analysis is None:
+        typer.echo("El análisis de riesgos no es válido:", err=True)
+        print_errors(errors)
+        raise typer.Exit(1)
+    typer.echo(
+        f"Válido: {len(analysis.register.risks)} riesgos, {len(analysis.plan.actions)} acciones. "
+        "La herramienta no evalúa si los valores son acertados."
+    )
+
+
+@risk_app.command("approve")
+@handled
+def risk_approve(
+    ctx: typer.Context,
+    by: Annotated[str, typer.Option("--by", help="Nombre del responsable de la seguridad.")],
+) -> None:
+    """Registra la revisión anual del análisis. Solo la hace el responsable de la seguridad."""
+    try:
+        approval = approve_risk(open_workspace(ctx), by, clock())
+    except ScopeNotApproved:
+        typer.echo("No se aprueba: el alcance no está aprobado ahora (scope approve).", err=True)
+        raise typer.Exit(1) from None
+    except RiskApprovalRejected as exc:
+        typer.echo("No se aprueba el análisis de riesgos:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(
+        f"Análisis de riesgos aprobado por {approval.approved_by} ({approval.role.value}); "
+        f"vigente hasta {approval.valid_until.date()}.\n"
+        "El nombre es declarado; no se autentica."
+    )
+
+
+@risk_app.command("status")
+@handled
+def risk_show_status(ctx: typer.Context) -> None:
+    """Muestra la vigencia de la aprobación del análisis. Sale con 1 si no está vigente."""
+    status = risk_status(open_workspace(ctx), clock())
+    until = status.approval.valid_until.date() if status.approval else ""
+    hints = {
+        RiskState.APPROVED: f"El análisis está aprobado y vigente hasta {until}.",
+        RiskState.NOT_APPROVED: "Falta aprobar el análisis (risk approve).",
+        RiskState.STALE: "ya no vale lo que se aprobó; hay que aprobarlo de nuevo:",
+        RiskState.EXPIRED: f"La aprobación caducó el {until}; revisa y aprueba de nuevo.",
+        RiskState.INVALID: "La aprobación no es válida:",
+    }
+    typer.echo(f"{status.state.value}: {hints[status.state]}")
+    print_errors(status.errors)
+    if status.state is not RiskState.APPROVED:
+        raise typer.Exit(1)
 
 
 def connector_registry() -> ConnectorRegistry:

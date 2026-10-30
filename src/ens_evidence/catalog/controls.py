@@ -117,11 +117,14 @@ def init_measures(store: WorkspaceStore) -> InitResult:
         version=version,
     )
     if existing is None or created or result.replaced_version:
-        document = MeasuresFile(catalog_version=version, measures=measures)
-        text = yaml.safe_dump(
-            document.model_dump(mode="json", exclude_none=True),
-            sort_keys=False,
-            allow_unicode=True,
-        )
-        store.write_text(MEASURES_KEY, text)
+        save_measures(store, MeasuresFile(catalog_version=version, measures=measures))
     return result
+
+
+def save_measures(store: WorkspaceStore, document: MeasuresFile) -> None:
+    text = yaml.safe_dump(
+        document.model_dump(mode="json", exclude_none=True),
+        sort_keys=False,
+        allow_unicode=True,
+    )
+    store.write_text(MEASURES_KEY, text)

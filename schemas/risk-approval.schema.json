@@ -1,0 +1,97 @@
+{
+  "$defs": {
+    "CatalogVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "consolidation_date": {
+          "format": "date",
+          "title": "Consolidation Date",
+          "type": "string"
+        },
+        "snapshot_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_sha256",
+        "consolidation_date"
+      ],
+      "title": "CatalogVersion",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "approved_at": {
+      "format": "date-time",
+      "title": "Approved At",
+      "type": "string"
+    },
+    "approved_by": {
+      "title": "Approved By",
+      "type": "string"
+    },
+    "catalog_version": {
+      "$ref": "#/$defs/CatalogVersion"
+    },
+    "categorization_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Categorizaci\u00f3n vigente al aprobar; un registro sin ella queda obsoleto.",
+      "title": "Categorization Sha256"
+    },
+    "files": {
+      "additionalProperties": {
+        "type": "string"
+      },
+      "title": "Files",
+      "type": "object"
+    },
+    "role": {
+      "$ref": "#/$defs/Role"
+    },
+    "scope_fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Scope Fingerprint",
+      "type": "string"
+    },
+    "valid_until": {
+      "format": "date-time",
+      "title": "Valid Until",
+      "type": "string"
+    }
+  },
+  "required": [
+    "approved_by",
+    "role",
+    "approved_at",
+    "valid_until",
+    "scope_fingerprint",
+    "catalog_version",
+    "files"
+  ],
+  "title": "RiskApproval",
+  "type": "object"
+}

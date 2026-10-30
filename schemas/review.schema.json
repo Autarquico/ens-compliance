@@ -5,7 +5,9 @@
         "system_administrator",
         "system_administrator_delegate",
         "security_officer",
-        "system_owner"
+        "system_owner",
+        "information_owner",
+        "service_owner"
       ],
       "title": "Role",
       "type": "string"

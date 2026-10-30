@@ -1,0 +1,190 @@
+{
+  "$defs": {
+    "Acceptance": {
+      "additionalProperties": false,
+      "properties": {
+        "accepted_at": {
+          "format": "date-time",
+          "title": "Accepted At",
+          "type": "string"
+        },
+        "accepted_by": {
+          "title": "Accepted By",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        }
+      },
+      "required": [
+        "accepted_by",
+        "role",
+        "accepted_at"
+      ],
+      "title": "Acceptance",
+      "type": "object"
+    },
+    "Dimension": {
+      "enum": [
+        "C",
+        "I",
+        "T",
+        "A",
+        "D"
+      ],
+      "title": "Dimension",
+      "type": "string"
+    },
+    "Risk": {
+      "additionalProperties": false,
+      "properties": {
+        "acceptance": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Acceptance"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "assets": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Assets",
+          "type": "array"
+        },
+        "dimensions": {
+          "items": {
+            "$ref": "#/$defs/Dimension"
+          },
+          "minItems": 1,
+          "title": "Dimensions",
+          "type": "array"
+        },
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "impact": {
+          "minLength": 1,
+          "title": "Impact",
+          "type": "string"
+        },
+        "inherent": {
+          "minLength": 1,
+          "title": "Inherent",
+          "type": "string"
+        },
+        "likelihood": {
+          "minLength": 1,
+          "title": "Likelihood",
+          "type": "string"
+        },
+        "owner": {
+          "title": "Owner",
+          "type": "string"
+        },
+        "residual": {
+          "minLength": 1,
+          "title": "Residual",
+          "type": "string"
+        },
+        "safeguards": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Safeguards",
+          "type": "array"
+        },
+        "services": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Services",
+          "type": "array"
+        },
+        "threat": {
+          "title": "Threat",
+          "type": "string"
+        },
+        "treatment": {
+          "$ref": "#/$defs/Treatment"
+        },
+        "valuation": {
+          "additionalProperties": {
+            "$ref": "#/$defs/SecurityLevel"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/Dimension"
+          },
+          "title": "Valuation",
+          "type": "object"
+        }
+      },
+      "required": [
+        "id",
+        "threat",
+        "dimensions",
+        "valuation",
+        "likelihood",
+        "impact",
+        "inherent",
+        "residual",
+        "treatment",
+        "owner"
+      ],
+      "title": "Risk",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "SecurityLevel": {
+      "enum": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "title": "SecurityLevel",
+      "type": "string"
+    },
+    "Treatment": {
+      "enum": [
+        "mitigate",
+        "accept",
+        "transfer",
+        "avoid"
+      ],
+      "title": "Treatment",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "risks": {
+      "items": {
+        "$ref": "#/$defs/Risk"
+      },
+      "title": "Risks",
+      "type": "array"
+    }
+  },
+  "required": [
+    "risks"
+  ],
+  "title": "RegisterFile",
+  "type": "object"
+}

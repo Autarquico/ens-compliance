@@ -1,0 +1,25 @@
+# Medidas que el anexo II puede exigir y que quedan sin objeto si no existe el tipo de activo
+# al que se refieren (anexo II, 2.1.a). Es una decisión del producto, no texto legal: el
+# catálogo se extrae del BOE (ADR 0007) y no se toca. Ver ADR 0009.
+# Criterio: una medida entra solo si su base y todos sus refuerzos tratan exclusivamente del
+# tipo de activo nombrado (por su título, su preámbulo o su propio texto), de modo que su
+# ausencia deja sin objeto cada obligación. tests/applicability/test_absent_criterion.py
+# fija, por entrada, las cláusulas que lo justifican y las compara con el catálogo.
+# Quedan fuera, entre otras: mp.si.* (custodia, cifrado de copias y transporte alcanzan soportes
+# no removibles), mp.info.3, op.ext.3 (productos y componentes, no solo servicios), mp.if.*
+# (hablan de los locales donde se ubiquen los sistemas o haya equipamiento esencial, que existen
+# aunque no haya CPD: una oficina o una casa con portátiles lo son), mp.sw.1 (pruebas previas a la
+# implantación de cualquier sistema y componentes de producto adquirido) y mp.info.4 (sellos
+# cualificados y productos certificados no atados a la evidencia electrónica).
+# Nunca entran org.*, op.pl.*, op.exp.*, op.cont.*, op.mon.* ni mp.per.*: son marco o proceso,
+# no activos que puedan faltar. Para esas, aplícalas o compénsalas (art. 28.3).
+op.acc.5: [usuarios externos]
+op.ext.1: [servicios prestados por terceros]
+op.ext.2: [servicios prestados por terceros]
+op.ext.4: [interconexión con otros sistemas]
+op.nub.1: [servicios en la nube]
+mp.eq.3: [dispositivos portátiles]
+mp.eq.4: [otros dispositivos conectados a la red]
+mp.info.1: [datos personales]
+mp.s.1: [correo electrónico]
+mp.s.2: [servicios y aplicaciones web]
