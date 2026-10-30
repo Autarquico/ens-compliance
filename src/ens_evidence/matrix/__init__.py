@@ -12,6 +12,18 @@ from ens_evidence.matrix.documents import (
 from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess, effective_review
 from ens_evidence.matrix.evidence import LinkSupport, manual_support
 from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
+from ens_evidence.matrix.links import (
+    InitOutcome,
+    LinkOutcome,
+    MatrixRejected,
+    add_link,
+    build_link,
+    init_matrix,
+    link_label,
+    parse_covers,
+    remove_link,
+    set_entry,
+)
 from ens_evidence.matrix.model import (
     ApplicabilityReview,
     CheckLink,
@@ -39,6 +51,14 @@ from ens_evidence.matrix.obligations import (
     rows_from_declaration,
 )
 from ens_evidence.matrix.orgdocs_source import OrgdocsSource
+from ens_evidence.matrix.review import (
+    CHECKS_PENDING,
+    ReviewPlan,
+    RowStatus,
+    matrix_status,
+    prepare_review,
+    record_review,
+)
 from ens_evidence.matrix.store import (
     MATRIX_KEY,
     REVIEWS_PREFIX,
@@ -65,7 +85,23 @@ __all__ = [
     "AssessmentRow",
     "assess",
     "effective_review",
+    "CHECKS_PENDING",
     "COMPENSATION",
+    "InitOutcome",
+    "LinkOutcome",
+    "MatrixRejected",
+    "ReviewPlan",
+    "RowStatus",
+    "add_link",
+    "build_link",
+    "init_matrix",
+    "link_label",
+    "matrix_status",
+    "parse_covers",
+    "prepare_review",
+    "record_review",
+    "remove_link",
+    "set_entry",
     "KNOWN_CHECKS",
     "TECHNICAL_MAX_AGE",
     "CheckResultsSource",
