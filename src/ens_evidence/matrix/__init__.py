@@ -1,5 +1,15 @@
 """Matriz de cumplimiento por medida (anexo III, 2.1.a del RD 311/2022)."""
 
+from ens_evidence.matrix.documents import (
+    DocumentsSnapshot,
+    MeasureCoverage,
+    OrgDocumentEvidence,
+    OrgDocumentSource,
+    default_document_source,
+    document_support,
+    documents_snapshot,
+)
+from ens_evidence.matrix.evidence import LinkSupport, manual_support
 from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
 from ens_evidence.matrix.model import (
     ApplicabilityReview,
@@ -27,6 +37,7 @@ from ens_evidence.matrix.obligations import (
     plan_obligations,
     rows_from_declaration,
 )
+from ens_evidence.matrix.orgdocs_source import OrgdocsSource
 from ens_evidence.matrix.store import (
     MATRIX_KEY,
     REVIEWS_PREFIX,
@@ -38,9 +49,35 @@ from ens_evidence.matrix.store import (
     read_reviews,
     save_matrix,
 )
+from ens_evidence.matrix.technical import (
+    KNOWN_CHECKS,
+    TECHNICAL_MAX_AGE,
+    CheckResultsSource,
+    CheckRun,
+    NoCheckResults,
+    StaticCheckResults,
+    technical_support,
+)
 
 __all__ = [
     "COMPENSATION",
+    "KNOWN_CHECKS",
+    "TECHNICAL_MAX_AGE",
+    "CheckResultsSource",
+    "CheckRun",
+    "DocumentsSnapshot",
+    "LinkSupport",
+    "MeasureCoverage",
+    "NoCheckResults",
+    "OrgDocumentEvidence",
+    "OrgDocumentSource",
+    "OrgdocsSource",
+    "StaticCheckResults",
+    "default_document_source",
+    "document_support",
+    "documents_snapshot",
+    "manual_support",
+    "technical_support",
     "MATRIX_KEY",
     "REVIEWS_PREFIX",
     "ApplicabilityReview",
