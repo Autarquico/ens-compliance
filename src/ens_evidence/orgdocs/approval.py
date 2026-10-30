@@ -260,6 +260,24 @@ def _basis_of_approval(approval: DocumentApproval) -> _Basis:
     )
 
 
+def _signatory_drift(
+    store: WorkspaceStore, loaded: LoadedTemplate, approval: DocumentApproval
+) -> list[str]:
+    """La aprobación vale mientras quien firmó siga siendo quien las respuestas declaran para
+    ese rol, aunque el documento no lo muestre."""
+    report, blocked = _answers_report(store, loaded)
+    if blocked:
+        return []
+    if required_role(loaded.id, report.values) is not approval.role:
+        return ["ha cambiado el rol que aprueba el documento"]
+    try:
+        _declared_signatory(approval.role, approval.approved_by, report.values)
+    except DocumentApprovalRejected:
+        question = ROLE_QUESTION[approval.role]
+        return [f"{approval.approved_by} ya no es la persona declarada en {question}"]
+    return []
+
+
 def document_status(store: WorkspaceStore, name: str) -> DocumentStatus:
     loaded = _template(name)
     meta = _meta(store, name)
@@ -270,8 +288,10 @@ def document_status(store: WorkspaceStore, name: str) -> DocumentStatus:
         reasons = _drift(_basis_of_meta(meta), store, loaded, meta)
         return DocumentStatus(name, DocumentState.GENERATED, reasons)
     approval = history[-1]
-    reasons = _drift(_basis_of_approval(approval), store, loaded, meta) + _scope_drift(
-        store, approval
+    reasons = (
+        _drift(_basis_of_approval(approval), store, loaded, meta)
+        + _signatory_drift(store, loaded, approval)
+        + _scope_drift(store, approval)
     )
     state = DocumentState.OBSOLETE if reasons else DocumentState.APPROVED
     return DocumentStatus(name, state, reasons, approval)

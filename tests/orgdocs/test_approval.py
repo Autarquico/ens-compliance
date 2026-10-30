@@ -247,3 +247,56 @@ def test_la_aprobacion_registra_el_nombre_declarado_y_no_el_tecleado(built):
     )
 
     assert approval_history(built, "politica-seguridad")[0].approved_by == "Marta Ibáñez Soler"
+
+
+@pytest.mark.parametrize(
+    ("name", "question", "role", "signer", "replacement"),
+    [
+        (
+            "procedimientos-seguridad",
+            "resp_seguridad",
+            Role.SECURITY_OFFICER,
+            "Lucía Navarro Gil",
+            "Hugo Serrano Ortiz",
+        ),
+        (
+            "politica-seguridad",
+            "firmante_direccion",
+            Role.MANAGEMENT,
+            "Marta Ibáñez Soler",
+            "Hugo Serrano Ortiz",
+        ),
+    ],
+)
+def test_si_cambia_el_titular_del_rol_la_aprobacion_queda_obsoleta(
+    built, name, question, role, signer, replacement
+):
+    approve_document(built, name, signer, role, DOCUMENT_APPROVED_AT)
+    answers = fixture_answers()
+    answers[question] = replacement
+    if question == "resp_seguridad":
+        answers["relacion_seguridad_sistema"] = "distintas y sin dependencia jerárquica"
+    write_answers(built, answers)
+
+    status = document_status(built, name)
+
+    assert status.state is DocumentState.OBSOLETE
+    assert f"{signer} ya no es la persona declarada en {question}" in status.reasons
+
+
+def test_si_cambia_el_rol_que_aprueba_la_aprobacion_queda_obsoleta(built):
+    approve_document(
+        built,
+        "proceso-autorizacion",
+        "Lucía Navarro Gil",
+        Role.SECURITY_OFFICER,
+        DOCUMENT_APPROVED_AT,
+    )
+    answers = fixture_answers()
+    answers["autoridad_procedimientos"] = "el responsable del sistema"
+    write_answers(built, answers)
+
+    status = document_status(built, "proceso-autorizacion")
+
+    assert status.state is DocumentState.OBSOLETE
+    assert "ha cambiado el rol que aprueba el documento" in status.reasons
