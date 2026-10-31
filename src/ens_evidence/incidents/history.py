@@ -6,6 +6,7 @@ sustituidos o un incidente roto la invalidan.
 """
 
 import json
+from dataclasses import dataclass
 from datetime import datetime
 from typing import Annotated
 
@@ -13,13 +14,13 @@ from pydantic import Field, ValidationError
 
 from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, import_generated
 from ens_evidence.evidence.verify import verify_one
+from ens_evidence.incidents.errors import IncidentRejected
+from ens_evidence.incidents.layout import StoredRecord, asset_id, incident_of_asset
 from ens_evidence.incidents.model import SCHEMA_VERSION, IncidentStatus, RecordKind
-from ens_evidence.incidents.store import IncidentRejected, StoredRecord, asset_id
+from ens_evidence.incidents.privacy import check_declared_name
 from ens_evidence.incidents.verify import IncidentScan, history_presence_problems, scan_incident
 from ens_evidence.models.contracts import SHA256_PATTERN, EvidenceManifest, Strict
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
-
-_ASSET_PREFIX = "incident:"
 
 
 class HistoryEntry(Strict):
@@ -68,8 +69,10 @@ def record_history(
 ) -> EvidenceManifest:
     """Genera la evidencia `incident-history` de un incidente cerrado y sin problemas.
 
-    `collected_at` es el `recorded_at` del cierre y no lleva `valid_until`. Si una orden de cierre
-    se cortó antes de este paso, se puede relanzar: rechaza si ya existe un historial."""
+    `collected_at` es el `recorded_at` del cierre y no lleva `valid_until`. Si el cierre quedó
+    escrito sin historial, `incident history` lo relanza: rechaza si ya existe uno."""
+    if name_errors := check_declared_name(by):
+        raise IncidentRejected(name_errors)
     scan = scan_incident(store, incident_id)
     if scan.problems:
         raise IncidentRejected([f"{incident_id} está roto", *scan.problems])
@@ -88,16 +91,30 @@ def record_history(
     )
 
 
+@dataclass(frozen=True)
+class HistoryCheck:
+    """`problems` vacío si el historial es válido; `simulated`: es el de un simulacro."""
+
+    problems: list[str]
+    simulated: bool
+
+
 def verify_history(store: WorkspaceStore, manifest: EvidenceManifest) -> list[str]:
+    return check_history(store, manifest).problems
+
+
+def check_history(store: WorkspaceStore, manifest: EvidenceManifest) -> HistoryCheck:
     """Problemas del historial: vacío si coincide exactamente con todos los registros de un
-    incidente cerrado, con un único cierre y sin problemas."""
+    incidente cerrado, con un único cierre y sin problemas. Lee el historial una sola vez."""
     if manifest.source != INCIDENT_HISTORY_SOURCE:
-        return [f"{manifest.id}: no es una evidencia {INCIDENT_HISTORY_SOURCE}"]
-    if not manifest.asset_id.startswith(_ASSET_PREFIX):
-        return [f"{manifest.id}: el activo no es un incidente"]
+        return HistoryCheck(
+            [f"{manifest.id}: no es una evidencia {INCIDENT_HISTORY_SOURCE}"], False
+        )
+    incident_id = incident_of_asset(manifest.asset_id)
+    if incident_id is None:
+        return HistoryCheck([f"{manifest.id}: el activo no es un incidente válido"], False)
     problems = list(verify_one(store, manifest.id).problems)
     history = _read_history(store, manifest, problems)
-    incident_id = manifest.asset_id.removeprefix(_ASSET_PREFIX)
     scan = scan_incident(store, incident_id)
     problems += [f"{incident_id}: {problem}" for problem in scan.problems]
     problems += history_presence_problems(scan)
@@ -110,7 +127,7 @@ def verify_history(store: WorkspaceStore, manifest: EvidenceManifest) -> list[st
         problems.append(f"{manifest.id}: collected_at no es el recorded_at del cierre")
     if history is not None and scan.records:
         problems += _compare(history, build_history(scan), incident_id)
-    return problems
+    return HistoryCheck(problems, history is not None and history.simulated)
 
 
 def _read_history(

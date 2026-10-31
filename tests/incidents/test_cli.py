@@ -8,6 +8,7 @@ from typer.testing import CliRunner
 
 from ens_evidence.cli import app
 from ens_evidence.evidence.manifests import list_manifests
+from ens_evidence.incidents import IncidentRejected
 from ens_evidence.matrix import MATRIX_KEY
 
 from .helpers import DETECTED, RECORDED
@@ -249,7 +250,7 @@ class TestClose:
         history = re.search(r"Historial: (EV-\d{8}-[0-9a-f]{8})", result.output)
         assert history
         assert f"matrix link op.exp.9 --evidence {history.group(1)} --covers base" in result.output
-        assert "sin ejecutar" in result.output
+        assert "no se han ejecutado" in result.output
         assert "El nombre es declarado; no se autentica" in result.output
         assert not world.store.exists(MATRIX_KEY)
         assert world.last_state()["status"] == "closed"
@@ -389,3 +390,92 @@ def test_schemas_are_registered(tmp_path):
     assert result.exit_code == 0
     for name in ("incident-record", "incident-history"):
         assert json.loads((tmp_path / f"{name}.schema.json").read_text())["type"] == "object"
+
+
+class TestHistoryRecovery:
+    def cut_closure(self, cli, monkeypatch):
+        def failing(*args, **kwargs):
+            raise IncidentRejected(["el almacén no responde"])
+
+        open_incident(cli, "--personal-data", "no")
+        with monkeypatch.context() as patched:
+            patched.setattr("ens_evidence.incidents.store.record_history", failing)
+            return cli("incident", "close", "INC-2026-001", *CLOSE, hours=3)
+
+    def test_a_closure_without_history_says_what_is_written_and_what_is_missing(
+        self, cli, world, monkeypatch
+    ):
+        result = self.cut_closure(cli, monkeypatch)
+
+        assert result.exit_code == 1
+        assert "No se registra" not in result.output
+        assert "registro 2 (closed)" in result.output
+        assert "está registrado, pero su historial no se generó" in result.output
+        assert "el almacén no responde" in result.output
+        assert "incident history INC-2026-001" in result.output
+        assert len(stored(world)) == 4  # reserva y registro de cada orden
+
+    def test_history_completes_the_incident_without_touching_the_records(
+        self, cli, world, monkeypatch
+    ):
+        self.cut_closure(cli, monkeypatch)
+        before = {key: world.store.read_bytes(key) for key in stored(world)}
+        assert cli("incident", "verify").exit_code == 1
+
+        result = cli("incident", "history", "INC-2026-001", "--by", "Ana", hours=4)
+
+        assert result.exit_code == 0, result.output
+        assert re.search(r"Historial: EV-\d{8}-[0-9a-f]{8}", result.output)
+        assert "matrix link op.exp.9" in result.output
+        assert {key: world.store.read_bytes(key) for key in stored(world)} == before
+        assert cli("incident", "verify").exit_code == 0
+
+    def test_history_refuses_an_open_a_complete_and_an_unknown_incident(self, cli):
+        open_incident(cli, "--personal-data", "no")
+        assert "no está cerrado" in cli("incident", "history", "INC-2026-001", "--by", "Ana").output
+        close_incident(cli)
+
+        complete = cli("incident", "history", "INC-2026-001", "--by", "Ana")
+        missing = cli("incident", "history", "INC-2026-009", "--by", "Ana")
+
+        assert complete.exit_code == missing.exit_code == 1
+        assert "ya tiene historial" in complete.output
+        assert "no existe" in missing.output
+
+    def test_history_minimizes_the_declared_name(self, cli, monkeypatch):
+        self.cut_closure(cli, monkeypatch)
+
+        result = cli("incident", "history", "INC-2026-001", "--by", "ana@ejemplo.invalid")
+
+        assert result.exit_code == 1
+        assert "ana@ejemplo" not in result.output
+
+
+class TestPresentation:
+    def test_close_suggests_the_history_for_op_exp_9_and_op_exp_7(self, cli):
+        open_incident(cli, "--personal-data", "no")
+        output = close_incident(cli).output
+
+        history = re.search(r"Historial: (EV-\S+)", output).group(1)
+        assert f"matrix link op.exp.9 --evidence {history} --covers base" in output
+        assert f"matrix link op.exp.7 --evidence {history} --covers op.exp.7.1" in output
+
+    def test_show_speaks_plain_spanish_and_json_keeps_the_enums(self, cli):
+        open_incident(cli, "--personal-data", "no")
+        close_incident(cli)
+
+        shown = cli("incident", "show", "INC-2026-001").output
+        raw = json.loads(cli("incident", "show", "INC-2026-001", "--json").output)
+
+        assert "Estado: cerrado" in shown and "reporte final" in shown
+        assert "sin cambios en los eventos auditables" in shown
+        assert not re.search(r"\b(closed|opened|updated|no_change|unknown)\b", shown)
+        assert raw["records"][-1]["kind"] == "closed"
+
+    def test_closing_without_a_personal_data_decision_says_what_to_do(self, cli):
+        open_incident(cli)
+
+        result = cli("incident", "close", "INC-2026-001", *CLOSE, hours=3)
+
+        assert result.exit_code == 1
+        assert "incident update INC-2026-001 --personal-data yes|no" in result.output

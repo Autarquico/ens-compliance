@@ -5,15 +5,16 @@ import pytest
 
 from ens_evidence.evidence import load_manifest_by_id
 from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, import_generated
+from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.incidents import (
     IncidentRejected,
+    check_history,
     record_history,
     verify_history,
     verify_incident,
 )
 from ens_evidence.incidents.history import IncidentHistory, render_history
 from ens_evidence.incidents.verify import scan_incident
-from ens_evidence.workspace import StorageUnavailable
 
 from .helpers import RECORDED
 from .world import BY, World
@@ -217,15 +218,10 @@ def test_record_history_needs_a_closed_incident_without_history(world, closed):
     )
 
 
-def test_a_closure_cut_before_the_history_is_reported_and_can_be_completed(world, monkeypatch):
-    def interrupted(*args, **kwargs):
-        raise StorageUnavailable("corte")
-
+def test_a_closure_without_history_is_reported_and_can_be_completed(world):
     world.open()
-    monkeypatch.setattr("ens_evidence.incidents.history.record_history", interrupted)
-    with pytest.raises(StorageUnavailable):
-        world.close()
-    monkeypatch.undo()
+    closed = world.close()
+    world.remove(manifest_key(closed.history_evidence_id))
 
     assert "cerrado sin evidencia incident-history" in "\n".join(verify_incident(world.store, ID))
 
@@ -233,3 +229,27 @@ def test_a_closure_cut_before_the_history_is_reported_and_can_be_completed(world
 
     assert verify_incident(world.store, ID) == []
     assert verify_history(world.store, manifest) == []
+
+
+def test_check_history_reports_whether_it_is_a_simulation(world, monkeypatch):
+    world.approve_procedure(monkeypatch)
+    world.open(
+        id="SIM-2026-001", simulated=True, procedure=world.procedure().model_dump(mode="json")
+    )
+    closed = world.close()
+    manifest = load_manifest_by_id(world.store, closed.history_evidence_id)
+
+    checked = check_history(world.store, manifest)
+
+    assert checked.problems == [] and checked.simulated is True
+
+
+def test_an_invalid_incident_asset_is_a_problem_not_a_crash(world):
+    world.open()
+    closed = world.close()
+    manifest = load_manifest_by_id(world.store, closed.history_evidence_id)
+    forged = manifest.model_copy(update={"asset_id": "incident:../x"})
+
+    checked = check_history(world.store, forged)
+
+    assert any("el activo no es un incidente válido" in problem for problem in checked.problems)

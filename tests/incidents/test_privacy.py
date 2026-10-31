@@ -162,3 +162,41 @@ def test_payload_is_not_mutated():
     before = copy.deepcopy(payload)
     check_incident_payload(payload)
     assert payload == before
+
+
+OPAQUE_LISTS = [("state", "assets"), ("state", "source", "alert_ids")]
+PERSONAL_IDS = {
+    "dni": "12345678Z",
+    "nie": "X1234567L",
+    "iban": "ES9121000418450200051332",
+    "teléfono": "600123456",
+    "correo": "ana@example.org",
+}
+
+
+@pytest.mark.parametrize("path", OPAQUE_LISTS, ids=lambda p: p[-1])
+@pytest.mark.parametrize("kind", PERSONAL_IDS)
+def test_personal_identifiers_are_rejected_in_opaque_id_lists(path, kind):
+    payload = put(full_payload(), (*path, 0), PERSONAL_IDS[kind])
+
+    errors, _ = check_incident_payload(payload)
+
+    assert any(e.startswith(f"{'.'.join(path)}[0]:") for e in errors)
+    assert PERSONAL_IDS[kind] not in " ".join(errors)
+
+
+@pytest.mark.parametrize("path", OPAQUE_LISTS, ids=lambda p: p[-1])
+def test_an_ip_in_an_opaque_id_list_is_a_warning(path):
+    payload = put(full_payload(), (*path, 0), "192.168.1.10")
+
+    errors, warnings = check_incident_payload(payload)
+
+    assert errors == []
+    assert any("dirección IP" in w for w in warnings)
+
+
+def test_ordinary_asset_and_alert_ids_still_pass():
+    payload = put(full_payload(), ("state", "assets", 0), "srv-ficheros-01")
+    payload = put(payload, ("state", "source", "alert_ids", 0), "1700000000.1234")
+
+    assert check_incident_payload(payload) == ([], [])

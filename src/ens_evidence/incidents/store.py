@@ -11,19 +11,34 @@ fallo a medias:
 
 Un fallo entre 2 y 4 deja una reserva (y quizá un manifiesto) sin registro: `verify` lo marca roto
 y el incidente no admite más registros hasta que se recupere desde la copia (runbook).
+
+5. Si el registro es el cierre, genera el historial. Si eso falla, el cierre ya está escrito y es
+definitivo: no se rechaza, se informa en `Recorded.history_problems` y `incident history` lo
+completa sin tocar los registros.
 """
 
 import hashlib
 import re
-from dataclasses import dataclass, field
-from datetime import UTC, datetime
-from typing import Any
+from dataclasses import dataclass, field, replace
+from datetime import datetime
 
-import yaml
 from pydantic import ValidationError
 
 from ens_evidence.evidence.importer import INCIDENT_RECORD_SOURCE, import_generated
 from ens_evidence.evidence.verify import verify_one
+from ens_evidence.incidents.errors import IncidentRejected
+from ens_evidence.incidents.history import record_history
+from ens_evidence.incidents.layout import (
+    INCIDENTS_PREFIX,
+    PROCEDURE_DOCUMENT,
+    StoredRecord,
+    approval_key,
+    asset_id,
+    incident_ids_in,
+    record_key,
+    render_record,
+    seq_key,
+)
 from ens_evidence.incidents.model import (
     IncidentRecord,
     IncidentState,
@@ -31,80 +46,32 @@ from ens_evidence.incidents.model import (
     RecordKind,
     check_successor,
 )
-from ens_evidence.incidents.privacy import check_incident_payload
+from ens_evidence.incidents.privacy import check_declared_name, check_incident_payload
+from ens_evidence.incidents.verify import history_presence_problems, scan_incident
+from ens_evidence.orgdocs import approval as org_approval
 from ens_evidence.orgdocs.answers import read_answers, squash, validate_answers
-from ens_evidence.orgdocs.approval import APPROVALS_PREFIX, STAMP, document_status
 from ens_evidence.orgdocs.contract import INCIDENT_LEVEL_FIELDS, INCIDENT_LEVELS
 from ens_evidence.orgdocs.template import load_templates
+from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.workspace import AlreadyExists, WorkspaceStore
 
-INCIDENTS_PREFIX = "incidents"
-PROCEDURE_DOCUMENT = "procedimiento-incidentes"
-RECORD_NAME = re.compile(r"(\d{6})-(\d{8}T\d{12}Z)-([0-9a-f]{12})\.yaml")
-RESERVATION_NAME = re.compile(r"seq/(\d{6})")
-_ID_IN_KEY = re.compile(rf"^{INCIDENTS_PREFIX}/((?:INC|SIM)-\d{{4}}-\d{{3}})/")
 _RESERVED = b"reservada\n"
 _LEVEL = INCIDENT_LEVEL_FIELDS[0]
 
 
-class IncidentRejected(Exception):
-    """El registro no se escribe; `errors` está listo para mostrar y nunca incluye valores."""
-
-    def __init__(self, errors: list[str]) -> None:
-        super().__init__("; ".join(errors))
-        self.errors = errors
-
-
-@dataclass(frozen=True)
-class StoredRecord:
-    key: str
-    data: bytes
-    record: IncidentRecord
-
-    @property
-    def sha256(self) -> str:
-        return hashlib.sha256(self.data).hexdigest()
-
-
 @dataclass(frozen=True)
 class Recorded:
+    """Lo escrito por una orden. Si `history_problems` no está vacío, el cierre quedó registrado
+    pero el historial no se generó: `incident history` lo completa."""
+
     key: str
     record: IncidentRecord
+    sha256: str
     evidence_id: str
     history_evidence_id: str | None = None
+    history_problems: list[str] = field(default_factory=list)
     warnings: list[str] = field(default_factory=list)
-
-
-def incident_prefix(incident_id: str) -> str:
-    return f"{INCIDENTS_PREFIX}/{incident_id}"
-
-
-def seq_key(incident_id: str, seq: int) -> str:
-    return f"{incident_prefix(incident_id)}/seq/{seq:06d}"
-
-
-def asset_id(incident_id: str) -> str:
-    return f"incident:{incident_id}"
-
-
-def instant_stamp(moment: datetime) -> str:
-    return moment.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
-
-
-def render_record(payload: dict[str, Any]) -> bytes:
-    """YAML canónico (claves ordenadas) del registro serializado."""
-    return yaml.safe_dump(payload, sort_keys=True, allow_unicode=True).encode("utf-8")
-
-
-def record_key(record: IncidentRecord, data: bytes) -> str:
-    stamp = instant_stamp(record.recorded_at)
-    sha12 = hashlib.sha256(data).hexdigest()[:12]
-    return f"{incident_prefix(record.state.id)}/{record.seq:06d}-{stamp}-{sha12}.yaml"
-
-
-def incident_ids_in(keys: list[str]) -> set[str]:
-    return {m.group(1) for key in keys if (m := _ID_IN_KEY.match(key))}
 
 
 def next_incident_id(store: WorkspaceStore, *, simulated: bool, year: int) -> str:
@@ -136,14 +103,9 @@ def declared_levels(store: WorkspaceStore) -> list[str]:
     return [row[_LEVEL] for row in rows if isinstance(row, dict) and row.get(_LEVEL)]
 
 
-def approval_key(approved_at: datetime) -> str:
-    stamp = approved_at.astimezone(UTC).strftime(STAMP)
-    return f"{APPROVALS_PREFIX}/{PROCEDURE_DOCUMENT}/{stamp}.yaml"
-
-
 def current_procedure(store: WorkspaceStore) -> Procedure | None:
     """Aprobación vigente de `procedimiento-incidentes`, tal como la guarda un incidente."""
-    status = document_status(store, PROCEDURE_DOCUMENT)
+    status = org_approval.document_status(store, PROCEDURE_DOCUMENT)
     approval = status.approval
     if not status.current or approval is None:
         return None
@@ -155,16 +117,23 @@ def current_procedure(store: WorkspaceStore) -> Procedure | None:
     )
 
 
+def simulation_procedure(store: WorkspaceStore) -> Procedure:
+    """El procedimiento que exige un simulacro: la aprobación vigente, o `IncidentRejected`."""
+    procedure = current_procedure(store)
+    if procedure is None:
+        raise IncidentRejected(
+            [f"procedure: un simulacro exige {PROCEDURE_DOCUMENT} aprobado y vigente"]
+        )
+    return procedure
+
+
 def record_incident(
     store: WorkspaceStore, state: IncidentState, *, kind: RecordKind, by: str, now: datetime
 ) -> Recorded:
     """Añade un registro al incidente. `IncidentRejected` si no se escribe nada o el incidente
     está roto; `now` es el `recorded_at` y el instante de la evidencia."""
-    from ens_evidence.incidents.history import record_history
-    from ens_evidence.incidents.verify import scan_incident
-
-    if not by.strip():
-        raise IncidentRejected(["--by: indica quién registra (nombre declarado)"])
+    if name_errors := check_declared_name(by):
+        raise IncidentRejected(name_errors)
     scan = scan_incident(store, state.id)
     if scan.problems:
         raise IncidentRejected([f"{state.id} está roto y no admite más registros", *scan.problems])
@@ -174,7 +143,9 @@ def record_incident(
             [f"{state.id} ya existe" if previous else f"{state.id} no existe; ábrelo primero"]
         )
     if previous and previous.record.kind is RecordKind.CLOSED:
-        raise IncidentRejected([f"{state.id} está cerrado y no admite más registros"])
+        raise IncidentRejected([_closed_message(state.id, scan.histories)])
+    if presence := history_presence_problems(scan):
+        raise IncidentRejected([f"{state.id} no admite más registros", *presence])
     errors: list[str] = []
     warnings: list[str] = []
     state = _with_procedure(store, state, previous is None, errors, warnings)
@@ -196,6 +167,7 @@ def record_incident(
     errors += found
     warnings += notices
     errors += _broken_evidence(store, state)
+    errors += _unknown_assets(store, state, previous)
     if errors:
         raise IncidentRejected(errors)
 
@@ -217,8 +189,23 @@ def record_incident(
     )
     key = record_key(record, data)
     store.create_bytes(key, data)
-    history = record_history(store, state.id, by=by, now=now) if record.state.closure else None
-    return Recorded(key, record, manifest.id, history.id if history else None, warnings)
+    recorded = Recorded(
+        key, record, hashlib.sha256(data).hexdigest(), manifest.id, warnings=warnings
+    )
+    if kind is not RecordKind.CLOSED:
+        return recorded
+    try:
+        history = record_history(store, state.id, by=by, now=now)
+    except IncidentRejected as exc:
+        return replace(recorded, history_problems=exc.errors)
+    return replace(recorded, history_evidence_id=history.id)
+
+
+def _closed_message(incident_id: str, histories: tuple) -> str:
+    message = f"{incident_id} está cerrado y no admite más registros"
+    if not histories:
+        message += f"; su historial falta: ens-evidence incident history {incident_id}"
+    return message
 
 
 def _with_procedure(
@@ -272,6 +259,21 @@ def _with_severity(
         errors.append(f"severity: no es un nivel declarado ({', '.join(levels)})")
         return state
     return state.model_copy(update={"severity": match})
+
+
+def _unknown_assets(
+    store: WorkspaceStore, state: IncidentState, previous: StoredRecord | None
+) -> list[str]:
+    """Los activos que se añaden deben existir en el inventario; para registrar sin activo,
+    basta con omitir `--asset`."""
+    added = set(state.assets) - set(previous.record.state.assets if previous else ())
+    if not added:
+        return []
+    inventory, problems = load_assets(store)
+    if inventory is None:
+        return [f"assets: no se puede leer el inventario ({'; '.join(problems)}); omite --asset"]
+    known = {asset.id for asset in inventory.assets}
+    return [f"assets: {asset} no está en el inventario" for asset in sorted(added - known)]
 
 
 def _broken_evidence(store: WorkspaceStore, state: IncidentState) -> list[str]:

@@ -20,8 +20,13 @@ preguntas nuevas:
 - Quién decide qué evidencia preservar y quién da el asesoramiento legal.
 - Cuándo se revisan los eventos auditables.
 - Si prestáis servicios a entidades públicas: cómo notificáis al INCIBE-CERT,
-  quién lo hace y cuándo. El art. 33.7 lo exige. La herramienta no fija
-  plazos ni el contenido de la notificación.
+  quién lo hace y en qué momento del procedimiento. El art. 33.7 obliga a
+  notificar los incidentes que os afecten; la herramienta no decide cuáles se
+  notifican ni fija plazos o contenido, porque dependen de la Instrucción
+  Técnica de Seguridad aplicable, que no ha verificado.
+- Si usáis el registro de esta herramienta (`ens-evidence incident`),
+  indicadlo al describir el registro: es el único que la matriz acepta para
+  op.exp.9.
 
 Después genera y aprueba:
 
@@ -54,10 +59,11 @@ ens-evidence incident close INC-2026-001 --by "Hugo Serrano Ortiz" \
 - Cada registro se guarda también como evidencia con su huella.
 - El cierre es definitivo y genera el **historial** del incidente, una
   evidencia `EV-…`. La herramienta te muestra qué comandos usar para
-  vincularlo.
-- Al cerrar no puede quedar pendiente si hay datos personales afectados. Si el
-  incidente tiene relevancia jurisdiccional, indica quién da el asesoramiento
-  legal.
+  vincularlo a op.exp.9 y a op.exp.7.
+- Para cerrar hay que haber decidido si el incidente afecta a datos
+  personales (sí o no): `incident update INC-… --personal-data yes|no`. Si
+  tiene relevancia jurisdiccional, indica quién da el asesoramiento legal y
+  qué evidencias se preservan.
 
 Qué **no** escribir: datos personales (correos, DNI/NIE, IBAN, teléfonos),
 claves ni logs. Describe a las personas por su rol y los datos por referencia,
@@ -71,12 +77,26 @@ ens-evidence incident verify           # sale con 1 si algún registro está rot
 
 Usa siempre la CLI: un registro editado o borrado a mano se detecta, rompe el
 incidente y bloquea op.exp.9. Para recuperarlo, restaura `incidents/` y
-`evidence/` desde la copia (`ens-evidence backup …`).
+`evidence/` desde la copia (`ens-evidence backup …`). `incident verify` también
+avisa de los huecos en la numeración (`INC-AAAA-NNN` es correlativa).
+
+### Un cierre sin historial
+
+Si un corte interrumpe el cierre después de escribir el registro final, la
+orden termina con error y dice que el cierre está registrado pero el historial
+no se generó. El cierre es definitivo y no hay que repetirlo. Completa el
+historial, sin tocar ningún registro:
+
+```bash
+ens-evidence incident history INC-2026-001 --by "Hugo Serrano Ortiz"
+```
+
+Mientras falte, `incident verify` lo marca y op.exp.9 sigue bloqueada.
 
 ## 3. Haz un simulacro
 
-Sin incidentes reales en el periodo, op.exp.9 queda sin evidencia. Ensaya el
-procedimiento con un incidente simulado:
+Sin incidentes reales en el periodo, op.exp.9 queda sin evidencia. Puedes
+ensayar el procedimiento con un incidente simulado:
 
 ```bash
 ens-evidence incident new --simulated --title "Simulacro: ransomware en un portátil" \
@@ -84,12 +104,16 @@ ens-evidence incident new --simulated --title "Simulacro: ransomware en un port�
 ```
 
 El simulacro exige el procedimiento aprobado y vigente. Lleva el prefijo
-`SIM-`, y la matriz y el export lo muestran como «simulacro».
+`SIM-`, y la matriz, la revisión y el export lo muestran como «simulacro».
+
+Un simulacro muestra que el procedimiento y el registro funcionan; no
+sustituye el registro de incidentes reales. Quien revisa op.exp.9 lo verá
+marcado como simulacro y decide si basta.
 
 ## 4. Vincúlalo en la matriz y revisa
 
 ```bash
-ens-evidence matrix link op.exp.7 --document procedimiento-incidentes --covers base
+ens-evidence matrix link op.exp.7 --document procedimiento-incidentes --covers op.exp.7.1,op.exp.7.2
 ens-evidence matrix link op.exp.7 --evidence <EV del historial> --covers op.exp.7.1
 ens-evidence matrix link op.exp.9 --evidence <EV del historial> --covers base
 ens-evidence matrix review op.exp.9 --by "…" --role system_administrator --assessment COMPLIANT --conclusion "…"

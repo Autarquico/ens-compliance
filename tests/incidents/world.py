@@ -14,7 +14,7 @@ from ens_evidence.incidents import (
     current_procedure,
     record_incident,
 )
-from ens_evidence.incidents.store import (
+from ens_evidence.incidents.layout import (
     PROCEDURE_DOCUMENT,
     approval_key,
     record_key,
@@ -42,6 +42,34 @@ class World:
         self.root = root / "ws"
         self.store = LocalStore(self.root)
         self.incident_id = "INC-2026-001"
+        if not self.store.exists("scope/assets.yaml"):
+            self.store.write_text(
+                "scope/assets.yaml",
+                yaml.safe_dump(
+                    {
+                        "assets": [
+                            {
+                                "id": "APP-001",
+                                "type": "laptop",
+                                "deployment": "deployed",
+                                "os": "macOS",
+                                "owner": "Ana",
+                                "encrypted": True,
+                                "usage": "trabajo",
+                            },
+                            {
+                                "id": "APP-002",
+                                "type": "laptop",
+                                "deployment": "deployed",
+                                "os": "Linux",
+                                "owner": "Luis",
+                                "encrypted": True,
+                                "usage": "trabajo",
+                            },
+                        ]
+                    }
+                ),
+            )
 
     def path(self, key: str) -> Path:
         return self.root.joinpath(*key.split("/"))
@@ -51,6 +79,10 @@ class World:
 
     def keys(self, prefix: str = "") -> list[str]:
         return self.store.list(prefix)
+
+    def written(self) -> list[str]:
+        """Lo escrito además del inventario que prepara el propio mundo."""
+        return [key for key in self.keys() if key != "scope/assets.yaml"]
 
     def declare_levels(self, rows=LEVELS) -> None:
         self.store.write_text(
@@ -85,7 +117,7 @@ class World:
         status = DocumentStatus(
             PROCEDURE_DOCUMENT, DocumentState.APPROVED, approval=self.approval()
         )
-        monkeypatch.setattr("ens_evidence.incidents.store.document_status", lambda *_: status)
+        monkeypatch.setattr("ens_evidence.orgdocs.approval.document_status", lambda *_: status)
 
     def procedure(self):
         procedure = current_procedure(self.store)

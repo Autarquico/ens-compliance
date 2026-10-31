@@ -43,6 +43,7 @@ def link_simulation(scenario: Scenario, history: str) -> None:
     scenario.at(0)
     link(run, REGISTER_MEASURE, "evidence", history, "base")
     link(run, PROCEDURE_MEASURE, "document", PROCEDURE, "op.exp.7.1,op.exp.7.2")
+    link(run, PROCEDURE_MEASURE, "evidence", history, "op.exp.7.1")
 
 
 def review_both(scenario: Scenario) -> None:
@@ -97,9 +98,13 @@ def test_el_historial_se_enlaza_a_op_exp_9_y_el_procedimiento_a_op_exp_7_con_res
     assert {(m["kind"], m["target"]) for m in row(document, REGISTER_MEASURE)["manual"]} == {
         ("evidence", history)
     }
-    assert {(m["kind"], m["target"]) for m in row(document, PROCEDURE_MEASURE)["manual"]} == {
-        ("org_document", PROCEDURE)
+    procedure_links = row(document, PROCEDURE_MEASURE)["manual"]
+    assert {(m["kind"], m["target"]) for m in procedure_links} == {
+        ("org_document", PROCEDURE),
+        ("evidence", history),
     }
+    assert all(m["counts"] for m in procedure_links)
+    assert next(m for m in procedure_links if m["kind"] == "evidence")["simulated"] is True
 
 
 def test_op_exp_9_queda_sin_huecos_de_clausula_y_solo_con_revision_pendiente(scenario):
@@ -226,7 +231,8 @@ def test_vincular_el_procedimiento_a_op_exp_9_no_levanta_el_bloqueo(scenario):
     assert linked.exit_code == 1
     assert "op.exp.9 solo se sustenta con el historial de un incidente cerrado" in linked.output
     assert status.exit_code == 1
-    assert "faltan evidencias" in status.output
+    assert "incident new --simulated" in status.output
+    assert "faltan evidencias" not in status.output
 
 
 def test_una_evidencia_manual_generica_no_se_puede_vincular_a_op_exp_9(scenario, tmp_path):
@@ -241,3 +247,20 @@ def test_una_evidencia_manual_generica_no_se_puede_vincular_a_op_exp_9(scenario,
     assert linked.exit_code == 1
     assert "op.exp.9 solo se sustenta con el historial de un incidente cerrado" in linked.output
     assert row(export(scenario.run), REGISTER_MEASURE)["manual"] == []
+
+
+def test_matrix_review_y_el_export_senalan_el_simulacro_donde_se_decide(scenario):
+    history = run_simulation(scenario)
+    link_simulation(scenario, history)
+    scenario.clock.now = NOW
+
+    reviewed = review(scenario.run, REGISTER_MEASURE)
+    exported = scenario.run("matrix", "export", "--stdout", "--format", "md")
+
+    assert reviewed.exit_code == 0, reviewed.output
+    assert f"evidencia {history} (simulacro)" in reviewed.output
+    assert "una de las fuentes es un simulacro" in reviewed.output
+    assert "La valoración es tuya" in reviewed.output
+    revisions = [line for line in exported.output.splitlines() if "← evidencia" in line]
+    assert revisions and all(f"{history} (simulacro)" in line for line in revisions)
+    assert f"- {history} (simulacro) ·" in exported.output

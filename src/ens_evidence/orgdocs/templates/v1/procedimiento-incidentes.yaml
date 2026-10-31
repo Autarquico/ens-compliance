@@ -38,7 +38,7 @@ questions:
   - id: incidentes_registro
     text: "¿Cómo se registran las actuaciones sobre un incidente?"
     clause: art.25.2
-    help: "Art. 25.2: registro de las actuaciones. Dónde se anotan, quién lo hace y qué se anota: aviso inicial, avances, actuaciones de emergencia, cambios en el sistema y cierre."
+    help: "Art. 25.2: registro de las actuaciones. Dónde se anotan, quién lo hace y qué se anota: aviso inicial, avances, actuaciones de emergencia, cambios en el sistema y cierre. Si usáis el registro de esta herramienta (ens-evidence incident), indicadlo aquí: es el único que la matriz acepta para op.exp.9."
   - id: incidentes_mejora
     text: "¿Cómo se usa ese registro para mejorar la seguridad del sistema?"
     clause: art.25.2
@@ -65,7 +65,7 @@ questions:
   - id: incibe_cuando
     text: "¿Cuándo se notifica al INCIBE-CERT, según vuestros niveles de clasificación?"
     clause: art.33.7
-    help: "Indica, para cada nivel declarado, si se notifica y en qué momento del procedimiento. Esta herramienta no fija plazos: dependen de la Instrucción Técnica de Seguridad aplicable, que no está verificada."
+    help: "En qué momento del procedimiento se notifica, según el nivel. El art. 33.7 habla de los incidentes que os afecten; los umbrales y plazos dependen de la Instrucción Técnica de Seguridad aplicable, que esta herramienta no ha verificado."
     required_if: {question: servicios_externalizados, any_of: ["sí"]}
   - id: incidentes_evidencia
     text: "¿Quién decide qué evidencia de un incidente puede tener relevancia jurisdiccional, y quién da el asesoramiento legal?"
@@ -147,7 +147,7 @@ sections:
     covers: [art.33.7]
     when: {question: servicios_externalizados, any_of: ["sí"]}
     body: |
-      La organización presta servicios a entidades públicas.
+      La organización declara que presta a entidades públicas servicios que se apoyan en sus sistemas.
 
       Quién notifica: {{incibe_quien}}
 
@@ -159,7 +159,7 @@ sections:
     covers: []
     when: {question: servicios_externalizados, any_of: ["no"]}
     body: |
-      La organización declara que no presta servicios a entidades públicas.
+      La organización declara que no presta a entidades públicas servicios que se apoyen en sus sistemas. Si presta cualquier servicio a una entidad pública, revisad el art. 33.7 (notificación al INCIBE-CERT).
   - id: evidencia_y_eventos_auditables
     title: "Evidencia y eventos auditables"
     covers: []

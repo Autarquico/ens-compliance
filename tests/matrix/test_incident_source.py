@@ -23,10 +23,13 @@ from ens_evidence.matrix import (
     init_matrix,
     render_markdown,
 )
+from ens_evidence.matrix.evidence import is_linkable
 from ens_evidence.matrix.links import entry_of, load_matrix
+from ens_evidence.matrix.messages import blocker_lines
 from ens_evidence.matrix.policy import SOURCE_POLICIES, admits, source_policy
 from ens_evidence.matrix.status import row_status
 from ens_evidence.models import BlockerKind, Readiness
+from ens_evidence.models.contracts import ProvenanceKind
 
 from .evaluate_helpers import (
     FAR,
@@ -115,8 +118,8 @@ def edit_manifest(store, evidence_id: str, edit) -> None:
 
 
 def test_la_politica_es_una_tabla_con_op_exp_9_y_solo_admite_el_historial():
-    assert set(SOURCE_POLICIES) == {MEASURE}
     policy = source_policy(MEASURE)
+    assert policy is SOURCE_POLICIES[MEASURE]
     assert admits(policy, "incident-history")
     assert not any(admits(policy, other) for other in ("manual", "incident-record", None))
     assert admits(source_policy("op.exp.1"), None)
@@ -135,6 +138,18 @@ def test_el_registro_vacio_deja_op_exp_9_sin_evidencia_y_bloqueada(signed):
     assert row.covered == frozenset()
     assert not row_status(row).implemented
     assert result.readiness.readiness is Readiness.NOT_READY
+
+
+def test_el_registro_vacio_dice_como_obtener_la_fuente_que_la_medida_admite(signed):
+    configure(signed, entry(MEASURE))
+
+    texts = [t for t in blocker_lines(op_exp_9(signed).blockers) if "solo se sustenta" in t]
+
+    assert len(texts) == 1
+    assert "incident new" in texts[0] and "incident close" in texts[0]
+    assert "incident new --simulated" in texts[0]
+    assert "no que haya incidentes reales" in texts[0]
+    assert f"matrix link {MEASURE} --evidence EV-… --covers base" in texts[0]
 
 
 # --- otras fuentes: rechazadas al enlazar y al evaluar ---------------------------------------
@@ -413,3 +428,29 @@ def test_un_incidente_real_no_se_etiqueta_como_simulacro(signed, world):
     assert row_status(row).sources == (f"evidencia {evidence_id}",)
     exported = build_export(signed, result, generated_at=NOW)
     assert "simulacro" not in render_markdown(exported)
+
+
+def test_el_simulacro_se_senala_en_las_fuentes_del_export(signed, world, monkeypatch):
+    evidence_id = simulated_history(world, monkeypatch)
+    matrix_entry = linked(signed, evidence_id)
+    record(signed, matrix_entry, evidence_ids=[evidence_id])
+
+    result = assess_now(signed)
+    lines = render_markdown(build_export(signed, result, generated_at=NOW)).splitlines()
+
+    source = next(line for line in lines if line.startswith(f"- {evidence_id}"))
+    assert source.startswith(f"- {evidence_id} (simulacro) ·")
+
+
+def test_es_enlazable_solo_la_evidencia_manual_o_el_historial_de_procedencia_manual(signed, world):
+    history = load_manifest_by_id(signed, closed_history(world))
+    record_manifest = next(iter(scan_incident(signed, ID).evidence.values()))
+    automatic = history.model_copy(
+        update={
+            "provenance": history.provenance.model_copy(update={"kind": ProvenanceKind.COLLECTOR})
+        }
+    )
+
+    assert is_linkable(history)
+    assert not is_linkable(record_manifest)
+    assert not is_linkable(automatic)

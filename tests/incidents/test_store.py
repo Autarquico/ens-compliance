@@ -6,8 +6,12 @@ from typer.testing import CliRunner
 
 from ens_evidence.cli import app
 from ens_evidence.evidence import list_manifests
-from ens_evidence.evidence.importer import GENERATED_SOURCES, import_generated
-from ens_evidence.evidence.layout import sha256_hex
+from ens_evidence.evidence.importer import (
+    GENERATED_SOURCES,
+    INCIDENT_HISTORY_SOURCE,
+    import_generated,
+)
+from ens_evidence.evidence.layout import manifest_key, sha256_hex
 from ens_evidence.incidents import (
     IncidentRejected,
     RecordKind,
@@ -15,7 +19,7 @@ from ens_evidence.incidents import (
     record_incident,
     verify_incident,
 )
-from ens_evidence.incidents.store import seq_key
+from ens_evidence.incidents.layout import seq_key
 from ens_evidence.workspace import AlreadyExists, LocalStore, StorageUnavailable
 
 from .helpers import RECORDED
@@ -75,13 +79,13 @@ def test_privacy_rejection_leaves_no_reservation_record_artifact_or_manifest(wor
 
     assert error.errors
     assert "ana@ejemplo.invalid" not in " ".join(error.errors)
-    assert world.keys() == []
+    assert world.written() == []
 
 
 def test_model_rejection_leaves_nothing(world):
     error = rejection(lambda: world.open(detected_at=RECORDED + timedelta(hours=1)))
     assert "detected_at" in error.errors[0]
-    assert world.keys() == []
+    assert world.written() == []
 
 
 def test_blank_author_is_rejected_before_writing(world):
@@ -91,7 +95,7 @@ def test_blank_author_is_rejected_before_writing(world):
         )
     )
     assert "--by" in error.errors[0]
-    assert world.keys() == []
+    assert world.written() == []
 
 
 def test_opening_twice_and_updating_a_missing_incident_are_rejected(world):
@@ -116,7 +120,7 @@ def test_severity_without_declared_levels_is_rejected(world):
     error = rejection(lambda: world.open(severity="alto"))
 
     assert "severity" in error.errors[0]
-    assert world.keys() == []
+    assert world.written() == []
 
 
 def test_undeclared_severity_is_rejected_and_names_the_levels_not_the_value(world):
@@ -125,7 +129,7 @@ def test_undeclared_severity_is_rejected_and_names_the_levels_not_the_value(worl
 
     assert "bajo, alto" in error.errors[0]
     assert "crítico" not in error.errors[0]
-    assert world.keys() == ["org/answers.yaml"]
+    assert world.written() == ["org/answers.yaml"]
 
 
 def test_declared_severity_is_stored_with_the_declared_spelling(world):
@@ -202,7 +206,7 @@ def test_procedure_cannot_change_after_opening(world, monkeypatch):
 def test_cited_evidence_must_verify_when_writing(world):
     error = rejection(lambda: world.open(evidence_ids=["EV-20261015-deadbeef"]))
     assert "evidencia citada rota" in error.errors[0]
-    assert world.keys() == []
+    assert world.written() == []
 
     recorded = world.open(evidence_ids=[world.evidence()])
     assert recorded.record.state.evidence_ids
@@ -314,3 +318,71 @@ def test_evidence_import_refuses_generated_sources(tmp_path, source):
 
     assert result.exit_code != 0
     assert list_manifests(LocalStore(tmp_path / "ws")).manifests == []
+
+
+def test_a_history_on_an_open_incident_rejects_the_closure_and_writes_nothing(world):
+    world.open()
+    import_generated(
+        world.store,
+        b"{}",
+        source=INCIDENT_HISTORY_SOURCE,
+        asset_id=f"incident:{ID}",
+        submitted_by=BY,
+        now=RECORDED,
+        collected_at=RECORDED,
+    )
+    before = world.keys()
+
+    error = rejection(world.close)
+
+    assert "no está cerrado" in " ".join(error.errors)
+    assert world.keys() == before
+
+
+def test_a_history_failure_after_the_closure_is_reported_not_rejected(world, monkeypatch):
+    def failing(*args, **kwargs):
+        raise IncidentRejected(["el almacén no responde"])
+
+    world.open()
+    monkeypatch.setattr("ens_evidence.incidents.store.record_history", failing)
+
+    recorded = world.close()
+
+    assert recorded.history_evidence_id is None
+    assert recorded.history_problems == ["el almacén no responde"]
+    assert recorded.key in world.keys()
+    assert "cerrado sin evidencia incident-history" in " ".join(verify_incident(world.store, ID))
+
+
+def test_a_closed_incident_without_history_points_to_the_recovery_command(world):
+    closed = world.closed_incident()
+    world.remove(manifest_key(closed.history_evidence_id))
+
+    error = rejection(world.update)
+
+    assert f"incident history {ID}" in " ".join(error.errors)
+
+
+@pytest.mark.parametrize(
+    "by",
+    ["ana@ejemplo.invalid", "12345678Z", "AKIAABCDEFGHIJKLMNOP", "x" * 121],
+)
+def test_the_declared_author_is_minimized_like_any_other_field(world, by):
+    error = rejection(
+        lambda: record_incident(
+            world.store, world.new_state(), kind=RecordKind.OPENED, by=by, now=RECORDED
+        )
+    )
+
+    assert error.errors and all(e.startswith("--by") for e in error.errors)
+    assert by not in " ".join(error.errors)
+    assert world.written() == []
+
+
+def test_an_asset_outside_the_inventory_is_rejected_and_nothing_is_written(world):
+    before = world.keys()
+
+    with pytest.raises(IncidentRejected, match="NO-EXISTE no está en el inventario"):
+        world.open(assets=["NO-EXISTE"])
+
+    assert world.keys() == before

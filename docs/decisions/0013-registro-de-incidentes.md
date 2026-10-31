@@ -15,7 +15,9 @@ además dos artículos que la afectan:
   análisis y resolución, cauces de comunicación y el registro de las
   actuaciones para la mejora continua.
 - **Art. 33.7:** obliga a las organizaciones del sector privado que prestan
-  servicios a entidades públicas a notificar sus incidentes al INCIBE-CERT.
+  servicios a entidades públicas a notificar al INCIBE-CERT «los incidentes que
+  les afecten». No deja a la organización decidir qué niveles se notifican; los
+  umbrales y plazos dependen de la ITS, que no está verificada.
 
 El registro de incidentes es una evidencia sensible. Si se pudiera editar sin
 dejar rastro, no serviría para acreditar nada.
@@ -54,6 +56,9 @@ dejar rastro, no serviría para acreditar nada.
     - un hueco o una bifurcación en la secuencia;
     - una evidencia sin su registro, o una reserva sin registro;
     - una referencia rota.
+  - `incident verify` informa además de los huecos en la numeración
+    (`INC-AAAA-NNN` es correlativa) y de los activos de incidente no válidos;
+    no bloquean la cobertura de los demás incidentes.
 - **Historial al cerrar:**
   - El cierre exige la conclusión, la relevancia jurisdiccional (op.exp.9.2) y
     el resultado de revisar los eventos auditables (op.exp.9.3).
@@ -64,12 +69,20 @@ dejar rastro, no serviría para acreditar nada.
     op.exp.9 (`matrix/policy.py`).
   - La matriz verifica ese historial en cada evaluación. Solo la revisión
     humana implanta.
+  - El mismo historial se vincula a op.exp.7.1 (`--covers op.exp.7.1`) junto
+    al procedimiento, que cubre op.exp.7.1 y op.exp.7.2.
+  - Si el cierre queda escrito y el historial no se genera, el cierre no se
+    rechaza: es definitivo. La orden lo dice, sale con error y
+    `incident history` completa el historial sin tocar ningún registro.
 - **Simulacro:** se marca con `--simulated` y con el prefijo `SIM-`. Exige el
-  procedimiento aprobado y vigente, y la matriz lo muestra como «simulacro».
+  procedimiento aprobado y vigente, y la matriz lo muestra como «simulacro» en
+  `status`, en `matrix review` (con un aviso) y en las filas, las revisiones y
+  las fuentes del export.
 - **Minimización:** solo se admiten los campos de una lista cerrada y se
   validan antes de escribir nada:
   - se rechazan los secretos y los identificadores personales (correo,
-    DNI/NIE, IBAN, teléfono);
+    DNI/NIE, IBAN, teléfono) en todos los campos, incluidos `assets`,
+    `alert_ids` y `--by`;
   - las IP se admiten con aviso;
   - no se adjuntan logs;
   - los errores nombran el campo, nunca el valor.
@@ -82,6 +95,8 @@ dejar rastro, no serviría para acreditar nada.
 - Hay dos manipulaciones que no se detectan en local; solo las detecta la
   copia externa (ADR 0008):
   - borrar a la vez el último registro y su evidencia;
+  - borrar el último incidente de la numeración con sus evidencias (un hueco
+    en medio sí se detecta);
   - alterar de forma coordinada los registros y sus evidencias.
 - Las comprobaciones de datos personales son heurísticas y pueden dar falsos
   positivos.

@@ -12,15 +12,13 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 import yaml
-from pydantic import ValidationError
 
 from ens_evidence.approvals import safe_load_unique
 from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, MANUAL_SOURCE
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.evidence.manifests import ManifestError, load_manifest_by_id
 from ens_evidence.evidence.verify import verify_one
-from ens_evidence.incidents import verify_history
-from ens_evidence.incidents.history import IncidentHistory
+from ens_evidence.incidents import check_history
 from ens_evidence.matrix.model import (
     Link,
     ManualEvidenceLink,
@@ -122,12 +120,13 @@ def policy_rejection(row: MatrixRowSpec, link: Link, policy: SourcePolicy) -> Li
     return LinkSupport(link, blockers=(*cover_blockers, detail))
 
 
-def _is_simulation(store: WorkspaceStore, manifest: EvidenceManifest) -> bool:
-    try:
-        data = store.read_bytes(manifest.artifact.key)
-        return IncidentHistory.model_validate_json(data).simulated
-    except (NotFound, NotText, ValueError, ValidationError):
-        return False
+LINKABLE_SOURCES = frozenset({MANUAL_SOURCE, INCIDENT_HISTORY_SOURCE})
+
+
+def is_linkable(manifest: EvidenceManifest) -> bool:
+    """Puede enlazarse y contar: evidencia manual o historial de incidente, ambos de procedencia
+    manual. Una medida con política de fuentes admite además solo la suya."""
+    return manifest.provenance.kind is ProvenanceKind.MANUAL and manifest.source in LINKABLE_SOURCES
 
 
 def manual_support(
@@ -149,15 +148,12 @@ def manual_support(
 
     evidence_id = link.evidence_id
     manifest = verified_manifest(store, evidence_id)
-    if (
-        manifest is None
-        or manifest.provenance.kind is not ProvenanceKind.MANUAL
-        or manifest.source not in (MANUAL_SOURCE, INCIDENT_HISTORY_SOURCE)
-    ):
+    if manifest is None or not is_linkable(manifest):
         return rejected(BlockerKind.MISSING_EVIDENCE, f"evidence_unverified:{evidence_id}")
     if manifest.source == INCIDENT_HISTORY_SOURCE:
-        simulated = _is_simulation(store, manifest)
-        if verify_history(store, manifest):
+        history = check_history(store, manifest)
+        simulated = history.simulated
+        if history.problems:
             return rejected(BlockerKind.MISSING_EVIDENCE, f"incident_history_broken:{evidence_id}")
     if manifest.provenance.submitted_at > at or manifest.collected_at > at:
         return rejected(BlockerKind.MISSING_EVIDENCE, f"evidence_in_future:{evidence_id}")

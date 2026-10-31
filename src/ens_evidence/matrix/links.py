@@ -4,6 +4,7 @@ Aquí viven las reglas de las órdenes `matrix …`; la CLI solo las presenta. T
 `controls/matrix.yaml` (nunca por `measures.yaml`, que ata la Declaración, ADR 0011).
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -14,11 +15,10 @@ from ens_evidence.catalog.controls import CatalogVersion, current_catalog_versio
 from ens_evidence.evidence.importer import (
     INCIDENT_HISTORY_SOURCE,
     INCIDENT_RECORD_SOURCE,
-    MANUAL_SOURCE,
 )
-from ens_evidence.incidents import verify_history
+from ens_evidence.incidents import check_history, verify_history
 from ens_evidence.matrix.documents import DocumentsSnapshot, OrgDocumentSource, documents_snapshot
-from ens_evidence.matrix.evidence import verified_manifest
+from ens_evidence.matrix.evidence import is_linkable, verified_manifest
 from ens_evidence.matrix.history import register_entry, register_matrix
 from ens_evidence.matrix.messages import (
     DECLARATION_REASONS,
@@ -44,7 +44,6 @@ from ens_evidence.matrix.obligations import (
 from ens_evidence.matrix.policy import SourcePolicy, admits, source_policy
 from ens_evidence.matrix.store import read_matrix, save_matrix
 from ens_evidence.matrix.technical import KNOWN_CHECKS
-from ens_evidence.models.contracts import ProvenanceKind
 from ens_evidence.models.enums import Role
 from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
@@ -259,15 +258,15 @@ def _check_evidence(
     policy = source_policy(row.measure_id)
     if policy and not admits(policy, manifest.source):
         return _policy_error(row, policy)
-    if manifest.source == INCIDENT_HISTORY_SOURCE:
-        problems = verify_history(store, manifest)
-        if problems:
-            return [f"El historial {link.evidence_id} no es válido:", *problems]
-    elif manifest.provenance.kind is not ProvenanceKind.MANUAL or manifest.source != MANUAL_SOURCE:
+    if not is_linkable(manifest):
         return [
             f"{link.evidence_id} no es una evidencia manual; la de un collector o de un "
             "endpoint cuenta por su check."
         ]
+    if manifest.source == INCIDENT_HISTORY_SOURCE:
+        problems = verify_history(store, manifest)
+        if problems:
+            return [f"El historial {link.evidence_id} no es válido:", *problems]
     return []
 
 
@@ -378,3 +377,19 @@ def link_label(link: Link) -> str:
 def source_label(kind: str, target: str) -> str:
     """La fuente para personas: «evidencia EV-…», «check …», «documento …»."""
     return f"{KIND_LABELS.get(kind, kind)} {target}"
+
+
+def simulated_labels(store: WorkspaceStore, labels: Iterable[str]) -> set[str]:
+    """De las fuentes de `link_label`, las que son el historial de un simulacro."""
+    prefix = source_label(EVIDENCE, "")
+    simulated = set()
+    for label in labels:
+        manifest = (
+            verified_manifest(store, label.removeprefix(prefix))
+            if label.startswith(prefix)
+            else None
+        )
+        if manifest is not None and manifest.source == INCIDENT_HISTORY_SOURCE:
+            if check_history(store, manifest).simulated:
+                simulated.add(label)
+    return simulated

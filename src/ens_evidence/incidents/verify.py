@@ -5,6 +5,7 @@ no cuenta como cobertura de op.exp.9. La copia externa solo cubre las alteracion
 que además borren los anclajes (reservas y manifiestos).
 """
 
+import re
 from dataclasses import dataclass
 
 import yaml
@@ -13,8 +14,8 @@ from pydantic import ValidationError
 from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, INCIDENT_RECORD_SOURCE
 from ens_evidence.evidence.manifests import list_manifests
 from ens_evidence.evidence.verify import verify_one
-from ens_evidence.incidents.model import IncidentRecord, Procedure, RecordKind, check_successor
-from ens_evidence.incidents.store import (
+from ens_evidence.incidents.layout import (
+    ASSET_PREFIX,
     INCIDENTS_PREFIX,
     PROCEDURE_DOCUMENT,
     RECORD_NAME,
@@ -23,16 +24,18 @@ from ens_evidence.incidents.store import (
     approval_key,
     asset_id,
     incident_ids_in,
+    incident_of_asset,
     incident_prefix,
     record_key,
 )
+from ens_evidence.incidents.model import IncidentRecord, Procedure, RecordKind, check_successor
 from ens_evidence.models.contracts import EvidenceManifest
 from ens_evidence.orgdocs.approval import scan_approvals
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.workspace import WorkspaceStore
 from ens_evidence.yaml_unique import safe_load_unique
 
-_ASSET_PREFIX = "incident:"
+_NUMBERED_ID = re.compile(r"(INC|SIM)-(\d{4})-(\d{3})")
 
 
 @dataclass(frozen=True)
@@ -58,8 +61,9 @@ def scan_incident(
     manifests = list_manifests(store).manifests if manifests is None else manifests
     problems: list[str] = []
     records, reserved = _read_keys(store, incident_id, problems)
-    problems += _sequence_problems(records, reserved)
-    problems += _link_problems(records)
+    by_seq = _group_by_seq(records)
+    problems += _sequence_problems(records, by_seq, reserved)
+    problems += _link_problems(records, by_seq)
     asset = asset_id(incident_id)
     mine = [m for m in manifests if m.asset_id == asset]
     evidence, evidence_problems = _match_evidence(store, records, mine)
@@ -69,33 +73,92 @@ def scan_incident(
     return IncidentScan(incident_id, tuple(records), tuple(problems), evidence, histories)
 
 
+@dataclass(frozen=True)
+class IncidentCheck:
+    """Un incidente escaneado y todos sus problemas, incluida la existencia del historial."""
+
+    scan: IncidentScan
+    problems: tuple[str, ...]
+
+
+def check_incident(
+    store: WorkspaceStore, incident_id: str, manifests: list[EvidenceManifest] | None = None
+) -> IncidentCheck:
+    scan = scan_incident(store, incident_id, manifests)
+    return IncidentCheck(scan, (*scan.problems, *history_presence_problems(scan)))
+
+
 def verify_incident(store: WorkspaceStore, incident_id: str) -> list[str]:
     """Problemas del incidente, incluida la existencia del historial al cerrar."""
-    scan = scan_incident(store, incident_id)
-    return [*scan.problems, *history_presence_problems(scan)]
+    return list(check_incident(store, incident_id).problems)
+
+
+def check_all_incidents(store: WorkspaceStore) -> dict[str, IncidentCheck]:
+    """Todos los incidentes, por id: los de `incidents/` y los que solo dejaron manifiestos."""
+    manifests = list_manifests(store).manifests
+    return {
+        incident_id: check_incident(store, incident_id, manifests)
+        for incident_id in sorted(_incident_ids(store, manifests))
+    }
 
 
 def verify_all_incidents(store: WorkspaceStore) -> dict[str, list[str]]:
-    """Incidentes con problemas, por id. Incluye los que solo dejaron manifiestos."""
+    """Problemas por id: los de cada incidente, los activos de incidente no válidos (por su
+    `asset_id`) y los huecos en la numeración, que se informan bajo el id que falta."""
     manifests = list_manifests(store).manifests
-    ids = incident_ids_in(store.list(INCIDENTS_PREFIX))
-    ids |= {
-        m.asset_id.removeprefix(_ASSET_PREFIX)
-        for m in manifests
-        if m.source == INCIDENT_RECORD_SOURCE and m.asset_id.startswith(_ASSET_PREFIX)
+    found = {
+        incident_id: list(check.problems)
+        for incident_id, check in check_all_incidents(store).items()
+        if check.problems
     }
-    found = {}
-    for incident_id in sorted(ids):
-        scan = scan_incident(store, incident_id, manifests)
-        problems = [*scan.problems, *history_presence_problems(scan)]
-        if problems:
-            found[incident_id] = problems
+    for manifest in _record_manifests(manifests):
+        if incident_of_asset(manifest.asset_id) is None:
+            found.setdefault(manifest.asset_id, []).append(
+                f"{manifest.id}: activo de incidente no válido"
+            )
+    for missing in _numbering_gaps(_incident_ids(store, manifests)):
+        found.setdefault(missing, []).append(
+            f"{missing}: falta; la numeración es correlativa y no debería haber huecos"
+        )
     return found
+
+
+def _record_manifests(manifests: list[EvidenceManifest]) -> list[EvidenceManifest]:
+    return [
+        m
+        for m in manifests
+        if m.source in (INCIDENT_RECORD_SOURCE, INCIDENT_HISTORY_SOURCE)
+        and m.asset_id.startswith(ASSET_PREFIX)
+    ]
+
+
+def _incident_ids(store: WorkspaceStore, manifests: list[EvidenceManifest]) -> set[str]:
+    ids = incident_ids_in(store.list(INCIDENTS_PREFIX))
+    ids |= {i for m in _record_manifests(manifests) if (i := incident_of_asset(m.asset_id))}
+    return ids
+
+
+def _numbering_gaps(incident_ids: set[str]) -> list[str]:
+    """Los ids que faltan entre 001 y el mayor de cada serie (`INC-AAAA` o `SIM-AAAA`)."""
+    series: dict[tuple[str, str], set[int]] = {}
+    for incident_id in incident_ids:
+        if match := _NUMBERED_ID.fullmatch(incident_id):
+            label, year, number = match.groups()
+            series.setdefault((label, year), set()).add(int(number))
+    return [
+        f"{label}-{year}-{n:03d}"
+        for (label, year), numbers in sorted(series.items())
+        for n in range(1, max(numbers))
+        if n not in numbers
+    ]
 
 
 def history_presence_problems(scan: IncidentScan) -> list[str]:
     if scan.closed and not scan.histories:
-        return [f"{scan.incident_id}: cerrado sin evidencia incident-history"]
+        return [
+            f"{scan.incident_id}: cerrado sin evidencia incident-history; se genera con "
+            f"`incident history {scan.incident_id}`"
+        ]
     if not scan.closed and scan.histories:
         return [f"{scan.incident_id}: hay un incident-history pero el incidente no está cerrado"]
     if len(scan.histories) > 1:
@@ -149,11 +212,17 @@ def _read_record(
     return None
 
 
-def _sequence_problems(records: list[StoredRecord], reserved: set[int]) -> list[str]:
-    problems = []
+def _group_by_seq(records: list[StoredRecord]) -> dict[int, list[StoredRecord]]:
     by_seq: dict[int, list[StoredRecord]] = {}
     for stored in records:
         by_seq.setdefault(stored.record.seq, []).append(stored)
+    return by_seq
+
+
+def _sequence_problems(
+    records: list[StoredRecord], by_seq: dict[int, list[StoredRecord]], reserved: set[int]
+) -> list[str]:
+    problems = []
     for seq, group in by_seq.items():
         if len(group) > 1:
             keys = ", ".join(s.key for s in group)
@@ -170,12 +239,9 @@ def _sequence_problems(records: list[StoredRecord], reserved: set[int]) -> list[
     return problems
 
 
-def _link_problems(records: list[StoredRecord]) -> list[str]:
+def _link_problems(records: list[StoredRecord], by_seq: dict[int, list[StoredRecord]]) -> list[str]:
     """Cadena y reglas de sucesión entre registros contiguos y sin bifurcación."""
-    counts: dict[int, int] = {}
-    for stored in records:
-        counts[stored.record.seq] = counts.get(stored.record.seq, 0) + 1
-    linear = [s for s in records if counts[s.record.seq] == 1]
+    linear = [s for s in records if len(by_seq[s.record.seq]) == 1]
     problems = []
     for before, after in zip(linear, linear[1:], strict=False):
         if after.record.seq != before.record.seq + 1:

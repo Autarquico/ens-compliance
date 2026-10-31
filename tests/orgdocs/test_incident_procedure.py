@@ -123,7 +123,10 @@ def test_sin_servicios_a_entidades_publicas_no_se_cubre_el_articulo_33_7(built):
     covered = {c.id for c in read_meta(built, PROCEDURE).clauses}
     assert "art.33.7" not in covered
     assert INCIDENT_CLAUSES - {"art.33.7"} <= covered
-    assert "no presta servicios a entidades públicas" in built.read_text(f"org/docs/{PROCEDURE}.md")
+    assert (
+        "no presta a entidades públicas servicios que se apoyen en sus sistemas"
+        in built.read_text(f"org/docs/{PROCEDURE}.md")
+    )
 
 
 @pytest.mark.parametrize("question", ["incibe_quien", "incibe_como", "incibe_cuando"])
@@ -210,3 +213,51 @@ def test_las_preguntas_de_op_exp_9_se_hacen_sin_que_el_documento_cubra_la_medida
     meta = read_meta(built, PROCEDURE)
     assert not [c.id for c in meta.clauses if c.id.startswith("op.exp.9")]
     assert not [m.id for m in meta.measures if m.id == "op.exp.9"]
+
+
+def _question(question_id: str):
+    template = next(t for t in load_templates() if t.id == PROCEDURE).template
+    return next(q for q in template.questions if q.id == question_id)
+
+
+def test_la_notificacion_al_incibe_no_invita_a_excluir_niveles():
+    help_text = _question("incibe_cuando").help
+
+    assert "si se notifica" not in help_text
+    assert "incidentes que os afecten" in help_text
+    assert "umbrales y plazos dependen de la Instrucción Técnica de Seguridad" in help_text
+    assert "no ha verificado" in help_text
+
+
+def test_la_respuesta_modelo_notifica_todos_los_niveles_declarados():
+    levels = [row["nivel"] for row in fixture_answers()["incidentes_niveles"]]
+    answer = fixture_answers()["incibe_cuando"]
+
+    assert all(level in answer for level in levels)
+    assert "no se notifican" not in answer
+
+
+def test_la_rama_afirmativa_y_la_negativa_dicen_solo_lo_que_se_pregunto(built):
+    answers = fixture_answers()
+    write_answers(built, answers)
+    build_documents(built)
+    yes = built.read_text(f"org/docs/{PROCEDURE}.md")
+
+    answers["servicios_externalizados"] = "no"
+    for question in ("poc_servicios", "incibe_quien", "incibe_como", "incibe_cuando"):
+        del answers[question]
+    write_answers(built, answers)
+    build_documents(built)
+    no = built.read_text(f"org/docs/{PROCEDURE}.md")
+
+    assert "presta a entidades públicas servicios que se apoyan en sus sistemas" in yes
+    assert "Si presta cualquier servicio a una entidad pública, revisad el art. 33.7" in no
+    assert "no presta servicios a entidades públicas" not in no
+
+
+def test_la_pregunta_del_registro_lleva_al_registro_de_la_herramienta():
+    help_text = _question("incidentes_registro").help
+
+    assert "ens-evidence incident" in help_text
+    assert "único que la matriz acepta para op.exp.9" in help_text
+    assert "ens-evidence incident" in fixture_answers()["incidentes_registro"]

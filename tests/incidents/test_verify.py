@@ -1,13 +1,14 @@
 import pytest
 
 from ens_evidence.evidence import load_manifest_by_id
+from ens_evidence.evidence.importer import INCIDENT_RECORD_SOURCE, import_generated
 from ens_evidence.evidence.layout import artifact_key, manifest_key
 from ens_evidence.incidents import (
     IncidentRecord,
     verify_all_incidents,
     verify_incident,
 )
-from ens_evidence.incidents.store import record_key, render_record, seq_key
+from ens_evidence.incidents.layout import record_key, render_record, seq_key
 from ens_evidence.incidents.verify import scan_incident
 
 from .helpers import RECORDED
@@ -200,3 +201,42 @@ def test_verify_all_reports_incidents_whose_files_were_all_deleted(world):
     found = verify_all_incidents(world.store)
 
     assert "manifiesto incident-record sin registro" in "\n".join(found[ID])
+
+
+def test_a_missing_incident_in_the_numbering_is_a_problem_under_its_own_id(world):
+    world.open()
+    world.open(id="INC-2026-003")
+
+    found = verify_all_incidents(world.store)
+
+    assert list(found) == ["INC-2026-002"]
+    assert "numeración es correlativa" in found["INC-2026-002"][0]
+
+
+def test_numbering_is_checked_per_series_and_year(world, monkeypatch):
+    world.approve_procedure(monkeypatch)
+    procedure = world.procedure().model_dump(mode="json")
+    world.open()
+    world.open(id="SIM-2026-001", simulated=True, procedure=procedure)
+    world.open(id="INC-2025-001", detected_at=RECORDED.replace(year=2025, hour=8))
+
+    assert verify_all_incidents(world.store) == {}
+
+
+@pytest.mark.parametrize("asset", ["incident:../x", "incident:INC-2026-1", "incident:a/b"])
+def test_an_invalid_incident_asset_is_reported_without_aborting_the_rest(world, asset):
+    world.open()
+    forged = import_generated(
+        world.store,
+        b"x",
+        source=INCIDENT_RECORD_SOURCE,
+        asset_id=asset,
+        submitted_by="Ana",
+        now=RECORDED,
+        collected_at=RECORDED,
+    )
+
+    found = verify_all_incidents(world.store)
+
+    assert any("activo de incidente no válido" in p and forged.id in p for p in found[asset])
+    assert ID not in found

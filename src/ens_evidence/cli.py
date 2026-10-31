@@ -1,5 +1,4 @@
 import functools
-import hashlib
 import json
 import os
 import re
@@ -87,15 +86,16 @@ from ens_evidence.incidents import (
     Recorded,
     RecordKind,
     TriState,
-    current_procedure,
+    check_all_incidents,
+    check_incident,
     next_incident_id,
+    record_history,
     record_incident,
+    simulation_procedure,
     verify_all_incidents,
-    verify_incident,
 )
 from ens_evidence.incidents.model import INCIDENT_ID_PATTERN, ReviewResult
-from ens_evidence.incidents.present import list_line, show_lines
-from ens_evidence.incidents.store import INCIDENTS_PREFIX, incident_ids_in
+from ens_evidence.incidents.present import SIMULATION_LABEL, list_line, show_lines
 from ens_evidence.incidents.verify import scan_incident
 from ens_evidence.matrix import (
     CHECKS_PENDING,
@@ -123,10 +123,12 @@ from ens_evidence.matrix import (
     save_report,
     set_entry,
 )
-from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE
+from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE, simulated_labels
 from ens_evidence.matrix.messages import (
     DECLARATION_LABELS,
     READINESS_LABELS,
+    SIMULATED_LABEL,
+    SIMULATION_REVIEW_NOTICE,
     blocker_lines,
     obligation_label,
 )
@@ -1499,12 +1501,22 @@ def matrix_rejected(title: str, exc: MatrixRejected) -> typer.Exit:
     return typer.Exit(1)
 
 
-def print_coverage(plan: ReviewPlan) -> None:
+def print_coverage(store: WorkspaceStore, plan: ReviewPlan) -> None:
+    simulated = simulated_labels(
+        store, {source for o in plan.attribution for c in o.clauses for source in c.sources}
+    )
     for obligation in plan.attribution:
         typer.echo(f"  {obligation_label(obligation.obligation)}:")
         for clause in obligation.clauses:
-            sources = ", ".join(clause.sources) or "sin fuente que cuente"
+            sources = (
+                ", ".join(
+                    s + (f" ({SIMULATED_LABEL})" if s in simulated else "") for s in clause.sources
+                )
+                or "sin fuente que cuente"
+            )
             typer.echo(f"    {clause.unit}  <- {sources}")
+    if simulated:
+        typer.echo(f"  Aviso: {SIMULATION_REVIEW_NOTICE}", err=True)
     for note in plan.notes:
         typer.echo(f"  Aviso: {note}", err=True)
 
@@ -1670,7 +1682,7 @@ def matrix_review(
         raise matrix_rejected(f"No se registra la revisión de {measure}:", exc) from None
     if plan.row.obligations:
         typer.echo(f"Cobertura atribuida a {measure}:")
-        print_coverage(plan)
+        print_coverage(store, plan)
     if plan.problems:
         typer.echo(f"No se registra la revisión de {measure}:", err=True)
         print_errors(list(plan.problems))
@@ -1777,6 +1789,7 @@ def matrix_export(
 
 DECLARED_NAME_NOTICE = "El nombre es declarado; no se autentica."
 OP_EXP_9 = "op.exp.9"
+OP_EXP_7 = "op.exp.7"
 
 
 def incident_rejected(title: str, errors: list[str]) -> typer.Exit:
@@ -1809,19 +1822,48 @@ def record_or_reject(
         raise incident_rejected(f"No se registra {state.id}:", exc.errors) from None
 
 
-def print_recorded(store: WorkspaceStore, recorded: Recorded) -> None:
+def print_recorded(recorded: Recorded) -> None:
     state = recorded.record.state
-    label = " (SIMULACRO)" if state.simulated else ""
-    sha256 = hashlib.sha256(store.read_bytes(recorded.key)).hexdigest()
+    label = f" ({SIMULATION_LABEL})" if state.simulated else ""
     typer.echo(f"{state.id}{label}: registro {recorded.record.seq} ({recorded.record.kind.value}).")
     typer.echo(f"  Clave: {recorded.key}")
     typer.echo(f"  Evidencia: {recorded.evidence_id}")
-    typer.echo(f"  sha256: {sha256}")
+    typer.echo(f"  sha256: {recorded.sha256}")
     if recorded.history_evidence_id:
         typer.echo(f"  Historial: {recorded.history_evidence_id}")
     typer.echo(DECLARED_NAME_NOTICE)
     for warning in recorded.warnings:
         typer.echo(f"Aviso: {warning}", err=True)
+
+
+def missing_history(recorded: Recorded) -> typer.Exit:
+    """El cierre está escrito y es definitivo: se dice qué falta y cómo completarlo."""
+    incident_id = recorded.record.state.id
+    typer.echo(
+        f"El cierre de {incident_id} está registrado, pero su historial no se generó:", err=True
+    )
+    print_errors(recorded.history_problems)
+    typer.echo(
+        "Los registros no se tocan. Para completar el historial: "
+        f'ens-evidence incident history {incident_id} --by "NOMBRE"',
+        err=True,
+    )
+    return typer.Exit(1)
+
+
+def print_link_steps(history_evidence_id: str, *, simulated: bool) -> None:
+    mark = " (es un simulacro: la matriz lo mostrará)" if simulated else ""
+    typer.echo(
+        f"Para sustentar {OP_EXP_9}{mark} y {OP_EXP_7} (estos comandos no se han ejecutado):"
+    )
+    typer.echo(
+        f"  ens-evidence matrix link {OP_EXP_9} --evidence {history_evidence_id} --covers base"
+    )
+    typer.echo(
+        f"  ens-evidence matrix link {OP_EXP_7} --evidence {history_evidence_id} "
+        f"--covers {OP_EXP_7}.1"
+    )
+    typer.echo("Solo la revisión de una persona lo confirma (matrix review).")
 
 
 def last_incident_state(store: WorkspaceStore, incident_id: str) -> IncidentState:
@@ -1871,13 +1913,8 @@ def incident_new(
     assert detected is not None
     if alert_id and not source_system:
         raise fail("--source-system: obligatorio con --alert-id.")
-    procedure = current_procedure(store) if simulated else None
-    if simulated and procedure is None:
-        raise incident_rejected(
-            "No se registra el simulacro:",
-            ["procedure: un simulacro exige procedimiento-incidentes aprobado y vigente"],
-        )
     try:
+        procedure = simulation_procedure(store) if simulated else None
         incident_id = next_incident_id(store, simulated=simulated, year=detected.year)
     except IncidentRejected as exc:
         raise incident_rejected("No se registra el incidente:", exc.errors) from None
@@ -1900,7 +1937,7 @@ def incident_new(
         )
     except ValidationError as exc:
         state = exc
-    print_recorded(store, record_or_reject(store, state, RecordKind.OPENED, by))
+    print_recorded(record_or_reject(store, state, RecordKind.OPENED, by))
 
 
 @incident_app.command("update")
@@ -1947,7 +1984,7 @@ def incident_update(
     after = changed_state(before, changes)
     if after == before:
         raise incident_rejected(f"No se registra {incident_id}:", ["la orden no cambia nada"])
-    print_recorded(store, record_or_reject(store, after, RecordKind.UPDATED, by))
+    print_recorded(record_or_reject(store, after, RecordKind.UPDATED, by))
 
 
 @incident_app.command("close")
@@ -1959,7 +1996,13 @@ def incident_close(
     conclusion: Annotated[str, typer.Option("--conclusion", help="Conclusión del análisis.")],
     auditable_events_result: Annotated[
         ReviewResult,
-        typer.Option("--auditable-events-result", help="op.exp.9.3: changed o no_change."),
+        typer.Option(
+            "--auditable-events-result",
+            help=(
+                "Resultado de revisar los eventos auditables tras el análisis (op.exp.9.3): "
+                "changed si hubo que cambiarlos, no_change si no."
+            ),
+        ),
     ],
     auditable_events_detail: Annotated[
         str, typer.Option("--auditable-events-detail", help="Qué cambió o por qué no cambia.")
@@ -1994,17 +2037,32 @@ def incident_close(
     }
     after = changed_state(before, {"status": IncidentStatus.CLOSED, "closure": closure})
     recorded = record_or_reject(store, after, RecordKind.CLOSED, by)
-    print_recorded(store, recorded)
-    if recorded.history_evidence_id:
-        simulated = (
-            " (es un simulacro: la matriz lo mostrará)" if recorded.record.state.simulated else ""
-        )
-        typer.echo(f"Para sustentar {OP_EXP_9}{simulated}, sin ejecutar:")
-        typer.echo(
-            f"  ens-evidence matrix link {OP_EXP_9} --evidence {recorded.history_evidence_id} "
-            "--covers base"
-        )
-        typer.echo("Solo la revisión de una persona lo confirma (matrix review).")
+    print_recorded(recorded)
+    if not recorded.history_evidence_id:
+        raise missing_history(recorded)
+    print_link_steps(recorded.history_evidence_id, simulated=recorded.record.state.simulated)
+
+
+@incident_app.command("history")
+@handled
+def incident_history(ctx: typer.Context, incident: IncidentIdArgument, by: By) -> None:
+    """Genera el historial de un incidente cerrado al que le falta (p. ej. tras un corte al
+    cerrar). No modifica ningún registro."""
+    store = open_workspace(ctx)
+    incident_id = incident_id_argument(incident)
+    if not scan_incident(store, incident_id).records:
+        raise fail(f"{incident_id} no existe.", 1)
+    try:
+        manifest = record_history(store, incident_id, by=by, now=clock())
+    except IncidentRejected as exc:
+        raise incident_rejected(
+            f"No se genera el historial de {incident_id}:", exc.errors
+        ) from None
+    typer.echo(f"{incident_id}: historial generado.")
+    typer.echo(f"  Historial: {manifest.id}")
+    typer.echo(DECLARED_NAME_NOTICE)
+    state = scan_incident(store, incident_id).records[-1].record.state
+    print_link_steps(manifest.id, simulated=state.simulated)
 
 
 @incident_app.command("list")
@@ -2012,14 +2070,13 @@ def incident_close(
 def incident_list(ctx: typer.Context) -> None:
     """Lista los incidentes con su último estado."""
     store = open_workspace(ctx)
-    broken = verify_all_incidents(store)
-    ids = sorted(incident_ids_in(store.list(INCIDENTS_PREFIX)) | broken.keys())
-    if not ids:
+    checks = check_all_incidents(store)
+    if not checks:
         typer.echo("No hay incidentes registrados.")
-    for incident_id in ids:
-        scan = scan_incident(store, incident_id)
-        state = scan.records[-1].record.state if scan.records else None
-        typer.echo(list_line(incident_id, state, incident_id in broken))
+    for incident_id, check in checks.items():
+        records = check.scan.records
+        state = records[-1].record.state if records else None
+        typer.echo(list_line(incident_id, state, bool(check.problems)))
 
 
 @incident_app.command("show")
@@ -2032,10 +2089,10 @@ def incident_show(
     """Muestra un incidente y su historia de registros."""
     store = open_workspace(ctx)
     incident_id = incident_id_argument(incident)
-    scan = scan_incident(store, incident_id)
+    check = check_incident(store, incident_id)
+    scan, problems = check.scan, list(check.problems)
     if not scan.records and not scan.problems:
         raise fail(f"{incident_id} no existe.", 1)
-    problems = verify_incident(store, incident_id)
     if as_json:
         records = [
             {"key": s.key, "sha256": s.sha256, **s.record.model_dump(mode="json")}
@@ -2065,10 +2122,10 @@ def incident_verify(
         found = verify_all_incidents(store)
     else:
         incident_id = incident_id_argument(incident)
-        scan = scan_incident(store, incident_id)
-        if not scan.records and not scan.problems:
+        check = check_incident(store, incident_id)
+        if not check.scan.records and not check.scan.problems:
             raise fail(f"{incident_id} no existe.", 1)
-        found = {incident_id: problems} if (problems := verify_incident(store, incident_id)) else {}
+        found = {incident_id: list(check.problems)} if check.problems else {}
     if found:
         typer.echo("La verificación de incidentes ha fallado:", err=True)
         for incident_id, problems in found.items():

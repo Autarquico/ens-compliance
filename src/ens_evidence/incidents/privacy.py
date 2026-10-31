@@ -8,7 +8,7 @@ import ipaddress
 import re
 from typing import Any
 
-from ens_evidence.incidents.model import OPAQUE_ID_PATTERN
+from ens_evidence.incidents.model import OPAQUE_ID_PATTERN, TITLE_MAX
 from ens_evidence.scope.secrets import find_secrets
 
 _TEXT = "text"  # texto libre: se busca de todo
@@ -147,7 +147,7 @@ class _Walk:
             if not isinstance(item, str) or not _OPAQUE.match(item):
                 self.errors.append(f"{where}: no es un id opaco (A-Z a-z 0-9 . _ : -, 1-128)")
             else:
-                self._leaf(_ID, item, where)
+                self._leaf(_TEXT, item, where)
 
     def _leaf(self, shape: str, value: Any, path: str) -> None:
         if isinstance(value, dict | list):
@@ -168,3 +168,16 @@ def check_incident_payload(payload: Any) -> tuple[list[str], list[str]]:
     walk = _Walk()
     walk.node(_RECORD, payload, "")
     return walk.errors, walk.warnings
+
+
+def check_declared_name(name: str) -> list[str]:
+    """Errores de `--by`: un nombre declarado no puede ser vacío, largo, un secreto ni un
+    identificador personal (correo, DNI/NIE, IBAN, teléfono). Nunca incluye el valor."""
+    if not name.strip():
+        return ["--by: indica quién registra (nombre declarado)"]
+    errors = (
+        [f"--by: demasiado largo (máximo {TITLE_MAX} caracteres)"] if len(name) > TITLE_MAX else []
+    )
+    errors += [f"{p}: parece un secreto; quítalo" for p in find_secrets(name, "--by")]
+    errors += [f"--by: contiene {what}; indica solo un nombre" for what in _identifiers(name)]
+    return errors

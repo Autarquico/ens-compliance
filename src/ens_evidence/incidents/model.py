@@ -157,7 +157,10 @@ class IncidentState(Strict):
             raise ValueError("`closure` existe si y solo si el estado es closed")
         if self.closure is not None:
             if self.personal_data is TriState.UNKNOWN:
-                raise ValueError("al cerrar, `personal_data` no puede quedar en unknown")
+                raise ValueError(
+                    "al cerrar, `personal_data` debe ser yes o no (¿afecta a datos personales?). "
+                    f"Indícalo antes: incident update {self.id} --personal-data yes|no"
+                )
             if self.closure.closed_at < self.detected_at:
                 raise ValueError("closed_at no puede ser anterior a detected_at")
         return self
