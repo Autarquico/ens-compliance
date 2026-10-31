@@ -1,5 +1,8 @@
 import functools
+import hashlib
+import json
 import os
+import re
 import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime
@@ -76,6 +79,24 @@ from ens_evidence.evidence import (
     verify_one,
 )
 from ens_evidence.evidence.importer import import_collected
+from ens_evidence.incidents import (
+    ActionKind,
+    IncidentRejected,
+    IncidentState,
+    IncidentStatus,
+    Recorded,
+    RecordKind,
+    TriState,
+    current_procedure,
+    next_incident_id,
+    record_incident,
+    verify_all_incidents,
+    verify_incident,
+)
+from ens_evidence.incidents.model import INCIDENT_ID_PATTERN, ReviewResult
+from ens_evidence.incidents.present import list_line, show_lines
+from ens_evidence.incidents.store import INCIDENTS_PREFIX, incident_ids_in
+from ens_evidence.incidents.verify import scan_incident
 from ens_evidence.matrix import (
     CHECKS_PENDING,
     DECLARATION_REPORTS_PREFIX,
@@ -195,6 +216,9 @@ matrix_app = typer.Typer(
     help="Matriz de cumplimiento por medida: responsable, periodicidad, fuentes y revisiones.",
     no_args_is_help=True,
 )
+incident_app = typer.Typer(
+    help="Registro de incidentes de seguridad (op.exp.7 y op.exp.9).", no_args_is_help=True
+)
 app.add_typer(report_app, name="report")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
@@ -211,6 +235,7 @@ app.add_typer(endpoint_app, name="endpoint")
 app.add_typer(docs_app, name="docs")
 app.add_typer(risk_app, name="risk")
 app.add_typer(matrix_app, name="matrix")
+app.add_typer(incident_app, name="incident")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -1748,6 +1773,309 @@ def matrix_export(
         typer.echo(text, nl=False)
         return
     typer.echo(save_report(store, MATRIX_REPORTS_PREFIX, generated_at, fmt.value, text))
+
+
+DECLARED_NAME_NOTICE = "El nombre es declarado; no se autentica."
+OP_EXP_9 = "op.exp.9"
+
+
+def incident_rejected(title: str, errors: list[str]) -> typer.Exit:
+    typer.echo(title, err=True)
+    print_errors(errors)
+    return typer.Exit(1)
+
+
+def incident_id_argument(text: str) -> str:
+    if not re.fullmatch(INCIDENT_ID_PATTERN, text):
+        raise fail("ID: usa el formato INC-AAAA-NNN (o SIM-AAAA-NNN en un simulacro).")
+    return text
+
+
+IncidentIdArgument = Annotated[str, typer.Argument(help="p. ej. INC-2026-001")]
+By = Annotated[str, typer.Option("--by", help="Nombre de quien registra (declarado).")]
+
+
+def record_or_reject(
+    store: WorkspaceStore, state: IncidentState | ValidationError, kind: RecordKind, by: str
+) -> Recorded:
+    """Escribe un registro; un rechazo imprime los campos (nunca los valores) y sale con 1."""
+    if isinstance(state, ValidationError):
+        raise incident_rejected(
+            "No se registra el incidente:", describe_validation("incidente", state)
+        )
+    try:
+        return record_incident(store, state, kind=kind, by=by, now=clock())
+    except IncidentRejected as exc:
+        raise incident_rejected(f"No se registra {state.id}:", exc.errors) from None
+
+
+def print_recorded(store: WorkspaceStore, recorded: Recorded) -> None:
+    state = recorded.record.state
+    label = " (SIMULACRO)" if state.simulated else ""
+    sha256 = hashlib.sha256(store.read_bytes(recorded.key)).hexdigest()
+    typer.echo(f"{state.id}{label}: registro {recorded.record.seq} ({recorded.record.kind.value}).")
+    typer.echo(f"  Clave: {recorded.key}")
+    typer.echo(f"  Evidencia: {recorded.evidence_id}")
+    typer.echo(f"  sha256: {sha256}")
+    if recorded.history_evidence_id:
+        typer.echo(f"  Historial: {recorded.history_evidence_id}")
+    typer.echo(DECLARED_NAME_NOTICE)
+    for warning in recorded.warnings:
+        typer.echo(f"Aviso: {warning}", err=True)
+
+
+def last_incident_state(store: WorkspaceStore, incident_id: str) -> IncidentState:
+    scan = scan_incident(store, incident_id)
+    if not scan.records:
+        raise incident_rejected(f"No se registra {incident_id}:", [f"{incident_id} no existe"])
+    return scan.records[-1].record.state
+
+
+def changed_state(state: IncidentState, changes: dict[str, Any]) -> IncidentState | ValidationError:
+    try:
+        return IncidentState.model_validate({**state.model_dump(mode="json"), **changes})
+    except ValidationError as exc:
+        return exc
+
+
+@incident_app.command("new")
+@handled
+def incident_new(
+    ctx: typer.Context,
+    title: Annotated[str, typer.Option("--title", help="Título breve, sin datos personales.")],
+    detected_at: Annotated[str, typer.Option("--detected-at", help="Instante de detección.")],
+    by: By,
+    severity: Annotated[
+        str | None, typer.Option("--severity", help="Nivel declarado en org-docs.")
+    ] = None,
+    asset: Annotated[
+        list[str] | None, typer.Option("--asset", help="Id de activo del inventario.")
+    ] = None,
+    source_system: Annotated[
+        str | None, typer.Option("--source-system", help="Sistema que originó la alerta.")
+    ] = None,
+    alert_id: Annotated[
+        list[str] | None, typer.Option("--alert-id", help="Id opaco de la alerta.")
+    ] = None,
+    personal_data: Annotated[
+        TriState, typer.Option("--personal-data", help="¿Afecta a datos personales?")
+    ] = TriState.UNKNOWN,
+    summary: Annotated[str | None, typer.Option("--summary", help="Análisis inicial.")] = None,
+    simulated: Annotated[
+        bool, typer.Option("--simulated", help="Simulacro: exige el procedimiento aprobado.")
+    ] = False,
+) -> None:
+    """Da de alta un incidente (reporte inicial, op.exp.9.1)."""
+    store = open_workspace(ctx)
+    detected = parse_instant("--detected-at", detected_at)
+    assert detected is not None
+    if alert_id and not source_system:
+        raise fail("--source-system: obligatorio con --alert-id.")
+    procedure = current_procedure(store) if simulated else None
+    if simulated and procedure is None:
+        raise incident_rejected(
+            "No se registra el simulacro:",
+            ["procedure: un simulacro exige procedimiento-incidentes aprobado y vigente"],
+        )
+    try:
+        incident_id = next_incident_id(store, simulated=simulated, year=detected.year)
+    except IncidentRejected as exc:
+        raise incident_rejected("No se registra el incidente:", exc.errors) from None
+    try:
+        state = IncidentState.model_validate(
+            {
+                "id": incident_id,
+                "simulated": simulated,
+                "title": title,
+                "severity": severity,
+                "detected_at": detected,
+                "assets": asset or [],
+                "source": {"system": source_system, "alert_ids": alert_id or []}
+                if source_system
+                else None,
+                "personal_data": personal_data,
+                "analysis": {"summary": summary},
+                "procedure": procedure,
+            }
+        )
+    except ValidationError as exc:
+        state = exc
+    print_recorded(store, record_or_reject(store, state, RecordKind.OPENED, by))
+
+
+@incident_app.command("update")
+@handled
+def incident_update(
+    ctx: typer.Context,
+    incident: IncidentIdArgument,
+    by: By,
+    severity: Annotated[str | None, typer.Option("--severity")] = None,
+    summary: Annotated[str | None, typer.Option("--summary", help="Sustituye el análisis.")] = None,
+    asset: Annotated[list[str] | None, typer.Option("--asset", help="Añade un activo.")] = None,
+    personal_data: Annotated[TriState | None, typer.Option("--personal-data")] = None,
+    action: Annotated[str | None, typer.Option("--action", help="Actuación realizada.")] = None,
+    action_kind: Annotated[ActionKind, typer.Option("--action-kind")] = ActionKind.OTHER,
+    action_at: Annotated[
+        str | None,
+        typer.Option("--action-at", help="Instante de la actuación (por defecto, ahora)."),
+    ] = None,
+    evidence: Annotated[
+        list[str] | None, typer.Option("--evidence", help="Añade una evidencia EV-… relacionada.")
+    ] = None,
+) -> None:
+    """Añade un reporte intermedio (op.exp.9.1). Sin cambios, se rechaza."""
+    store = open_workspace(ctx)
+    incident_id = incident_id_argument(incident)
+    before = last_incident_state(store, incident_id)
+    at = parse_instant("--action-at", action_at)
+    if action is None and (at or action_kind is not ActionKind.OTHER):
+        raise fail("--action-kind y --action-at necesitan --action.")
+    changes: dict[str, Any] = {}
+    if severity is not None:
+        changes["severity"] = severity
+    if summary is not None:
+        changes["analysis"] = {**before.analysis.model_dump(mode="json"), "summary": summary}
+    if asset:
+        changes["assets"] = list(dict.fromkeys([*before.assets, *asset]))
+    if personal_data is not None:
+        changes["personal_data"] = personal_data
+    if action is not None:
+        new_action = {"kind": action_kind, "at": at or clock(), "description": action}
+        changes["actions"] = [*before.model_dump(mode="json")["actions"], new_action]
+    if evidence:
+        changes["evidence_ids"] = list(dict.fromkeys([*before.evidence_ids, *evidence]))
+    after = changed_state(before, changes)
+    if after == before:
+        raise incident_rejected(f"No se registra {incident_id}:", ["la orden no cambia nada"])
+    print_recorded(store, record_or_reject(store, after, RecordKind.UPDATED, by))
+
+
+@incident_app.command("close")
+@handled
+def incident_close(
+    ctx: typer.Context,
+    incident: IncidentIdArgument,
+    by: By,
+    conclusion: Annotated[str, typer.Option("--conclusion", help="Conclusión del análisis.")],
+    auditable_events_result: Annotated[
+        ReviewResult,
+        typer.Option("--auditable-events-result", help="op.exp.9.3: changed o no_change."),
+    ],
+    auditable_events_detail: Annotated[
+        str, typer.Option("--auditable-events-detail", help="Qué cambió o por qué no cambia.")
+    ],
+    legal_relevance: Annotated[
+        TriState, typer.Option("--legal-relevance", help="op.exp.9.2: ¿relevancia jurisdiccional?")
+    ],
+    legal_advice: Annotated[
+        str | None, typer.Option("--legal-advice", help="Quién da el asesoramiento legal.")
+    ] = None,
+    preserved_evidence: Annotated[
+        list[str] | None, typer.Option("--preserved-evidence", help="EV-… preservada.")
+    ] = None,
+    closed_at: Annotated[
+        str | None, typer.Option("--closed-at", help="Instante del cierre (por defecto, ahora).")
+    ] = None,
+) -> None:
+    """Cierra el incidente (reporte final) y genera su historial. El cierre es definitivo."""
+    store = open_workspace(ctx)
+    incident_id = incident_id_argument(incident)
+    before = last_incident_state(store, incident_id)
+    closure = {
+        "closed_at": parse_instant("--closed-at", closed_at) or clock(),
+        "conclusion": conclusion,
+        "legal_relevance": legal_relevance,
+        "legal_advice": legal_advice,
+        "preserved_evidence_ids": preserved_evidence or [],
+        "auditable_events_review": {
+            "result": auditable_events_result,
+            "detail": auditable_events_detail,
+        },
+    }
+    after = changed_state(before, {"status": IncidentStatus.CLOSED, "closure": closure})
+    recorded = record_or_reject(store, after, RecordKind.CLOSED, by)
+    print_recorded(store, recorded)
+    if recorded.history_evidence_id:
+        simulated = (
+            " (es un simulacro: la matriz lo mostrará)" if recorded.record.state.simulated else ""
+        )
+        typer.echo(f"Para sustentar {OP_EXP_9}{simulated}, sin ejecutar:")
+        typer.echo(
+            f"  ens-evidence matrix link {OP_EXP_9} --evidence {recorded.history_evidence_id} "
+            "--covers base"
+        )
+        typer.echo("Solo la revisión de una persona lo confirma (matrix review).")
+
+
+@incident_app.command("list")
+@handled
+def incident_list(ctx: typer.Context) -> None:
+    """Lista los incidentes con su último estado."""
+    store = open_workspace(ctx)
+    broken = verify_all_incidents(store)
+    ids = sorted(incident_ids_in(store.list(INCIDENTS_PREFIX)) | broken.keys())
+    if not ids:
+        typer.echo("No hay incidentes registrados.")
+    for incident_id in ids:
+        scan = scan_incident(store, incident_id)
+        state = scan.records[-1].record.state if scan.records else None
+        typer.echo(list_line(incident_id, state, incident_id in broken))
+
+
+@incident_app.command("show")
+@handled
+def incident_show(
+    ctx: typer.Context,
+    incident: IncidentIdArgument,
+    as_json: Annotated[bool, typer.Option("--json", help="Salida en JSON.")] = False,
+) -> None:
+    """Muestra un incidente y su historia de registros."""
+    store = open_workspace(ctx)
+    incident_id = incident_id_argument(incident)
+    scan = scan_incident(store, incident_id)
+    if not scan.records and not scan.problems:
+        raise fail(f"{incident_id} no existe.", 1)
+    problems = verify_incident(store, incident_id)
+    if as_json:
+        records = [
+            {"key": s.key, "sha256": s.sha256, **s.record.model_dump(mode="json")}
+            for s in scan.records
+        ]
+        document = {
+            "incident_id": incident_id,
+            "simulated": scan.records[-1].record.state.simulated if scan.records else None,
+            "problems": problems,
+            "records": records,
+        }
+        typer.echo(json.dumps(document, indent=2, ensure_ascii=False))
+        return
+    for line in show_lines(scan, problems):
+        typer.echo(line)
+
+
+@incident_app.command("verify")
+@handled
+def incident_verify(
+    ctx: typer.Context,
+    incident: Annotated[str | None, typer.Argument(help="Por defecto, todos.")] = None,
+) -> None:
+    """Verifica claves, secuencia, cadena, evidencias e historial. Sale con 1 si hay problemas."""
+    store = open_workspace(ctx)
+    if incident is None:
+        found = verify_all_incidents(store)
+    else:
+        incident_id = incident_id_argument(incident)
+        scan = scan_incident(store, incident_id)
+        if not scan.records and not scan.problems:
+            raise fail(f"{incident_id} no existe.", 1)
+        found = {incident_id: problems} if (problems := verify_incident(store, incident_id)) else {}
+    if found:
+        typer.echo("La verificación de incidentes ha fallado:", err=True)
+        for incident_id, problems in found.items():
+            typer.echo(f"{incident_id}:", err=True)
+            print_errors(problems)
+        raise typer.Exit(1)
+    typer.echo("Incidentes verificados: íntegros." if incident is None else f"{incident}: íntegro.")
 
 
 def connector_registry() -> ConnectorRegistry:

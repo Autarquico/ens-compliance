@@ -11,6 +11,8 @@ from ens_evidence.backup.restore_test import RestoreTest, RestoreTestDeclaration
 from ens_evidence.catalog import MeasureCard
 from ens_evidence.catalog.controls import MeasuresFile
 from ens_evidence.categorization import CategorizationApproval, CategorizationFile
+from ens_evidence.incidents import IncidentRecord
+from ens_evidence.incidents.history import IncidentHistory
 from ens_evidence.matrix import (
     ApplicabilityReview,
     MatrixChange,
@@ -57,6 +59,8 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "controls-measures": MeasuresFile,
     "dossier": Dossier,
     "evidence-manifest": EvidenceManifest,
+    "incident-history": IncidentHistory,
+    "incident-record": IncidentRecord,
     "matrix-export": MatrixExport,
     "matrix-change": MatrixChange,
     "measure-review": MeasureReviewRecord,
