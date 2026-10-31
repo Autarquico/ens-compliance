@@ -77,8 +77,8 @@ def test_closing_generates_the_canonical_history_with_the_exact_records(world):
     assert verify_incident(world.store, ID) == []
 
 
-def test_a_simulation_history_says_so(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_a_simulation_history_says_so(world):
+    world.approve_procedure()
     procedure = world.procedure().model_dump(mode="json")
     world.open(id="SIM-2026-001", simulated=True, procedure=procedure)
     recorded = world.close()
@@ -231,8 +231,8 @@ def test_a_closure_without_history_is_reported_and_can_be_completed(world):
     assert verify_history(world.store, manifest) == []
 
 
-def test_check_history_reports_whether_it_is_a_simulation(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_check_history_reports_whether_it_is_a_simulation(world):
+    world.approve_procedure()
     world.open(
         id="SIM-2026-001", simulated=True, procedure=world.procedure().model_dump(mode="json")
     )

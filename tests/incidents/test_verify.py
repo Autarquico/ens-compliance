@@ -182,13 +182,13 @@ def test_a_broken_evidence_reference_is_reported(world):
     assert f"referencia EV rota: {evidence_id}" in problems(world)
 
 
-def test_a_replaced_procedure_approval_is_reported(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_a_replaced_procedure_approval_is_reported(world):
+    world.approve_procedure()
     procedure = world.procedure().model_dump(mode="json")
     world.open(id="SIM-2026-001", simulated=True, procedure=procedure)
     assert verify_incident(world.store, "SIM-2026-001") == []
 
-    world.write_approval("d" * 64)
+    world.replace_approved_document("d" * 64)
 
     assert "no está en el historial de org-docs" in problems(world, "SIM-2026-001")
 
@@ -213,8 +213,8 @@ def test_a_missing_incident_in_the_numbering_is_a_problem_under_its_own_id(world
     assert "numeración es correlativa" in found["INC-2026-002"][0]
 
 
-def test_numbering_is_checked_per_series_and_year(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_numbering_is_checked_per_series_and_year(world):
+    world.approve_procedure()
     procedure = world.procedure().model_dump(mode="json")
     world.open()
     world.open(id="SIM-2026-001", simulated=True, procedure=procedure)

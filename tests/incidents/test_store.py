@@ -155,8 +155,8 @@ def test_real_incident_without_approved_procedure_is_recorded_with_a_warning(wor
     assert any("procedimiento-incidentes" in warning for warning in recorded.warnings)
 
 
-def test_real_incident_takes_the_current_approved_procedure(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_real_incident_takes_the_current_approved_procedure(world):
+    world.approve_procedure()
     recorded = world.open()
 
     procedure = recorded.record.state.procedure
@@ -165,10 +165,11 @@ def test_real_incident_takes_the_current_approved_procedure(world, monkeypatch):
     assert verify_incident(world.store, ID) == []
 
 
-def test_simulation_without_approved_procedure_is_rejected(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_simulation_without_approved_procedure_is_rejected(world):
+    world.approve_procedure()
     procedure = world.procedure().model_dump(mode="json")
-    monkeypatch.undo()
+    for key in world.keys("org/docs/approvals"):
+        world.remove(key)
 
     error = rejection(lambda: world.open(id="SIM-2026-001", simulated=True, procedure=procedure))
 
@@ -176,8 +177,8 @@ def test_simulation_without_approved_procedure_is_rejected(world, monkeypatch):
     assert not any(key.startswith("incidents/") for key in world.keys())
 
 
-def test_simulation_with_a_stale_procedure_is_rejected(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_simulation_with_a_stale_procedure_is_rejected(world):
+    world.approve_procedure()
     stale = {**world.procedure().model_dump(mode="json"), "document_sha256": "c" * 64}
 
     error = rejection(lambda: world.open(id="SIM-2026-001", simulated=True, procedure=stale))
@@ -185,8 +186,8 @@ def test_simulation_with_a_stale_procedure_is_rejected(world, monkeypatch):
     assert "no es la aprobación vigente" in error.errors[0]
 
 
-def test_simulation_with_the_current_procedure_is_recorded(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_simulation_with_the_current_procedure_is_recorded(world):
+    world.approve_procedure()
     procedure = world.procedure().model_dump(mode="json")
 
     recorded = world.open(id="SIM-2026-001", simulated=True, procedure=procedure)
@@ -195,8 +196,8 @@ def test_simulation_with_the_current_procedure_is_recorded(world, monkeypatch):
     assert verify_incident(world.store, "SIM-2026-001") == []
 
 
-def test_procedure_cannot_change_after_opening(world, monkeypatch):
-    world.approve_procedure(monkeypatch)
+def test_procedure_cannot_change_after_opening(world):
+    world.approve_procedure()
     world.open()
     error = rejection(lambda: world.update(procedure=None))
 
@@ -339,18 +340,16 @@ def test_a_history_on_an_open_incident_rejects_the_closure_and_writes_nothing(wo
     assert world.keys() == before
 
 
-def test_a_history_failure_after_the_closure_is_reported_not_rejected(world, monkeypatch):
-    def failing(*args, **kwargs):
-        raise IncidentRejected(["el almacén no responde"])
-
+def test_a_history_failure_after_the_closure_is_reported_not_rejected(world):
     world.open()
-    monkeypatch.setattr("ens_evidence.incidents.store.record_history", failing)
+    world.race_history_after_closure()
 
     recorded = world.close()
 
     assert recorded.history_evidence_id is None
-    assert recorded.history_problems == ["el almacén no responde"]
+    assert recorded.history_problems == [f"{ID} ya tiene historial ({world.store.raced.id})"]
     assert recorded.key in world.keys()
+    world.drop_raced_history()
     assert "cerrado sin evidencia incident-history" in " ".join(verify_incident(world.store, ID))
 
 
@@ -382,7 +381,15 @@ def test_the_declared_author_is_minimized_like_any_other_field(world, by):
 def test_an_asset_outside_the_inventory_is_rejected_and_nothing_is_written(world):
     before = world.keys()
 
-    with pytest.raises(IncidentRejected, match="NO-EXISTE no está en el inventario"):
-        world.open(assets=["NO-EXISTE"])
+    error = rejection(lambda: world.open(assets=["APP-001", "NO-EXISTE"]))
 
+    assert error.errors == ["state.assets[1]: no está en el inventario"]
     assert world.keys() == before
+
+
+def test_no_error_repeats_an_asset_value_that_looks_like_personal_data(world):
+    error = rejection(lambda: world.open(assets=["12345678Z", "APP-001", "600123456"]))
+
+    assert "12345678Z" not in " ".join(error.errors)
+    assert "600123456" not in " ".join(error.errors)
+    assert not any("inventario" in e and "assets[0]" in e for e in error.errors)

@@ -250,7 +250,9 @@ def test_la_rama_afirmativa_y_la_negativa_dicen_solo_lo_que_se_pregunto(built):
     build_documents(built)
     no = built.read_text(f"org/docs/{PROCEDURE}.md")
 
-    assert "presta a entidades públicas servicios que se apoyan en sus sistemas" in yes
+    assert "presta servicios a una administración u otra entidad que se apoyan" in yes
+    assert "Si alguna es una entidad pública, el art. 33.7 obliga a notificar" in yes
+    assert "presta a entidades públicas servicios" not in yes
     assert "Si presta cualquier servicio a una entidad pública, revisad el art. 33.7" in no
     assert "no presta servicios a entidades públicas" not in no
 

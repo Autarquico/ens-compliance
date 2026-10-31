@@ -259,8 +259,55 @@ def test_matrix_review_y_el_export_senalan_el_simulacro_donde_se_decide(scenario
 
     assert reviewed.exit_code == 0, reviewed.output
     assert f"evidencia {history} (simulacro)" in reviewed.output
-    assert "una de las fuentes es un simulacro" in reviewed.output
+    assert "hay fuentes marcadas como simulacro" in reviewed.output
     assert "La valoración es tuya" in reviewed.output
     revisions = [line for line in exported.output.splitlines() if "← evidencia" in line]
     assert revisions and all(f"{history} (simulacro)" in line for line in revisions)
     assert f"- {history} (simulacro) ·" in exported.output
+
+
+def test_matrix_review_con_el_registro_vacio_dice_como_obtener_la_fuente(scenario):
+    fix_owner_and_periodicity(scenario.run)
+    scenario.at(0)
+
+    reviewed = review(scenario.run, REGISTER_MEASURE)
+
+    assert reviewed.exit_code == 1
+    assert "cláusula sin cubrir: op.exp.9.1" in reviewed.output
+    assert "incident new --simulated" in reviewed.output
+
+
+def delete_first_of_two_real_incidents(scenario: Scenario) -> None:
+    for _ in range(2):
+        opened = scenario.run(*NEW, *SELF)
+        assert opened.exit_code == 0, opened.output
+    for key in scenario.store.list("incidents/INC-2026-001"):
+        (scenario.path / key).unlink()
+
+
+def test_un_incidente_borrado_a_mano_avisa_en_status_y_review_sin_bloquear(scenario):
+    history = run_simulation(scenario)
+    link_simulation(scenario, history)
+    delete_first_of_two_real_incidents(scenario)
+    scenario.clock.now = NOW
+
+    reviewed = review(scenario.run, REGISTER_MEASURE)
+    status = scenario.run("matrix", "status", REGISTER_MEASURE)
+
+    assert scenario.run("incident", "verify").exit_code == 1
+    assert reviewed.exit_code == 0, reviewed.output
+    assert status.exit_code == 0, status.output
+    for output in (status.output, reviewed.output):
+        assert "el registro de incidentes tiene problemas" in output
+        assert "incident verify" in output
+
+
+def test_sin_problemas_en_el_registro_status_y_review_no_avisan(scenario):
+    history = run_simulation(scenario)
+    link_simulation(scenario, history)
+    scenario.clock.now = NOW
+
+    reviewed = review(scenario.run, REGISTER_MEASURE)
+    status = scenario.run("matrix", "status", REGISTER_MEASURE)
+
+    assert "registro de incidentes tiene problemas" not in status.output + reviewed.output

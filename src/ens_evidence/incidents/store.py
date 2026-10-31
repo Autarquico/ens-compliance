@@ -7,14 +7,13 @@ fallo a medias:
 2. reservar la secuencia `incidents/<ID>/seq/<seq>` con creación exclusiva: si existe, otra orden
    ganó y esta falla;
 3. importar los mismos bytes como evidencia `incident-record`;
-4. escribir el registro.
+4. escribir el registro;
+5. si el registro es el cierre, generar el historial. Si eso falla, el cierre ya está escrito y es
+   definitivo: no se rechaza, se informa en `Recorded.history_problems` y `incident history` lo
+   completa sin tocar los registros.
 
 Un fallo entre 2 y 4 deja una reserva (y quizá un manifiesto) sin registro: `verify` lo marca roto
 y el incidente no admite más registros hasta que se recupere desde la copia (runbook).
-
-5. Si el registro es el cierre, genera el historial. Si eso falla, el cierre ya está escrito y es
-definitivo: no se rechaza, se informa en `Recorded.history_problems` y `incident history` lo
-completa sin tocar los registros.
 """
 
 import hashlib
@@ -48,8 +47,9 @@ from ens_evidence.incidents.model import (
 )
 from ens_evidence.incidents.privacy import check_declared_name, check_incident_payload
 from ens_evidence.incidents.verify import history_presence_problems, scan_incident
-from ens_evidence.orgdocs import approval as org_approval
+from ens_evidence.models.contracts import EvidenceManifest
 from ens_evidence.orgdocs.answers import read_answers, squash, validate_answers
+from ens_evidence.orgdocs.approval import document_status
 from ens_evidence.orgdocs.contract import INCIDENT_LEVEL_FIELDS, INCIDENT_LEVELS
 from ens_evidence.orgdocs.template import load_templates
 from ens_evidence.scope.inventory import load_assets
@@ -105,7 +105,7 @@ def declared_levels(store: WorkspaceStore) -> list[str]:
 
 def current_procedure(store: WorkspaceStore) -> Procedure | None:
     """Aprobación vigente de `procedimiento-incidentes`, tal como la guarda un incidente."""
-    status = org_approval.document_status(store, PROCEDURE_DOCUMENT)
+    status = document_status(store, PROCEDURE_DOCUMENT)
     approval = status.approval
     if not status.current or approval is None:
         return None
@@ -167,7 +167,7 @@ def record_incident(
     errors += found
     warnings += notices
     errors += _broken_evidence(store, state)
-    errors += _unknown_assets(store, state, previous)
+    errors += _unknown_assets(store, state, previous, flagged=found)
     if errors:
         raise IncidentRejected(errors)
 
@@ -201,7 +201,7 @@ def record_incident(
     return replace(recorded, history_evidence_id=history.id)
 
 
-def _closed_message(incident_id: str, histories: tuple) -> str:
+def _closed_message(incident_id: str, histories: tuple[EvidenceManifest, ...]) -> str:
     message = f"{incident_id} está cerrado y no admite más registros"
     if not histories:
         message += f"; su historial falta: ens-evidence incident history {incident_id}"
@@ -262,18 +262,26 @@ def _with_severity(
 
 
 def _unknown_assets(
-    store: WorkspaceStore, state: IncidentState, previous: StoredRecord | None
+    store: WorkspaceStore, state: IncidentState, previous: StoredRecord | None, flagged: list[str]
 ) -> list[str]:
     """Los activos que se añaden deben existir en el inventario; para registrar sin activo,
-    basta con omitir `--asset`."""
-    added = set(state.assets) - set(previous.record.state.assets if previous else ())
+    basta con omitir `--asset`. Se identifican por posición, nunca por valor, y no se contrastan
+    los que el filtro de privacidad ya señaló."""
+    before = set(previous.record.state.assets if previous else ())
+    added = [
+        (i, asset)
+        for i, asset in enumerate(state.assets)
+        if asset not in before and not any(e.startswith(f"state.assets[{i}]") for e in flagged)
+    ]
     if not added:
         return []
-    inventory, problems = load_assets(store)
+    inventory, _ = load_assets(store)
     if inventory is None:
-        return [f"assets: no se puede leer el inventario ({'; '.join(problems)}); omite --asset"]
+        return ["assets: no se puede leer el inventario (revisa `scope status`); omite --asset"]
     known = {asset.id for asset in inventory.assets}
-    return [f"assets: {asset} no está en el inventario" for asset in sorted(added - known)]
+    return [
+        f"state.assets[{i}]: no está en el inventario" for i, asset in added if asset not in known
+    ]
 
 
 def _broken_evidence(store: WorkspaceStore, state: IncidentState) -> list[str]:

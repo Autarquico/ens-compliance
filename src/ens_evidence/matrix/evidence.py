@@ -38,7 +38,8 @@ class LinkSupport:
 
     `available_at` es cuándo existe la fuente (alta de la evidencia, fin de la ejecución o
     aprobación del documento): la evaluación la compara con el registro de la revisión.
-    `simulated`: el historial de un incidente es de un simulacro.
+    `incident_history`: la fuente es el historial de un incidente; `simulated`: es el de un
+    simulacro.
     """
 
     link: Link
@@ -49,6 +50,7 @@ class LinkSupport:
     reviewed_document: ReviewedDocument | None = None
     available_at: datetime | None = None
     simulated: bool = False
+    incident_history: bool = False
 
     @property
     def counts(self) -> bool:
@@ -140,10 +142,14 @@ def manual_support(
     registros): ambas con las mismas reglas temporales. Un `incident-record` nunca cuenta."""
     units, cover_blockers = link_units(row, link)
     simulated = False
+    incident_history = False
 
     def rejected(kind: BlockerKind, detail: str) -> LinkSupport:
         return LinkSupport(
-            link, blockers=(*cover_blockers, blocker(kind, row, detail)), simulated=simulated
+            link,
+            blockers=(*cover_blockers, blocker(kind, row, detail)),
+            simulated=simulated,
+            incident_history=incident_history,
         )
 
     evidence_id = link.evidence_id
@@ -151,6 +157,7 @@ def manual_support(
     if manifest is None or not is_linkable(manifest):
         return rejected(BlockerKind.MISSING_EVIDENCE, f"evidence_unverified:{evidence_id}")
     if manifest.source == INCIDENT_HISTORY_SOURCE:
+        incident_history = True
         history = check_history(store, manifest)
         simulated = history.simulated
         if history.problems:
@@ -184,4 +191,5 @@ def manual_support(
         ),
         available_at=manifest.provenance.submitted_at,
         simulated=simulated,
+        incident_history=incident_history,
     )

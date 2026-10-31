@@ -1,12 +1,14 @@
 """Un workspace local con utilidades para fabricar y manipular incidentes (datos sintéticos)."""
 
 import os
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 from pathlib import Path
 
 import yaml
 
 from ens_evidence.evidence import import_manual
+from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, import_generated
+from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.incidents import (
     IncidentRecord,
     IncidentState,
@@ -15,26 +17,40 @@ from ens_evidence.incidents import (
     record_incident,
 )
 from ens_evidence.incidents.layout import (
-    PROCEDURE_DOCUMENT,
-    approval_key,
+    asset_id,
     record_key,
     render_record,
 )
 from ens_evidence.incidents.verify import scan_incident
-from ens_evidence.models.enums import Role
-from ens_evidence.orgdocs.approval import DocumentApproval, DocumentState, DocumentStatus
-from ens_evidence.orgdocs.meta import TemplateRef
 from ens_evidence.workspace import LocalStore
 
+from .acceptance_helpers import prepare_workspace
 from .helpers import RECORDED, closure, state
 
 BY = "Ana Ejemplo"
-SHA = "b" * 64
-APPROVED_AT = datetime(2026, 9, 1, 9, 0, tzinfo=UTC)
 LEVELS = (
     {"nivel": "bajo", "criterio": "sin impacto en el servicio", "escalado": "responsable"},
     {"nivel": "alto", "criterio": "servicio caído", "escalado": "dirección"},
 )
+
+
+class HistoryRacingStore(LocalStore):
+    """Una orden ajena publica el historial en cuanto se escribe el registro de cierre."""
+
+    raced = None
+
+    def create_bytes(self, key: str, data: bytes) -> None:
+        super().create_bytes(key, data)
+        if key.endswith(".yaml") and b"kind: closed" in data:
+            self.raced = import_generated(
+                self,
+                b"historial ajeno",
+                source=INCIDENT_HISTORY_SOURCE,
+                asset_id=asset_id("INC-2026-001"),
+                submitted_by=BY,
+                now=RECORDED,
+                collected_at=RECORDED,
+            )
 
 
 class World:
@@ -89,35 +105,27 @@ class World:
             "org/answers.yaml", yaml.safe_dump({"incidentes_niveles": list(rows)})
         )
 
-    def approval(self, document_sha256: str = SHA) -> DocumentApproval:
-        return DocumentApproval(
-            document=PROCEDURE_DOCUMENT,
-            approved_by=BY,
-            role=Role.MANAGEMENT,
-            approved_at=APPROVED_AT,
-            document_sha256=document_sha256,
-            answers_sha256=SHA,
-            template=TemplateRef(id=PROCEDURE_DOCUMENT, version=1),
-            renderer_version=1,
-            catalog_sha256=SHA,
-            articulado_sha256=SHA,
-            scope_fingerprint=SHA,
-        )
+    def approve_procedure(self) -> None:
+        """Deja `procedimiento-incidentes` aprobado y vigente con el flujo real de org-docs.
+        Sustituye el inventario por el del ejemplo: el alcance forma parte de la aprobación."""
+        prepare_workspace(self.root)
 
-    def write_approval(self, document_sha256: str = SHA) -> None:
-        approval = self.approval(document_sha256)
-        self.store.write_text(
-            approval_key(approval.approved_at),
-            yaml.safe_dump(approval.model_dump(mode="json"), sort_keys=False),
-        )
+    def replace_approved_document(self, document_sha256: str) -> None:
+        """Reescribe el documento aprobado en su registro, como una edición a mano."""
+        (key,) = self.keys("org/docs/approvals/procedimiento-incidentes/")
+        record = yaml.safe_load(self.store.read_text(key))
+        record["document_sha256"] = document_sha256
+        self.store.write_text(key, yaml.safe_dump(record))
 
-    def approve_procedure(self, monkeypatch) -> None:
-        """Deja `procedimiento-incidentes` aprobado y vigente (org-docs completo queda fuera)."""
-        self.write_approval()
-        status = DocumentStatus(
-            PROCEDURE_DOCUMENT, DocumentState.APPROVED, approval=self.approval()
-        )
-        monkeypatch.setattr("ens_evidence.orgdocs.approval.document_status", lambda *_: status)
+    def race_history_after_closure(self) -> "HistoryRacingStore":
+        """Otra orden genera el historial justo tras escribirse el cierre: `record_history`
+        rechaza sin parches. `drop_raced_history` lo quita para recuperarlo con
+        `incident history`."""
+        self.store = HistoryRacingStore(self.root)
+        return self.store
+
+    def drop_raced_history(self) -> None:
+        self.remove(manifest_key(self.store.raced.id))
 
     def procedure(self):
         procedure = current_procedure(self.store)

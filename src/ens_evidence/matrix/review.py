@@ -22,6 +22,7 @@ from ens_evidence.matrix.links import (
     require_current,
     row_of,
 )
+from ens_evidence.matrix.messages import blocker_text, with_simulated_mark
 from ens_evidence.matrix.model import (
     ApplicabilityReview,
     CheckLink,
@@ -33,11 +34,13 @@ from ens_evidence.matrix.model import (
     ReviewedObligation,
 )
 from ens_evidence.matrix.obligations import MatrixRowSpec, Obligation, RowKind
+from ens_evidence.matrix.policy import source_policy
 from ens_evidence.matrix.store import add_review
 from ens_evidence.matrix.technical import CheckResultsSource, NoCheckResults
 from ens_evidence.models.contracts import Review
 from ens_evidence.models.dossier import SELF_ASSESSORS
 from ens_evidence.models.enums import MeasureAssessment
+from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.workspace import WorkspaceStore
 
 ASSESSMENTS = (
@@ -68,6 +71,8 @@ class ReviewPlan:
     notes: tuple[str, ...]
     problems: tuple[str, ...]
     record: MeasureReviewRecord | ApplicabilityReview | None
+    simulated: bool = False
+    incident_history: bool = False
 
 
 def parse_assessment(text: str | None) -> MeasureAssessment | None:
@@ -124,7 +129,9 @@ def _attribution(
         ObligationAttribution(
             o.id,
             tuple(
-                ClauseAttribution(unit, tuple(link_label(s.link) for s in found))
+                ClauseAttribution(
+                    unit, tuple(with_simulated_mark(link_label(s.link), s.simulated) for s in found)
+                )
                 for unit, found in by_unit.items()
             ),
         )
@@ -184,6 +191,18 @@ def _before_sources(supports: Iterable[LinkSupport], reviewed_at: datetime | Non
     ]
 
 
+def _source_policy_step(measure_id: str) -> list[str]:
+    """Una medida con política de fuentes dice de dónde sale la evidencia que le falta."""
+    policy = source_policy(measure_id)
+    if policy is None:
+        return []
+    return [
+        blocker_text(
+            Blocker(kind=BlockerKind.MISSING_EVIDENCE, measure_id=measure_id, detail=policy.detail)
+        )
+    ]
+
+
 def _problems(
     entry: MatrixEntry,
     assessment: MeasureAssessment | None,
@@ -236,16 +255,20 @@ def prepare_review(
     snapshot = documents_snapshot(store, now, documents)
     runs = tuple((checks or NoCheckResults()).runs(store, now))
     supports = link_supports(store, row, entry, runs, snapshot, now) if selected else []
-    problems = _problems(
-        entry, verdict, _missing(row, supports) if selected else [], _before_sources(supports, at)
-    )
+    missing = _missing(row, supports) if selected else []
+    problems = _problems(entry, verdict, missing, _before_sources(supports, at))
+    if missing and verdict is MeasureAssessment.COMPLIANT:
+        problems += _source_policy_step(measure_id)
     notes = tuple(
         f"{link_label(s.link)}: {b.kind.value} {b.detail}" for s in supports for b in s.blockers
     )
     covering = _covering(row, supports)
     attribution = _attribution(covering)
+    used = [s for _, by_unit in covering for found in by_unit.values() for s in found]
+    simulated = any(s.simulated for s in used)
+    from_register = any(s.incident_history for s in used)
     if problems:
-        return ReviewPlan(row, attribution, notes, tuple(problems), None)
+        return ReviewPlan(row, attribution, notes, tuple(problems), None, simulated, from_register)
 
     reviewed_at = at or now
     assert entry.review_every_days is not None
@@ -274,7 +297,7 @@ def prepare_review(
             recorded_at=now,
             measure_context_sha256=row.measure_context_sha256,
         )
-    return ReviewPlan(row, attribution, notes, (), record)
+    return ReviewPlan(row, attribution, notes, (), record, simulated, from_register)
 
 
 def record_review(store: WorkspaceStore, plan: ReviewPlan) -> str:

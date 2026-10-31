@@ -95,7 +95,7 @@ from ens_evidence.incidents import (
     verify_all_incidents,
 )
 from ens_evidence.incidents.model import INCIDENT_ID_PATTERN, ReviewResult
-from ens_evidence.incidents.present import SIMULATION_LABEL, list_line, show_lines
+from ens_evidence.incidents.present import RECORD_LABELS, SIMULATION_LABEL, list_line, show_lines
 from ens_evidence.incidents.verify import scan_incident
 from ens_evidence.matrix import (
     CHECKS_PENDING,
@@ -123,11 +123,11 @@ from ens_evidence.matrix import (
     save_report,
     set_entry,
 )
-from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE, simulated_labels
+from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE
 from ens_evidence.matrix.messages import (
     DECLARATION_LABELS,
+    INCIDENT_REGISTER_NOTICE,
     READINESS_LABELS,
-    SIMULATED_LABEL,
     SIMULATION_REVIEW_NOTICE,
     blocker_lines,
     obligation_label,
@@ -1501,24 +1501,22 @@ def matrix_rejected(title: str, exc: MatrixRejected) -> typer.Exit:
     return typer.Exit(1)
 
 
-def print_coverage(store: WorkspaceStore, plan: ReviewPlan) -> None:
-    simulated = simulated_labels(
-        store, {source for o in plan.attribution for c in o.clauses for source in c.sources}
-    )
+def print_coverage(plan: ReviewPlan) -> None:
     for obligation in plan.attribution:
         typer.echo(f"  {obligation_label(obligation.obligation)}:")
         for clause in obligation.clauses:
-            sources = (
-                ", ".join(
-                    s + (f" ({SIMULATED_LABEL})" if s in simulated else "") for s in clause.sources
-                )
-                or "sin fuente que cuente"
-            )
+            sources = ", ".join(clause.sources) or "sin fuente que cuente"
             typer.echo(f"    {clause.unit}  <- {sources}")
-    if simulated:
+    if plan.simulated:
         typer.echo(f"  Aviso: {SIMULATION_REVIEW_NOTICE}", err=True)
     for note in plan.notes:
         typer.echo(f"  Aviso: {note}", err=True)
+
+
+def warn_if_register_has_problems(store: WorkspaceStore) -> None:
+    """Un aviso, no un bloqueo (ADR 0013): remite a `incident verify`."""
+    if problems := verify_all_incidents(store):
+        typer.echo(f"Aviso: {INCIDENT_REGISTER_NOTICE.format(n=len(problems))}.", err=True)
 
 
 @matrix_app.command("init")
@@ -1682,7 +1680,9 @@ def matrix_review(
         raise matrix_rejected(f"No se registra la revisión de {measure}:", exc) from None
     if plan.row.obligations:
         typer.echo(f"Cobertura atribuida a {measure}:")
-        print_coverage(store, plan)
+        print_coverage(plan)
+        if plan.incident_history:
+            warn_if_register_has_problems(store)
     if plan.problems:
         typer.echo(f"No se registra la revisión de {measure}:", err=True)
         print_errors(list(plan.problems))
@@ -1728,7 +1728,8 @@ def matrix_show_status(
 ) -> None:
     """Estado de cada medida y preparación. Sale con 1 si hay bloqueos o ficheros ilegibles."""
     instant = parse_instant("--at", at) or clock()
-    result, rows = matrix_status(open_workspace(ctx), instant)
+    store = open_workspace(ctx)
+    result, rows = matrix_status(store, instant)
     shown = [s for s in rows if measure is None or s.row.spec.measure_id == measure]
     if measure is not None and not shown:
         raise fail(f"{measure} no es una medida de la Declaración de Aplicabilidad.", 1)
@@ -1737,6 +1738,8 @@ def matrix_show_status(
     for status in shown:
         print_row_status(status)
     print_errors(list(result.errors))
+    if any(s.incident_history for s in shown):
+        warn_if_register_has_problems(store)
     readiness = result.readiness
     if measure is None:
         count = len(readiness.blockers)
@@ -1825,7 +1828,8 @@ def record_or_reject(
 def print_recorded(recorded: Recorded) -> None:
     state = recorded.record.state
     label = f" ({SIMULATION_LABEL})" if state.simulated else ""
-    typer.echo(f"{state.id}{label}: registro {recorded.record.seq} ({recorded.record.kind.value}).")
+    kind = RECORD_LABELS[recorded.record.kind]
+    typer.echo(f"{state.id}{label}: registro {recorded.record.seq} ({kind}).")
     typer.echo(f"  Clave: {recorded.key}")
     typer.echo(f"  Evidencia: {recorded.evidence_id}")
     typer.echo(f"  sha256: {recorded.sha256}")
@@ -2050,7 +2054,8 @@ def incident_history(ctx: typer.Context, incident: IncidentIdArgument, by: By) -
     cerrar). No modifica ningún registro."""
     store = open_workspace(ctx)
     incident_id = incident_id_argument(incident)
-    if not scan_incident(store, incident_id).records:
+    scan = scan_incident(store, incident_id)
+    if not scan.records:
         raise fail(f"{incident_id} no existe.", 1)
     try:
         manifest = record_history(store, incident_id, by=by, now=clock())
@@ -2061,8 +2066,7 @@ def incident_history(ctx: typer.Context, incident: IncidentIdArgument, by: By) -
     typer.echo(f"{incident_id}: historial generado.")
     typer.echo(f"  Historial: {manifest.id}")
     typer.echo(DECLARED_NAME_NOTICE)
-    state = scan_incident(store, incident_id).records[-1].record.state
-    print_link_steps(manifest.id, simulated=state.simulated)
+    print_link_steps(manifest.id, simulated=scan.records[-1].record.state.simulated)
 
 
 @incident_app.command("list")

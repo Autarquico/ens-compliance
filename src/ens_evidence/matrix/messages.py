@@ -28,9 +28,20 @@ INCIDENT_RECORD_NOT_LINKABLE = (
 )
 SIMULATED_LABEL = "simulacro"
 SIMULATION_REVIEW_NOTICE = (
-    "una de las fuentes es un simulacro: muestra que el registro funciona, no que se hayan "
+    "hay fuentes marcadas como simulacro: muestran que el registro funciona, no que se hayan "
     "registrado incidentes reales. La valoración es tuya."
 )
+
+INCIDENT_REGISTER_NOTICE = (
+    "el registro de incidentes tiene problemas ({n}); esta medida se apoya en él. "
+    "Siguiente paso: ens-evidence incident verify"
+)
+
+
+def with_simulated_mark(label: str, simulated: bool) -> str:
+    """La única marca de simulacro de una fuente, para `status`, `review` y la exportación."""
+    return f"{label} ({SIMULATED_LABEL})" if simulated else label
+
 
 # (tipo, primera parte del detalle) -> texto. {m} medida; {a}, {b} partes siguientes del detalle.
 BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {

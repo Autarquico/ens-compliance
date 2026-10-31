@@ -66,9 +66,9 @@ class Scenario:
         return [self.store.read_bytes(key) for key in self.store.list("evidence/raw")]
 
 
-def build_scenario(tmp_path: Path, monkeypatch, *, approve_procedure: bool = True) -> Scenario:
-    """Workspace BÁSICA listo para `incident …` y `matrix …`: la matriz recién iniciada."""
-    path = tmp_path / "ws"
+def prepare_workspace(path: Path, *, approve_procedure: bool = True) -> LocalStore:
+    """Workspace BÁSICA con la Declaración vigente y los org-docs reales, aprobados con el flujo
+    de producción (con o sin `procedimiento-incidentes`)."""
     store = prepared_workspace(path, uniform("BAJO"))
     propose_applicability(store, LATER)
     decide_all_undetermined(store)
@@ -78,6 +78,13 @@ def build_scenario(tmp_path: Path, monkeypatch, *, approve_procedure: bool = Tru
     for name, role in APPROVER.items():
         if approve_procedure or name != PROCEDURE:
             approve_document(store, name, SIGNATORY[role], role, APPROVED_AT)
+    return store
+
+
+def build_scenario(tmp_path: Path, monkeypatch, *, approve_procedure: bool = True) -> Scenario:
+    """Workspace BÁSICA listo para `incident …` y `matrix …`: la matriz recién iniciada."""
+    path = tmp_path / "ws"
+    store = prepare_workspace(path, approve_procedure=approve_procedure)
     clock = Clock(monkeypatch)
     clock.now = NOW - timedelta(hours=5)
     run = runner(settings_file(tmp_path, {"backend": "local", "local": {"path": str(path)}}))

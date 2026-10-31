@@ -7,7 +7,7 @@ from datetime import datetime
 from ens_evidence.matrix.documents import OrgDocumentSource
 from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess
 from ens_evidence.matrix.links import link_label
-from ens_evidence.matrix.messages import SIMULATED_LABEL
+from ens_evidence.matrix.messages import with_simulated_mark
 from ens_evidence.matrix.model import CheckLink
 from ens_evidence.matrix.obligations import RowKind
 from ens_evidence.matrix.technical import CheckResultsSource
@@ -30,6 +30,7 @@ class RowStatus:
     regularly_reviewed: bool
     sources: tuple[str, ...]
     has_check_links: bool
+    incident_history: bool
 
     @property
     def blockers(self) -> tuple[Blocker, ...]:
@@ -52,11 +53,10 @@ def row_status(row: AssessmentRow) -> RowStatus:
         implemented,
         regular,
         tuple(
-            f"{link_label(s.link)} ({SIMULATED_LABEL})" if s.simulated else link_label(s.link)
-            for s in row.supports
-            if s.counts
+            with_simulated_mark(link_label(s.link), s.simulated) for s in row.supports if s.counts
         ),
         any(isinstance(link, CheckLink) for link in links),
+        any(s.incident_history for s in row.supports if s.counts),
     )
 
 

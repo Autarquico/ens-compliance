@@ -31,6 +31,7 @@ from ens_evidence.matrix.status import row_status
 from ens_evidence.models import BlockerKind, Readiness
 from ens_evidence.models.contracts import ProvenanceKind
 
+from .acceptance_helpers import generate_and_approve_documents
 from .evaluate_helpers import (
     FAR,
     NOW,
@@ -390,8 +391,8 @@ def test_un_historial_sustituido_por_el_de_otro_incidente_no_cuenta(signed, worl
 # --- simulacro -------------------------------------------------------------------------------
 
 
-def simulated_history(world: World, monkeypatch) -> str:
-    world.approve_procedure(monkeypatch)
+def simulated_history(world: World, store) -> str:
+    generate_and_approve_documents(store)
     procedure = world.procedure().model_dump(mode="json")
     world.open(id="SIM-2026-001", simulated=True, procedure=procedure)
     world.update(analysis={"summary": "Ejercicio de contención."})
@@ -400,8 +401,8 @@ def simulated_history(world: World, monkeypatch) -> str:
     return history_id
 
 
-def test_un_simulacro_aparece_etiquetado_en_la_fila_y_en_el_export(signed, world, monkeypatch):
-    evidence_id = simulated_history(world, monkeypatch)
+def test_un_simulacro_aparece_etiquetado_en_la_fila_y_en_el_export(signed, world):
+    evidence_id = simulated_history(world, signed)
     linked(signed, evidence_id)
 
     result = assess_now(signed)
@@ -430,8 +431,8 @@ def test_un_incidente_real_no_se_etiqueta_como_simulacro(signed, world):
     assert "simulacro" not in render_markdown(exported)
 
 
-def test_el_simulacro_se_senala_en_las_fuentes_del_export(signed, world, monkeypatch):
-    evidence_id = simulated_history(world, monkeypatch)
+def test_el_simulacro_se_senala_en_las_fuentes_del_export(signed, world):
+    evidence_id = simulated_history(world, signed)
     matrix_entry = linked(signed, evidence_id)
     record(signed, matrix_entry, evidence_ids=[evidence_id])
 

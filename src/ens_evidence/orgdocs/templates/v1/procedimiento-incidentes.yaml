@@ -147,7 +147,7 @@ sections:
     covers: [art.33.7]
     when: {question: servicios_externalizados, any_of: ["sí"]}
     body: |
-      La organización declara que presta a entidades públicas servicios que se apoyan en sus sistemas.
+      La organización declara que presta servicios a una administración u otra entidad que se apoyan en sus sistemas. Si alguna es una entidad pública, el art. 33.7 obliga a notificar al INCIBE-CERT:
 
       Quién notifica: {{incibe_quien}}
 

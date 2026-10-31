@@ -30,11 +30,11 @@ from ens_evidence.matrix.messages import (
     DECLARATION_REASONS,
     READINESS_LABELS,
     ROW_KIND_LABELS,
-    SIMULATED_LABEL,
     blocker_lines,
     blocker_text,
     obligation_label,
     role_label,
+    with_simulated_mark,
 )
 from ens_evidence.matrix.model import (
     CheckLink,
@@ -442,8 +442,7 @@ def _links_text(links: list[ExportedLink], *, evaluated: bool) -> str:
         return "—"
     unused = " (no cuenta)" if evaluated else " (no evaluada)"
     return "; ".join(
-        md_escape(link.target)
-        + _simulated_mark(link.simulated)
+        with_simulated_mark(md_escape(link.target), link.simulated)
         + f" (cubre {md_escape(', '.join(obligation_label(c) for c in link.covers))})"
         + ("" if link.counts else unused)
         for link in links
@@ -523,7 +522,7 @@ def _source_lines(sources: ExportSources, rows: list[ExportedRow]) -> list[str]:
             else "sin fecha de caducidad (cuenta dentro de la periodicidad de la medida)"
         )
         lines.append(
-            f"- {e.id}{_simulated_mark(e.id in simulated)} · manifiesto `{e.manifest_key}` · "
+            f"- {with_simulated_mark(e.id, e.id in simulated)} · manifiesto `{e.manifest_key}` · "
             f"origen {md_escape(e.source)} · "
             f"sha256 `{e.artifact_sha256}` · procedencia {e.provenance.kind.value} "
             f"({md_escape(e.provenance.submitted_by)}, {_instant(e.provenance.submitted_at)}) · "
@@ -553,13 +552,9 @@ def _source_lines(sources: ExportSources, rows: list[ExportedRow]) -> list[str]:
     return lines
 
 
-def _simulated_mark(simulated: bool) -> str:
-    return f" ({SIMULATED_LABEL})" if simulated else ""
-
-
 def _reviewed_source(code: str, simulated: set[str]) -> str:
     kind, _, target = code.partition(":")
-    return source_label(kind, target) + _simulated_mark(target in simulated)
+    return with_simulated_mark(source_label(kind, target), target in simulated)
 
 
 def _review_lines(measure_id: str, review: ExportedReview, simulated: set[str]) -> list[str]:

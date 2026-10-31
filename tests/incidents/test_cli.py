@@ -8,7 +8,6 @@ from typer.testing import CliRunner
 
 from ens_evidence.cli import app
 from ens_evidence.evidence.manifests import list_manifests
-from ens_evidence.incidents import IncidentRejected
 from ens_evidence.matrix import MATRIX_KEY
 
 from .helpers import DETECTED, RECORDED
@@ -109,8 +108,8 @@ class TestNew:
         assert stored(world) == []
         assert evidence_count(world) == 0
 
-    def test_simulation_with_approved_procedure_is_labelled(self, cli, world, monkeypatch):
-        world.approve_procedure(monkeypatch)
+    def test_simulation_with_approved_procedure_is_labelled(self, cli, world):
+        world.approve_procedure()
         result = open_incident(cli, "--simulated")
         assert "SIM-2026-001 (SIMULACRO)" in result.output
         assert any("SIM-2026-001" in key for key in stored(world))
@@ -171,7 +170,7 @@ class TestUpdate:
             hours=1,
         )
         assert result.exit_code == 0, result.output
-        assert "registro 2 (updated)" in result.output
+        assert "registro 2 (reporte intermedio)" in result.output
         assert "El nombre es declarado; no se autentica" in result.output
         state = world.last_state()
         assert state["assets"] == ["APP-001", "APP-002"]
@@ -303,8 +302,8 @@ class TestClose:
         assert result.exit_code == 1
         assert "cerrado" in result.output
 
-    def test_simulation_close_notes_the_label(self, cli, world, monkeypatch):
-        world.approve_procedure(monkeypatch)
+    def test_simulation_close_notes_the_label(self, cli, world):
+        world.approve_procedure()
         open_incident(cli, "--simulated", "--personal-data", "no")
         result = close_incident(cli, "SIM-2026-001")
         assert "simulacro" in result.output
@@ -316,8 +315,8 @@ class TestListAndShow:
         assert result.exit_code == 0
         assert "No hay incidentes" in result.output
 
-    def test_list_marks_simulations(self, cli, world, monkeypatch):
-        world.approve_procedure(monkeypatch)
+    def test_list_marks_simulations(self, cli, world):
+        world.approve_procedure()
         open_incident(cli)
         open_incident(cli, "--simulated")
         lines = cli("incident", "list").output.splitlines()
@@ -334,8 +333,8 @@ class TestListAndShow:
         assert "APP-001" in output
         assert "000001-" in output and "000002-" in output
 
-    def test_show_marks_a_simulation(self, cli, world, monkeypatch):
-        world.approve_procedure(monkeypatch)
+    def test_show_marks_a_simulation(self, cli, world):
+        world.approve_procedure()
         open_incident(cli, "--simulated")
         assert "SIMULACRO" in cli("incident", "show", "SIM-2026-001").output
 
@@ -393,32 +392,31 @@ def test_schemas_are_registered(tmp_path):
 
 
 class TestHistoryRecovery:
-    def cut_closure(self, cli, monkeypatch):
-        def failing(*args, **kwargs):
-            raise IncidentRejected(["el almacén no responde"])
-
+    def cut_closure(self, cli, world, monkeypatch):
         open_incident(cli, "--personal-data", "no")
-        with monkeypatch.context() as patched:
-            patched.setattr("ens_evidence.incidents.store.record_history", failing)
-            return cli("incident", "close", "INC-2026-001", *CLOSE, hours=3)
+        racing = world.race_history_after_closure()
+        monkeypatch.setattr("ens_evidence.cli.open_workspace", lambda ctx: racing)
+        result = cli("incident", "close", "INC-2026-001", *CLOSE, hours=3)
+        world.drop_raced_history()
+        return result
 
     def test_a_closure_without_history_says_what_is_written_and_what_is_missing(
         self, cli, world, monkeypatch
     ):
-        result = self.cut_closure(cli, monkeypatch)
+        result = self.cut_closure(cli, world, monkeypatch)
 
         assert result.exit_code == 1
         assert "No se registra" not in result.output
-        assert "registro 2 (closed)" in result.output
+        assert "registro 2 (reporte final)" in result.output
         assert "está registrado, pero su historial no se generó" in result.output
-        assert "el almacén no responde" in result.output
+        assert "ya tiene historial" in result.output
         assert "incident history INC-2026-001" in result.output
         assert len(stored(world)) == 4  # reserva y registro de cada orden
 
     def test_history_completes_the_incident_without_touching_the_records(
         self, cli, world, monkeypatch
     ):
-        self.cut_closure(cli, monkeypatch)
+        self.cut_closure(cli, world, monkeypatch)
         before = {key: world.store.read_bytes(key) for key in stored(world)}
         assert cli("incident", "verify").exit_code == 1
 
@@ -442,8 +440,8 @@ class TestHistoryRecovery:
         assert "ya tiene historial" in complete.output
         assert "no existe" in missing.output
 
-    def test_history_minimizes_the_declared_name(self, cli, monkeypatch):
-        self.cut_closure(cli, monkeypatch)
+    def test_history_minimizes_the_declared_name(self, cli, world, monkeypatch):
+        self.cut_closure(cli, world, monkeypatch)
 
         result = cli("incident", "history", "INC-2026-001", "--by", "ana@ejemplo.invalid")
 
