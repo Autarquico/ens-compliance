@@ -17,9 +17,11 @@ regla de preparación de `docs/vision.md` exige READY solo si:
 
 ## Decisión
 
-- **`check --all` no usa la red.** Lee la configuración de cada conector y la
-  evidencia ya guardada en el workspace. Nunca instancia un conector, nunca
-  recoge datos y nunca carga plugins.
+- **`check --all` no contacta con los servicios de los conectores.** Lee la
+  configuración de cada conector y la evidencia ya guardada en el workspace.
+  Nunca instancia un conector, nunca recoge datos y nunca carga plugins. El
+  único acceso es al propio workspace, local o en S3 (ADR 0006), igual que el
+  resto de comandos.
 - **Cierre seguro.** El motor nunca vuelve a una evidencia ni a una ejecución
   anterior. Estos casos dan resultados `UNKNOWN` con su motivo:
   - una evidencia ilegible, sin verificar o incoherente entre artefacto y

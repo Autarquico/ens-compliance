@@ -11,7 +11,7 @@ ens-evidence collect github            # y el resto de conectores configurados
 ens-evidence check --all
 ```
 
-`check --all` no accede a la red: evalúa la última evidencia guardada de cada
+`check --all` no contacta con GitHub, Cloudflare ni ningún otro servicio (solo lee el workspace, local o S3): evalúa la última evidencia guardada de cada
 conector. Por cada conector muestra:
 
 - si ha escrito una ejecución nueva o si no hay cambios;
