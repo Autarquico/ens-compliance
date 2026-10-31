@@ -167,7 +167,7 @@ def record_incident(
     errors += found
     warnings += notices
     errors += _broken_evidence(store, state)
-    errors += _unknown_assets(store, state, previous, flagged=found)
+    errors += _unknown_assets(store, state, previous)
     if errors:
         raise IncidentRejected(errors)
 
@@ -262,17 +262,12 @@ def _with_severity(
 
 
 def _unknown_assets(
-    store: WorkspaceStore, state: IncidentState, previous: StoredRecord | None, flagged: list[str]
+    store: WorkspaceStore, state: IncidentState, previous: StoredRecord | None
 ) -> list[str]:
     """Los activos que se añaden deben existir en el inventario; para registrar sin activo,
-    basta con omitir `--asset`. Se identifican por posición, nunca por valor, y no se contrastan
-    los que el filtro de privacidad ya señaló."""
+    basta con omitir `--asset`. Se identifican por posición, nunca por valor."""
     before = set(previous.record.state.assets if previous else ())
-    added = [
-        (i, asset)
-        for i, asset in enumerate(state.assets)
-        if asset not in before and not any(e.startswith(f"state.assets[{i}]") for e in flagged)
-    ]
+    added = [(i, asset) for i, asset in enumerate(state.assets) if asset not in before]
     if not added:
         return []
     inventory, _ = load_assets(store)

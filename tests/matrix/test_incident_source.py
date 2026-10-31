@@ -21,6 +21,7 @@ from ens_evidence.matrix import (
     add_link,
     build_export,
     init_matrix,
+    prepare_review,
     render_markdown,
 )
 from ens_evidence.matrix.evidence import is_linkable
@@ -293,6 +294,28 @@ def test_un_historial_roto_tras_una_revision_favorable_bloquea_en_status_export_
     status = ens_cli("matrix", "status", MEASURE)
     assert status.exit_code == 1
     assert "ya no coincide con los registros del incidente" in status.output
+
+
+def test_con_el_historial_roto_status_y_review_mandan_a_incident_verify(signed, world):
+    reviewed(signed, world)
+    world.remove(scan_incident(signed, ID).records[-1].key)
+
+    status = "\n".join(blocker_lines(op_exp_9(signed).blockers))
+    plan = prepare_review(
+        signed,
+        NOW,
+        MEASURE,
+        by="Ana",
+        role="system_administrator",
+        conclusion="Revisada",
+        assessment="COMPLIANT",
+    )
+    review = "\n".join([*plan.problems, *plan.notes])
+
+    for text in (status, review):
+        assert "incident verify" in text
+        assert "registra cada incidente" not in text
+        assert "MISSING_EVIDENCE" not in text
 
 
 def test_un_registro_alterado_rompe_el_historial(signed, world):

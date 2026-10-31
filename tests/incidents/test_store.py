@@ -392,4 +392,20 @@ def test_no_error_repeats_an_asset_value_that_looks_like_personal_data(world):
 
     assert "12345678Z" not in " ".join(error.errors)
     assert "600123456" not in " ".join(error.errors)
-    assert not any("inventario" in e and "assets[0]" in e for e in error.errors)
+    assert error.errors == [
+        "state.assets[0]: contiene un DNI/NIE; quítalo",
+        "state.assets[2]: contiene un teléfono; quítalo",
+        "state.assets[0]: no está en el inventario",
+        "state.assets[2]: no está en el inventario",
+    ]
+
+
+def test_an_unreadable_inventory_does_not_repeat_its_content(world):
+    world.store.write_text("scope/assets.yaml", "assets: [12345678Z\n  - {id: 12345678Z")
+
+    error = rejection(lambda: world.open(assets=["APP-001"]))
+
+    assert error.errors == [
+        "assets: no se puede leer el inventario (revisa `scope status`); omite --asset"
+    ]
+    assert "12345678Z" not in " ".join(error.errors)

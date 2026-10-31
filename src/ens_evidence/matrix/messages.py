@@ -269,19 +269,38 @@ def _generic_missing_evidence(blocker: Blocker, head: str) -> bool:
     return blocker.kind is BlockerKind.MISSING_EVIDENCE and head in ("", "clause", "obligation")
 
 
-def blocker_text(blocker: Blocker) -> str:
-    """Un bloqueo en castellano llano y con el siguiente paso."""
-    head, *args = blocker.detail.split(":")
-    policy = source_policy(blocker.measure_id or "")
-    if policy is not None and _generic_missing_evidence(blocker, head):
-        return blocker_text(blocker.model_copy(update={"detail": policy.detail}))
+def _text(kind: BlockerKind, measure_id: str | None, detail: str) -> str:
+    head, *args = detail.split(":")
     if head == "check_unknown" and len(args) > 1:
         head = "check_unknown_subject"
-    template = BLOCKER_TEXTS.get((blocker.kind, head))
+    template = BLOCKER_TEXTS.get((kind, head))
     if template is None:
-        fallback = KIND_FALLBACK[blocker.kind]
-        return f"{fallback}: {blocker.detail}" if blocker.detail else fallback
-    return _fill(template, blocker.measure_id, args)
+        fallback = KIND_FALLBACK[kind]
+        return f"{fallback}: {detail}" if detail else fallback
+    return _fill(template, measure_id, args)
+
+
+def source_policy_step(measure_id: str) -> str | None:
+    """De dónde sale la evidencia que le falta a una medida con política de fuentes."""
+    policy = source_policy(measure_id)
+    if policy is None:
+        return None
+    return _text(BlockerKind.MISSING_EVIDENCE, measure_id, policy.detail)
+
+
+def blocker_text(blocker: Blocker) -> str:
+    """Un bloqueo en castellano llano y con el siguiente paso."""
+    head = blocker.detail.split(":")[0]
+    if _generic_missing_evidence(blocker, head):
+        step = source_policy_step(blocker.measure_id or "")
+        if step is not None:
+            return step
+    return _text(blocker.kind, blocker.measure_id, blocker.detail)
+
+
+def has_broken_history(blockers: Iterable[Blocker]) -> bool:
+    """Con un historial enlazado y roto, el paso es `incident verify`, no registrar más."""
+    return any(b.detail.startswith("incident_history_broken:") for b in blockers)
 
 
 def blocker_lines(
@@ -292,6 +311,8 @@ def blocker_lines(
     `--covers compensation`."""
     grouped: dict[tuple[str | None, str], list[str]] = {}
     texts: list[str] = []
+    blockers = list(blockers)
+    broken = has_broken_history(blockers)
     for blocker in blockers:
         head, _, rest = blocker.detail.partition(":")
         if (
@@ -301,6 +322,8 @@ def blocker_lines(
             and source_policy(blocker.measure_id or "") is None
         ):
             grouped.setdefault((blocker.measure_id, head), []).append(rest)
+            continue
+        if broken and _generic_missing_evidence(blocker, head):
             continue
         text = blocker_text(blocker)
         if text not in texts:
