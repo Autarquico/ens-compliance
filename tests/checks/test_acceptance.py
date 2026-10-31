@@ -110,6 +110,29 @@ def test_collected_at_retocado_antes_de_la_ejecucion_da_evidence_inconsistent(re
     assert ready.status().exit_code == 1
 
 
+RETOQUES = {
+    "asset_id": (r"^asset_id: .*$", "asset_id: gh-otro"),
+    "collected_at": (r"^collected_at: .*$", "collected_at: '2026-10-29T08:00:00Z'"),
+    "collector": (r"^  name: github$", "  name: githubx"),
+}
+
+
+@pytest.mark.parametrize("campo", RETOQUES)
+def test_retocar_el_manifiesto_del_fail_nunca_devuelve_pass_ni_preparada(ready, campo):
+    ready.collect(secret_scanning_off=True, at=COLLECTED + timedelta(hours=3))
+    assert ready.check_all(AFTER_THE_RUN).exit_code == 4
+    evidence_id = ready.collector_manifest().rsplit("/", 1)[1].removesuffix(".yaml")
+
+    rewrite_manifest(ready.store, evidence_id, *RETOQUES[campo])
+
+    only_blocked_by(ready, "check_evidence_inconsistent:github")
+    checked = ready.check_all(AFTER_THE_RUN + timedelta(minutes=2))
+    assert checked.exit_code == 3
+    assert "PASS 0" in checked.output
+    assert "evidence_inconsistent" in checked.output
+    assert ready.status().exit_code == 1
+
+
 def test_borrar_una_ejecucion_intermedia_hace_el_historial_ilegible(ready):
     ready.collect(at=COLLECTED + timedelta(hours=3))
     ready.check_all(NOW - timedelta(minutes=20))
@@ -194,7 +217,7 @@ def test_con_el_reloj_atrasado_el_fail_nuevo_no_se_registra_ni_deja_el_pass_en_p
     assert rejected.exit_code == 2
     assert "es anterior a la última ejecución guardada de github" in rejected.output
     assert ready.runs() == runs_before
-    only_blocked_by(ready, "check_run_missing:github")
+    only_blocked_by(ready, "check_run_in_future:github")
 
 
 def test_con_el_reloj_adelantado_el_fail_cuenta_y_no_se_puede_registrar_nada_anterior(ready):

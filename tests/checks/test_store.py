@@ -218,7 +218,7 @@ class TestClockOrder:
             record_run(store, stored(results=[result(CheckStatus.FAIL)]), NOW)
 
         text = str(error.value)
-        assert "2026-10-30 12:00 UTC" in text and "2026-11-01 12:00 UTC" in text
+        assert "2026-10-30 12h00 UTC" in text and "2026-11-01 12h00 UTC" in text
         assert "Siguiente paso" in text and "--clock-corrected" in text
         assert "finished_at" not in text and "intento" not in text
 
@@ -401,3 +401,18 @@ class TestClockCorrection:
         store.write_bytes(run_key(partial, data), data)
 
         assert scan_runs(store).unreadable == {"github": (f"{CHECKS_PREFIX}/github/order",)}
+
+
+def test_a_partial_hand_written_correction_leaves_the_counting_runs_out_of_order(store):
+    passed = stored(at=NOW - timedelta(hours=1))
+    failed = stored(results=[result(CheckStatus.FAIL)], at=NOW + timedelta(hours=2))
+    record_run(store, passed, NOW)
+    record_run(store, failed, NOW + timedelta(hours=2))
+    future = keys(store)[1]
+    partial = stored(seq=3, at=NOW - timedelta(hours=2)).model_copy(
+        update={"clock_correction": ClockCorrection(superseded=[future])}
+    )
+    data = canonical_bytes(partial)
+    store.write_bytes(run_key(partial, data), data)
+
+    assert scan_runs(store).unreadable == {"github": (f"{CHECKS_PREFIX}/github/order",)}

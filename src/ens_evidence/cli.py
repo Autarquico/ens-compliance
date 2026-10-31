@@ -68,6 +68,7 @@ from ens_evidence.categorization import (
     init_categorization,
 )
 from ens_evidence.checks.engine import CONFIG_INVALID, ConnectorOutcome, OutcomeKind, run_all
+from ens_evidence.checks.inputs import NO_EVIDENCE
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.checks.store import scan_runs
 from ens_evidence.connectors.config import load_connector_config
@@ -115,6 +116,7 @@ from ens_evidence.matrix.messages import (
     DECLARATION_LABELS,
     READINESS_LABELS,
     blocker_lines,
+    collect_step,
     obligation_label,
 )
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Role
@@ -1835,6 +1837,28 @@ CHECK_NEXT_STEP = (
 )
 
 
+def check_next_steps(outcomes: list[ConnectorOutcome]) -> list[str]:
+    """Qué hacer tras `check --all`, según lo que se evaluó de verdad: nada si no se evaluó
+    ninguna ejecución; recoger si solo falta evidencia; corregir si algo falla."""
+    evaluated = [
+        o for o in outcomes if o.run and o.kind in (OutcomeKind.RECORDED, OutcomeKind.UNCHANGED)
+    ]
+    results = [
+        (o.connector, r)
+        for o in evaluated
+        for r in o.run.results
+        if r.status is not CheckStatus.PASS
+    ]
+    if any(r.reason_code != NO_EVIDENCE for _, r in results):
+        return [CHECK_NEXT_STEP]
+    missing = sorted({connector for connector, _ in results})
+    return [
+        f"Siguiente paso: recoge con `ens-evidence {collect_step(c)}` y ejecuta "
+        "`ens-evidence check --all`."
+        for c in missing
+    ]
+
+
 def check_exit_code(outcomes: list[ConnectorOutcome]) -> int:
     """2 si algún conector no se pudo evaluar (config, historial, rechazo); 4 con algún FAIL;
     3 con UNKNOWN, ERROR, intento incompleto o nada configurado; 0 si todo es PASS."""
@@ -1924,9 +1948,10 @@ def check(
     if not any(o.run for o in outcomes):
         typer.echo("Ningún conector configurado: no se ha evaluado nada.")
     code = check_exit_code(outcomes)
-    if any(r.status is not CheckStatus.PASS for o in outcomes if o.run for r in o.run.results):
-        typer.echo(CHECK_NEXT_STEP)
-    typer.echo(CHECK_FOOTER)
+    for step in check_next_steps(outcomes):
+        typer.echo(step)
+    if any(o.kind in (OutcomeKind.RECORDED, OutcomeKind.UNCHANGED) for o in outcomes):
+        typer.echo(CHECK_FOOTER)
     raise typer.Exit(code)
 
 

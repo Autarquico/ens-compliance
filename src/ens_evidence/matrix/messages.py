@@ -179,6 +179,18 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "la ejecución del check no registró la huella de la evidencia {a}: no se sabe si es la "
         "que vio el check. Siguiente paso: ens-evidence check --all"
     ),
+    (BlockerKind.MISSING_EVIDENCE, "check_evidence_inconsistent"): (
+        "algún registro de evidencia de un collector no coincide con su artefacto (fuente, "
+        "collector, activo o fecha) y no se sabe cuál es la última recogida de {a}; no se usa "
+        "ninguna anterior. Siguiente paso: ens-evidence evidence verify --all, restaura "
+        "evidence/ desde la copia (ens-evidence backup …) y ejecuta ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_evidence_unverified"): (
+        "algún artefacto de evidencia de un collector no pasa la verificación de integridad y no "
+        "se sabe cuál es la última recogida de {a}; no se usa ninguna anterior. Siguiente paso: "
+        "ens-evidence evidence verify --all, restaura evidence/ desde la copia "
+        "(ens-evidence backup …) y ejecuta ens-evidence check --all"
+    ),
     (BlockerKind.MISSING_EVIDENCE, "check_evidence_changed"): (
         "la evidencia {a} ha cambiado desde que se ejecutó el check. Siguiente paso: "
         "ens-evidence {c} y ens-evidence check --all"
@@ -304,12 +316,33 @@ def blocker_text(blocker: Blocker) -> str:
     return _fill(template, blocker.measure_id, args)
 
 
+def _is_check_problem(blocker: Blocker) -> bool:
+    head = blocker.detail.partition(":")[0]
+    return head.startswith("check_") or head == "evidence_unreadable"
+
+
+def _without_generic_gap(blockers: list[Blocker]) -> list[Blocker]:
+    """Si el check de la medida ya da su propio bloqueo, «sin evidencia → matrix link» sobra: lo
+    que hay que arreglar es el sistema o volver a ejecutar, no vincular una evidencia manual."""
+    with_check_problem = {b.measure_id for b in blockers if _is_check_problem(b)}
+    return [
+        b
+        for b in blockers
+        if not (
+            b.kind is BlockerKind.MISSING_EVIDENCE
+            and not b.detail
+            and b.measure_id in with_check_problem
+        )
+    ]
+
+
 def blocker_lines(
     blockers: Iterable[Blocker], compensated: frozenset[str] = frozenset()
 ) -> list[str]:
     """Textos sin repetir, con las cláusulas o las obligaciones sin evidencia en una sola línea.
     `compensated`: cláusulas que sustituye la compensación; se enlazan con
     `--covers compensation`."""
+    blockers = _without_generic_gap(list(blockers))
     grouped: dict[tuple[str | None, str], list[str]] = {}
     texts: list[str] = []
     for blocker in blockers:

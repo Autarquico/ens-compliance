@@ -5,7 +5,12 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from ens_evidence.checks.catalog import ENDPOINT_CONNECTOR, KNOWN_CHECKS
-from ens_evidence.checks.inputs import config_asset_id, evidence_after_run, load_engine_config
+from ens_evidence.checks.inputs import (
+    MISSING_RUN,
+    config_asset_id,
+    evidence_after_run,
+    load_engine_config,
+)
 from ens_evidence.checks.model import StoredCheckRun
 from ens_evidence.checks.registry import ENGINE_CONNECTORS
 from ens_evidence.checks.store import UNATTRIBUTED, scan_runs
@@ -57,7 +62,8 @@ class StoredCheckResults:
                 problems.setdefault(connector, []).append(f"check_connector_unknown:{connector}")
                 continue
             live = scan.live(connector)
-            if any(s.run.finished_at > self.reference_now for s in live):
+            in_future = any(s.run.finished_at > self.reference_now for s in live)
+            if in_future:
                 future = max(s.run.finished_at for s in live)
                 problems.setdefault(connector, []).append(
                     f"check_run_in_future:{connector}:{future.astimezone(UTC):%Y-%m-%d %Hh%M UTC}"
@@ -66,7 +72,10 @@ class StoredCheckResults:
             last = latest_run([to_check_run(s.key, s.run) for s in live], connector, at)
             if last is None:
                 continue
-            if problem := _last_run_problem(store, connector, by_key[last.run_id], current, at):
+            problem = _last_run_problem(store, connector, by_key[last.run_id], current, at)
+            if problem and not (
+                in_future and problem == MISSING_RUN
+            ):  # la fecha futura ya lo explica
                 problems.setdefault(connector, []).append(f"{problem}:{connector}")
         return problems
 

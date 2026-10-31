@@ -8,6 +8,8 @@ import yaml
 from pydantic import BaseModel, ConfigDict
 
 from ens_evidence.checks.inputs import (
+    CHECK_EVIDENCE_INCONSISTENT,
+    CHECK_EVIDENCE_UNVERIFIED,
     EVIDENCE_INCONSISTENT,
     EVIDENCE_UNREADABLE,
     EVIDENCE_UNVERIFIED,
@@ -158,7 +160,7 @@ def test_manifest_retouched_collected_at_is_inconsistent(store):
     selected = select(store)
 
     assert selected.error == EVIDENCE_INCONSISTENT
-    assert "collected_at" in selected.problems
+    assert any("collected_at" in problem for problem in selected.problems)
 
 
 def test_manifest_retouched_asset_id_is_inconsistent(store):
@@ -168,14 +170,14 @@ def test_manifest_retouched_asset_id_is_inconsistent(store):
     selected = select(store)
 
     assert selected.error == EVIDENCE_INCONSISTENT
-    assert "asset_id" in selected.problems
+    assert any("asset_id" in problem for problem in selected.problems)
 
 
 def test_manifest_retouched_source_is_inconsistent(store):
     manifest = collect(store)
     rewrite_manifest(store, manifest.id, r"^source: .*$", "source: gitlab")
 
-    assert "source" in select(store).problems
+    assert any("source" in problem for problem in select(store).problems)
 
 
 def test_artifact_that_is_not_a_collection_result_is_inconsistent(store):
@@ -309,13 +311,112 @@ def test_no_evidence_means_nothing_is_missing(store):
     assert not after_run(store, run_citing())
 
 
-def test_unverifiable_latest_evidence_counts_only_if_collected_after_the_run(store):
+def test_unverifiable_artifact_blocks_instead_of_falling_back_to_older_evidence(store):
     older = collect(store, collected_at=NOW - timedelta(days=1))
     latest = collect(store, collected_at=NOW)
     store.write_bytes(latest.artifact.key, b"{}")
 
-    assert not after_run(store, run_citing(older.id), at=NOW)
-    assert after_run(store, run_citing(older.id, finished_at=NOW - timedelta(hours=1)), at=NOW)
+    assert after_run(store, run_citing(older.id), at=NOW) == CHECK_EVIDENCE_UNVERIFIED
+
+
+# --- SEC-5: la identidad sale del artefacto, no de los campos editables del manifiesto -----------
+
+RETOUCHES = {
+    "asset_id": (r"^asset_id: .*$", "asset_id: gh-otro"),
+    "collected_at": (r"^collected_at: .*$", "collected_at: '2026-05-01T00:00:00+00:00'"),
+    "collector": (r"^  name: github$", "  name: githubx"),
+}
+
+
+@pytest.mark.parametrize("field", RETOUCHES)
+def test_retouching_the_latest_manifest_never_selects_the_older_evidence(store, field):
+    collect(store, collected_at=NOW - timedelta(days=1), marker="old")
+    latest = collect(store, marker="new")
+    rewrite_manifest(store, latest.id, *RETOUCHES[field])
+
+    selected = select(store)
+
+    assert selected.error == EVIDENCE_INCONSISTENT
+    assert selected.result is None
+    assert selected.evidence_id == latest.id
+
+
+@pytest.mark.parametrize("field", RETOUCHES)
+def test_retouching_the_latest_manifest_blocks_the_status_too(store, field):
+    old = collect(store, collected_at=NOW - timedelta(days=1), marker="old")
+    latest = collect(store, marker="new")
+    rewrite_manifest(store, latest.id, *RETOUCHES[field])
+
+    assert after_run(store, run_citing(old.id)) == CHECK_EVIDENCE_INCONSISTENT
+
+
+def test_a_retouched_manifest_of_another_asset_blocks_the_connector(store):
+    collect(store)
+    other = collect(store, asset_id="gh-otro")
+    rewrite_manifest(store, other.id, r"^asset_id: .*$", "asset_id: gh-tercero")
+
+    assert select(store).error == EVIDENCE_INCONSISTENT
+
+
+def test_a_retouched_manifest_of_another_collector_does_not_block_this_one(store):
+    mine = collect(store)
+    other = collect(store, source="cloudflare", collector="cloudflare")
+    rewrite_manifest(store, other.id, r"^asset_id: .*$", "asset_id: cf-otro")
+
+    assert select(store).evidence_id == mine.id
+
+
+def test_a_retouched_collector_name_blocks_the_real_connector_and_the_claimed_one(store):
+    mine = collect(store)
+    other = collect(store, source="cloudflare", collector="cloudflare")
+    rewrite_manifest(store, other.id, r"^  name: cloudflare$", "  name: github")
+
+    assert select(store).error == EVIDENCE_INCONSISTENT
+    assert select(store, "cloudflare").error == EVIDENCE_INCONSISTENT
+    assert mine.id
+
+
+def test_legitimate_evidence_of_several_assets_and_collectors_still_selects(store):
+    mine = collect(store, collected_at=NOW - timedelta(hours=1))
+    collect(store, asset_id="gh-otro")
+    collect(store, source="cloudflare", collector="cloudflare")
+
+    assert select(store).evidence_id == mine.id
+    assert after_run(store, run_citing(mine.id)) is None
+
+
+def test_an_artifact_that_is_not_a_result_blocks_every_connector(store):
+    manifest = collect(store, source="cloudflare", collector="cloudflare")
+    bogus = b'{"no":"es un resultado"}'
+    digest = sha256_hex(bogus)
+    store.write_bytes(artifact_key(digest), bogus)
+    forged = manifest.model_copy(
+        update={
+            "artifact": manifest.artifact.model_copy(
+                update={"key": artifact_key(digest), "sha256": digest}
+            )
+        }
+    )
+    store.write_bytes(manifest_key(manifest.id), render_manifest(forged))
+
+    assert select(store).error == EVIDENCE_INCONSISTENT
+
+
+def test_endpoint_package_with_a_retouched_source_is_flagged_not_skipped(store):
+    _, normalized = import_package(store)
+    rewrite_manifest(store, normalized.id, r"^source: .*$", "source: otro")
+
+    loaded = load_endpoint_inputs(store)
+
+    assert loaded.valid == []
+    assert any(normalized.id in item and "source" in item for item in loaded.inconsistent)
+
+
+def test_endpoint_inconsistency_blocks_the_status(store):
+    _, normalized = import_package(store)
+    rewrite_manifest(store, normalized.id, r"^asset_id: .*$", "asset_id: lap-otro")
+
+    assert endpoint_after_run(store, run_citing(normalized.id)) == CHECK_EVIDENCE_INCONSISTENT
 
 
 def test_an_unreadable_manifest_blocks_instead_of_saying_nothing_is_missing(store):

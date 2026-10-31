@@ -11,6 +11,7 @@ from ens_evidence.models.enums import CheckStatus, Role
 from ens_evidence.scope import approve_scope, scope_status
 from ens_evidence.workspace import LocalStore
 
+from .test_inputs import collect, rewrite_manifest
 from .test_store import CHECK, MANIFEST, NOW, result, stored
 
 SOURCE: CheckResultsSource = StoredCheckResults(reference_now=NOW + timedelta(days=30))
@@ -234,6 +235,16 @@ class TestFutureRun:
         assert source.connector_problems(store, self.AHEAD) == {}
         assert [r.finished_at for r in source.runs(store, self.AHEAD)] == [NOW, corrected]
 
+    def test_newer_evidence_does_not_add_a_missing_run_to_a_future_run(self, store):
+        store.write_text(config_key(), "asset_id: gh-taller\norganization: taller-norte\n")
+        record(store, at=self.AHEAD)
+        collect(store, collected_at=self.AHEAD + timedelta(hours=1), now=NOW)
+        source = StoredCheckResults(reference_now=NOW)
+
+        assert source.connector_problems(store, self.AHEAD + timedelta(hours=2)) == {
+            "github": [f"check_run_in_future:github:{self.FUTURE}"]
+        }
+
 
 class TestUnknownConnector:
     def test_a_valid_record_in_an_unknown_directory_is_reported_without_raising(self, store):
@@ -255,6 +266,24 @@ class TestEvidence:
         store.write_text("evidence/manifests/EV-20260601-deadbeef.yaml", "id: [roto")
 
         assert SOURCE.connector_problems(store, NOW) == {"github": ["evidence_unreadable:github"]}
+
+    @pytest.mark.parametrize(
+        ("pattern", "replacement"),
+        [
+            (r"^asset_id: .*$", "asset_id: gh-otro"),
+            (r"^collected_at: .*$", "collected_at: '2026-05-01T00:00:00+00:00'"),
+            (r"^  name: github$", "  name: githubx"),
+        ],
+    )
+    def test_a_retouched_manifest_blocks_the_connector(self, store, pattern, replacement):
+        store.write_text(config_key(), "asset_id: gh-taller\norganization: taller-norte\n")
+        record(store)
+        manifest = collect(store, collected_at=NOW, now=NOW)
+        rewrite_manifest(store, manifest.id, pattern, replacement)
+
+        assert SOURCE.connector_problems(store, NOW) == {
+            "github": ["check_evidence_inconsistent:github"]
+        }
 
 
 class TestPrecedence:

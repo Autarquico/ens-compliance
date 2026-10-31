@@ -193,3 +193,25 @@ def test_no_hay_conformidad_en_la_salida(cli, store):  # noqa: F811
     output = cli("check", "--all").output.lower()
 
     assert "conforme" not in output and "cumple" not in output
+
+
+def test_sin_evidencia_el_paso_es_recoger_y_no_corregir_lo_que_falla(cli):
+    result = cli("check", "--all")
+
+    assert "Siguiente paso: recoge con `ens-evidence collect github`" in result.output
+    assert "corrige lo que falla" not in result.output
+    assert FOOTER in result.output
+
+
+def test_el_rechazo_por_reloj_solo_da_su_paso_y_no_el_pie_generico(cli, store, monkeypatch):  # noqa: F811
+    collect_with_secret_scanning_off(store)
+    monkeypatch.setattr("ens_evidence.cli.clock", lambda: NOW + timedelta(days=2))
+    assert cli("check", "--all").exit_code == 4
+    monkeypatch.setattr("ens_evidence.cli.clock", lambda: NOW)
+
+    result = cli("check", "--all")
+
+    assert result.exit_code == 2
+    assert "--clock-corrected" in result.output
+    assert result.output.count("Siguiente paso") == 1
+    assert FOOTER not in result.output

@@ -89,6 +89,13 @@ caso.
   ejecución guardada. O falta ejecutar `ens-evidence check --all`, o se borró
   el último registro del historial. Ejecuta `check --all`; si no recuerdas
   haberlo borrado, contrasta con la copia (`backup` + `evidence verify`).
+- **`check_evidence_inconsistent`** / **`check_evidence_unverified`**: algún
+  registro de evidencia de un collector no coincide con su artefacto (fuente,
+  collector, activo o fecha) o su artefacto no pasa la verificación de
+  integridad, y no se sabe cuál es la última recogida del conector. No se usa
+  ninguna anterior: los checks dan `UNKNOWN` con `evidence_inconsistent` o
+  `evidence_unverified`. Ejecuta `evidence verify --all`, restaura `evidence/`
+  desde la copia (`ens-evidence backup …`) y ejecuta `check --all`.
 - **`check_scope_changed`**: el alcance cambió después de la última
   ejecución. Vuelve a ejecutar `check --all`.
 - **`check_config_changed`**: `connectors/<conector>.yaml` cambió después de la
@@ -117,7 +124,7 @@ caso.
      (`clock_correction`) y esas ejecuciones dejan de contar, aunque siguen
      guardadas. Reevalúa la evidencia de hoy: un FAIL real sigue bloqueando.
   Si la recogida también se hizo con el reloj adelantado, su fecha también es
-  futura y el conector sigue bloqueado con `check_run_missing` hasta que el
+  futura y el conector sigue bloqueado con `check_run_in_future` hasta que el
   reloj la alcance, o hasta recoger de nuevo y restaurar desde la copia.
 - **`check_evidence_changed`**: alguien modificó la evidencia después de la
   ejecución. Vuelve a recoger y a ejecutar.
@@ -130,9 +137,13 @@ caso.
   falsificación deliberada con la huella recalculada.
 - Borrar a la vez la última ejecución y la evidencia recogida después de ella
   no deja rastro dentro del workspace.
-- Borrar la última ejecución y **editar** un solo campo del manifiesto de la
-  evidencia nueva (`asset_id`, `collected_at`) tampoco lo deja, y
-  `evidence verify` local da el manifiesto editado por íntegro.
+- Borrar la última ejecución **y** el manifiesto de la evidencia posterior.
+- Cambiar la procedencia de un manifiesto de `collector` a otra.
+
+Editar un campo del manifiesto de la evidencia (`asset_id`, `collected_at`,
+`collector.name`) sí se detecta: el motor compara el manifiesto con su
+artefacto y bloquea con `check_evidence_inconsistent`. Ojo: `evidence verify`
+local no compara esos campos, así que puede dar la evidencia por íntegra.
 
 Estos casos solo los detecta la copia externa: `ens-evidence backup` y
 `ens-evidence evidence verify` contra la copia inmutable

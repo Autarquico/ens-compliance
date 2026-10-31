@@ -148,15 +148,11 @@ def _directory_connector(key: str) -> str:
 
 
 def _order_broken(items: list[StoredRun]) -> bool:
-    """`finished_at` no puede decrecer con `seq`, salvo que el intento posterior declare que
-    sustituye al anterior por una corrección del reloj; esa declaración solo vale sobre
-    ejecuciones previas del conector con un instante posterior al suyo."""
+    """Entre las ejecuciones que cuentan, `finished_at` no puede decrecer con `seq`. Una
+    corrección del reloj puede sustituir ejecuciones previas del conector con un instante
+    posterior al suyo; esa declaración no vale sobre cualquier otra."""
     earlier_runs: dict[str, StoredCheckRun] = {}
-    for earlier, later in pairwise(items):
-        correction = later.run.clock_correction
-        superseded = set(correction.superseded) if correction else set()
-        if later.run.finished_at < earlier.run.finished_at and earlier.key not in superseded:
-            return True
+    replaced: set[str] = set()
     for item in items:
         correction = item.run.clock_correction
         if correction and any(
@@ -164,8 +160,11 @@ def _order_broken(items: list[StoredRun]) -> bool:
             for key in correction.superseded
         ):
             return True
+        if correction:
+            replaced.update(correction.superseded)
         earlier_runs[item.key] = item.run
-    return False
+    counting = [s.run.finished_at for s in items if s.key not in replaced]
+    return any(later < earlier for earlier, later in pairwise(counting))
 
 
 def scan_runs(store: WorkspaceStore, connector: str | None = None) -> RunScan:
@@ -197,7 +196,7 @@ def scan_runs(store: WorkspaceStore, connector: str | None = None) -> RunScan:
 
 
 def _when(instant: datetime) -> str:
-    return instant.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
+    return instant.astimezone(UTC).strftime("%Y-%m-%d %Hh%M UTC")
 
 
 def record_run(

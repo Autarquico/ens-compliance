@@ -43,6 +43,20 @@ regla de preparación de `docs/vision.md` exige READY solo si:
   - **Reloj.** Se rechaza guardar una ejecución con un instante anterior al
     de la última: el orden por secuencia y por instante es el mismo, así que un
     FAIL posterior nunca queda «antes» de un PASS.
+  - **Identidad de la evidencia.** El motor elige la última evidencia de un
+    conector por lo que dice el artefacto (`CollectionResult`: conector,
+    activo y `collected_at`), que está verificado por hash, y no por los
+    campos del manifiesto, que se pueden editar. Si algún manifiesto de
+    procedencia collector no coincide con su artefacto (fuente, collector,
+    activo o fecha), o su artefacto no verifica, los conectores a los que
+    pudiera pertenecer (el del artefacto y el que declara el manifiesto; si no
+    se puede saber, todos) dan `UNKNOWN` con `evidence_inconsistent` o
+    `evidence_unverified`, y la matriz bloquea con `check_evidence_inconsistent`
+    o `check_evidence_unverified`. Nunca se cae a una evidencia anterior. Una
+    evidencia legítima siempre coincide con su artefacto, así que recoger otros
+    activos no bloquea. En endpoints se aplica igual: un paquete cuyo artefacto
+    es de endpoint pero cuyo `source` se editó cuenta como incoherente en vez
+    de saltarse.
   - **Evidencia posterior.** Si hay evidencia recogida después de lo que cita
     la última ejecución, el conector bloquea con `check_run_missing` hasta
     que se ejecute `check --all`.
@@ -78,16 +92,14 @@ regla de preparación de `docs/vision.md` exige READY solo si:
   bloquea con `evidence_unreadable` (ante la duda se bloquea, nunca se
   favorece). Un directorio de conector desconocido en `evidence/checks/`
   se informa como `check_connector_unknown` y no tumba ningún comando.
-- **Límite: manipulación coordinada.** Borrar a la vez la última ejecución y
-  borrar o editar la evidencia posterior no deja rastro dentro del
-  workspace: editar un solo campo del manifiesto nuevo (`asset_id`,
-  `collected_at`) basta para que deje de ser candidata, y `evidence verify`
-  local lo da por íntegro. Solo lo detecta contrastar con la copia externa
-  inmutable (ADR 0008, `backup`). No se endurece dentro del workspace porque
-  la comprobación barata (cualquier manifiesto del conector posterior a la
-  ejecución) bloquearía para siempre al recoger evidencia de otro activo sin
-  poder salir con `check --all`. Lo limitan además los 30 días de vigencia de
-  la evidencia técnica.
+- **Límite: manipulación coordinada.** Editar un campo del manifiesto
+  (`asset_id`, `collected_at`, `collector.name`) ya no basta para que la
+  evidencia deje de ser candidata: bloquea (ver «Identidad de la evidencia»).
+  Quedan dos vías que no dejan rastro dentro del workspace: borrar a la vez la
+  última ejecución y el manifiesto de la evidencia posterior, o cambiar la
+  procedencia del manifiesto de `collector` a otra. Solo las detecta contrastar
+  con la copia externa inmutable (ADR 0008, `backup`). Lo limitan además los
+  30 días de vigencia de la evidencia técnica.
 - **La huella no autentica.** El `sha12` del nombre detecta ediciones a mano,
   no una falsificación que recalcule contenido y nombre. Ambas se detectan
   contrastando con la copia externa.
@@ -107,11 +119,14 @@ regla de preparación de `docs/vision.md` exige READY solo si:
     reevalúa la evidencia de hoy, de modo que un FAIL real sigue
     bloqueando. Sin ejecuciones futuras, el indicador no cambia nada.
   - La corrección solo vale sobre ejecuciones previas del mismo conector con
-    un instante posterior al suyo; cualquier otra inversión del orden sigue
-    dejando el historial ilegible.
+    un instante posterior al suyo; entre las ejecuciones que cuentan (las no
+    sustituidas), cualquier inversión del orden sigue dejando el historial
+    ilegible, también la de una corrección parcial.
   - Si la recogida también se hizo con el reloj adelantado, su fecha también
-    es futura: el conector sigue bloqueado con `check_run_missing` hasta que
+    es futura: el conector sigue bloqueado con `check_run_in_future` hasta que
     el reloj la alcance o se vuelva a recoger y se restaure desde la copia.
+    Mientras haya una ejecución futura no se emite además `check_run_missing`:
+    la fecha futura ya explica el bloqueo.
 - **Configuración cambiada.** Si el sha256 actual de `connectors/<conector>.yaml`
   difiere del `config_sha256` del último intento (o el fichero falta o no se
   lee), el conector bloquea hasta ejecutar `check --all`:

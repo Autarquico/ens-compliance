@@ -188,3 +188,36 @@ def test_evidencia_ilegible_y_conector_desconocido_dicen_que_hacer():
         and "Siguiente paso: ens-evidence evidence verify" in unreadable
     )
     assert "evidence/checks/foo/" in unknown and "Siguiente paso" in unknown
+
+
+def test_con_un_bloqueo_propio_del_check_no_se_pide_vincular_evidencia_manual():
+    for problem in (
+        (BlockerKind.NOT_COMPLIANT, f"check_failed:{SECRET}:infra"),
+        (BlockerKind.MISSING_EVIDENCE, "check_run_in_future:github:2026-11-01 12h00 UTC"),
+        (BlockerKind.MISSING_EVIDENCE, "evidence_unreadable:github"),
+    ):
+        lines = blocker_lines(
+            [blocker(BlockerKind.MISSING_EVIDENCE, "", "op.exp.1"), blocker(*problem, "op.exp.1")]
+        )
+
+        assert len(lines) == 1
+        assert "matrix link" not in lines[0]
+
+
+def test_sin_bloqueo_del_check_se_mantiene_el_paso_de_vincular_evidencia():
+    lines = blocker_lines(
+        [
+            blocker(BlockerKind.MISSING_EVIDENCE, "", "op.exp.1"),
+            blocker(BlockerKind.MISSING_EVIDENCE, "check_run_missing:github", "op.acc.5"),
+        ]
+    )
+
+    assert any("matrix link op.exp.1" in line for line in lines)
+
+
+def test_evidencia_incoherente_o_sin_verificar_de_un_collector_dice_que_hacer():
+    for detail in ("check_evidence_inconsistent:github", "check_evidence_unverified:github"):
+        text = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, detail))
+
+        assert "recogida de github" in text and "ninguna anterior" in text
+        assert "Siguiente paso: ens-evidence evidence verify" in text

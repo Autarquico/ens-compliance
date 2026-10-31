@@ -19,6 +19,7 @@ from ens_evidence.connectors.config import (
 )
 from ens_evidence.endpoint.config import CONFIG_NAME as ENDPOINT
 from ens_evidence.endpoint.evidence import HostEvidence, latest_by_host, load_host_evidence
+from ens_evidence.endpoint.normalize import SOURCE as ENDPOINT_SOURCE
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.layout import sha256_hex
 from ens_evidence.matrix.evidence import manifest_sha256, verified_manifest
@@ -30,6 +31,9 @@ NO_EVIDENCE = "no_evidence"
 EVIDENCE_UNVERIFIED = "evidence_unverified"
 EVIDENCE_INCONSISTENT = "evidence_inconsistent"
 MISSING_RUN = "check_run_missing"
+CHECK_EVIDENCE_INCONSISTENT = "check_evidence_inconsistent"
+CHECK_EVIDENCE_UNVERIFIED = "check_evidence_unverified"
+_NOT_A_RESULT = "el artefacto no es un CollectionResult válido"
 
 
 @dataclass(frozen=True)
@@ -53,53 +57,84 @@ def config_asset_id(config: BaseModel) -> str:
     return str(config.model_dump()["asset_id"])
 
 
+@dataclass(frozen=True)
+class _Entry:
+    """Un manifiesto de collector leído contra su artefacto. `error` None: coherente. `affected`:
+    los conectores a los que podría pertenecer (None: no se sabe, todos)."""
+
+    manifest: EvidenceManifest
+    result: CollectionResult | None = None
+    error: str | None = None
+    affected: frozenset[str] | None = None
+    problems: tuple[str, ...] = ()
+
+
+def _read_entry(store: WorkspaceStore, manifest: EvidenceManifest) -> _Entry:
+    verified = verified_manifest(store, manifest.id)
+    if verified is None:
+        return _Entry(manifest, error=EVIDENCE_UNVERIFIED)
+    result = _read_result(store, verified)
+    if isinstance(result, str):
+        return _Entry(manifest, error=EVIDENCE_UNVERIFIED, problems=(result,))
+    if result is None:
+        return _Entry(manifest, error=EVIDENCE_INCONSISTENT, problems=(_NOT_A_RESULT,))
+    mismatches = _identity_mismatches(verified, result)
+    if not mismatches:
+        return _Entry(manifest, result)
+    declared = {manifest.collector.name} if manifest.collector else set()
+    return _Entry(
+        manifest,
+        error=EVIDENCE_INCONSISTENT,
+        affected=frozenset({result.collector, *declared}),
+        problems=tuple(mismatches),
+    )
+
+
 def select_collector_input(
     store: WorkspaceStore, connector: str, asset_id: str, at: datetime | None = None
 ) -> InputSelection:
-    """La última evidencia del conector para el activo; con `at`, la recogida hasta entonces."""
+    """La última evidencia del conector para el activo; con `at`, la recogida hasta entonces.
+
+    La identidad sale del artefacto, que está verificado por hash, y no de los campos del
+    manifiesto, que se pueden editar. Si algún manifiesto de collector no cuadra con su artefacto
+    o su artefacto no verifica, el conector al que pudiera pertenecer se bloquea: retocar el
+    manifiesto de la última evidencia no puede hacer elegir una anterior.
+    """
     listing = list_manifests(store)
     if listing.errors:
         return InputSelection(EVIDENCE_UNREADABLE, problems=tuple(listing.errors))
+    entries = [
+        _read_entry(store, m)
+        for m in listing.manifests
+        if m.provenance.kind is ProvenanceKind.COLLECTOR
+    ]
+    blocking = sorted(
+        (e for e in entries if e.error and (e.affected is None or connector in e.affected)),
+        key=lambda e: (e.error != EVIDENCE_UNVERIFIED, e.manifest.id),
+    )
+    if blocking:
+        first = blocking[0]
+        problems = tuple(f"{e.manifest.id}: {p}" for e in blocking for p in e.problems)
+        return InputSelection(first.error, evidence_id=first.manifest.id, problems=problems)
     candidates = [
-        manifest
-        for manifest in listing.manifests
-        if manifest.provenance.kind is ProvenanceKind.COLLECTOR
-        and manifest.collector is not None
-        and manifest.collector.name == connector
-        and manifest.asset_id == asset_id
-        and (at is None or manifest.collected_at <= at)
+        e
+        for e in entries
+        if e.result is not None
+        and e.result.collector == connector
+        and e.result.asset_id == asset_id
+        and (at is None or e.result.collected_at <= at)
     ]
     if not candidates:
         return InputSelection(NO_EVIDENCE)
-    latest = max(candidates, key=lambda m: (m.collected_at, m.provenance.submitted_at, m.id))
-    verified = verified_manifest(store, latest.id)
-    if verified is None:
-        return InputSelection(
-            EVIDENCE_UNVERIFIED, evidence_id=latest.id, collected_at=latest.collected_at
-        )
-    result = _read_result(store, verified)
-    if isinstance(result, str):
-        return InputSelection(
-            EVIDENCE_UNVERIFIED,
-            evidence_id=latest.id,
-            collected_at=latest.collected_at,
-            problems=(result,),
-        )
-    mismatches = _identity_mismatches(verified, result)
-    if result is not None and result.collector != connector:
-        mismatches.append("collector")
-    if result is None or mismatches:
-        return InputSelection(
-            EVIDENCE_INCONSISTENT,
-            evidence_id=latest.id,
-            collected_at=latest.collected_at,
-            problems=tuple(mismatches),
-        )
+    latest = max(
+        candidates,
+        key=lambda e: (e.result.collected_at, e.manifest.provenance.submitted_at, e.manifest.id),
+    )
     return InputSelection(
-        evidence_id=latest.id,
-        collected_at=latest.collected_at,
-        result=result,
-        manifest_sha256=manifest_sha256(verified),
+        evidence_id=latest.manifest.id,
+        collected_at=latest.result.collected_at,
+        result=latest.result,
+        manifest_sha256=manifest_sha256(latest.manifest),
     )
 
 
@@ -122,7 +157,7 @@ def _read_result(
 
 def _identity_mismatches(manifest: EvidenceManifest, result: CollectionResult | None) -> list[str]:
     if result is None:
-        return ["el artefacto no es un CollectionResult válido"]
+        return [_NOT_A_RESULT]
     collector = manifest.collector.name if manifest.collector else None
     pairs = {
         "source": (manifest.source, result.source),
@@ -156,7 +191,9 @@ def load_endpoint_inputs(store: WorkspaceStore) -> EndpointInputs:
     loaded = load_host_evidence(store)
     manifests = {m.id: m for m in list_manifests(store).manifests}
     valid: list[EndpointInput] = []
-    inconsistent: list[str] = []
+    inconsistent: list[str] = [
+        f"{EVIDENCE_INCONSISTENT}:{m.id}: source" for m in _disguised_endpoint_packages(store)
+    ]
     for item in loaded.items:
         manifest = manifests.get(item.evidence_id)
         mismatches = (
@@ -170,6 +207,19 @@ def load_endpoint_inputs(store: WorkspaceStore) -> EndpointInputs:
             assert manifest is not None
             valid.append(EndpointInput(item, manifest_sha256(manifest)))
     return EndpointInputs(valid, inconsistent, list(loaded.unreadable))
+
+
+def _disguised_endpoint_packages(store: WorkspaceStore) -> list[EvidenceManifest]:
+    """Manifiestos cuyo artefacto, íntegro, es un resultado de endpoints pero cuyo `source` dice
+    otra cosa: el cargador los salta por el `source`, que se puede editar."""
+    found = []
+    for manifest in list_manifests(store).manifests:
+        if manifest.source == ENDPOINT_SOURCE:
+            continue
+        result = _read_result(store, manifest)
+        if isinstance(result, CollectionResult) and result.source == ENDPOINT_SOURCE:
+            found.append(manifest)
+    return found
 
 
 @dataclass(frozen=True)
@@ -211,29 +261,31 @@ def evidence_after_run(
 
     `check_run_missing`: hay evidencia recogida hasta `at` que el motor elegiría hoy y que el
     intento no cita (o es posterior a su fin). `evidence_unreadable`: no se puede listar o leer la
-    evidencia y no se sabe si hay una recogida posterior; ante la duda se bloquea. Reutiliza la
-    selección del motor; `asset_id` es el del conector con collector (el endpoint no lo necesita).
+    evidencia y no se sabe si hay una recogida posterior; ante la duda se bloquea.
+    `check_evidence_inconsistent` y `check_evidence_unverified`: algún manifiesto no cuadra con su
+    artefacto o este no verifica, así que no se sabe cuál es la última; tampoco se retrocede.
+    Reutiliza la selección del motor; `asset_id` es el del conector con collector (el endpoint no
+    lo necesita).
     """
     cited = {i.evidence_id for i in run.inputs}
     if connector == ENDPOINT:
         loaded = load_endpoint_inputs(store)
         if loaded.unreadable:
             return EVIDENCE_UNREADABLE
-        seen = [i.evidence for i in loaded.valid if i.evidence.collected_at <= at]
         if loaded.inconsistent:
-            newer = any(e.collected_at > run.finished_at for e in seen)
-        else:
-            newer = any(e.evidence_id not in cited for e in latest_by_host(seen).values())
+            return CHECK_EVIDENCE_INCONSISTENT
+        seen = [i.evidence for i in loaded.valid if i.evidence.collected_at <= at]
+        newer = any(e.evidence_id not in cited for e in latest_by_host(seen).values())
         return MISSING_RUN if newer else None
     assert asset_id is not None
     selection = select_collector_input(store, connector, asset_id, at)
-    if selection.error == EVIDENCE_UNREADABLE:
-        return EVIDENCE_UNREADABLE
-    if selection.evidence_id is None or selection.collected_at is None:
+    blocked = {
+        EVIDENCE_UNREADABLE: EVIDENCE_UNREADABLE,
+        EVIDENCE_INCONSISTENT: CHECK_EVIDENCE_INCONSISTENT,
+        EVIDENCE_UNVERIFIED: CHECK_EVIDENCE_UNVERIFIED,
+    }
+    if selection.error in blocked:
+        return blocked[selection.error]
+    if selection.evidence_id is None:
         return None
-    newer = (
-        selection.evidence_id not in cited
-        if selection.ok
-        else selection.collected_at > run.finished_at
-    )
-    return MISSING_RUN if newer else None
+    return MISSING_RUN if selection.evidence_id not in cited else None
