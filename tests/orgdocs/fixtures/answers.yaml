@@ -184,3 +184,26 @@ aut_terceros:
     solicitud: Propuesta y contrato firmado
     registro: Contrato archivado y registro de proveedores
 autoridad_procedimientos: el responsable de la seguridad
+incidentes_alcance: Todos los equipos de la oficina, el servidor de ficheros, el correo corporativo y los servicios en la nube con datos de clientes. Es incidente cualquier suceso que comprometa la confidencialidad, integridad o disponibilidad de esos datos o servicios.
+incidentes_deteccion:
+  - Alertas del antivirus y del servicio de copias en la nube, que recibe Hugo Serrano.
+  - Revisión semanal de los registros del servidor por el administrador de sistemas.
+  - Avisos del personal, de clientes o del proveedor informático externo a seguridad@gestoriaaurora.example.
+incidentes_informe_eventos: Cualquier persona de la plantilla avisa por teléfono o por correo a la responsable de seguridad, que anota el evento o la debilidad en el registro de incidencias del servidor con fecha, quién avisa y descripción.
+incidentes_niveles:
+  - nivel: Bajo
+    criterio: Sin pérdida ni exposición de datos de clientes y sin interrupción del servicio.
+    escalado: La responsable de seguridad lo resuelve y lo comenta en la reunión mensual del Comité de Seguridad.
+  - nivel: Alto
+    criterio: Exposición o pérdida de datos de clientes, o servicio interrumpido más de una jornada.
+    escalado: La responsable de seguridad avisa el mismo día a la gerente por teléfono y reúne al Comité de Seguridad.
+incidentes_analisis: La responsable de seguridad dirige el análisis con el administrador de sistemas, determina el alcance y la causa, aplica la contención y da el incidente por resuelto cuando el servicio se ha restablecido y se ha comprobado que la causa está corregida.
+incidentes_comunicacion: La gerente decide qué se comunica a clientes y proveedores y lo hace por correo o teléfono; la responsable de seguridad informa al personal por correo interno.
+incidentes_registro: La responsable de seguridad anota en el registro de incidencias el aviso inicial, los avances, las actuaciones de emergencia, los cambios en el sistema y el cierre.
+incidentes_mejora: El Comité de Seguridad revisa los incidentes cerrados cada trimestre y la responsable de seguridad propone las medidas correctoras, que se anotan en el acta.
+incidentes_datos_personales: La responsable de seguridad determina si el incidente afecta a datos personales y lo anota en el registro; en ese caso avisa a la gerente y a la asesoría jurídica externa para decidir qué comunicaciones exigen el RGPD y la Ley Orgánica 3/2018.
+incibe_quien: La responsable de seguridad, a través del equipo de respuesta a incidentes que forman ella y el administrador de sistemas.
+incibe_como: Por el canal de notificación que indique el INCIBE-CERT, con autorización previa de la gerente.
+incibe_cuando: Los incidentes de nivel Alto se notifican en cuanto se clasifican; los de nivel Bajo no se notifican.
+incidentes_evidencia: La responsable de seguridad decide qué evidencia se preserva y el asesor jurídico externo de la gestoría da el asesoramiento legal.
+incidentes_eventos_auditables: La responsable de seguridad revisa los eventos auditables al cerrar cada incidente y deja constancia en el registro.

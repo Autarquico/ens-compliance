@@ -22,6 +22,11 @@ REVIEW_NOT_APPLICABLE_STEP = (
 )
 LINK_STEP = "matrix link {m} --evidence EV-… --covers {a} (texto de la cláusula: catalog show {m})"
 
+INCIDENT_RECORD_NOT_LINKABLE = (
+    "{a} es un registro del incidente; vincula su historial (EV del cierre)."
+)
+SIMULATED_LABEL = "simulacro"
+
 # (tipo, primera parte del detalle) -> texto. {m} medida; {a}, {b} partes siguientes del detalle.
 BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
     (BlockerKind.NOT_COMPLIANT, MeasureAssessment.NOT_ASSESSED.value): (
@@ -113,6 +118,17 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "el historial de aprobaciones del documento {a} tiene un registro ilegible y no se sabe "
         "si revoca la aprobación anterior. Restaura el registro o vuelve a aprobar: "
         "docs approve {a}"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "op_exp_9_requires_incident_history"): (
+        "op.exp.9 solo se sustenta con el historial de un incidente cerrado (incident-history): "
+        "ni una evidencia manual, ni un registro de incidente, ni un documento ni un check bastan. "
+        "Siguiente paso: cierra el incidente (incident close) y vincula el EV del historial: "
+        "matrix link {m} --evidence EV-… --covers base"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "incident_history_broken"): (
+        "el historial de incidente {a} ya no coincide con los registros del incidente (falta, "
+        "sobra o se alteró algo). Comprueba: incident verify; vuelve a revisar la medida cuando "
+        "se resuelva: matrix review {m}"
     ),
     (BlockerKind.MISSING_EVIDENCE, "evidence_no_validity"): (
         "la evidencia {a} no tiene caducidad y la medida no tiene periodicidad. "

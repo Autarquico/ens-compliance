@@ -30,6 +30,7 @@ from ens_evidence.matrix.messages import (
     DECLARATION_REASONS,
     READINESS_LABELS,
     ROW_KIND_LABELS,
+    SIMULATED_LABEL,
     blocker_lines,
     blocker_text,
     obligation_label,
@@ -83,6 +84,9 @@ class ExportedLink(Strict):
     target: str
     covers: list[str]
     counts: bool
+    simulated: bool = Field(
+        default=False, description="Historial de un incidente de simulacro: no es un incidente."
+    )
 
 
 class ExportedObligation(Strict):
@@ -185,14 +189,15 @@ def _blocker_key(blocker: Blocker) -> tuple[str, str, str]:
 
 
 def _links(row: AssessmentRow, kinds: set[str]) -> list[ExportedLink]:
-    counting = {s.link.target for s in row.supports if s.counts}
+    supports = {s.link.target: s for s in row.supports}
     links = row.entry.links if row.entry else []
     return [
         ExportedLink(
             kind=link.kind,
             target=link.target[1],
             covers=list(link.covers),
-            counts=link.target in counting,
+            counts=link.target in supports and supports[link.target].counts,
+            simulated=link.target in supports and supports[link.target].simulated,
         )
         for link in links
         if link.kind in kinds
@@ -438,6 +443,7 @@ def _links_text(links: list[ExportedLink], *, evaluated: bool) -> str:
     unused = " (no cuenta)" if evaluated else " (no evaluada)"
     return "; ".join(
         md_escape(link.target)
+        + (f" ({SIMULATED_LABEL})" if link.simulated else "")
         + f" (cubre {md_escape(', '.join(obligation_label(c) for c in link.covers))})"
         + ("" if link.counts else unused)
         for link in links

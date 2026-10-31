@@ -11,11 +11,20 @@ from pydantic import ValidationError
 
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import CatalogVersion, current_catalog_version
-from ens_evidence.evidence.importer import MANUAL_SOURCE
+from ens_evidence.evidence.importer import (
+    INCIDENT_HISTORY_SOURCE,
+    INCIDENT_RECORD_SOURCE,
+    MANUAL_SOURCE,
+)
+from ens_evidence.incidents import verify_history
 from ens_evidence.matrix.documents import DocumentsSnapshot, OrgDocumentSource, documents_snapshot
 from ens_evidence.matrix.evidence import verified_manifest
 from ens_evidence.matrix.history import register_entry, register_matrix
-from ens_evidence.matrix.messages import DECLARATION_REASONS
+from ens_evidence.matrix.messages import (
+    DECLARATION_REASONS,
+    INCIDENT_RECORD_NOT_LINKABLE,
+    blocker_text,
+)
 from ens_evidence.matrix.model import (
     MAX_REVIEW_EVERY_DAYS,
     CheckLink,
@@ -32,10 +41,12 @@ from ens_evidence.matrix.obligations import (
     expand_covers,
     plan_obligations,
 )
+from ens_evidence.matrix.policy import SourcePolicy, admits, source_policy
 from ens_evidence.matrix.store import read_matrix, save_matrix
 from ens_evidence.matrix.technical import KNOWN_CHECKS
 from ens_evidence.models.contracts import ProvenanceKind
 from ens_evidence.models.enums import Role
+from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 
 EVIDENCE = "evidence"
@@ -224,31 +235,60 @@ def build_link(kind: str, target: str, covers: list[str]) -> Link:
         ) from None
 
 
-def _check_source(
-    store: WorkspaceStore, link: Link, snapshot: DocumentsSnapshot | None
+def _policy_error(row: MatrixRowSpec, policy: SourcePolicy) -> list[str]:
+    return [
+        blocker_text(
+            Blocker(
+                kind=BlockerKind.MISSING_EVIDENCE, measure_id=row.measure_id, detail=policy.detail
+            )
+        )
+    ]
+
+
+def _check_evidence(
+    store: WorkspaceStore, row: MatrixRowSpec, link: ManualEvidenceLink
 ) -> list[str]:
+    manifest = verified_manifest(store, link.evidence_id)
+    if manifest is None:
+        return [
+            f"La evidencia {link.evidence_id} no existe o no pasa la verificación de "
+            "integridad (`evidence verify`)."
+        ]
+    if manifest.source == INCIDENT_RECORD_SOURCE:
+        return [INCIDENT_RECORD_NOT_LINKABLE.format(a=link.evidence_id)]
+    policy = source_policy(row.measure_id)
+    if policy and not admits(policy, manifest.source):
+        return _policy_error(row, policy)
+    if manifest.source == INCIDENT_HISTORY_SOURCE:
+        problems = verify_history(store, manifest)
+        if problems:
+            return [f"El historial {link.evidence_id} no es válido:", *problems]
+    elif manifest.provenance.kind is not ProvenanceKind.MANUAL or manifest.source != MANUAL_SOURCE:
+        return [
+            f"{link.evidence_id} no es una evidencia manual; la de un collector o de un "
+            "endpoint cuenta por su check."
+        ]
+    return []
+
+
+def _check_source(
+    store: WorkspaceStore, row: MatrixRowSpec, link: Link, snapshot: DocumentsSnapshot | None
+) -> list[str]:
+    policy = source_policy(row.measure_id)
     match link:
         case ManualEvidenceLink():
-            manifest = verified_manifest(store, link.evidence_id)
-            if manifest is None:
-                return [
-                    f"La evidencia {link.evidence_id} no existe o no pasa la verificación de "
-                    "integridad (`evidence verify`)."
-                ]
-            if manifest.provenance.kind is not ProvenanceKind.MANUAL or (
-                manifest.source != MANUAL_SOURCE
-            ):
-                return [
-                    f"{link.evidence_id} no es una evidencia manual; la de un collector o de un "
-                    "endpoint cuenta por su check."
-                ]
+            return _check_evidence(store, row, link)
         case CheckLink():
+            if policy:
+                return _policy_error(row, policy)
             if link.check_id not in KNOWN_CHECKS:
                 return [
                     f"Check desconocido «{link.check_id}»; conocidos: "
                     f"{', '.join(sorted(KNOWN_CHECKS))}."
                 ]
         case DocumentLink():
+            if policy:
+                return _policy_error(row, policy)
             assert snapshot is not None, "un enlace a documento se comprueba con su instantánea"
             if link.document not in snapshot.documents:
                 return [
@@ -282,7 +322,7 @@ def add_link(
     entry = entry_of(matrix, measure_id)
     expansion = expand_covers(link.covers, row)
     snapshot = documents_snapshot(store, now, documents) if isinstance(link, DocumentLink) else None
-    errors = [*expansion.errors, *_check_source(store, link, snapshot)]
+    errors = [*expansion.errors, *_check_source(store, row, link, snapshot)]
     if errors:
         raise MatrixRejected(*errors)
     previous = next((x for x in entry.links if x.target == link.target), None)

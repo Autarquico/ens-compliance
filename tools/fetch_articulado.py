@@ -21,7 +21,7 @@ SOURCE_DIR = Path(__file__).resolve().parent.parent / "src/ens_evidence/orgdocs/
 SNAPSHOT = "articulado.html"
 DATA = "articulado.yaml"
 REGULATION = "Real Decreto 311/2022, de 3 de mayo"
-ARTICLES = (2, 11, 12, 13, 15)
+ARTICLES = (2, 11, 12, 13, 15, 25, 33)
 ANNEX_III_ID = "ai-3"
 
 _PARAGRAPH = re.compile(r'<p class="[^"]*">(.*?)</p>', re.DOTALL)
@@ -42,6 +42,9 @@ SELECTION = (
     ("art.13.3", "RD 311/2022, art. 13.3", "art13", "3", None),
     ("art.13.5", "RD 311/2022, art. 13.5", "art13", "5", None),
     ("art.15.2", "RD 311/2022, art. 15.2", "art15", "2", None),
+    ("art.25.1", "RD 311/2022, art. 25.1", "art25", "1", None),
+    ("art.25.2", "RD 311/2022, art. 25.2", "art25", "2", None),
+    ("art.33.7", "RD 311/2022, art. 33.7", "art33", "7", None),
     ("anexo-iii.1.1.f", "RD 311/2022, anexo III, 1.1.f", "anexo3", "1.1", "f"),
 )
 
@@ -151,17 +154,21 @@ def write(snapshot: str, consolidation_date: str, url: str) -> None:
 def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
     parser.add_argument("--offline", action="store_true", help="regenera desde la instantánea")
+    parser.add_argument("--page", type=Path, help="página consolidada del BOE ya descargada")
     args = parser.parse_args()
     if args.offline:
         previous = yaml.safe_load((SOURCE_DIR / DATA).read_text(encoding="utf-8"))
         snapshot = (SOURCE_DIR / SNAPSHOT).read_text(encoding="utf-8")
         write(snapshot, previous["consolidation_date"], previous["url"])
         return
-    response = httpx.get(
-        fetch_boe.URL, follow_redirects=True, timeout=60, headers={"User-Agent": "ens-evidence"}
-    )
-    response.raise_for_status()
-    page = response.text
+    if args.page:
+        page = args.page.read_text(encoding="utf-8")
+    else:
+        response = httpx.get(
+            fetch_boe.URL, follow_redirects=True, timeout=60, headers={"User-Agent": "ens-evidence"}
+        )
+        response.raise_for_status()
+        page = response.text
     write(extract_snapshot(page), fetch_boe.consolidation_date(page), fetch_boe.URL)
 
 

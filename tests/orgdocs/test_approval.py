@@ -20,7 +20,11 @@ from .orgdocs_helpers import APPROVED_AT, DOCUMENTS, ens, fixture_answers, write
 
 DOCUMENT_APPROVED_AT = APPROVED_AT + timedelta(days=1)
 MANAGEMENT_ONLY = ["politica-seguridad", "normativa-seguridad", "designacion-responsables"]
-DECLARED_AUTHORITY = ["procedimientos-seguridad", "proceso-autorizacion"]
+DECLARED_AUTHORITY = [
+    "procedimientos-seguridad",
+    "proceso-autorizacion",
+    "procedimiento-incidentes",
+]
 
 
 def approval_keys(store, name):

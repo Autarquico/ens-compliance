@@ -7,6 +7,7 @@ from datetime import datetime
 from ens_evidence.matrix.documents import OrgDocumentSource
 from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess
 from ens_evidence.matrix.links import link_label
+from ens_evidence.matrix.messages import SIMULATED_LABEL
 from ens_evidence.matrix.model import CheckLink
 from ens_evidence.matrix.obligations import RowKind
 from ens_evidence.matrix.technical import CheckResultsSource
@@ -50,7 +51,11 @@ def row_status(row: AssessmentRow) -> RowStatus:
         row,
         implemented,
         regular,
-        tuple(link_label(s.link) for s in row.supports if s.counts),
+        tuple(
+            f"{link_label(s.link)} ({SIMULATED_LABEL})" if s.simulated else link_label(s.link)
+            for s in row.supports
+            if s.counts
+        ),
         any(isinstance(link, CheckLink) for link in links),
     )
 

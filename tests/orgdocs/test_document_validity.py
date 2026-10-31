@@ -32,6 +32,7 @@ APPROVER = {
     "designacion-responsables": Role.MANAGEMENT,
     "procedimientos-seguridad": Role.SECURITY_OFFICER,
     "proceso-autorizacion": Role.SECURITY_OFFICER,
+    "procedimiento-incidentes": Role.SECURITY_OFFICER,
 }
 
 
