@@ -1923,7 +1923,8 @@ def check(
         ),
     ] = False,
 ) -> None:
-    """Evalúa los checks sobre lo ya recogido (sin red) y registra la ejecución. Sale con 0 si
+    """Evalúa los checks sobre lo ya recogido, sin contactar con los servicios de los conectores,
+    y registra la ejecución. Sale con 0 si
     todo es PASS, 4 con algún FAIL, 3 con UNKNOWN, ERROR, ejecución incompleta o ningún conector
     configurado, y 2 si no se pudo evaluar (configuración inválida, historial ilegible, ejecución
     rechazada o alcance no aprobado)."""
