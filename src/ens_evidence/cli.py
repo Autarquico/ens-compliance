@@ -23,6 +23,12 @@ from ens_evidence.applicability import (
     propose_applicability,
     validate_applicability,
 )
+from ens_evidence.assessment import (
+    STATUS_ORDER,
+    assessment_status,
+    render_status_json,
+    render_status_text,
+)
 from ens_evidence.backup import (
     IMMUTABILITY_PREFIX,
     BackupError,
@@ -61,6 +67,9 @@ from ens_evidence.categorization import (
     commitment_notice,
     init_categorization,
 )
+from ens_evidence.checks.engine import CONFIG_INVALID, ConnectorOutcome, OutcomeKind, run_all
+from ens_evidence.checks.source import StoredCheckResults
+from ens_evidence.checks.store import scan_runs
 from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.connectors.registry import ConnectorLoadError, ConnectorRegistry
 from ens_evidence.endpoint.bundle import BundleTargetError, write_bundle
@@ -77,7 +86,6 @@ from ens_evidence.evidence import (
 )
 from ens_evidence.evidence.importer import import_collected
 from ens_evidence.matrix import (
-    CHECKS_PENDING,
     DECLARATION_REPORTS_PREFIX,
     MATRIX_REPORTS_PREFIX,
     ExportRejected,
@@ -109,7 +117,7 @@ from ens_evidence.matrix.messages import (
     blocker_lines,
     obligation_label,
 )
-from ens_evidence.models.enums import CollectionStatus, Role
+from ens_evidence.models.enums import CheckStatus, CollectionStatus, Role
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
     AnswersInvalid,
@@ -731,6 +739,11 @@ def clock() -> datetime:
     return datetime.now(UTC)
 
 
+def check_source() -> StoredCheckResults:
+    """Las ejecuciones del motor de checks que leen la matriz y la preparación."""
+    return StoredCheckResults()
+
+
 def report_missing_context(exc: ScopeNotApproved | CategorizationNotCurrent) -> typer.Exit:
     if isinstance(exc, ScopeNotApproved):
         typer.echo("El alcance no está aprobado ahora (scope approve).", err=True)
@@ -883,7 +896,8 @@ def applicability_show(
     store = open_workspace(ctx)
     now = clock()
     status = declaration_status(store, now)
-    text = render_declaration(store, now, evaluation=assess(store, now) if annotated else None)
+    evaluation = assess(store, now, checks=check_source()) if annotated else None
+    text = render_declaration(store, now, evaluation=evaluation)
     typer.echo(text, nl=False)
     if save and status.declaration is not None:
         key = save_report(store, DECLARATION_REPORTS_PREFIX, now, "md", text)
@@ -1640,6 +1654,7 @@ def matrix_review(
             conclusion=conclusion,
             assessment=assessment,
             at=reviewed_at,
+            checks=check_source(),
         )
     except MatrixRejected as exc:
         raise matrix_rejected(f"No se registra la revisión de {measure}:", exc) from None
@@ -1668,8 +1683,8 @@ def print_row_status(status: RowStatus) -> None:
     if status.sources:
         line += f"  evidencias: {', '.join(status.sources)}"
     typer.echo(line)
-    if status.has_check_links:
-        typer.echo(f"    {CHECKS_PENDING}")
+    for line in status.check_lines:
+        typer.echo(f"    {line}")
     for obligation in spec.obligations:
         if obligation.compensating_measures:
             typer.echo(
@@ -1691,12 +1706,11 @@ def matrix_show_status(
 ) -> None:
     """Estado de cada medida y preparación. Sale con 1 si hay bloqueos o ficheros ilegibles."""
     instant = parse_instant("--at", at) or clock()
-    result, rows = matrix_status(open_workspace(ctx), instant)
+    result, rows = matrix_status(open_workspace(ctx), instant, checks=check_source())
     shown = [s for s in rows if measure is None or s.row.spec.measure_id == measure]
     if measure is not None and not shown:
         raise fail(f"{measure} no es una medida de la Declaración de Aplicabilidad.", 1)
     typer.echo(f"Declaración de Aplicabilidad: {DECLARATION_LABELS[result.declaration_state]}.")
-    typer.echo(f"Aviso: {CHECKS_PENDING}.")
     for status in shown:
         print_row_status(status)
     print_errors(list(result.errors))
@@ -1736,7 +1750,7 @@ def matrix_export(
     Falla si falta alguna fila de la Declaración. No declara conformidad."""
     store = open_workspace(ctx)
     generated_at = clock()
-    evaluation = assess(store, parse_instant("--at", at) or generated_at)
+    evaluation = assess(store, parse_instant("--at", at) or generated_at, checks=check_source())
     try:
         export = build_export(store, evaluation, generated_at=generated_at)
     except ExportRejected as exc:
@@ -1809,10 +1823,85 @@ def collect_exit_code(status: CollectionStatus, data: dict, sections: dict) -> i
             return 1
 
 
+CHECK_FOOTER = (
+    "Un check en PASS no da por implantada ninguna medida; "
+    "lo valora una persona con `matrix review`."
+)
+
+
+def check_exit_code(outcomes: list[ConnectorOutcome]) -> int:
+    """2 si algún conector no se pudo evaluar (config, historial, rechazo); 4 con algún FAIL;
+    3 con UNKNOWN, ERROR, intento incompleto o nada configurado; 0 si todo es PASS."""
+    runs = [o.run for o in outcomes if o.run is not None]
+    broken = any(
+        o.kind in (OutcomeKind.HISTORY_UNREADABLE, OutcomeKind.REJECTED)
+        or (o.run is not None and any(e.startswith(CONFIG_INVALID) for e in o.run.errors))
+        for o in outcomes
+    )
+    statuses = {r.status for run in runs for r in run.results}
+    if broken:
+        return 2
+    if CheckStatus.FAIL in statuses:
+        return 4
+    if not runs or statuses - {CheckStatus.PASS} or not all(run.complete for run in runs):
+        return 3
+    return 0
+
+
+def print_check_outcome(outcome: ConnectorOutcome, last_key: str | None) -> None:
+    name = outcome.connector
+    if outcome.kind is OutcomeKind.NOT_CONFIGURED:
+        typer.echo(f"{name}: no configurado")
+        return
+    if outcome.kind in (OutcomeKind.HISTORY_UNREADABLE, OutcomeKind.REJECTED):
+        typer.echo(f"{name}: no se registra la ejecución:", err=True)
+        print_errors(list(outcome.detail))
+        return
+    run = outcome.run
+    assert run is not None
+    written = (
+        f"ejecución escrita {outcome.key}"
+        if outcome.kind is OutcomeKind.RECORDED
+        else f"sin cambios desde {last_key}"
+    )
+    counts = {s: sum(1 for r in run.results if r.status is s) for s in STATUS_ORDER}
+    typer.echo(f"{name}: {written}")
+    typer.echo("  " + "  ".join(f"{s.value} {n}" for s, n in counts.items()))
+    for result in run.results:
+        if result.status is not CheckStatus.PASS:
+            subject = result.subject or result.asset_id
+            code = f" ({result.reason_code})" if result.reason_code else ""
+            typer.echo(f"  {result.status.value} {result.check_id} {subject}{code}")
+    for error in run.errors:
+        typer.echo(f"  ERROR {error}")
+
+
 @app.command()
-def check(all_checks: Annotated[bool, typer.Option("--all")] = False) -> None:
-    """Evalúa los checks."""
-    not_implemented()
+@handled
+def check(
+    ctx: typer.Context,
+    all_checks: Annotated[
+        bool, typer.Option("--all", help="Evalúa los checks de todos los conectores configurados.")
+    ] = False,
+) -> None:
+    """Evalúa los checks sobre lo ya recogido (sin red) y registra la ejecución. Sale con 0 si
+    todo es PASS, 4 con algún FAIL, 3 con UNKNOWN o ERROR y 2 si no se pudo evaluar."""
+    if not all_checks:
+        raise fail("Indica --all para evaluar los checks de todos los conectores configurados.")
+    store = open_workspace(ctx)
+    try:
+        outcomes = run_all(store, clock())
+    except ScopeNotApproved as exc:
+        report_missing_context(exc)
+        raise typer.Exit(2) from None
+    scan = scan_runs(store)
+    for outcome in outcomes:
+        last = scan.last(outcome.connector)
+        print_check_outcome(outcome, last.key if last else None)
+    if not any(o.run for o in outcomes):
+        typer.echo("Ningún conector configurado: no se ha evaluado nada.")
+    typer.echo(CHECK_FOOTER)
+    raise typer.Exit(check_exit_code(outcomes))
 
 
 @report_app.command("daily")
@@ -1827,10 +1916,30 @@ def report_monthly() -> None:
     not_implemented()
 
 
+class StatusFormat(StrEnum):
+    TEXT = "text"
+    JSON = "json"
+
+
 @assessment_app.command("status")
-def assessment_status() -> None:
-    """Estado de la evaluación."""
-    not_implemented()
+@handled
+def assessment_show_status(
+    ctx: typer.Context,
+    at: Annotated[str | None, typer.Option("--at", help="Instante a evaluar.")] = None,
+    fmt: Annotated[
+        StatusFormat, typer.Option("--format", help="Formato de la salida.")
+    ] = StatusFormat.TEXT,
+) -> None:
+    """Preparación del sistema para la autoevaluación. Lectura pura: no escribe nada. Sale con 0
+    si está preparada y sin errores, 1 si no. La herramienta no declara conformidad."""
+    instant = parse_instant("--at", at) or clock()
+    status = assessment_status(open_workspace(ctx), instant)
+    typer.echo(
+        render_status_json(status) if fmt is StatusFormat.JSON else render_status_text(status),
+        nl=False,
+    )
+    if not status.is_ready:
+        raise typer.Exit(1)
 
 
 def parse_instant(option: str, text: str | None) -> datetime | None:

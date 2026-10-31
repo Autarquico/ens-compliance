@@ -9,6 +9,9 @@ from typer.testing import CliRunner
 
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import CatalogVersion, current_catalog_version
+from ens_evidence.checks.model import StoredCheckRun
+from ens_evidence.checks.source import StoredCheckResults
+from ens_evidence.checks.store import record_run
 from ens_evidence.cli import app
 from ens_evidence.matrix import (
     MATRIX_KEY,
@@ -23,13 +26,14 @@ from ens_evidence.matrix import (
 )
 from ens_evidence.models.enums import Role
 from ens_evidence.orgdocs import approve_document, build_documents
+from ens_evidence.scope import scope_status
 
 from .evaluate_helpers import NOW, ONE_CLAUSE, TWO_CLAUSES
 from .source_helpers import CHECK, collected_evidence, manual_evidence
 
 NOT_APPLICABLE = "op.cont.3"
 SELF = ["--by", "Ana", "--role", "system_administrator"]
-CHECKS_PENDING = "evidencia técnica: pendiente del motor de checks"
+NO_RUN = "sin ejecución; ejecuta `ens-evidence check --all`"
 
 
 @pytest.fixture
@@ -534,7 +538,7 @@ def test_status_sin_revisiones_sale_con_1_y_lista_los_bloqueos(initialized):
     result = initialized("matrix", "status")
 
     assert result.exit_code == 1
-    assert CHECKS_PENDING in result.output
+    assert "pendiente del motor de checks" not in result.output
     assert "implantada: sin revisar" in line_of(result.output, ONE_CLAUSE)
     assert "bloqueo: sin revisar" in result.output
     assert "NOT_COMPLIANT" not in result.output and "no conforme" not in result.output
@@ -582,13 +586,72 @@ def test_status_con_at_anterior_a_la_revision_no_la_ve(initialized, signed):
     assert "revisión regular: no" in line_of(after.output, ONE_CLAUSE)
 
 
-def test_status_indica_que_los_checks_estan_pendientes_en_la_medida_con_check(initialized):
+def test_status_sin_ejecucion_dice_que_hay_que_ejecutar_check_all(initialized):
     initialized("matrix", "link", ONE_CLAUSE, "--check", CHECK, "--covers", "base")
 
     result = initialized("matrix", "status")
 
-    assert f"    {CHECKS_PENDING}" in result.output
-    assert "ens-evidence check --all" in result.output
+    assert f"    check {CHECK}: {NO_RUN}" in result.output
+    assert "pendiente del motor de checks" not in result.output
+
+
+def test_status_con_ejecucion_muestra_su_instante(initialized, signed):
+    initialized("matrix", "link", ONE_CLAUSE, "--check", CHECK, "--covers", "base")
+    finished = NOW - timedelta(hours=2)
+    record_run(
+        signed,
+        StoredCheckRun(
+            seq=1,
+            connector="github",
+            engine_version="1",
+            started_at=finished,
+            finished_at=finished,
+            complete=True,
+            scope_fingerprint=scope_status(signed).fingerprint,
+            config_sha256="b" * 64,
+        ),
+        NOW,
+    )
+
+    result = initialized("matrix", "status")
+
+    assert f"    check {CHECK}: ejecución de {finished.isoformat()}" in result.output
+    assert NO_RUN not in result.output
+
+
+@pytest.mark.parametrize(
+    "args",
+    [
+        ["matrix", "status"],
+        ["matrix", "export", "--stdout"],
+        ["applicability", "show", "--annotated"],
+        [
+            "matrix",
+            "review",
+            ONE_CLAUSE,
+            *SELF,
+            "--conclusion",
+            "Revisada",
+            "--assessment",
+            "COMPLIANT",
+        ],
+    ],
+)
+def test_los_comandos_leen_las_ejecuciones_guardadas(initialized, signed, monkeypatch, args):
+    configured(initialized)
+    linked_evidence(initialized, signed)
+    reads = []
+
+    class Spy(StoredCheckResults):
+        def runs(self, store, at):
+            reads.append(args)
+            return super().runs(store, at)
+
+    monkeypatch.setattr("ens_evidence.cli.check_source", Spy)
+
+    initialized(*args)
+
+    assert reads
 
 
 def test_status_sin_matriz_ni_declaracion_vigente_sale_con_1(ens_cli, signed):

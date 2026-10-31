@@ -69,10 +69,10 @@ Qué fuentes cuentan:
   dentro de la periodicidad de la medida.
 - **Documento organizativo:** solo si está aprobado y vigente
   (`ens-evidence docs status`), y solo para las cláusulas que cubre.
-- **Check:** cuenta la última ejecución completa, con todos los activos en
-  PASS y evidencia de menos de 30 días. Un FAIL bloquea la medida aunque esté
-  revisada. Hasta que exista el motor de checks no cuenta ningún check;
-  `matrix status` lo indica.
+- **Check:** cuenta el último intento de `ens-evidence check --all`
+  ([motor de checks](motor-de-checks.md)), si está completo, con todos los
+  activos en PASS y evidencia de menos de 30 días. Un FAIL bloquea la medida
+  aunque esté revisada.
 
 Que un check esté en verde o que un documento esté aprobado no da la medida
 por implantada: eso solo lo hace una revisión.

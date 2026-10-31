@@ -74,7 +74,7 @@ from ens_evidence.matrix.render import (
     save_report,
 )
 from ens_evidence.matrix.review import ReviewPlan, prepare_review, record_review
-from ens_evidence.matrix.status import CHECKS_PENDING, RowStatus, matrix_status
+from ens_evidence.matrix.status import RowStatus, matrix_status
 from ens_evidence.matrix.store import (
     MATRIX_KEY,
     REVIEWS_PREFIX,
@@ -111,7 +111,6 @@ __all__ = [
     "NoFindings",
     "StaticFindings",
     "assess",
-    "CHECKS_PENDING",
     "COMPENSATION",
     "LinkOutcome",
     "MatrixRejected",
