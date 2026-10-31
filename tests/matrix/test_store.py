@@ -196,20 +196,27 @@ class TestTemporalSelection:
         found = effective_reviews(store, "org.1", self.at(3))
         assert found.implementation.record.assessment is MeasureAssessment.COMPLIANT
 
-    def test_ties_break_by_key_when_recorded_at_is_equal(self, store):
-        first = measure_review(recorded_at=self.at(0), assessment=MeasureAssessment.NON_COMPLIANT)
-        second = measure_review(recorded_at=self.at(0), assessment=MeasureAssessment.COMPLIANT)
+    def test_a_second_file_for_the_same_instant_under_another_name_is_unreadable(self, store):
+        add_review(store, measure_review(recorded_at=self.at(0)))
+        other = measure_review(recorded_at=self.at(0), assessment=MeasureAssessment.NON_COMPLIANT)
         store.create_bytes(
-            "controls/reviews/org.1/a.yaml",
-            yaml.safe_dump(first.model_dump(mode="json")).encode(),
+            "controls/reviews/org.1/b.yaml", yaml.safe_dump(other.model_dump(mode="json")).encode()
         )
-        store.create_bytes(
-            "controls/reviews/org.1/b.yaml",
-            yaml.safe_dump(second.model_dump(mode="json")).encode(),
-        )
+
         found = effective_reviews(store, "org.1", self.at(1))
-        assert found.implementation.key.endswith("b.yaml")
+
+        assert found.unreadable == ["controls/reviews/org.1/b.yaml"]
         assert found.implementation.record.assessment is MeasureAssessment.COMPLIANT
+
+    def test_recorded_at_must_match_the_instant_encoded_in_the_key(self, store):
+        key = add_review(store, measure_review(recorded_at=self.at(0)))
+        data = yaml.safe_load(store.read_text(key))
+        data["recorded_at"] = self.at(500).isoformat()
+        store.write_text(key, yaml.safe_dump(data))
+
+        found = effective_reviews(store, "org.1", self.at(1000))
+
+        assert found.implementation is None and found.unreadable == [key]
 
     def test_each_axis_has_its_own_latest(self, store):
         add_review(store, measure_review(recorded_at=self.at(0)))

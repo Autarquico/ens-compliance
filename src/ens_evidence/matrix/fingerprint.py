@@ -28,6 +28,11 @@ def links_sha256(entry: MatrixEntry) -> str:
     return _digest(links)
 
 
+def entry_sha256(entry: MatrixEntry) -> str:
+    """Toda la entrada, tal como está escrita (el orden de los enlaces incluido)."""
+    return _digest(entry.model_dump(mode="json"))
+
+
 def _card_text(card: MeasureCard, obligation_ids: list[str]) -> str:
     """Texto de la ficha de las obligaciones en juego."""
     parts = {}

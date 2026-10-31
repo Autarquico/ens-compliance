@@ -62,8 +62,19 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "una copia archivada de la Declaración no se puede leer ({a}); podría haber cambiado el "
         "contexto de la medida. Restaura el fichero o revisa la medida de nuevo: matrix review {m}"
     ),
+    (BlockerKind.MISSING_REVIEW, "matrix_edited"): (
+        "la entrada de la matriz se editó a mano y no coincide con el último estado registrado. "
+        "Edita con la CLI (matrix set, link, unlink; matrix init registra lo que hay) y revisa "
+        "la medida de nuevo: matrix review {m}"
+    ),
+    (BlockerKind.MISSING_REVIEW, "matrix_history_unreadable"): (
+        "el historial de cambios de la matriz tiene un registro ilegible o alterado ({a}); no se "
+        "sabe si los enlaces cambiaron tras la revisión. Restaura el fichero o revisa la medida "
+        "de nuevo: matrix review {m}"
+    ),
     (BlockerKind.EXPIRED_REVIEW, "links_changed"): (
-        "los enlaces de evidencia han cambiado desde la última revisión. Vuelve a revisarla: "
+        "los enlaces de evidencia han cambiado desde la última revisión (aunque hoy coincidan). "
+        "Vuelve a revisarla: "
         "matrix review {m}"
     ),
     (BlockerKind.EXPIRED_REVIEW, "evidence_changed"): (

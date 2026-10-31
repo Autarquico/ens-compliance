@@ -62,10 +62,15 @@ def reviews_prefix(measure_id: str) -> str:
     return f"{REVIEWS_PREFIX}/{measure_id}"
 
 
+def instant_stamp(moment: datetime) -> str:
+    return moment.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+
+
 def add_review(store: WorkspaceStore, record: Record) -> str:
-    """Escribe la revisión como fichero nuevo y devuelve su clave; nunca sobrescribe."""
-    stamp = record.recorded_at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
-    key = f"{reviews_prefix(record.measure_id)}/{stamp}.yaml"
+    """Escribe la revisión como fichero nuevo y devuelve su clave; nunca sobrescribe.
+
+    La clave codifica el instante: al leer, `recorded_at` debe coincidir con él."""
+    key = f"{reviews_prefix(record.measure_id)}/{instant_stamp(record.recorded_at)}.yaml"
     store.create_bytes(key, _dump(record).encode("utf-8"))
     return key
 
@@ -115,6 +120,9 @@ def _read_one(
         return None
     if record.measure_id != measure_id:
         errors.append(f"{key}: la revisión es de otra medida ({record.measure_id})")
+        return None
+    if not key.endswith(f"/{instant_stamp(record.recorded_at)}.yaml"):
+        errors.append(f"{key}: recorded_at no coincide con el instante de la clave")
         return None
     return StoredReview(key, record)
 

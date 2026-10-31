@@ -1524,7 +1524,12 @@ def matrix_set(
     """Fija el responsable y la periodicidad de revisión de una medida."""
     try:
         entry = set_entry(
-            open_workspace(ctx), measure, owner_name=owner, owner_role=owner_role, every_days=every
+            open_workspace(ctx),
+            clock(),
+            measure,
+            owner_name=owner,
+            owner_role=owner_role,
+            every_days=every,
         )
     except MatrixRejected as exc:
         raise matrix_rejected(f"No se actualiza {measure}:", exc) from None

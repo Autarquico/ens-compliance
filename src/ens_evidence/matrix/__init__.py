@@ -12,6 +12,13 @@ from ens_evidence.matrix.documents import (
 from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess
 from ens_evidence.matrix.evidence import LinkSupport
 from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
+from ens_evidence.matrix.history import (
+    ChangeScan,
+    MatrixChange,
+    register_entry,
+    register_matrix,
+    scan_history,
+)
 from ens_evidence.matrix.links import (
     LinkOutcome,
     MatrixRejected,
@@ -155,4 +162,9 @@ __all__ = [
     "read_reviews",
     "rows_from_declaration",
     "save_matrix",
+    "ChangeScan",
+    "MatrixChange",
+    "register_entry",
+    "register_matrix",
+    "scan_history",
 ]

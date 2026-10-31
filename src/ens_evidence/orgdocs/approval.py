@@ -155,7 +155,8 @@ def _meta(store: WorkspaceStore, name: str) -> DocumentMeta | None:
 def scan_approvals(store: WorkspaceStore, name: str) -> tuple[list[DocumentApproval], list[str]]:
     """Aprobaciones legibles (de la más antigua a la más reciente) y claves de las ilegibles.
 
-    Un registro ilegible podría ser una aprobación posterior: su contenido es desconocido."""
+    Un registro ilegible, o cuyo contenido no coincide con su clave, podría ser una aprobación
+    posterior: su contenido es desconocido."""
     records = []
     unreadable = []
     prefix = f"{APPROVALS_PREFIX}/{name}/"
@@ -164,7 +165,13 @@ def scan_approvals(store: WorkspaceStore, name: str) -> tuple[list[DocumentAppro
         try:
             if text is None:
                 raise ValueError(key)
-            records.append(DocumentApproval.model_validate(safe_load_unique(text)))
+            approval = DocumentApproval.model_validate(safe_load_unique(text))
+            # La clave codifica documento e instante: un registro que no los repite no es de fiar
+            # (p. ej. `approved_at` retrofechado para que no parezca posterior a un registro).
+            expected = f"{prefix}{approval.approved_at.astimezone(UTC).strftime(STAMP)}.yaml"
+            if key != expected or approval.document != name:
+                raise ValueError(key)
+            records.append(approval)
         except (yaml.YAMLError, ValidationError, ValueError):
             unreadable.append(key)
     return records, unreadable

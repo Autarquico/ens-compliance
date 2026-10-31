@@ -83,13 +83,19 @@ def _repeats_a_key(store: WorkspaceStore, evidence_id: str) -> bool:
 
 
 def verified_manifest(store: WorkspaceStore, evidence_id: str) -> EvidenceManifest | None:
-    """El manifiesto si él y su artefacto están íntegros; None si algo no cuadra."""
+    """El manifiesto si él y su artefacto están íntegros y su alta coincide con su id; None si
+    algo no cuadra."""
     if not verify_one(store, evidence_id).ok or _repeats_a_key(store, evidence_id):
         return None
     try:
-        return load_manifest_by_id(store, evidence_id)
+        manifest = load_manifest_by_id(store, evidence_id)
     except ManifestError:
         return None
+    # El id codifica el día del alta (`EV-AAAAMMDD-…`): retrofechar `submitted_at` para que una
+    # evidencia nueva parezca anterior a una revisión no coincide con él.
+    if evidence_id[3:11] != manifest.provenance.submitted_at.strftime("%Y%m%d"):
+        return None
+    return manifest
 
 
 def manual_support(

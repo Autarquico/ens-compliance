@@ -26,6 +26,7 @@ from ens_evidence.matrix.evidence import (
     verified_manifest,
 )
 from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
+from ens_evidence.matrix.history import ChangeScan, scan_history
 from ens_evidence.matrix.model import (
     CheckLink,
     DocumentLink,
@@ -242,6 +243,7 @@ def _review_gaps(
     stored: StoredReview | None,
     snapshot: DocumentsSnapshot,
     signings: Signings,
+    history: ChangeScan,
 ) -> list[Blocker]:
     selected = row.kind is RowKind.SELECTED
     if stored is None:
@@ -265,7 +267,10 @@ def _review_gaps(
         for key in signings.unreadable
     ]
     if selected and isinstance(record, MeasureReviewRecord):
-        if record.links_sha256 != links_sha256(entry):
+        # Quitar y volver a poner el mismo enlace deja el mismo fichero pero no la misma historia.
+        if record.links_sha256 != links_sha256(entry) or history.links_changed_since(
+            record.recorded_at, record.links_sha256
+        ):
             gaps.append(_gap(BlockerKind.EXPIRED_REVIEW, row.measure_id, "links_changed"))
         gaps += _changed_sources(store, record, snapshot, row.measure_id)
     return gaps
@@ -323,11 +328,16 @@ def _assess_row(
     entry = entry or MatrixEntry(id=row.measure_id)
     reviews = effective_reviews(store, row.measure_id, now)
     stored = _latest(reviews.implementation, reviews.applicability)
+    history = scan_history(store, row.measure_id)
     # Un registro ilegible podría revocar lo anterior: lo legible se muestra pero no satisface.
     unreadable = [
         _gap(BlockerKind.MISSING_REVIEW, row.measure_id, f"review_unreadable:{key}")
         for key in reviews.unreadable
+    ] + [
+        _gap(BlockerKind.MISSING_REVIEW, row.measure_id, f"matrix_history_unreadable:{key}")
+        for key in history.unreadable
     ]
+    edited = history.edited(entry)
     record = stored.record if stored and not unreadable else None
     implementation = record if selected and isinstance(record, MeasureReviewRecord) else None
 
@@ -342,11 +352,15 @@ def _assess_row(
     covered = covered_units(supports)
 
     gaps: list[Blocker] = [*unreadable]
+    if edited:
+        gaps.append(
+            _gap(BlockerKind.MISSING_REVIEW, row.measure_id, f"matrix_edited:{row.measure_id}")
+        )
     if entry.owner is None:
         gaps.append(_gap(BlockerKind.MISSING_REVIEW, row.measure_id, "owner_missing"))
     if entry.review_every_days is None:
         gaps.append(_gap(BlockerKind.MISSING_REVIEW, row.measure_id, "review_every_days_missing"))
-    gaps += _review_gaps(store, row, entry, stored, snapshot, signings)
+    gaps += _review_gaps(store, row, entry, stored, snapshot, signings, history)
     gaps += _coverage_gaps(row, covered)
     gaps += [b for s in supports for b in s.blockers]
 
@@ -365,7 +379,15 @@ def _assess_row(
     unique_gaps = unique_blockers(gaps)
     blockers = tuple(unique_blockers([*measure_blockers(measure, now), *unique_gaps]))
     assessed = AssessmentRow(row, measure, blockers, entry, stored, tuple(supports), covered)
-    return assessed, unique_gaps, reviews.errors
+    edits = (
+        [
+            f"controls/matrix.yaml: la entrada de {row.measure_id} no coincide con el último "
+            "estado registrado; edita con la CLI (matrix set, link, unlink)"
+        ]
+        if edited
+        else []
+    )
+    return assessed, unique_gaps, [*reviews.errors, *history.errors, *edits]
 
 
 def assess(

@@ -19,6 +19,7 @@ from ens_evidence.matrix import (
     StaticCheckResults,
     assess,
     read_matrix,
+    register_matrix,
     save_matrix,
 )
 from ens_evidence.matrix.status import row_status
@@ -230,7 +231,9 @@ def test_una_medida_con_todo_en_verde_salvo_la_periodicidad_bloquea_la_preparaci
         e.model_copy(update={"review_every_days": None}) if e.id == "org.1" else e
         for e in matrix.entries
     ]
-    save_matrix(signed, matrix.model_copy(update={"entries": without_period}))
+    edited = matrix.model_copy(update={"entries": without_period})
+    save_matrix(signed, edited)
+    register_matrix(signed, edited, NOW)
     result = assess(signed, NOW)
 
     blockers = {(b.kind, b.detail) for b in result.readiness.blockers if b.measure_id == "org.1"}

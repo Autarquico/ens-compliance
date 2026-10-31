@@ -21,6 +21,7 @@ from ens_evidence.matrix import (
     assess,
     links_sha256,
     plan_obligations,
+    register_matrix,
     save_matrix,
 )
 from ens_evidence.matrix.evidence import manifest_sha256
@@ -66,9 +67,12 @@ def entry(measure_id, *links, every: int | None = 30, owner: bool = True) -> Mat
     )
 
 
-def configure(store, *entries: MatrixEntry) -> None:
+def configure(store, *entries: MatrixEntry, at=None) -> None:
+    """Escribe la matriz y registra su estado en el historial, como hacen las órdenes `matrix`."""
     version = current_catalog_version(load_catalog())
-    save_matrix(store, MatrixFile(catalog_version=version, entries=list(entries)))
+    matrix = MatrixFile(catalog_version=version, entries=list(entries))
+    save_matrix(store, matrix)
+    register_matrix(store, matrix, at or NOW)
 
 
 def row_spec(store, measure_id, at=NOW):

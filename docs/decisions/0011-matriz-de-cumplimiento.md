@@ -75,6 +75,28 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
   medidas, y `docs status` lo muestra. Los YAML editados a mano que lee la
   matriz (revisiones, `matrix.yaml`, aprobaciones) se rechazan si repiten una
   clave, también anidada: `safe_load` se quedaría con la última.
+- **Los historiales de solo adición se contrastan con su clave.** La clave de
+  una revisión codifica su instante; la de una firma archivada, instante y
+  huella (`<instante>-<sha12>.yaml`); la de una aprobación documental, documento
+  e instante; el id de una evidencia, el día de su alta. Si el contenido no
+  coincide (p. ej. `recorded_at` o `approved_at` retocados), el registro es
+  ilegible: `review_unreadable`, `declaration_history_unreadable`,
+  `org_document_unreadable` o la evidencia no verificada. Una edición a mano no
+  puede favorecer a la organización: o se detecta y bloquea, o no cambia nada.
+- **Los cambios de la matriz tienen historial.** `matrix.yaml` se sobrescribe,
+  así que quitar un enlace y volver a ponerlo dejaba el mismo fichero. `init`,
+  `set`, `link` y `unlink` registran el estado resultante de la entrada en
+  `controls/matrix-history/<medida>/<n.º>-<instante>-<sha12>.yaml` (solo
+  adición; número, instante y huella se contrastan con el contenido). Una
+  revisión solo vale si, desde su `recorded_at`, ningún registro dejó los
+  enlaces o coberturas en otro estado, aunque el final coincida
+  (`links_changed`). Si la entrada de `matrix.yaml` no coincide con el último
+  estado registrado, se editó a mano: la medida se bloquea con
+  `matrix_edited:<medida>` y el fallo sale en `errors`. La siguiente orden
+  `matrix set/link/unlink/init` registra primero lo que había y después su
+  cambio, de modo que editar a mano y ordenar luego no borra el rastro. Un
+  registro del historial ilegible o con hueco bloquea con
+  `matrix_history_unreadable:<clave>`.
 - **Una sola regla de preparación.** `matrix.assess()` es el único punto de
   integración. Aplica la regla compartida de `models/readiness.py`
   (`measure_blockers`, `evaluate_readiness`) y le añade los huecos de la

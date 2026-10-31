@@ -24,6 +24,20 @@ La matriz vive en `controls/matrix.yaml` y las revisiones en
 `controls/reviews/`. Usa siempre estos comandos contra el workspace:
 `workspace push` no publica la matriz.
 
+**No edites `controls/matrix.yaml` a mano.** Cada cambio (`init`, `set`, `link`,
+`unlink`) deja un registro en `controls/matrix-history/<medida>/`, de solo
+adición, y una revisión solo vale si desde que se registró los enlaces de la
+medida no cambiaron: quitar un enlace y volver a ponerlo la caduca. Si la
+entrada de una medida no coincide con el último estado registrado,
+`matrix status` la bloquea con `matrix_edited:<medida>` y sale con 1.
+Cualquiera de esas órdenes registra lo que hubiera y deja de bloquear, pero
+las revisiones anteriores al cambio siguen caducadas. Tampoco edites a mano
+`controls/reviews/`, `controls/declarations/` ni `controls/matrix-history/`:
+un registro cuyo contenido no coincide con su nombre se trata como ilegible y
+bloquea la medida (`review_unreadable`, `declaration_history_unreadable`,
+`matrix_history_unreadable`). Para restaurar un registro ilegible, recupera el
+fichero original de la copia de seguridad del workspace.
+
 ## 2. Responsable y periodicidad
 
 ```bash

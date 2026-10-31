@@ -194,12 +194,17 @@ def approve_declaration(store: WorkspaceStore, by: str, now: datetime) -> Declar
 def _archive(store: WorkspaceStore, declaration: Declaration, text: str) -> None:
     """Copia de solo adición de cada firma: la Declaración vigente se sobrescribe y, sin esta
     copia, volver a un contexto anterior sería indistinguible de no haberlo dejado nunca."""
-    stamp = declaration.approved_at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
-    digest = hashlib.sha256(text.encode()).hexdigest()[:12]
     try:
-        store.create_bytes(f"{DECLARATIONS_PREFIX}/{stamp}-{digest}.yaml", text.encode())
+        store.create_bytes(_archive_key(declaration, text.encode()), text.encode())
     except AlreadyExists:
         pass
+
+
+def _archive_key(declaration: Declaration, data: bytes) -> str:
+    """`<instante de la firma>-<sha256 de los bytes, 12>.yaml`: lo que la clave codifica y
+    `declaration_history` contrasta con el contenido."""
+    stamp = declaration.approved_at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    return f"{DECLARATIONS_PREFIX}/{stamp}-{hashlib.sha256(data).hexdigest()[:12]}.yaml"
 
 
 def declaration_history(store: WorkspaceStore) -> tuple[list[Declaration], list[str]]:
@@ -209,7 +214,9 @@ def declaration_history(store: WorkspaceStore) -> tuple[list[Declaration], list[
     errors: list[str] = []
     for key in store.list(DECLARATIONS_PREFIX):
         declaration, _ = read_record(store, key, Declaration, "no se puede reconstruir")
-        if declaration is None:
+        # Una copia cuyo contenido no es lo que su nombre dice (p. ej. `approved_at` retrofechado)
+        # es tan desconocida como una ilegible.
+        if declaration is None or key != _archive_key(declaration, store.read_bytes(key)):
             errors.append(key)
         else:
             found.append(declaration)

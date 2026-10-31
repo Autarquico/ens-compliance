@@ -14,6 +14,7 @@ from ens_evidence.catalog.controls import CatalogVersion, current_catalog_versio
 from ens_evidence.evidence.importer import MANUAL_SOURCE
 from ens_evidence.matrix.documents import DocumentsSnapshot, OrgDocumentSource, documents_snapshot
 from ens_evidence.matrix.evidence import verified_manifest
+from ens_evidence.matrix.history import register_entry, register_matrix
 from ens_evidence.matrix.messages import DECLARATION_REASONS
 from ens_evidence.matrix.model import (
     MAX_REVIEW_EVERY_DAYS,
@@ -117,6 +118,21 @@ def _replaced(matrix: MatrixFile, entry: MatrixEntry) -> MatrixFile:
     return matrix.model_copy(update={"entries": entries})
 
 
+def _commit(
+    store: WorkspaceStore,
+    now: datetime,
+    matrix: MatrixFile,
+    before: MatrixEntry,
+    after: MatrixEntry,
+) -> None:
+    """Guarda la entrada y registra su estado en el historial. Si `before` (lo que había en
+    `matrix.yaml`) no era el último estado registrado, se editó a mano: se registra también, para
+    que un cambio posterior no lo borre del historial."""
+    register_entry(store, before, now)
+    save_matrix(store, _replaced(matrix, after))
+    register_entry(store, after, now)
+
+
 def init_matrix(store: WorkspaceStore, now: datetime) -> InitOutcome:
     """Una entrada por fila de la Declaración y el catálogo actual; conserva lo existente.
 
@@ -141,8 +157,9 @@ def init_matrix(store: WorkspaceStore, now: datetime) -> InitOutcome:
     )
     if created or matrix is None or outcome.catalog_updated:
         entries = [*existing.entries, *(MatrixEntry(id=i) for i in created)]
-        update = {"entries": entries, "catalog_version": current}
-        save_matrix(store, existing.model_copy(update=update))
+        existing = existing.model_copy(update={"entries": entries, "catalog_version": current})
+        save_matrix(store, existing)
+    register_matrix(store, existing, now)
     return outcome
 
 
@@ -157,6 +174,7 @@ def parse_role(text: str) -> Role:
 
 def set_entry(
     store: WorkspaceStore,
+    now: datetime,
     measure_id: str,
     *,
     owner_name: str | None = None,
@@ -182,7 +200,7 @@ def set_entry(
     if every_days is not None:
         update["review_every_days"] = every_days
     updated = entry.model_copy(update=update)
-    save_matrix(store, _replaced(matrix, updated))
+    _commit(store, now, matrix, entry, updated)
     return updated
 
 
@@ -273,7 +291,7 @@ def add_link(
         link = link.model_copy(update={"covers": merged})
     links = [x for x in entry.links if x.target != link.target]
     updated = entry.model_copy(update={"links": [*links, link]})
-    save_matrix(store, _replaced(matrix, updated))
+    _commit(store, now, matrix, entry, updated)
     return LinkOutcome(
         updated, tuple(sorted(expand_covers(link.covers, row).units)), pending_units(row, updated)
     )
@@ -306,7 +324,7 @@ def remove_link(
     if remaining:
         links.append(found.model_copy(update={"covers": remaining}))
     updated = entry.model_copy(update={"links": links})
-    save_matrix(store, _replaced(matrix, updated))
+    _commit(store, now, matrix, entry, updated)
     plan = plan_obligations(store, now)
     row = plan.row(measure_id) if plan.current else None
     pending = pending_units(row, updated) if row else ()

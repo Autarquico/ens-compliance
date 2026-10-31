@@ -341,3 +341,31 @@ def test_una_clave_repetida_en_una_aprobacion_la_hace_ilegible(built):
 
     assert status.unreadable == [key]
     assert approval_history(built, "politica-seguridad") == []
+
+
+def test_retrofechar_el_approved_at_de_una_aprobacion_la_hace_ilegible(built):
+    approve_document(
+        built, "politica-seguridad", "Marta Ibáñez Soler", Role.MANAGEMENT, DOCUMENT_APPROVED_AT
+    )
+    (key,) = approval_keys(built, "politica-seguridad")
+    text = built.read_text(key)
+    stamped = yaml.safe_load(text)["approved_at"]
+    assert stamped in text
+    built.write_text(key, text.replace(stamped, "2020-01-01T00:00:00Z"))
+
+    status = document_status(built, "politica-seguridad")
+
+    assert status.unreadable == [key]
+    assert status.state is not DocumentState.APPROVED
+    assert approval_history(built, "politica-seguridad") == []
+
+
+def test_una_aprobacion_copiada_a_otro_documento_es_ilegible_alli(built):
+    approve_document(
+        built, "politica-seguridad", "Marta Ibáñez Soler", Role.MANAGEMENT, DOCUMENT_APPROVED_AT
+    )
+    (key,) = approval_keys(built, "politica-seguridad")
+    stray = key.replace("politica-seguridad", "normativa-seguridad")
+    built.create_bytes(stray, built.read_bytes(key))
+
+    assert document_status(built, "normativa-seguridad").unreadable == [stray]
