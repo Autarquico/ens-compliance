@@ -67,9 +67,11 @@ class _Evaluation:
     errors: list[str] = field(default_factory=list)
 
 
-def run_all(store: WorkspaceStore, now: datetime) -> list[ConnectorOutcome]:
+def run_all(
+    store: WorkspaceStore, now: datetime, *, accept_clock_correction: bool = False
+) -> list[ConnectorOutcome]:
     """Evalúa y registra cada conector configurado. Exige el alcance aprobado
-    (`ScopeNotApproved` si no)."""
+    (`ScopeNotApproved` si no). `accept_clock_correction`: ver `record_run`."""
     require_approved_scope(store)
     inventory = load_inventory(store).inventory
     assert inventory is not None  # aprobado implica inventario válido
@@ -79,13 +81,15 @@ def run_all(store: WorkspaceStore, now: datetime) -> list[ConnectorOutcome]:
             outcomes.append(ConnectorOutcome(name, OutcomeKind.NOT_CONFIGURED))
             continue
         run = evaluate_connector(store, name, inventory, now)
-        outcomes.append(_record(store, run, now))
+        outcomes.append(_record(store, run, now, accept_clock_correction))
     return outcomes
 
 
-def _record(store: WorkspaceStore, run: StoredCheckRun, now: datetime) -> ConnectorOutcome:
+def _record(
+    store: WorkspaceStore, run: StoredCheckRun, now: datetime, accept_clock_correction: bool
+) -> ConnectorOutcome:
     try:
-        recorded = record_run(store, run, now)
+        recorded = record_run(store, run, now, accept_clock_correction=accept_clock_correction)
     except CheckHistoryUnreadable as exc:
         return ConnectorOutcome(run.connector, OutcomeKind.HISTORY_UNREADABLE, run, None, exc.keys)
     except ValueError as exc:

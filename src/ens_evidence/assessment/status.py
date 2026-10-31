@@ -8,10 +8,14 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ens_evidence.checks.catalog import KNOWN_CHECKS
-from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.matrix import AssessmentResult, assess
-from ens_evidence.matrix.technical import StaticCheckResults, latest_run, load_checks
+from ens_evidence.matrix.technical import (
+    CheckResultsSource,
+    StaticCheckResults,
+    latest_run,
+    load_checks,
+)
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus, Readiness
 from ens_evidence.workspace import WorkspaceStore
@@ -52,8 +56,11 @@ class AssessmentStatus:
         return self.result.readiness.readiness is Readiness.READY and not self.result.errors
 
 
-def assessment_status(store: WorkspaceStore, at: datetime) -> AssessmentStatus:
-    runs, problems = load_checks(StoredCheckResults(), store, at)
+def assessment_status(
+    store: WorkspaceStore, at: datetime, checks: CheckResultsSource
+) -> AssessmentStatus:
+    """`checks`: la misma fuente que usan el resto de comandos (la construye la CLI)."""
+    runs, problems = load_checks(checks, store, at)
     result = assess(store, at, checks=StaticCheckResults(runs, problems=problems))
     summaries = []
     for connector in sorted(set(KNOWN_CHECKS.values())):

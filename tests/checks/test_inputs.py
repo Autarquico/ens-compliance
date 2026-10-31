@@ -281,7 +281,7 @@ def run_citing(*evidence_ids: str, finished_at: datetime = NOW) -> StoredCheckRu
     )
 
 
-def after_run(store, run, at=NOW + timedelta(days=1)) -> bool:
+def after_run(store, run, at=NOW + timedelta(days=1)) -> str | None:
     return evidence_after_run(store, "github", run, at, ASSET)
 
 
@@ -295,7 +295,7 @@ def test_newer_evidence_that_the_run_did_not_cite_is_flagged(store):
     old = collect(store, collected_at=NOW - timedelta(days=1))
     collect(store, collected_at=NOW)
 
-    assert after_run(store, run_citing(old.id))
+    assert after_run(store, run_citing(old.id)) == "check_run_missing"
 
 
 def test_evidence_collected_after_the_query_instant_is_ignored(store):
@@ -318,15 +318,29 @@ def test_unverifiable_latest_evidence_counts_only_if_collected_after_the_run(sto
     assert after_run(store, run_citing(older.id, finished_at=NOW - timedelta(hours=1)), at=NOW)
 
 
-def endpoint_after_run(store, run) -> bool:
+def test_an_unreadable_manifest_blocks_instead_of_saying_nothing_is_missing(store):
+    manifest = collect(store)
+    store.write_text("evidence/manifests/EV-20260601-deadbeef.yaml", "id: [roto")
+
+    assert after_run(store, run_citing(manifest.id)) == "evidence_unreadable"
+
+
+def endpoint_after_run(store, run) -> str | None:
     return evidence_after_run(store, "endpoint", run, NOW + timedelta(days=1))
 
 
 def test_endpoint_evidence_not_cited_by_the_run_is_flagged(store):
     _, normalized = import_package(store)
 
-    assert endpoint_after_run(store, run_citing())
+    assert endpoint_after_run(store, run_citing()) == "check_run_missing"
     assert not endpoint_after_run(store, run_citing(normalized.id))
+
+
+def test_endpoint_with_an_unreadable_manifest_blocks(store):
+    _, normalized = import_package(store)
+    store.write_text("evidence/manifests/EV-20260601-deadbeef.yaml", "id: [roto")
+
+    assert endpoint_after_run(store, run_citing(normalized.id)) == "evidence_unreadable"
 
 
 # --- configuración ------------------------------------------------------------------------------

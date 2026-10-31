@@ -35,7 +35,9 @@ técnica deja de valer a los 30 días de recogerse.
 
 Si el reloj del equipo va por detrás de la última ejecución guardada, la
 ejecución nueva se rechaza (código 2): el historial no admite instantes que
-retrocedan. Corrige la hora y vuelve a ejecutar.
+retrocedan. El mensaje dice la hora del equipo, la de esa ejecución y el
+siguiente paso. Corregir la hora no basta si la ejecución ya se guardó con el
+reloj adelantado: mira «Reloj adelantado» en Problemas.
 
 Si un conector no tiene evidencia, o su evidencia está dañada, sus checks
 quedan sin evaluar. El motor nunca usa una evidencia anterior en su lugar.
@@ -89,10 +91,34 @@ caso.
   haberlo borrado, contrasta con la copia (`backup` + `evidence verify`).
 - **`check_scope_changed`**: el alcance cambió después de la última
   ejecución. Vuelve a ejecutar `check --all`.
-- **`check_config_changed`**: `connectors/<conector>.yaml` cambió (o falta o no
-  se lee) después de la última ejecución. Vuelve a ejecutar `check --all`.
+- **`check_config_changed`**: `connectors/<conector>.yaml` cambió después de la
+  última ejecución. Vuelve a ejecutar `check --all`.
+- **`check_config_missing`**: `connectors/<conector>.yaml` falta o no se lee.
+  `check --all` responde «no configurado» y no escribe nada, así que no
+  desbloquea. Restaura el fichero desde la copia o configura el conector de
+  nuevo y ejecuta `check --all`. Si ya no usas el conector, desvincula sus
+  checks de la matriz (`matrix unlink`).
+- **`evidence_unreadable`**: no se puede listar o leer algún registro de
+  evidencia y no se sabe si hay una recogida posterior a la última ejecución.
+  Ejecuta `evidence verify --all`, restaura `evidence/` desde la copia
+  (`ens-evidence backup …`) y ejecuta `check --all`.
+- **`check_connector_unknown`**: `evidence/checks/<nombre>/` tiene ejecuciones
+  de un conector que esta versión no conoce (un resto, una copia). Sácalo de
+  `evidence/checks/` (la herramienta no borra nada) o restaura desde la copia.
 - **`check_run_in_future`**: hay una ejecución con fecha posterior al reloj del
-  equipo. Revisa la hora del equipo y vuelve a ejecutar `check --all`.
+  equipo, porque se guardó con el reloj adelantado. El aviso sale en
+  `assessment status` y en `matrix status`, con el conector y la fecha.
+  Corregir la hora **no** basta: `check --all` no guarda nada anterior a esa
+  ejecución. Hay dos salidas, ambas sin borrar nada:
+  1. Esperar a que el reloj llegue a esa fecha y ejecutar `check --all`.
+  2. Con la hora ya corregida, ejecutar
+     `ens-evidence check --all --clock-corrected`. Escribe una ejecución nueva
+     con la hora correcta, anota en ella qué ejecuciones sustituye
+     (`clock_correction`) y esas ejecuciones dejan de contar, aunque siguen
+     guardadas. Reevalúa la evidencia de hoy: un FAIL real sigue bloqueando.
+  Si la recogida también se hizo con el reloj adelantado, su fecha también es
+  futura y el conector sigue bloqueado con `check_run_missing` hasta que el
+  reloj la alcance, o hasta recoger de nuevo y restaurar desde la copia.
 - **`check_evidence_changed`**: alguien modificó la evidencia después de la
   ejecución. Vuelve a recoger y a ejecutar.
 - **`check_no_results`**: el check no ha emitido ningún resultado. Recoge y
@@ -104,7 +130,10 @@ caso.
   falsificación deliberada con la huella recalculada.
 - Borrar a la vez la última ejecución y la evidencia recogida después de ella
   no deja rastro dentro del workspace.
+- Borrar la última ejecución y **editar** un solo campo del manifiesto de la
+  evidencia nueva (`asset_id`, `collected_at`) tampoco lo deja, y
+  `evidence verify` local da el manifiesto editado por íntegro.
 
-Estos dos casos solo los detecta la copia externa: `ens-evidence backup` y
+Estos casos solo los detecta la copia externa: `ens-evidence backup` y
 `ens-evidence evidence verify` contra la copia inmutable
 ([ADR 0008](../decisions/0008-evidencias-y-copia-independiente.md)).

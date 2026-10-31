@@ -83,6 +83,10 @@ class World:
         self.at(at)
         return self.run("check", "--all")
 
+    def check_all_corrected(self, at=CHECKED_AT):
+        self.at(at)
+        return self.run("check", "--all", "--clock-corrected")
+
     def status(self, at=NOW, *args: str):
         return self.run("assessment", "status", "--at", at.isoformat(), *args)
 

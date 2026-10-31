@@ -12,6 +12,13 @@ class CheckInput(Strict):
     manifest_sha256: str = Field(pattern=SHA256_PATTERN)
 
 
+class ClockCorrection(Strict):
+    """Constancia de que la hora del equipo se corrigió: el intento que la lleva sustituye a las
+    ejecuciones `superseded` (claves), guardadas con el reloj adelantado. No se borra ninguna."""
+
+    superseded: list[str] = Field(min_length=1)
+
+
 class StoredCheckRun(Strict):
     """Un intento del motor para un conector, completo o no.
 
@@ -32,6 +39,7 @@ class StoredCheckRun(Strict):
     expected_subjects: dict[str, list[str]] = Field(default_factory=dict)
     results: list[CheckResult] = Field(default_factory=list)
     errors: list[str] = Field(default_factory=list)
+    clock_correction: ClockCorrection | None = None
 
     @model_validator(mode="after")
     def _coherent(self) -> "StoredCheckRun":

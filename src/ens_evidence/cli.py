@@ -1889,6 +1889,15 @@ def check(
     all_checks: Annotated[
         bool, typer.Option("--all", help="Evalúa los checks de todos los conectores configurados.")
     ] = False,
+    clock_corrected: Annotated[
+        bool,
+        typer.Option(
+            "--clock-corrected",
+            help="Confirma que la hora del equipo ya es la correcta y que las ejecuciones con "
+            "fecha futura se guardaron con el reloj adelantado: se registra una ejecución nueva "
+            "que las sustituye. No borra nada.",
+        ),
+    ] = False,
 ) -> None:
     """Evalúa los checks sobre lo ya recogido (sin red) y registra la ejecución. Sale con 0 si
     todo es PASS, 4 con algún FAIL, 3 con UNKNOWN, ERROR, ejecución incompleta o ningún conector
@@ -1898,7 +1907,7 @@ def check(
         raise fail("Indica --all para evaluar los checks de todos los conectores configurados.")
     store = open_workspace(ctx)
     try:
-        outcomes = run_all(store, clock())
+        outcomes = run_all(store, clock(), accept_clock_correction=clock_corrected)
     except ScopeNotApproved as exc:
         report_missing_context(exc)
         raise typer.Exit(2) from None
@@ -1906,6 +1915,12 @@ def check(
     for outcome in outcomes:
         last = scan.last(outcome.connector)
         print_check_outcome(outcome, last.key if last else None)
+        if outcome.kind is OutcomeKind.RECORDED and last and last.run.clock_correction:
+            replaced = ", ".join(last.run.clock_correction.superseded)
+            typer.echo(
+                f"  corrección del reloj: las ejecuciones con fecha futura ya no cuentan y siguen "
+                f"guardadas ({replaced})"
+            )
     if not any(o.run for o in outcomes):
         typer.echo("Ningún conector configurado: no se ha evaluado nada.")
     code = check_exit_code(outcomes)
@@ -1944,7 +1959,7 @@ def assessment_show_status(
     """Preparación del sistema para la autoevaluación. Lectura pura: no escribe nada. Sale con 0
     si está preparada y sin errores, 1 si no. La herramienta no declara conformidad."""
     instant = parse_instant("--at", at) or clock()
-    status = assessment_status(open_workspace(ctx), instant)
+    status = assessment_status(open_workspace(ctx), instant, check_source())
     typer.echo(
         render_status_json(status) if fmt is StatusFormat.JSON else render_status_text(status),
         nl=False,

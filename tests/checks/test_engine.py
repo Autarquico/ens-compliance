@@ -270,7 +270,7 @@ def test_a_crash_does_not_stop_the_other_checks(store, monkeypatch):
 
 def test_pass_then_exception_stores_the_attempt_and_the_matrix_keeps_no_pass(store, monkeypatch):
     collect(store)
-    source = StoredCheckResults()
+    source = StoredCheckResults(reference_now=NOW + timedelta(days=1))
     run_all(store, NOW)
     runs = source.runs(store, NOW + timedelta(minutes=30))
     before = technical_support(

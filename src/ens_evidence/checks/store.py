@@ -4,7 +4,8 @@ Clave: `evidence/checks/<conector>/<seq:06d>-<instante>-<sha12>.json`, con el in
 ejecución y la huella de sus bytes canónicos. Al leer, conector, número de orden, instante y huella
 deben coincidir con el contenido, y `finished_at` no puede decrecer con `seq`. Un registro
 ilegible, un nombre que no coincide, un duplicado, un hueco o un orden de instantes roto dejan el
-conector con `check_history_unreadable:<clave>`.
+conector con `check_history_unreadable:<clave>`. Única excepción: un intento con
+`clock_correction` sustituye a ejecuciones previas con fecha futura (reloj adelantado).
 
 Límite conocido: quitar los últimos registros (truncado final) no deja rastro dentro del
 historial. `StoredCheckResults` lo acota (si hay evidencia posterior a lo que cita el último
@@ -17,13 +18,13 @@ import json
 import re
 from collections import defaultdict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 from itertools import pairwise
 from typing import Any
 
 from pydantic import ValidationError
 
-from ens_evidence.checks.model import StoredCheckRun
+from ens_evidence.checks.model import ClockCorrection, StoredCheckRun
 from ens_evidence.evidence.layout import CHECKS_PREFIX
 from ens_evidence.matrix.store import instant_stamp
 from ens_evidence.workspace import AlreadyExists, NotFound, NotText, WorkspaceStore
@@ -56,6 +57,17 @@ class RunScan:
     def last(self, connector: str) -> StoredRun | None:
         found = self.runs.get(connector, ())
         return found[-1] if found else None
+
+    def live(self, connector: str) -> tuple[StoredRun, ...]:
+        """Las ejecuciones que cuentan: todas menos las que una corrección del reloj sustituyó."""
+        found = self.runs.get(connector, ())
+        replaced = {
+            key
+            for s in found
+            if s.run.clock_correction
+            for key in s.run.clock_correction.superseded
+        }
+        return tuple(s for s in found if s.key not in replaced)
 
 
 def connector_prefix(connector: str) -> str:
@@ -135,6 +147,27 @@ def _directory_connector(key: str) -> str:
     return parts[0] if len(parts) == 2 and parts[0] else UNATTRIBUTED
 
 
+def _order_broken(items: list[StoredRun]) -> bool:
+    """`finished_at` no puede decrecer con `seq`, salvo que el intento posterior declare que
+    sustituye al anterior por una corrección del reloj; esa declaración solo vale sobre
+    ejecuciones previas del conector con un instante posterior al suyo."""
+    earlier_runs: dict[str, StoredCheckRun] = {}
+    for earlier, later in pairwise(items):
+        correction = later.run.clock_correction
+        superseded = set(correction.superseded) if correction else set()
+        if later.run.finished_at < earlier.run.finished_at and earlier.key not in superseded:
+            return True
+    for item in items:
+        correction = item.run.clock_correction
+        if correction and any(
+            (past := earlier_runs.get(key)) is None or past.finished_at <= item.run.finished_at
+            for key in correction.superseded
+        ):
+            return True
+        earlier_runs[item.key] = item.run
+    return False
+
+
 def scan_runs(store: WorkspaceStore, connector: str | None = None) -> RunScan:
     """Lee el historial de un conector, o el de todos."""
     prefix = CHECKS_PREFIX if connector is None else connector_prefix(connector)
@@ -150,9 +183,7 @@ def scan_runs(store: WorkspaceStore, connector: str | None = None) -> RunScan:
     for owner, items in found.items():
         items.sort(key=lambda s: s.run.seq)
         seqs = [s.run.seq for s in items]
-        if any(
-            later.run.finished_at < earlier.run.finished_at for earlier, later in pairwise(items)
-        ):
+        if _order_broken(items):
             bad[owner].append(f"{connector_prefix(owner)}/order")
         for s in items:
             if seqs.count(s.run.seq) > 1:
@@ -165,23 +196,47 @@ def scan_runs(store: WorkspaceStore, connector: str | None = None) -> RunScan:
     )
 
 
-def record_run(store: WorkspaceStore, run: StoredCheckRun, now: datetime) -> str | None:
+def _when(instant: datetime) -> str:
+    return instant.astimezone(UTC).strftime("%Y-%m-%d %H:%M UTC")
+
+
+def record_run(
+    store: WorkspaceStore,
+    run: StoredCheckRun,
+    now: datetime,
+    *,
+    accept_clock_correction: bool = False,
+) -> str | None:
     """Registra el intento como fichero nuevo; `run.seq` se ignora y lo asigna el almacén.
 
     Devuelve la clave escrita, o None si no se escribió nada (mismo `outcome_digest` que el último
     intento). Un historial ilegible no se amplía (`CheckHistoryUnreadable`); se rechaza un
     `finished_at` posterior a `now` o anterior al del último intento: `seq` y `finished_at` deben
     dar el mismo orden, o un FAIL posterior podría quedar "antes" de un PASS.
+
+    Salida del reloj adelantado: con `accept_clock_correction`, si las últimas ejecuciones tienen
+    fecha posterior a `now`, el intento nuevo se escribe igualmente, con constancia de las
+    ejecuciones que sustituye (siguen guardadas). Sin ninguna ejecución futura no hace nada.
     """
     if run.finished_at > now:
-        raise ValueError("finished_at posterior al instante actual")
+        raise ValueError("la ejecución tiene una fecha posterior a la hora actual")
     scan = scan_runs(store, run.connector)
     if keys := scan.unreadable.get(run.connector):
         raise CheckHistoryUnreadable(run.connector, keys)
     last = scan.last(run.connector)
-    if last is not None and run.finished_at < last.run.finished_at:
-        raise ValueError("finished_at anterior al del último intento")
-    if last is not None and outcome_digest(last.run) == outcome_digest(run):
+    future = [s.key for s in scan.live(run.connector) if s.run.finished_at > run.finished_at]
+    if future and not accept_clock_correction:
+        assert last is not None
+        raise ValueError(
+            f"la hora del equipo ({_when(run.finished_at)}) es anterior a la última ejecución "
+            f"guardada de {run.connector} ({_when(last.run.finished_at)}). Siguiente paso: corrige "
+            "la hora del equipo. Si ya es correcta, esa ejecución se guardó con el reloj "
+            "adelantado: ejecuta ens-evidence check --all --clock-corrected (no borra nada) o "
+            "espera a esa hora"
+        )
+    if future:
+        run = run.model_copy(update={"clock_correction": ClockCorrection(superseded=future)})
+    elif last is not None and outcome_digest(last.run) == outcome_digest(run):
         return None
     numbered = run.model_copy(update={"seq": (last.run.seq if last else 0) + 1})
     data = canonical_bytes(numbered)

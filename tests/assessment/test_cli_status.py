@@ -175,7 +175,7 @@ def test_una_fecha_invalida_sale_con_2(cli):
 
 
 def test_un_error_de_workspace_sale_con_2(cli, monkeypatch):
-    def broken(store, at):
+    def broken(store, at, checks):
         raise WorkspaceError("sin acceso")
 
     monkeypatch.setattr("ens_evidence.cli.assessment_status", broken)

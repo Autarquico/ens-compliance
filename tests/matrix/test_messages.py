@@ -166,8 +166,25 @@ def test_todo_rol_tiene_etiqueta():
 
 def test_config_cambiada_y_ejecucion_futura_dicen_que_hacer():
     changed = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_config_changed:github"))
-    future = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_run_in_future:github"))
+    missing = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_config_missing:github"))
+    future = blocker_text(
+        blocker(BlockerKind.MISSING_EVIDENCE, "check_run_in_future:github:2026-11-01 12h00 UTC")
+    )
 
-    assert "cambió después de la última ejecución" in changed
-    assert "ens-evidence check --all" in changed
-    assert "revisa la hora del equipo y vuelve a ejecutar" in future
+    assert "conector github (connectors/github.yaml) cambió" in changed
+    assert "Siguiente paso: ens-evidence check --all" in changed
+    assert "falta o no se lee connectors/github.yaml" in missing and "matrix unlink" in missing
+    assert "checks de github tiene fecha futura (2026-11-01 12h00 UTC)" in future
+    assert "Siguiente paso: corrige la hora del equipo" in future
+    assert "--clock-corrected" in future and "`" not in changed + missing + future
+
+
+def test_evidencia_ilegible_y_conector_desconocido_dicen_que_hacer():
+    unreadable = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "evidence_unreadable:github"))
+    unknown = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_connector_unknown:foo"))
+
+    assert (
+        "checks de github" in unreadable
+        and "Siguiente paso: ens-evidence evidence verify" in unreadable
+    )
+    assert "evidence/checks/foo/" in unknown and "Siguiente paso" in unknown

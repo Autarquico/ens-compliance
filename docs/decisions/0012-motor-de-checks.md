@@ -73,22 +73,53 @@ regla de preparación de `docs/vision.md` exige READY solo si:
 
 - **Borrado de la última ejecución.** Borrarla ya no devuelve el PASS
   anterior mientras exista la evidencia recogida después de esa ejecución:
-  el conector bloquea con `check_run_missing`. Queda un límite: borrar a la
-  vez la ejecución y esa evidencia no deja rastro dentro del workspace y solo
-  lo detecta la copia externa (ADR 0008, `backup` + `evidence verify`). Lo
-  limitan además los 30 días de vigencia de la evidencia técnica.
+  el conector bloquea con `check_run_missing`. Si no se puede listar o leer
+  la evidencia, no se sabe si hay una recogida posterior y el conector
+  bloquea con `evidence_unreadable` (ante la duda se bloquea, nunca se
+  favorece). Un directorio de conector desconocido en `evidence/checks/`
+  se informa como `check_connector_unknown` y no tumba ningún comando.
+- **Límite: manipulación coordinada.** Borrar a la vez la última ejecución y
+  borrar o editar la evidencia posterior no deja rastro dentro del
+  workspace: editar un solo campo del manifiesto nuevo (`asset_id`,
+  `collected_at`) basta para que deje de ser candidata, y `evidence verify`
+  local lo da por íntegro. Solo lo detecta contrastar con la copia externa
+  inmutable (ADR 0008, `backup`). No se endurece dentro del workspace porque
+  la comprobación barata (cualquier manifiesto del conector posterior a la
+  ejecución) bloquearía para siempre al recoger evidencia de otro activo sin
+  poder salir con `check --all`. Lo limitan además los 30 días de vigencia de
+  la evidencia técnica.
 - **La huella no autentica.** El `sha12` del nombre detecta ediciones a mano,
   no una falsificación que recalcule contenido y nombre. Ambas se detectan
   contrastando con la copia externa.
 - **Reloj adelantado.** Una ejecución con un instante futuro cuenta desde ese
-  instante, y no se puede guardar nada anterior hasta que el reloj la alcance.
-  La matriz y la preparación lo detectan: si el historial tiene una ejecución
-  posterior al reloj de quien consulta, el conector bloquea con
-  `check_run_in_future`, también con `--at`.
+  instante, y `check --all` no guarda nada anterior a ella. Una sola fuente de
+  checks, construida con el reloj de quien consulta, la comparten
+  `assessment status`, `matrix status`, `matrix export` y los informes: si
+  el historial tiene una ejecución posterior a ese reloj, el conector
+  bloquea con `check_run_in_future` (con la fecha y el conector), también con
+  `--at`. La salida es explícita y conservadora:
+  - Esperar a que el reloj alcance esa fecha.
+  - O corregir la hora y ejecutar `check --all --clock-corrected`. Si hay
+    ejecuciones con fecha futura, escribe un intento nuevo con la hora
+    correcta y deja constancia (`clock_correction`, con las claves de las
+    ejecuciones sustituidas). No borra ni modifica nada: las ejecuciones
+    futuras siguen en el historial pero dejan de contar. El intento nuevo
+    reevalúa la evidencia de hoy, de modo que un FAIL real sigue
+    bloqueando. Sin ejecuciones futuras, el indicador no cambia nada.
+  - La corrección solo vale sobre ejecuciones previas del mismo conector con
+    un instante posterior al suyo; cualquier otra inversión del orden sigue
+    dejando el historial ilegible.
+  - Si la recogida también se hizo con el reloj adelantado, su fecha también
+    es futura: el conector sigue bloqueado con `check_run_missing` hasta que
+    el reloj la alcance o se vuelva a recoger y se restaure desde la copia.
 - **Configuración cambiada.** Si el sha256 actual de `connectors/<conector>.yaml`
   difiere del `config_sha256` del último intento (o el fichero falta o no se
-  lee), el conector bloquea con `check_config_changed` hasta ejecutar
-  `check --all`.
+  lee), el conector bloquea hasta ejecutar `check --all`:
+  `check_config_changed` si el fichero cambió y `check_config_missing` si
+  falta o no se lee. Con la configuración borrada, `check --all` responde
+  «no configurado» y no escribe nada: la salida es restaurar el fichero (o
+  configurar el conector de nuevo), o desvincular sus checks de la matriz
+  (`matrix unlink`) si ya no se usa.
 - **Checks que no emiten ningún resultado** (por ejemplo, sin túneles o sin
   usuarios suspendidos) dan `check_no_results` y bloquean. No conviene
   vincularlos hasta que el conector emita un resultado explícito.

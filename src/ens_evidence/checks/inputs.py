@@ -29,6 +29,7 @@ EVIDENCE_UNREADABLE = "evidence_unreadable"
 NO_EVIDENCE = "no_evidence"
 EVIDENCE_UNVERIFIED = "evidence_unverified"
 EVIDENCE_INCONSISTENT = "evidence_inconsistent"
+MISSING_RUN = "check_run_missing"
 
 
 @dataclass(frozen=True)
@@ -205,21 +206,34 @@ def evidence_after_run(
     run: StoredCheckRun,
     at: datetime,
     asset_id: str | None = None,
-) -> bool:
-    """Si hay evidencia recogida hasta `at` que el intento `run` no vio: el motor la elegiría hoy y
-    el intento no la cita (o es posterior a su fin). Reutiliza la selección del motor; `asset_id` es
-    el del conector con collector (el endpoint no lo necesita)."""
+) -> str | None:
+    """El motivo por el que la evidencia de hoy no es la que vio el intento `run`, o None.
+
+    `check_run_missing`: hay evidencia recogida hasta `at` que el motor elegiría hoy y que el
+    intento no cita (o es posterior a su fin). `evidence_unreadable`: no se puede listar o leer la
+    evidencia y no se sabe si hay una recogida posterior; ante la duda se bloquea. Reutiliza la
+    selección del motor; `asset_id` es el del conector con collector (el endpoint no lo necesita).
+    """
     cited = {i.evidence_id for i in run.inputs}
     if connector == ENDPOINT:
         loaded = load_endpoint_inputs(store)
+        if loaded.unreadable:
+            return EVIDENCE_UNREADABLE
         seen = [i.evidence for i in loaded.valid if i.evidence.collected_at <= at]
-        if loaded.unreadable or loaded.inconsistent:
-            return any(e.collected_at > run.finished_at for e in seen)
-        return any(e.evidence_id not in cited for e in latest_by_host(seen).values())
+        if loaded.inconsistent:
+            newer = any(e.collected_at > run.finished_at for e in seen)
+        else:
+            newer = any(e.evidence_id not in cited for e in latest_by_host(seen).values())
+        return MISSING_RUN if newer else None
     assert asset_id is not None
     selection = select_collector_input(store, connector, asset_id, at)
+    if selection.error == EVIDENCE_UNREADABLE:
+        return EVIDENCE_UNREADABLE
     if selection.evidence_id is None or selection.collected_at is None:
-        return False
-    if selection.ok:
-        return selection.evidence_id not in cited
-    return selection.collected_at > run.finished_at
+        return None
+    newer = (
+        selection.evidence_id not in cited
+        if selection.ok
+        else selection.collected_at > run.finished_at
+    )
+    return MISSING_RUN if newer else None

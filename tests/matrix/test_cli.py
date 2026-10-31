@@ -1,6 +1,6 @@
 import hashlib
 import json
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import yaml
@@ -658,7 +658,9 @@ def test_los_comandos_leen_las_ejecuciones_guardadas(initialized, signed, monkey
             reads.append(args)
             return super().runs(store, at)
 
-    monkeypatch.setattr("ens_evidence.cli.check_source", Spy)
+    monkeypatch.setattr(
+        "ens_evidence.cli.check_source", lambda: Spy(reference_now=datetime.now(UTC))
+    )
 
     initialized(*args)
 

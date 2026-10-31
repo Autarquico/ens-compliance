@@ -9,12 +9,13 @@ from datetime import timedelta
 import pytest
 from matrix.evaluate_helpers import NOW
 
-from ens_evidence.checks.store import scan_runs
+from ens_evidence.checks.store import record_run, scan_runs
 from ens_evidence.evidence.layout import CHECKS_PREFIX
 
 from .acceptance_helpers import CHECK_MEASURE, COLLECTED, REVIEWED_AT, SECRET, make_world
 from .test_engine import crash_in
 from .test_inputs import rewrite_manifest
+from .test_store import stored
 
 AFTER_THE_RUN = REVIEWED_AT + timedelta(minutes=10)
 THE_NEXT_DAY = timedelta(days=1)
@@ -191,7 +192,7 @@ def test_con_el_reloj_atrasado_el_fail_nuevo_no_se_registra_ni_deja_el_pass_en_p
     rejected = ready.check_all(AFTER_THE_RUN - timedelta(hours=2))
 
     assert rejected.exit_code == 2
-    assert "finished_at anterior al del último intento" in rejected.output
+    assert "es anterior a la última ejecución guardada de github" in rejected.output
     assert ready.runs() == runs_before
     only_blocked_by(ready, "check_run_missing:github")
 
@@ -203,3 +204,121 @@ def test_con_el_reloj_adelantado_el_fail_cuenta_y_no_se_puede_registrar_nada_ant
 
     only_blocked_by(ready, f"check_failed:{SECRET}:infra", at=ahead)
     assert ready.check_all(NOW).exit_code == 2
+
+
+# --- SEC-2, PROD-8..10: el reloj adelantado llega a la preparación y tiene salida ---------------
+
+
+def with_a_fail_recorded_by_a_clock_two_days_ahead(world) -> None:
+    world.collect(secret_scanning_off=True, at=COLLECTED + timedelta(hours=3))
+    assert world.check_all(NOW + 2 * THE_NEXT_DAY).exit_code == 4
+    world.at(AFTER_THE_RUN)  # el reloj vuelve a ser el correcto
+
+
+def test_assessment_status_detecta_la_ejecucion_con_fecha_futura(ready):
+    with_a_fail_recorded_by_a_clock_two_days_ahead(ready)
+
+    only_blocked_by(ready, "check_run_in_future:github")
+    text = ready.status().output
+    assert "la última ejecución de los checks de github tiene fecha futura (2026-11-01" in text
+    assert "--clock-corrected" in text
+    assert "ens-evidence check --all" in text
+
+
+def test_matrix_status_y_assessment_status_cuentan_lo_mismo_del_reloj_adelantado(ready):
+    with_a_fail_recorded_by_a_clock_two_days_ahead(ready)
+
+    matrix = ready.run("matrix", "status", "--at", NOW.isoformat())
+
+    assert matrix.exit_code == 1
+    assert "tiene fecha futura" in matrix.output and "--clock-corrected" in matrix.output
+
+
+def test_el_rechazo_por_reloj_se_explica_en_llano_y_con_el_siguiente_paso(ready):
+    with_a_fail_recorded_by_a_clock_two_days_ahead(ready)
+
+    rejected = ready.check_all(AFTER_THE_RUN)
+
+    assert rejected.exit_code == 2
+    assert "es anterior a la última ejecución guardada de github" in rejected.output
+    assert "Siguiente paso" in rejected.output and "--clock-corrected" in rejected.output
+    assert "finished_at" not in rejected.output
+
+
+def test_con_la_hora_corregida_clock_corrected_registra_una_ejecucion_nueva_sin_borrar_nada(ready):
+    with_a_fail_recorded_by_a_clock_two_days_ahead(ready)
+    before = ready.runs()
+
+    corrected = ready.check_all_corrected(AFTER_THE_RUN)
+
+    assert corrected.exit_code == 4  # el FAIL real sigue ahí: la salida no lo borra
+    assert "corrección del reloj" in corrected.output
+    after = ready.runs()
+    assert after[: len(before)] == before and len(after) == len(before) + 1
+    only_blocked_by(ready, f"check_failed:{SECRET}:infra")
+    assert "fecha futura" not in ready.status().output
+
+
+def test_tras_la_correccion_un_registro_posterior_sano_devuelve_la_preparacion(ready):
+    with_a_fail_recorded_by_a_clock_two_days_ahead(ready)
+    assert ready.check_all_corrected(AFTER_THE_RUN).exit_code == 4
+
+    ready.collect(at=COLLECTED + timedelta(hours=4))
+
+    assert ready.check_all(AFTER_THE_RUN + timedelta(minutes=1)).exit_code == 0
+    assert ready.status().exit_code == 0
+
+
+def test_clock_corrected_sin_ejecuciones_futuras_se_comporta_como_check_all(ready):
+    ready.collect(secret_scanning_off=True, at=COLLECTED + timedelta(hours=3))
+    runs_before = ready.runs()
+
+    ready.at(AFTER_THE_RUN)
+    result = ready.run("check", "--all", "--clock-corrected")
+
+    assert result.exit_code == 4
+    assert "corrección del reloj" not in result.output
+    assert len(ready.runs()) == len(runs_before) + 1
+
+
+# --- CODE-7: una evidencia que no se puede listar no se lee como «no hay evidencia posterior» ---
+
+
+def test_borrar_la_ultima_ejecucion_con_fail_y_dejar_un_manifiesto_ilegible_bloquea(ready):
+    ready.collect(secret_scanning_off=True, at=COLLECTED + timedelta(hours=3))
+    assert ready.check_all(AFTER_THE_RUN).exit_code == 4
+    (ready.store._root / scan_runs(ready.store).last("github").key).unlink()
+    ready.store.write_text("evidence/manifests/EV-20260601-deadbeef.yaml", "id: [roto")
+
+    only_blocked_by(ready, "evidence_unreadable:github")
+    assert "no se puede leer algún registro de evidencia" in ready.status().output
+
+
+# --- CODE-8 y followups: un directorio ajeno o una configuración borrada no rompen nada ---------
+
+
+def test_un_directorio_de_conector_desconocido_se_informa_sin_romper_los_comandos(ready):
+    record_run(ready.store, stored(connector="foo"), NOW)
+
+    for args in (("assessment", "status"), ("matrix", "status")):
+        result = ready.run(*args, "--at", NOW.isoformat())
+        assert "Traceback" not in result.output and "KeyError" not in result.output
+        assert "check_connector_unknown:foo" in result.output
+        assert result.exit_code == 1
+
+
+def test_con_la_configuracion_del_conector_borrada_el_mensaje_dice_que_hacer(ready):
+    (ready.store._root / "connectors/github.yaml").unlink()
+
+    only_blocked_by(ready, "check_config_missing:github")
+    text = ready.status().output
+    assert "connectors/github.yaml" in text and "matrix unlink" in text
+
+
+def test_la_configuracion_cambiada_nombra_el_conector(ready):
+    ready.store.write_text(
+        "connectors/github.yaml", ready.store.read_text("connectors/github.yaml") + "# x\n"
+    )
+
+    only_blocked_by(ready, "check_config_changed:github")
+    assert "la configuración del conector github (connectors/github.yaml)" in ready.status().output

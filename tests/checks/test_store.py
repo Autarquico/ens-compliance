@@ -3,7 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 
-from ens_evidence.checks.model import CheckInput, StoredCheckRun
+from ens_evidence.checks.model import CheckInput, ClockCorrection, StoredCheckRun
 from ens_evidence.checks.store import (
     CheckHistoryUnreadable,
     canonical_bytes,
@@ -189,7 +189,9 @@ class TestClockOrder:
         record(store, stored(results=[result(CheckStatus.PASS)]))
         failing = stored(results=[result(CheckStatus.FAIL)], at=NOW - timedelta(minutes=5))
 
-        with pytest.raises(ValueError, match="anterior al del último intento"):
+        with pytest.raises(
+            ValueError, match="es anterior a la última ejecución guardada de github"
+        ):
             record_run(store, failing, NOW)
 
         assert len(keys(store)) == 1
@@ -203,8 +205,22 @@ class TestClockOrder:
         ahead = NOW + timedelta(days=2)
         record_run(store, stored(results=[result(CheckStatus.FAIL)], at=ahead), ahead)
 
-        with pytest.raises(ValueError, match="anterior al del último intento"):
+        with pytest.raises(
+            ValueError, match="es anterior a la última ejecución guardada de github"
+        ):
             record_run(store, stored(results=[result(CheckStatus.PASS)]), NOW)
+
+    def test_the_rejection_names_the_connector_the_dates_and_the_next_step(self, store):
+        ahead = NOW + timedelta(days=2)
+        record_run(store, stored(at=ahead), ahead)
+
+        with pytest.raises(ValueError) as error:
+            record_run(store, stored(results=[result(CheckStatus.FAIL)]), NOW)
+
+        text = str(error.value)
+        assert "2026-10-30 12:00 UTC" in text and "2026-11-01 12:00 UTC" in text
+        assert "Siguiente paso" in text and "--clock-corrected" in text
+        assert "finished_at" not in text and "intento" not in text
 
     def test_history_whose_instants_go_back_with_seq_is_unreadable(self, store):
         record(store, stored(results=[result(CheckStatus.PASS)]))
@@ -307,3 +323,81 @@ class TestUnreadableHistoryIsNotExtended:
     def test_other_connectors_are_not_affected(self, store):
         store.write_bytes(f"{CHECKS_PREFIX}/restic/junk.json", b"{}")
         assert record(store) is not None
+
+
+class TestClockCorrection:
+    AHEAD = NOW + timedelta(days=2)
+
+    def ahead_then_corrected(self, store, **changes):
+        record_run(store, stored(results=[result(CheckStatus.FAIL)], at=self.AHEAD), self.AHEAD)
+        return record_run(store, stored(**changes), NOW, accept_clock_correction=True)
+
+    def test_a_new_attempt_is_written_even_if_it_has_the_same_outcome(self, store):
+        record_run(store, stored(at=self.AHEAD), self.AHEAD)
+
+        key = record_run(store, stored(), NOW, accept_clock_correction=True)
+
+        assert key is not None and len(keys(store)) == 2
+
+    def test_it_records_which_runs_it_supersedes_and_deletes_nothing(self, store):
+        before = self.AHEAD
+        record_run(store, stored(results=[result(CheckStatus.FAIL)], at=before), before)
+        (future,) = keys(store)
+
+        key = record_run(store, stored(), NOW, accept_clock_correction=True)
+
+        scan = scan_runs(store)
+        assert scan.unreadable == {}
+        assert scan.last("github").key == key
+        assert scan.last("github").run.clock_correction.superseded == [future]
+        assert [s.key for s in scan.live("github")] == [key]
+        assert future in keys(store)
+
+    def test_it_does_nothing_special_without_a_future_run(self, store):
+        record(store, stored())
+        record_run(
+            store, stored(results=[result(CheckStatus.FAIL)]), NOW, accept_clock_correction=True
+        )
+
+        assert all(s.run.clock_correction is None for s in scan_runs(store).runs["github"])
+
+    def test_every_future_run_is_superseded(self, store):
+        record_run(store, stored(at=self.AHEAD), self.AHEAD)
+        later = self.AHEAD + timedelta(hours=1)
+        record_run(store, stored(results=[result(CheckStatus.FAIL)], at=later), later)
+
+        record_run(store, stored(), NOW, accept_clock_correction=True)
+
+        scan = scan_runs(store)
+        assert scan.unreadable == {} and len(scan.live("github")) == 1
+
+    def test_runs_after_the_correction_follow_the_normal_rules(self, store):
+        self.ahead_then_corrected(store)
+        soon = NOW + timedelta(hours=1)
+
+        assert record_run(store, stored(results=[result(CheckStatus.FAIL)], at=soon), soon)
+        with pytest.raises(ValueError, match="anterior"):
+            record_run(store, stored(results=[result(CheckStatus.PASS)]), NOW)
+
+    def test_a_correction_that_names_a_run_that_is_not_in_the_future_is_unreadable(self, store):
+        record(store, stored())
+        forged = stored(seq=2, at=NOW + timedelta(minutes=1)).model_copy(
+            update={"clock_correction": ClockCorrection(superseded=[keys(store)[0]])}
+        )
+        data = canonical_bytes(forged)
+        store.write_bytes(run_key(forged, data), data)
+
+        assert scan_runs(store).unreadable == {"github": (f"{CHECKS_PREFIX}/github/order",)}
+
+    def test_a_correction_that_does_not_cover_every_inversion_is_unreadable(self, store):
+        record_run(store, stored(at=self.AHEAD), self.AHEAD)
+        later = self.AHEAD + timedelta(hours=1)
+        record_run(store, stored(results=[result(CheckStatus.FAIL)], at=later), later)
+        first, _ = keys(store)
+        partial = stored(seq=3).model_copy(
+            update={"clock_correction": ClockCorrection(superseded=[first])}
+        )
+        data = canonical_bytes(partial)
+        store.write_bytes(run_key(partial, data), data)
+
+        assert scan_runs(store).unreadable == {"github": (f"{CHECKS_PREFIX}/github/order",)}

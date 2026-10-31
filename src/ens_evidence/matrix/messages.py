@@ -150,11 +150,30 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "ens-evidence {c} y ens-evidence check --all"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_config_changed"): (
-        "la configuración del conector cambió después de la última ejecución; ejecuta "
-        "`ens-evidence check --all`"
+        "la configuración del conector {a} (connectors/{a}.yaml) cambió después de la última "
+        "ejecución de sus checks. Siguiente paso: ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_config_missing"): (
+        "falta o no se lee connectors/{a}.yaml, que existía en la última ejecución de los checks "
+        "de {a}. Siguiente paso: restáuralo desde la copia o configura {a} de nuevo y ejecuta "
+        "ens-evidence check --all; si ya no usas {a}, desvincula sus checks (matrix unlink)"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_run_in_future"): (
-        "hay una ejecución con fecha futura; revisa la hora del equipo y vuelve a ejecutar"
+        "la última ejecución de los checks de {a} tiene fecha futura ({b}): el reloj del equipo "
+        "iba adelantado. Siguiente paso: corrige la hora del equipo y ejecuta ens-evidence check "
+        "--all --clock-corrected (no borra nada), o espera a esa hora"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "evidence_unreadable"): (
+        "no se puede leer algún registro de evidencia y no se sabe si hay una recogida posterior "
+        "a la última ejecución de los checks de {a}. Siguiente paso: ens-evidence evidence verify "
+        "--all, restaura evidence/ desde la copia (ens-evidence backup …) y ejecuta "
+        "ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_connector_unknown"): (
+        "evidence/checks/{a}/ tiene ejecuciones de un conector que esta versión no conoce. "
+        "Siguiente paso: si es un resto de un conector retirado o una copia, sácalo de "
+        "evidence/checks/ (la herramienta no borra nada); si no, restaura evidence/checks/ desde "
+        "la copia"
     ),
     (BlockerKind.MISSING_EVIDENCE, "evidence_unbound"): (
         "la ejecución del check no registró la huella de la evidencia {a}: no se sabe si es la "

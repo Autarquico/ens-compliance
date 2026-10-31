@@ -100,6 +100,25 @@
       "title": "CheckStatus",
       "type": "string"
     },
+    "ClockCorrection": {
+      "additionalProperties": false,
+      "description": "Constancia de que la hora del equipo se corrigi\u00f3: el intento que la lleva sustituye a las\nejecuciones `superseded` (claves), guardadas con el reloj adelantado. No se borra ninguna.",
+      "properties": {
+        "superseded": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Superseded",
+          "type": "array"
+        }
+      },
+      "required": [
+        "superseded"
+      ],
+      "title": "ClockCorrection",
+      "type": "object"
+    },
     "CollectionStatus": {
       "enum": [
         "SUCCESS",
@@ -114,6 +133,17 @@
   "additionalProperties": false,
   "description": "Un intento del motor para un conector, completo o no.\n\n`seq` lo asigna el almac\u00e9n al registrarlo. `expected_subjects`: sujetos que cada check deb\u00eda\ncubrir. `config_sha256` y `scope_fingerprint` fijan con qu\u00e9 configuraci\u00f3n y alcance se ejecut\u00f3.",
   "properties": {
+    "clock_correction": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ClockCorrection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "complete": {
       "title": "Complete",
       "type": "boolean"

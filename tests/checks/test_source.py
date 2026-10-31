@@ -13,7 +13,7 @@ from ens_evidence.workspace import LocalStore
 
 from .test_store import CHECK, MANIFEST, NOW, result, stored
 
-SOURCE: CheckResultsSource = StoredCheckResults()
+SOURCE: CheckResultsSource = StoredCheckResults(reference_now=NOW + timedelta(days=30))
 EVIDENCE = "EV-20261029-aaaaaaaa"
 
 
@@ -191,7 +191,7 @@ class TestConfig:
     def test_missing_config_is_visible(self, store, tmp_path):
         record(store)
         (tmp_path / "ws" / config_key()).unlink()
-        assert SOURCE.connector_problems(store, NOW) == {"github": ["check_config_changed:github"]}
+        assert SOURCE.connector_problems(store, NOW) == {"github": ["check_config_missing:github"]}
 
     def test_unreadable_config_is_visible(self, store):
         record(store)
@@ -207,21 +207,82 @@ class TestConfig:
 
 class TestFutureRun:
     AHEAD = NOW + timedelta(days=2)
+    FUTURE = "2026-11-01 12h00 UTC"
 
     def test_run_after_the_reference_clock_blocks_also_with_an_earlier_at(self, store):
         record(store)
         record(store, at=self.AHEAD, results=[result(CheckStatus.FAIL)])
         source = StoredCheckResults(reference_now=NOW + timedelta(hours=1))
-        assert source.connector_problems(store, NOW) == {"github": ["check_run_in_future:github"]}
-        assert source.connector_problems(store, self.AHEAD) == {
-            "github": ["check_run_in_future:github"]
-        }
+        expected = {"github": [f"check_run_in_future:github:{self.FUTURE}"]}
+        assert source.connector_problems(store, NOW) == expected
+        assert source.connector_problems(store, self.AHEAD) == expected
 
     def test_run_not_after_the_reference_clock_does_not_block(self, store):
         record(store)
         source = StoredCheckResults(reference_now=NOW)
         assert source.connector_problems(store, NOW) == {}
 
-    def test_without_reference_clock_the_future_is_not_checked(self, store):
-        record(store, at=self.AHEAD)
-        assert SOURCE.connector_problems(store, NOW) == {}
+    def test_a_clock_correction_stops_the_superseded_run_from_counting(self, store):
+        record(store)
+        record(store, at=self.AHEAD, results=[result(CheckStatus.FAIL)])
+        corrected = NOW + timedelta(hours=1)
+        fresh = stored(at=corrected, config_sha256=sha256_hex(store.read_bytes(config_key())))
+        fresh = fresh.model_copy(update={"scope_fingerprint": scope_status(store).fingerprint})
+        record_run(store, fresh, corrected, accept_clock_correction=True)
+        source = StoredCheckResults(reference_now=corrected)
+
+        assert source.connector_problems(store, self.AHEAD) == {}
+        assert [r.finished_at for r in source.runs(store, self.AHEAD)] == [NOW, corrected]
+
+
+class TestUnknownConnector:
+    def test_a_valid_record_in_an_unknown_directory_is_reported_without_raising(self, store):
+        record(store, connector="foo")
+
+        assert SOURCE.connector_problems(store, NOW) == {"foo": ["check_connector_unknown:foo"]}
+
+    def test_known_connectors_stay_usable(self, store):
+        record(store, connector="foo")
+        record(store)
+
+        assert "github" not in SOURCE.connector_problems(store, NOW)
+
+
+class TestEvidence:
+    def test_unreadable_manifest_listing_blocks_instead_of_clearing_the_anchor(self, store):
+        store.write_text(config_key(), "asset_id: gh-taller\norganization: taller-norte\n")
+        record(store)
+        store.write_text("evidence/manifests/EV-20260601-deadbeef.yaml", "id: [roto")
+
+        assert SOURCE.connector_problems(store, NOW) == {"github": ["evidence_unreadable:github"]}
+
+
+class TestPrecedence:
+    """Cuando concurren varios motivos solo se muestra el primero: alcance, configuración,
+    evidencia. Un reloj adelantado se suma a cualquiera."""
+
+    def unreadable_manifest(self, store):
+        store.write_text("evidence/manifests/EV-20260601-deadbeef.yaml", "id: [roto")
+
+    def test_scope_wins_over_config_and_evidence(self, store):
+        record(store)
+        edit(store, "system", "  - bk-externo\n", "")
+        store.write_text(config_key(), "ejemplo: 2\n")
+        self.unreadable_manifest(store)
+        assert SOURCE.connector_problems(store, NOW) == {"github": ["check_scope_changed:github"]}
+
+    def test_config_wins_over_evidence(self, store):
+        record(store)
+        store.write_text(config_key(), "ejemplo: 2\n")
+        self.unreadable_manifest(store)
+        assert SOURCE.connector_problems(store, NOW) == {"github": ["check_config_changed:github"]}
+
+    def test_a_future_run_adds_to_the_other_reason(self, store):
+        record(store, at=NOW + timedelta(days=2), scope_fingerprint="9" * 64)
+        source = StoredCheckResults(reference_now=NOW)
+        assert source.connector_problems(store, NOW + timedelta(days=3)) == {
+            "github": [
+                "check_run_in_future:github:2026-11-01 12h00 UTC",
+                "check_scope_changed:github",
+            ]
+        }
