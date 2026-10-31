@@ -234,8 +234,12 @@ def prepare_review(
 
     entry = entry_of(load_matrix(store), measure_id)
     snapshot = documents_snapshot(store, now, documents)
-    runs, problems = load_checks(checks, store, now)
-    supports = link_supports(store, row, entry, runs, snapshot, now, problems) if selected else []
+    runs, connector_problems = load_checks(checks, store, now)
+    supports = (
+        link_supports(store, row, entry, runs, snapshot, now, connector_problems)
+        if selected
+        else []
+    )
     problems = _problems(
         entry, verdict, _missing(row, supports) if selected else [], _before_sources(supports, at)
     )

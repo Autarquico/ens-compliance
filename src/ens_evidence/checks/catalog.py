@@ -10,6 +10,8 @@ from dataclasses import dataclass
 from enum import StrEnum
 from types import MappingProxyType
 
+ENDPOINT_CONNECTOR = "endpoint"
+
 
 class SubjectKind(StrEnum):
     """Qué sujetos debe cubrir un check."""
@@ -51,13 +53,13 @@ CHECKS: Mapping[str, CheckSpec] = MappingProxyType(
         "restic.backup_004_integrity": CheckSpec("restic", SubjectKind.SELF_REPORTED),
         "restic.backup_005_restore_test": CheckSpec("restic", SubjectKind.SELF_REPORTED),
         "restic.backup_006_offsite": CheckSpec("restic", SubjectKind.SELF_REPORTED),
-        "HOST-001": CheckSpec("endpoint", SubjectKind.HOST),
-        "HOST-002": CheckSpec("endpoint", SubjectKind.HOST),
-        "HOST-003": CheckSpec("endpoint", SubjectKind.HOST),
-        "HOST-004": CheckSpec("endpoint", SubjectKind.HOST),
-        "HOST-005": CheckSpec("endpoint", SubjectKind.HOST),
-        "HOST-006": CheckSpec("endpoint", SubjectKind.HOST),
-        "HOST-007": CheckSpec("endpoint", SubjectKind.HOST),
+        "HOST-001": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
+        "HOST-002": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
+        "HOST-003": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
+        "HOST-004": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
+        "HOST-005": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
+        "HOST-006": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
+        "HOST-007": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
     }
 )
 

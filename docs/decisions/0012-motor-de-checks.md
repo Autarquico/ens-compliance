@@ -38,7 +38,14 @@ regla de preparación de `docs/vision.md` exige READY solo si:
     `check_history_unreadable` en estos casos:
     - nombre y contenido no coinciden;
     - hay un hueco en la secuencia;
-    - hay un duplicado.
+    - hay un duplicado;
+    - el instante de fin retrocede al avanzar la secuencia.
+  - **Reloj.** Se rechaza guardar una ejecución con un instante anterior al
+    de la última: el orden por secuencia y por instante es el mismo, así que un
+    FAIL posterior nunca queda «antes» de un PASS.
+  - **Evidencia posterior.** Si hay evidencia recogida después de lo que cita
+    la última ejecución, el conector bloquea con `check_run_missing` hasta
+    que se ejecute `check --all`.
   - **Si cambia la evidencia.** Si cambia un manifiesto citado, la matriz da
     `check_evidence_changed`.
   - **Si cambia el alcance.** Si el alcance cambia, el conector bloquea con
@@ -64,9 +71,24 @@ regla de preparación de `docs/vision.md` exige READY solo si:
 
 ## Consecuencias
 
-- **Borrado de la última ejecución.** Si alguien la borra, vuelve a contar la
-  anterior. Esto solo se detecta contrastando con la copia externa
-  (ADR 0008). Lo limitan los 30 días de vigencia de la evidencia técnica.
+- **Borrado de la última ejecución.** Borrarla ya no devuelve el PASS
+  anterior mientras exista la evidencia recogida después de esa ejecución:
+  el conector bloquea con `check_run_missing`. Queda un límite: borrar a la
+  vez la ejecución y esa evidencia no deja rastro dentro del workspace y solo
+  lo detecta la copia externa (ADR 0008, `backup` + `evidence verify`). Lo
+  limitan además los 30 días de vigencia de la evidencia técnica.
+- **La huella no autentica.** El `sha12` del nombre detecta ediciones a mano,
+  no una falsificación que recalcule contenido y nombre. Ambas se detectan
+  contrastando con la copia externa.
+- **Reloj adelantado.** Una ejecución con un instante futuro cuenta desde ese
+  instante, y no se puede guardar nada anterior hasta que el reloj la alcance.
+  La matriz y la preparación lo detectan: si el historial tiene una ejecución
+  posterior al reloj de quien consulta, el conector bloquea con
+  `check_run_in_future`, también con `--at`.
+- **Configuración cambiada.** Si el sha256 actual de `connectors/<conector>.yaml`
+  difiere del `config_sha256` del último intento (o el fichero falta o no se
+  lee), el conector bloquea con `check_config_changed` hasta ejecutar
+  `check --all`.
 - **Checks que no emiten ningún resultado** (por ejemplo, sin túneles o sin
   usuarios suspendidos) dan `check_no_results` y bloquean. No conviene
   vincularlos hasta que el conector emita un resultado explícito.

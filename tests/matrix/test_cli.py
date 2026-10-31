@@ -34,6 +34,7 @@ from .source_helpers import CHECK, collected_evidence, manual_evidence
 NOT_APPLICABLE = "op.cont.3"
 SELF = ["--by", "Ana", "--role", "system_administrator"]
 NO_RUN = "sin ejecución; ejecuta `ens-evidence check --all`"
+NOT_CONFIGURED = "conector no configurado; configúralo si lo usas o desvincula el check"
 
 
 @pytest.fixture
@@ -586,13 +587,23 @@ def test_status_con_at_anterior_a_la_revision_no_la_ve(initialized, signed):
     assert "revisión regular: no" in line_of(after.output, ONE_CLAUSE)
 
 
-def test_status_sin_ejecucion_dice_que_hay_que_ejecutar_check_all(initialized):
+def test_status_sin_ejecucion_dice_que_hay_que_ejecutar_check_all(initialized, signed):
+    signed.write_text("connectors/github.yaml", "asset_id: gh-taller\norganization: taller-norte\n")
     initialized("matrix", "link", ONE_CLAUSE, "--check", CHECK, "--covers", "base")
 
     result = initialized("matrix", "status")
 
     assert f"    check {CHECK}: {NO_RUN}" in result.output
     assert "pendiente del motor de checks" not in result.output
+
+
+def test_status_con_conector_sin_configurar_no_manda_a_ejecutar_check_all(initialized):
+    initialized("matrix", "link", ONE_CLAUSE, "--check", CHECK, "--covers", "base")
+
+    result = initialized("matrix", "status")
+
+    assert f"    check {CHECK}: {NOT_CONFIGURED}" in result.output
+    assert NO_RUN not in result.output
 
 
 def test_status_con_ejecucion_muestra_su_instante(initialized, signed):

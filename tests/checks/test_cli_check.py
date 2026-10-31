@@ -81,6 +81,7 @@ def test_todo_pass_sale_con_0_y_lista_los_conectores_no_configurados(cli, store)
     for connector in ("cloudflare", "endpoint", "google-workspace", "restic"):
         assert f"{connector}: no configurado" in result.output
     assert FOOTER in result.output
+    assert "Siguiente paso" not in result.output
 
 
 def test_un_fail_sale_con_4_y_nombra_el_resultado(cli, store):  # noqa: F811
@@ -92,6 +93,8 @@ def test_un_fail_sale_con_4_y_nombra_el_resultado(cli, store):  # noqa: F811
     assert f"FAIL {SECRET} infra" in result.output
     assert f"PASS {GITHUB_RESULTS - 1}  FAIL 1" in result.output
     assert FOOTER in result.output
+    assert "Siguiente paso: corrige lo que falla, vuelve a recoger y ejecuta" in result.output
+    assert "ens-evidence assessment status" in result.output
 
 
 def test_sin_evidencia_da_unknown_y_sale_con_3(cli):

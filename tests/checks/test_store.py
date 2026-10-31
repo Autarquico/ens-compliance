@@ -6,7 +6,6 @@ import pytest
 from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.checks.store import (
     CheckHistoryUnreadable,
-    RecordOutcome,
     canonical_bytes,
     outcome_digest,
     record_run,
@@ -59,7 +58,7 @@ def stored(*, connector="github", at=NOW, **changes) -> StoredCheckRun:
     return StoredCheckRun(**{**fields, **changes})
 
 
-def record(store, run=None) -> RecordOutcome:
+def record(store, run=None) -> str | None:
     run = run or stored()
     return record_run(store, run, run.finished_at + timedelta(minutes=1))
 
@@ -70,23 +69,22 @@ def keys(store, connector="github"):
 
 class TestKey:
     def test_has_connector_seq_instant_and_hash_of_the_canonical_bytes(self, store):
-        outcome = record(store)
-        data = store.read_bytes(outcome.key)
-        assert outcome.created
-        assert outcome.key == run_key(stored(), data)
-        assert outcome.key.startswith(f"{CHECKS_PREFIX}/github/000001-20261030T120000000000Z-")
+        key = record(store)
+        data = store.read_bytes(key)
+        assert key == run_key(stored(), data)
+        assert key.startswith(f"{CHECKS_PREFIX}/github/000001-20261030T120000000000Z-")
         assert data == canonical_bytes(stored())
         assert json.loads(data)["seq"] == 1
 
     def test_seq_is_assigned_by_the_store_and_increases(self, store):
         record(store, stored(seq=7))
         second = record(store, stored(results=[result(CheckStatus.FAIL)], at=NOW + timedelta(1)))
-        assert second.key.split("/")[-1].startswith("000002-")
+        assert second.split("/")[-1].startswith("000002-")
 
     def test_connectors_have_independent_sequences(self, store):
         record(store)
         other = record(store, stored(connector="restic", results=[], expected_subjects={}))
-        assert other.key.startswith(f"{CHECKS_PREFIX}/restic/000001-")
+        assert other.startswith(f"{CHECKS_PREFIX}/restic/000001-")
 
     def test_a_run_finished_in_the_future_is_rejected(self, store):
         with pytest.raises(ValueError, match="posterior"):
@@ -107,31 +105,31 @@ class TestScan:
         assert (scan.runs, scan.unreadable) == ({}, {})
 
     def test_edited_content_is_unreadable(self, store):
-        key = record(store).key
+        key = record(store)
         store.write_bytes(key, store.read_bytes(key).replace(b'"FAIL"', b'"PASS"') + b" ")
         assert scan_runs(store).unreadable == {"github": (key,)}
 
     def test_a_status_flipped_in_place_is_unreadable(self, store):
-        key = record(store, stored(results=[result(CheckStatus.FAIL)])).key
+        key = record(store, stored(results=[result(CheckStatus.FAIL)]))
         store.write_bytes(key, store.read_bytes(key).replace(b'"FAIL"', b'"PASS"'))
         assert scan_runs(store).unreadable == {"github": (key,)}
 
     def test_renamed_file_is_unreadable(self, store):
-        key = record(store).key
+        key = record(store)
         renamed = key.replace("000001-", "000002-")
         store.write_bytes(renamed, store.read_bytes(key))
         store._root.joinpath(key).unlink()
         assert scan_runs(store).unreadable == {"github": (renamed,)}
 
     def test_a_different_instant_in_the_name_is_unreadable(self, store):
-        key = record(store).key
+        key = record(store)
         moved = key.replace("20261030T120000", "20261029T120000")
         store.write_bytes(moved, store.read_bytes(key))
         store._root.joinpath(key).unlink()
         assert scan_runs(store).unreadable == {"github": (moved,)}
 
     def test_duplicated_seq_marks_both_files(self, store):
-        first = record(store).key
+        first = record(store)
         other = stored(results=[result(CheckStatus.FAIL)], at=NOW + timedelta(1))
         data = canonical_bytes(other)
         second = run_key(other, data)
@@ -142,11 +140,11 @@ class TestScan:
         record(store)
         middle = record(store, stored(results=[result(CheckStatus.FAIL)], at=NOW + timedelta(1)))
         record(store, stored(at=NOW + timedelta(2), config_sha256="d" * 64))
-        store._root.joinpath(middle.key).unlink()
+        store._root.joinpath(middle).unlink()
         assert scan_runs(store).unreadable == {"github": (f"{CHECKS_PREFIX}/github/seq",)}
 
     def test_file_copied_into_another_connector_directory_is_unreadable(self, store):
-        key = record(store).key
+        key = record(store)
         foreign = key.replace("/github/", "/restic/")
         store.write_bytes(foreign, store.read_bytes(key))
         scan = scan_runs(store)
@@ -177,20 +175,52 @@ class TestScan:
         """Límite conocido (ADR 0012): quitar los últimos registros no es detectable dentro del
         historial. Se contrasta con la copia externa (`backup` + `evidence verify`)."""
         record(store, stored(results=[result(CheckStatus.PASS)]))
-        failing = record(
-            store, stored(results=[result(CheckStatus.FAIL)], at=NOW + timedelta(1))
-        ).key
+        failing = record(store, stored(results=[result(CheckStatus.FAIL)], at=NOW + timedelta(1)))
         store._root.joinpath(failing).unlink()
         scan = scan_runs(store)
         assert scan.unreadable == {}
         assert scan.last("github").run.results[0].status is CheckStatus.PASS
 
 
+class TestClockOrder:
+    """`seq` y `finished_at` dan el mismo orden: un FAIL posterior no queda «antes» de un PASS."""
+
+    def test_a_run_finished_before_the_last_attempt_is_rejected(self, store):
+        record(store, stored(results=[result(CheckStatus.PASS)]))
+        failing = stored(results=[result(CheckStatus.FAIL)], at=NOW - timedelta(minutes=5))
+
+        with pytest.raises(ValueError, match="anterior al del último intento"):
+            record_run(store, failing, NOW)
+
+        assert len(keys(store)) == 1
+
+    def test_a_run_finished_at_the_same_instant_is_accepted(self, store):
+        record(store, stored(results=[result(CheckStatus.PASS)]))
+
+        assert record(store, stored(results=[result(CheckStatus.FAIL)])) is not None
+
+    def test_a_clock_set_forward_then_back_cannot_add_attempts_before_it(self, store):
+        ahead = NOW + timedelta(days=2)
+        record_run(store, stored(results=[result(CheckStatus.FAIL)], at=ahead), ahead)
+
+        with pytest.raises(ValueError, match="anterior al del último intento"):
+            record_run(store, stored(results=[result(CheckStatus.PASS)]), NOW)
+
+    def test_history_whose_instants_go_back_with_seq_is_unreadable(self, store):
+        record(store, stored(results=[result(CheckStatus.PASS)]))
+        later = stored(seq=2, results=[result(CheckStatus.FAIL)], at=NOW - timedelta(minutes=5))
+        data = canonical_bytes(later)
+        store.write_bytes(run_key(later, data), data)
+
+        assert scan_runs(store).unreadable == {"github": (f"{CHECKS_PREFIX}/github/order",)}
+        assert "github" not in scan_runs(store).runs
+
+
 class TestDeduplication:
     def test_same_outcome_again_writes_nothing(self, store):
         record(store)
         again = record(store, stored(at=NOW + timedelta(hours=1)))
-        assert again == RecordOutcome(None, False)
+        assert again is None
         assert len(keys(store)) == 1
 
     def test_instants_and_reasons_do_not_count(self):
@@ -207,45 +237,45 @@ class TestDeduplication:
     def test_new_evidence_with_the_same_result_is_a_new_run(self, store):
         record(store)
         inputs = [CheckInput(evidence_id="EV-20261029-aaaaaaaa", manifest_sha256="e" * 64)]
-        assert record(store, stored(inputs=inputs, at=NOW + timedelta(1))).created
+        assert record(store, stored(inputs=inputs, at=NOW + timedelta(1))) is not None
 
     def test_new_evidence_id_is_a_new_run(self, store):
         record(store)
         inputs = [CheckInput(evidence_id="EV-20261030-bbbbbbbb", manifest_sha256=MANIFEST)]
-        assert record(store, stored(inputs=inputs, at=NOW + timedelta(1))).created
+        assert record(store, stored(inputs=inputs, at=NOW + timedelta(1))) is not None
 
     def test_config_change_is_a_new_run(self, store):
         record(store)
-        assert record(store, stored(config_sha256="d" * 64, at=NOW + timedelta(1))).created
+        assert record(store, stored(config_sha256="d" * 64, at=NOW + timedelta(1))) is not None
 
     def test_scope_change_is_a_new_run(self, store):
         record(store)
-        assert record(store, stored(scope_fingerprint="d" * 64, at=NOW + timedelta(1))).created
+        assert record(store, stored(scope_fingerprint="d" * 64, at=NOW + timedelta(1))) is not None
 
     def test_engine_version_change_is_a_new_run(self, store):
         record(store)
-        assert record(store, stored(engine_version="2", at=NOW + timedelta(1))).created
+        assert record(store, stored(engine_version="2", at=NOW + timedelta(1))) is not None
 
     def test_expected_subjects_change_is_a_new_run(self, store):
         record(store)
         expected = {CHECK: ["repo-a", "repo-b"]}
-        assert record(store, stored(expected_subjects=expected, at=NOW + timedelta(1))).created
+        assert record(store, stored(expected_subjects=expected, at=NOW + timedelta(1))) is not None
 
     def test_status_change_is_a_new_run(self, store):
         record(store)
         failing = stored(results=[result(CheckStatus.FAIL)], at=NOW + timedelta(1))
-        assert record(store, failing).created
+        assert record(store, failing) is not None
 
     def test_error_change_is_a_new_run(self, store):
         failing = stored(complete=False, errors=["fallo uno"])
         record(store, failing)
-        assert not record(store, stored(complete=False, errors=["fallo uno"])).created
+        assert record(store, stored(complete=False, errors=["fallo uno"])) is None
         other = stored(complete=False, errors=["fallo dos"], at=NOW + timedelta(1))
-        assert record(store, other).created
+        assert record(store, other) is not None
 
     def test_complete_flag_is_part_of_the_outcome(self, store):
         record(store, stored(complete=False))
-        assert record(store, stored(at=NOW + timedelta(1))).created
+        assert record(store, stored(at=NOW + timedelta(1))) is not None
 
     def test_only_the_last_attempt_is_compared_so_a_b_a_leaves_three_runs(self, store):
         passing = stored(results=[result(CheckStatus.PASS)])
@@ -253,10 +283,10 @@ class TestDeduplication:
         record(store, passing)
         record(store, failing.model_copy(update={"finished_at": NOW + timedelta(1)}))
         third = record(store, passing.model_copy(update={"finished_at": NOW + timedelta(2)}))
-        assert third.created and len(keys(store)) == 3
+        assert third is not None and len(keys(store)) == 3
 
     def test_existing_key_is_not_overwritten(self, store):
-        key = record(store).key
+        key = record(store)
         before = store.read_bytes(key)
         # Escritura concurrente del mismo contenido: la clave ya existe y no se pisa.
         store.create_bytes(
@@ -267,7 +297,7 @@ class TestDeduplication:
 
 class TestUnreadableHistoryIsNotExtended:
     def test_raises_and_writes_nothing(self, store):
-        key = record(store).key
+        key = record(store)
         store.write_bytes(key, b"{}")
         with pytest.raises(CheckHistoryUnreadable) as caught:
             record(store, stored(results=[result(CheckStatus.FAIL)], at=NOW + timedelta(1)))
@@ -276,4 +306,4 @@ class TestUnreadableHistoryIsNotExtended:
 
     def test_other_connectors_are_not_affected(self, store):
         store.write_bytes(f"{CHECKS_PREFIX}/restic/junk.json", b"{}")
-        assert record(store).created
+        assert record(store) is not None

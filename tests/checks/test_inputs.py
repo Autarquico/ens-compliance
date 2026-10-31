@@ -12,10 +12,12 @@ from ens_evidence.checks.inputs import (
     EVIDENCE_UNREADABLE,
     EVIDENCE_UNVERIFIED,
     NO_EVIDENCE,
+    evidence_after_run,
     load_endpoint_inputs,
     load_engine_config,
     select_collector_input,
 )
+from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.connectors.github.config import GitHubConfig
 from ens_evidence.endpoint.normalize import SOURCE as ENDPOINT_SOURCE
 from ens_evidence.evidence.importer import canonical_json, import_attested_package, import_collected
@@ -72,7 +74,7 @@ def rewrite_manifest(store, evidence_id: str, pattern: str, replacement: str) ->
 
 
 def select(store, connector: str = "github"):
-    return select_collector_input(store, connector, Config(asset_id=ASSET))
+    return select_collector_input(store, connector, ASSET)
 
 
 def test_selects_latest_collected_at_with_manifest_sha(store):
@@ -260,6 +262,71 @@ def test_endpoint_with_unreadable_manifest_is_reported(store):
     store.write_text("evidence/manifests/EV-20260601-deadbeef.yaml", "id: [roto")
 
     assert load_endpoint_inputs(store).unreadable
+
+
+# --- evidencia posterior a la última ejecución ---------------------------------------------------
+
+
+def run_citing(*evidence_ids: str, finished_at: datetime = NOW) -> StoredCheckRun:
+    return StoredCheckRun(
+        seq=1,
+        connector="github",
+        engine_version="1",
+        started_at=finished_at,
+        finished_at=finished_at,
+        complete=True,
+        scope_fingerprint="a" * 64,
+        config_sha256="b" * 64,
+        inputs=[CheckInput(evidence_id=i, manifest_sha256="c" * 64) for i in evidence_ids],
+    )
+
+
+def after_run(store, run, at=NOW + timedelta(days=1)) -> bool:
+    return evidence_after_run(store, "github", run, at, ASSET)
+
+
+def test_the_evidence_the_run_cited_is_not_newer(store):
+    manifest = collect(store)
+
+    assert not after_run(store, run_citing(manifest.id))
+
+
+def test_newer_evidence_that_the_run_did_not_cite_is_flagged(store):
+    old = collect(store, collected_at=NOW - timedelta(days=1))
+    collect(store, collected_at=NOW)
+
+    assert after_run(store, run_citing(old.id))
+
+
+def test_evidence_collected_after_the_query_instant_is_ignored(store):
+    old = collect(store, collected_at=NOW - timedelta(days=1))
+    collect(store, collected_at=NOW)
+
+    assert not after_run(store, run_citing(old.id), at=NOW - timedelta(hours=1))
+
+
+def test_no_evidence_means_nothing_is_missing(store):
+    assert not after_run(store, run_citing())
+
+
+def test_unverifiable_latest_evidence_counts_only_if_collected_after_the_run(store):
+    older = collect(store, collected_at=NOW - timedelta(days=1))
+    latest = collect(store, collected_at=NOW)
+    store.write_bytes(latest.artifact.key, b"{}")
+
+    assert not after_run(store, run_citing(older.id), at=NOW)
+    assert after_run(store, run_citing(older.id, finished_at=NOW - timedelta(hours=1)), at=NOW)
+
+
+def endpoint_after_run(store, run) -> bool:
+    return evidence_after_run(store, "endpoint", run, NOW + timedelta(days=1))
+
+
+def test_endpoint_evidence_not_cited_by_the_run_is_flagged(store):
+    _, normalized = import_package(store)
+
+    assert endpoint_after_run(store, run_citing())
+    assert not endpoint_after_run(store, run_citing(normalized.id))
 
 
 # --- configuración ------------------------------------------------------------------------------

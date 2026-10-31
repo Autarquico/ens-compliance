@@ -47,7 +47,7 @@ def test_un_repo_sin_secret_scanning_deja_la_preparacion_en_no_preparada_con_el_
     assert checked.exit_code == 4
     assert status.exit_code == 1
     assert "Preparación: no preparada" in status.output
-    assert f"bloqueo: {REPO_FAILS}" in status.output
+    assert f"{CHECK_MEASURE}: {REPO_FAILS}" in status.output
     assert ("NOT_COMPLIANT", f"check_failed:{SECRET}:infra") in linked.blockers_of(CHECK_MEASURE)
 
 

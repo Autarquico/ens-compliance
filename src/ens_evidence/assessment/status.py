@@ -3,24 +3,36 @@
 Solo lee. No decide nada: la regla de preparación y los bloqueos son de la matriz (regla 12).
 """
 
+from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
 from ens_evidence.checks.catalog import KNOWN_CHECKS
 from ens_evidence.checks.source import StoredCheckResults
+from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.matrix import AssessmentResult, assess
-from ens_evidence.matrix.technical import latest_run
+from ens_evidence.matrix.technical import StaticCheckResults, latest_run, load_checks
+from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus, Readiness
 from ens_evidence.workspace import WorkspaceStore
 
 STATUS_ORDER = (CheckStatus.PASS, CheckStatus.FAIL, CheckStatus.UNKNOWN, CheckStatus.ERROR)
 
 
+def count_statuses(results: Iterable[CheckResult]) -> dict[CheckStatus, int]:
+    counts = dict.fromkeys(STATUS_ORDER, 0)
+    for result in results:
+        counts[result.status] += 1
+    return counts
+
+
 @dataclass(frozen=True)
 class ConnectorSummary:
-    """La última ejecución del conector en o antes de `at`; `finished_at` None si no hay."""
+    """La última ejecución del conector en o antes de `at`; `finished_at` None si no hay.
+    `configured`: el workspace tiene configuración de ese conector."""
 
     connector: str
+    configured: bool
     finished_at: datetime | None
     complete: bool
     counts: dict[CheckStatus, int]
@@ -41,21 +53,18 @@ class AssessmentStatus:
 
 
 def assessment_status(store: WorkspaceStore, at: datetime) -> AssessmentStatus:
-    checks = StoredCheckResults()
-    result = assess(store, at, checks=checks)
-    runs = checks.runs(store, at)
+    runs, problems = load_checks(StoredCheckResults(), store, at)
+    result = assess(store, at, checks=StaticCheckResults(runs, problems=problems))
     summaries = []
     for connector in sorted(set(KNOWN_CHECKS.values())):
         run = latest_run(runs, connector, at)
-        counts = dict.fromkeys(STATUS_ORDER, 0)
-        for item in run.results if run else ():
-            counts[item.status] += 1
         summaries.append(
             ConnectorSummary(
                 connector,
+                store.exists(connector_config_key(connector)),
                 run.finished_at if run else None,
                 run.complete if run else False,
-                counts,
+                count_statuses(run.results if run else ()),
             )
         )
     return AssessmentStatus(result, tuple(summaries))

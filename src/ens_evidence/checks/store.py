@@ -2,11 +2,14 @@
 
 Clave: `evidence/checks/<conector>/<seq:06d>-<instante>-<sha12>.json`, con el instante de fin de la
 ejecución y la huella de sus bytes canónicos. Al leer, conector, número de orden, instante y huella
-deben coincidir con el contenido; un registro ilegible, un nombre que no coincide, un duplicado o un
-hueco dejan el conector con `check_history_unreadable:<clave>`.
+deben coincidir con el contenido, y `finished_at` no puede decrecer con `seq`. Un registro
+ilegible, un nombre que no coincide, un duplicado, un hueco o un orden de instantes roto dejan el
+conector con `check_history_unreadable:<clave>`.
 
 Límite conocido: quitar los últimos registros (truncado final) no deja rastro dentro del
-historial. Se detecta contrastando con la copia externa (`backup` + `evidence verify`).
+historial. `StoredCheckResults` lo acota (si hay evidencia posterior a lo que cita el último
+intento, bloquea); borrar a la vez la ejecución y la evidencia solo se detecta contrastando con la
+copia externa (`backup` + `evidence verify`).
 """
 
 import hashlib
@@ -15,6 +18,7 @@ import re
 from collections import defaultdict
 from dataclasses import dataclass
 from datetime import datetime
+from itertools import pairwise
 from typing import Any
 
 from pydantic import ValidationError
@@ -52,14 +56,6 @@ class RunScan:
     def last(self, connector: str) -> StoredRun | None:
         found = self.runs.get(connector, ())
         return found[-1] if found else None
-
-
-@dataclass(frozen=True)
-class RecordOutcome:
-    """`key`: el registro escrito, o None si no se escribió nada por no haber cambios."""
-
-    key: str | None
-    created: bool
 
 
 def connector_prefix(connector: str) -> str:
@@ -154,6 +150,10 @@ def scan_runs(store: WorkspaceStore, connector: str | None = None) -> RunScan:
     for owner, items in found.items():
         items.sort(key=lambda s: s.run.seq)
         seqs = [s.run.seq for s in items]
+        if any(
+            later.run.finished_at < earlier.run.finished_at for earlier, later in pairwise(items)
+        ):
+            bad[owner].append(f"{connector_prefix(owner)}/order")
         for s in items:
             if seqs.count(s.run.seq) > 1:
                 bad[owner].append(s.key)
@@ -165,12 +165,13 @@ def scan_runs(store: WorkspaceStore, connector: str | None = None) -> RunScan:
     )
 
 
-def record_run(store: WorkspaceStore, run: StoredCheckRun, now: datetime) -> RecordOutcome:
+def record_run(store: WorkspaceStore, run: StoredCheckRun, now: datetime) -> str | None:
     """Registra el intento como fichero nuevo; `run.seq` se ignora y lo asigna el almacén.
 
-    Si el último intento del conector tiene el mismo `outcome_digest`, no escribe. Un historial
-    ilegible no se amplía (`CheckHistoryUnreadable`); un `finished_at` posterior a `now` se
-    rechaza.
+    Devuelve la clave escrita, o None si no se escribió nada (mismo `outcome_digest` que el último
+    intento). Un historial ilegible no se amplía (`CheckHistoryUnreadable`); se rechaza un
+    `finished_at` posterior a `now` o anterior al del último intento: `seq` y `finished_at` deben
+    dar el mismo orden, o un FAIL posterior podría quedar "antes" de un PASS.
     """
     if run.finished_at > now:
         raise ValueError("finished_at posterior al instante actual")
@@ -178,13 +179,15 @@ def record_run(store: WorkspaceStore, run: StoredCheckRun, now: datetime) -> Rec
     if keys := scan.unreadable.get(run.connector):
         raise CheckHistoryUnreadable(run.connector, keys)
     last = scan.last(run.connector)
+    if last is not None and run.finished_at < last.run.finished_at:
+        raise ValueError("finished_at anterior al del último intento")
     if last is not None and outcome_digest(last.run) == outcome_digest(run):
-        return RecordOutcome(None, False)
+        return None
     numbered = run.model_copy(update={"seq": (last.run.seq if last else 0) + 1})
     data = canonical_bytes(numbered)
     key = run_key(numbered, data)
     try:
         store.create_bytes(key, data)
     except AlreadyExists:
-        return RecordOutcome(key, False)
-    return RecordOutcome(key, True)
+        return None
+    return key

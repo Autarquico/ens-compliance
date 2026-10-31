@@ -9,6 +9,7 @@ revisado figura como «sin revisar», nunca como «no conforme». Nada declara c
 from collections.abc import Iterable
 
 from ens_evidence.applicability import DeclarationState
+from ens_evidence.checks.catalog import ENDPOINT_CONNECTOR, KNOWN_CHECKS
 from ens_evidence.matrix.obligations import COMPENSATION, RowKind
 from ens_evidence.models.enums import Category, MeasureAssessment, Readiness, Role
 from ens_evidence.models.readiness import Blocker, BlockerKind
@@ -35,7 +36,8 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "la última revisión pide revisarla de nuevo. Siguiente paso: " + REVIEW_STEP
     ),
     (BlockerKind.NOT_COMPLIANT, "check_failed"): (
-        "el check {a} ha fallado en «{b}». Corrige el problema y espera a una ejecución nueva"
+        "el check {a} ha fallado en «{b}». Siguiente paso: corrige el problema en el sistema, "
+        "recoge de nuevo (ens-evidence {c}) y ejecuta ens-evidence check --all"
     ),
     (BlockerKind.MISSING_REVIEW, "review_missing"): (
         "sin revisar: nadie ha valorado esta medida todavía. Siguiente paso: " + REVIEW_STEP
@@ -124,7 +126,7 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_unknown"): "el check {a} no existe",
     (BlockerKind.MISSING_EVIDENCE, "check_no_results"): (
-        "el check {a} aún no tiene ejecución. Siguiente paso: ens-evidence collect <conector> "
+        "el check {a} aún no tiene ejecución. Siguiente paso: ens-evidence {c} "
         "y ens-evidence check --all"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_incomplete"): (
@@ -136,12 +138,23 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_history_unreadable"): (
         "el historial de ejecuciones de checks tiene un registro ilegible ({a}) y no se sabe si "
-        "revoca un resultado anterior. Restáuralo desde la copia de seguridad: "
-        "ens-evidence evidence verify"
+        "revoca un resultado anterior. Siguiente paso: restaura evidence/checks/ desde la copia "
+        "de seguridad (ens-evidence backup …) y ejecuta ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_run_missing"): (
+        "hay evidencia recogida después de la última ejecución de los checks de {a}; puede faltar "
+        "una ejecución. Siguiente paso: ens-evidence check --all"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_scope_changed"): (
         "el alcance ha cambiado desde la última ejecución de los checks de {a}. Siguiente paso: "
-        "ens-evidence collect {a} y ens-evidence check --all"
+        "ens-evidence {c} y ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_config_changed"): (
+        "la configuración del conector cambió después de la última ejecución; ejecuta "
+        "`ens-evidence check --all`"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_run_in_future"): (
+        "hay una ejecución con fecha futura; revisa la hora del equipo y vuelve a ejecutar"
     ),
     (BlockerKind.MISSING_EVIDENCE, "evidence_unbound"): (
         "la ejecución del check no registró la huella de la evidencia {a}: no se sabe si es la "
@@ -149,7 +162,7 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_evidence_changed"): (
         "la evidencia {a} ha cambiado desde que se ejecutó el check. Siguiente paso: "
-        "ens-evidence collect <conector> y ens-evidence check --all"
+        "ens-evidence {c} y ens-evidence check --all"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_error"): "el check {a} dio error en «{b}»",
     (BlockerKind.MISSING_EVIDENCE, "check_unknown_subject"): "el check {a} no pudo valorar «{b}»",
@@ -245,10 +258,21 @@ def role_label(role: Role) -> str:
     return ROLE_LABELS.get(role, role.value)
 
 
+def collect_step(token: str) -> str:
+    """Cómo se recoge la evidencia de un check (o de un conector). El endpoint se importa; el
+    resto, se recoge con su conector."""
+    connector = KNOWN_CHECKS.get(token) or (token if token in KNOWN_CHECKS.values() else None)
+    if connector is None:
+        return "collect CONECTOR"
+    if connector == ENDPOINT_CONNECTOR:
+        return "evidence import --source endpoint …"
+    return f"collect {connector}"
+
+
 def _fill(template: str, measure_id: str | None, args: list[str]) -> str:
     a = args[0] if args else ""
     b = ":".join(args[1:])
-    return template.format(m=measure_id or "MEDIDA", a=a, b=b)
+    return template.format(m=measure_id or "MEDIDA", a=a, b=b, c=collect_step(a))
 
 
 def blocker_text(blocker: Blocker) -> str:

@@ -7,16 +7,18 @@ evidencia anterior, porque no se sabría si era la última.
 
 import json
 from dataclasses import dataclass, field
-from typing import Protocol
+from datetime import datetime
 
 from pydantic import BaseModel, ValidationError
 
+from ens_evidence.checks.model import StoredCheckRun
 from ens_evidence.connectors.config import (
     ConnectorConfigError,
     connector_config_key,
     load_connector_config,
 )
-from ens_evidence.endpoint.evidence import HostEvidence, load_host_evidence
+from ens_evidence.endpoint.config import CONFIG_NAME as ENDPOINT
+from ens_evidence.endpoint.evidence import HostEvidence, latest_by_host, load_host_evidence
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.layout import sha256_hex
 from ens_evidence.matrix.evidence import manifest_sha256, verified_manifest
@@ -29,17 +31,13 @@ EVIDENCE_UNVERIFIED = "evidence_unverified"
 EVIDENCE_INCONSISTENT = "evidence_inconsistent"
 
 
-class HasAssetId(Protocol):
-    @property
-    def asset_id(self) -> str: ...
-
-
 @dataclass(frozen=True)
 class InputSelection:
     """La última evidencia de collector de un conector, o el código de por qué no hay ninguna."""
 
     error: str | None = None
     evidence_id: str | None = None
+    collected_at: datetime | None = None
     result: CollectionResult | None = None
     manifest_sha256: str | None = None
     problems: tuple[str, ...] = ()
@@ -49,9 +47,15 @@ class InputSelection:
         return self.error is None
 
 
+def config_asset_id(config: BaseModel) -> str:
+    """El activo al que se refiere la configuración de un conector con evidencia de collector."""
+    return str(config.model_dump()["asset_id"])
+
+
 def select_collector_input(
-    store: WorkspaceStore, connector: str, config: HasAssetId
+    store: WorkspaceStore, connector: str, asset_id: str, at: datetime | None = None
 ) -> InputSelection:
+    """La última evidencia del conector para el activo; con `at`, la recogida hasta entonces."""
     listing = list_manifests(store)
     if listing.errors:
         return InputSelection(EVIDENCE_UNREADABLE, problems=tuple(listing.errors))
@@ -61,26 +65,40 @@ def select_collector_input(
         if manifest.provenance.kind is ProvenanceKind.COLLECTOR
         and manifest.collector is not None
         and manifest.collector.name == connector
-        and manifest.asset_id == config.asset_id
+        and manifest.asset_id == asset_id
+        and (at is None or manifest.collected_at <= at)
     ]
     if not candidates:
         return InputSelection(NO_EVIDENCE)
     latest = max(candidates, key=lambda m: (m.collected_at, m.provenance.submitted_at, m.id))
     verified = verified_manifest(store, latest.id)
     if verified is None:
-        return InputSelection(EVIDENCE_UNVERIFIED, evidence_id=latest.id)
+        return InputSelection(
+            EVIDENCE_UNVERIFIED, evidence_id=latest.id, collected_at=latest.collected_at
+        )
     result = _read_result(store, verified)
     if isinstance(result, str):
-        return InputSelection(EVIDENCE_UNVERIFIED, evidence_id=latest.id, problems=(result,))
+        return InputSelection(
+            EVIDENCE_UNVERIFIED,
+            evidence_id=latest.id,
+            collected_at=latest.collected_at,
+            problems=(result,),
+        )
     mismatches = _identity_mismatches(verified, result)
     if result is not None and result.collector != connector:
         mismatches.append("collector")
     if result is None or mismatches:
         return InputSelection(
-            EVIDENCE_INCONSISTENT, evidence_id=latest.id, problems=tuple(mismatches)
+            EVIDENCE_INCONSISTENT,
+            evidence_id=latest.id,
+            collected_at=latest.collected_at,
+            problems=tuple(mismatches),
         )
     return InputSelection(
-        evidence_id=latest.id, result=result, manifest_sha256=manifest_sha256(verified)
+        evidence_id=latest.id,
+        collected_at=latest.collected_at,
+        result=result,
+        manifest_sha256=manifest_sha256(verified),
     )
 
 
@@ -155,7 +173,8 @@ def load_endpoint_inputs(store: WorkspaceStore) -> EndpointInputs:
 
 @dataclass(frozen=True)
 class EngineConfig[M: BaseModel]:
-    """La configuración del conector o el error de config; `sha256` es el del fichero."""
+    """La configuración del conector o el error de config; `sha256` es el del fichero, si se pudo
+    leer, aunque no sea una configuración válida."""
 
     config: M | None = None
     sha256: str | None = None
@@ -165,9 +184,42 @@ class EngineConfig[M: BaseModel]:
 def load_engine_config[M: BaseModel](
     store: WorkspaceStore, connector: str, model: type[M]
 ) -> EngineConfig[M]:
+    sha256 = _file_sha256(store, connector_config_key(connector))
     try:
         config = load_connector_config(store, connector, model)
-        raw = store.read_bytes(connector_config_key(connector))
     except (ConnectorConfigError, WorkspaceError) as exc:
-        return EngineConfig(error=str(exc))
-    return EngineConfig(config, sha256_hex(raw))
+        return EngineConfig(sha256=sha256, error=str(exc))
+    return EngineConfig(config, sha256)
+
+
+def _file_sha256(store: WorkspaceStore, key: str) -> str | None:
+    try:
+        return sha256_hex(store.read_bytes(key))
+    except WorkspaceError:
+        return None
+
+
+def evidence_after_run(
+    store: WorkspaceStore,
+    connector: str,
+    run: StoredCheckRun,
+    at: datetime,
+    asset_id: str | None = None,
+) -> bool:
+    """Si hay evidencia recogida hasta `at` que el intento `run` no vio: el motor la elegiría hoy y
+    el intento no la cita (o es posterior a su fin). Reutiliza la selección del motor; `asset_id` es
+    el del conector con collector (el endpoint no lo necesita)."""
+    cited = {i.evidence_id for i in run.inputs}
+    if connector == ENDPOINT:
+        loaded = load_endpoint_inputs(store)
+        seen = [i.evidence for i in loaded.valid if i.evidence.collected_at <= at]
+        if loaded.unreadable or loaded.inconsistent:
+            return any(e.collected_at > run.finished_at for e in seen)
+        return any(e.evidence_id not in cited for e in latest_by_host(seen).values())
+    assert asset_id is not None
+    selection = select_collector_input(store, connector, asset_id, at)
+    if selection.evidence_id is None or selection.collected_at is None:
+        return False
+    if selection.ok:
+        return selection.evidence_id not in cited
+    return selection.collected_at > run.finished_at

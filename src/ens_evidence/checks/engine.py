@@ -16,6 +16,7 @@ from pydantic import BaseModel
 from ens_evidence import __version__
 from ens_evidence.checks.expected import ExpectedError, expected_subjects
 from ens_evidence.checks.inputs import (
+    config_asset_id,
     load_endpoint_inputs,
     load_engine_config,
     select_collector_input,
@@ -89,8 +90,8 @@ def _record(store: WorkspaceStore, run: StoredCheckRun, now: datetime) -> Connec
         return ConnectorOutcome(run.connector, OutcomeKind.HISTORY_UNREADABLE, run, None, exc.keys)
     except ValueError as exc:
         return ConnectorOutcome(run.connector, OutcomeKind.REJECTED, run, None, (str(exc),))
-    kind = OutcomeKind.RECORDED if recorded.key else OutcomeKind.UNCHANGED
-    return ConnectorOutcome(run.connector, kind, run, recorded.key)
+    kind = OutcomeKind.RECORDED if recorded else OutcomeKind.UNCHANGED
+    return ConnectorOutcome(run.connector, kind, run, recorded)
 
 
 def evaluate_connector(
@@ -100,16 +101,16 @@ def evaluate_connector(
     almacén al registrarlo)."""
     spec = ENGINE_CONNECTORS[connector]
     loaded = load_engine_config(store, connector, spec.config_model)
-    if loaded.config is None or loaded.sha256 is None:
-        message = f"{CONFIG_INVALID}: {loaded.error}"
-        evaluation = _Evaluation(errors=[message])
-        return _stored(spec, inventory, sha256_hex(message.encode()), evaluation, now)
+    config_sha256 = loaded.sha256 or sha256_hex(b"")  # fichero ilegible: huella de cero bytes
+    if loaded.config is None:
+        evaluation = _Evaluation(errors=[f"{CONFIG_INVALID}: {loaded.error}"])
+        return _stored(spec, inventory, config_sha256, evaluation, now)
     if connector == ENDPOINT:
         assert isinstance(loaded.config, EndpointConfig)
         evaluation = _endpoint(store, spec, loaded.config, inventory, now)
     else:
         evaluation = _collector(store, spec, loaded.config, inventory, now)
-    return _stored(spec, inventory, loaded.sha256, evaluation, now)
+    return _stored(spec, inventory, config_sha256, evaluation, now)
 
 
 def _stored(
@@ -142,8 +143,8 @@ def _collector(
     inventory: Inventory,
     now: datetime,
 ) -> _Evaluation:
-    asset_id = str(config.model_dump()["asset_id"])
-    selection = select_collector_input(store, spec.name, config)  # type: ignore[arg-type]
+    asset_id = config_asset_id(config)
+    selection = select_collector_input(store, spec.name, asset_id)
     try:
         expected = expected_subjects(spec.name, config, inventory, selection.result)
     except ExpectedError as exc:

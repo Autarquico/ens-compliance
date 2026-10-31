@@ -1,8 +1,11 @@
 import dataclasses
 import json
+import re
 from datetime import timedelta
 
 import pytest
+from checks.acceptance_helpers import GITHUB_CONFIG
+from checks.test_engine import write_config
 from matrix.evaluate_helpers import NOW
 
 from ens_evidence.checks.model import StoredCheckRun
@@ -60,9 +63,18 @@ def test_texto_no_preparada_sale_con_1_y_avisa_de_la_revision_humana(cli):
 
     assert result.exit_code == 1
     assert "Preparación: no preparada" in result.output
-    assert "bloqueo:" in result.output
     assert PENDING in result.output and NO_PRE_AUDIT in result.output
     assert "La herramienta no declara conformidad." in result.output
+
+
+def test_cada_bloqueo_indica_su_medida_y_el_recuento_cuadra_con_la_lista(cli):
+    lines = cli("assessment", "status", *AT).output.splitlines()
+
+    header = next(line for line in lines if line.startswith("Preparación:"))
+    blockers = [line for line in lines if re.match(r"^  [a-z]+(\.[a-z]+)*\.\d+: ", line)]
+    measures = {line.split(":")[0].strip() for line in blockers}
+    assert header.endswith(f"{len(blockers)} bloqueos en {len(measures)} medidas.")
+    assert len(blockers) > len(measures)
 
 
 def test_texto_preparada_sale_con_0_y_sigue_avisando_de_la_revision_humana(cli, ready):
@@ -122,9 +134,20 @@ def test_resume_las_fuentes_tecnicas_por_conector(cli, signed):
 
     github = f"github: ejecución de {finished.isoformat()}  PASS 0  FAIL 1  UNKNOWN 0"
     assert github in result.output
-    assert "restic: sin ejecución; ejecuta `ens-evidence check --all`" in result.output
-    for connector in ("cloudflare", "endpoint", "google-workspace"):
-        assert f"{connector}: sin ejecución" in result.output
+    for connector in ("restic", "cloudflare", "endpoint", "google-workspace"):
+        assert f"{connector}: no configurado" in result.output
+    assert "sin ejecución" not in result.output
+
+
+def test_un_conector_configurado_sin_ejecucion_manda_a_ejecutar_check_all(cli, signed):
+    write_config(signed, "github", GITHUB_CONFIG)
+
+    result = cli("assessment", "status", *AT)
+    document = json.loads(cli("assessment", "status", *AT, "--format", "json").output)
+
+    assert "github: sin ejecución; ejecuta `ens-evidence check --all`" in result.output
+    configured = {c["connector"]: c["configured"] for c in document["checks"]}
+    assert configured["github"] is True and configured["restic"] is False
 
 
 def test_json_resume_las_fuentes_tecnicas(cli, signed):

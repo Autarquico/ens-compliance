@@ -236,7 +236,7 @@ def test_invalid_config_gives_an_incomplete_run_without_results(store):
     assert not run.complete
     assert run.results == []
     assert [e.split(":")[0] for e in run.errors] == [CONFIG_INVALID]
-    assert run.config_sha256 == sha256_hex(run.errors[0].encode())
+    assert run.config_sha256 == sha256_hex(b"asset_id: [")
 
 
 # --- check_crashed -----------------------------------------------------------------------------

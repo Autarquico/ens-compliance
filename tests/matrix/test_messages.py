@@ -6,6 +6,7 @@ from ens_evidence.models.enums import Role
 from ens_evidence.models.readiness import Blocker, BlockerKind
 
 FORBIDDEN = ("cumple", "certifica", "garantiza")
+SECRET = "github.secret_scanning_enabled"
 
 
 def blocker(kind, detail="", measure="op.acc.5"):
@@ -88,8 +89,50 @@ def test_check_con_sujeto_y_check_desconocido_no_se_confunden():
 def test_check_no_results_indica_collect_y_check_all():
     text = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_no_results:c1"))
 
-    assert "ens-evidence collect <conector>" in text
+    assert "ens-evidence collect CONECTOR" in text
     assert "ens-evidence check --all" in text
+
+
+@pytest.mark.parametrize(
+    ("check_id", "step"),
+    [
+        ("github.secret_scanning_enabled", "ens-evidence collect github"),
+        ("restic.backup_001_recent", "ens-evidence collect restic"),
+        ("HOST-001", "ens-evidence evidence import --source endpoint"),
+    ],
+)
+@pytest.mark.parametrize("head", ["check_no_results", "check_failed", "check_evidence_changed"])
+def test_el_siguiente_paso_nombra_el_conector_del_check(head, check_id, step):
+    kind = BlockerKind.NOT_COMPLIANT if head == "check_failed" else BlockerKind.MISSING_EVIDENCE
+    detail = f"{head}:{check_id}" + (":infra" if head == "check_failed" else "")
+
+    text = blocker_text(blocker(kind, detail))
+
+    assert step in text and "<" not in text
+    assert "ens-evidence check --all" in text
+
+
+def test_un_check_fallido_no_manda_a_esperar():
+    text = blocker_text(blocker(BlockerKind.NOT_COMPLIANT, f"check_failed:{SECRET}:infra"))
+
+    assert "espera" not in text.lower()
+    assert "Siguiente paso: corrige el problema en el sistema" in text
+
+
+def test_historial_ilegible_manda_a_restaurar_y_no_a_verificar():
+    text = blocker_text(
+        blocker(BlockerKind.MISSING_EVIDENCE, "check_history_unreadable:evidence/checks/github/seq")
+    )
+
+    assert "restaura evidence/checks/ desde la copia de seguridad" in text
+    assert "evidence verify" not in text and "ens-evidence check --all" in text
+
+
+def test_ejecucion_que_falta_manda_a_ejecutar_check_all():
+    text = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_run_missing:github"))
+
+    assert "después de la última ejecución" in text
+    assert "Siguiente paso: ens-evidence check --all" in text
 
 
 @pytest.mark.parametrize(
@@ -98,6 +141,8 @@ def test_check_no_results_indica_collect_y_check_all():
         "check_last_run_failed:github",
         "check_history_unreadable:evidence/checks/github/000002.json",
         "check_scope_changed:github",
+        "check_config_changed:github",
+        "check_run_in_future:github",
         "evidence_unbound:EV-20260101-aaaa",
         "check_evidence_changed:EV-20260101-aaaa",
     ],
@@ -117,3 +162,12 @@ def test_los_textos_no_afirman_conformidad():
 
 def test_todo_rol_tiene_etiqueta():
     assert set(messages.ROLE_LABELS) == set(Role)
+
+
+def test_config_cambiada_y_ejecucion_futura_dicen_que_hacer():
+    changed = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_config_changed:github"))
+    future = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_run_in_future:github"))
+
+    assert "cambió después de la última ejecución" in changed
+    assert "ens-evidence check --all" in changed
+    assert "revisa la hora del equipo y vuelve a ejecutar" in future

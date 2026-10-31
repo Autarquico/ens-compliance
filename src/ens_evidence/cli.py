@@ -24,8 +24,8 @@ from ens_evidence.applicability import (
     validate_applicability,
 )
 from ens_evidence.assessment import (
-    STATUS_ORDER,
     assessment_status,
+    count_statuses,
     render_status_json,
     render_status_text,
 )
@@ -741,7 +741,7 @@ def clock() -> datetime:
 
 def check_source() -> StoredCheckResults:
     """Las ejecuciones del motor de checks que leen la matriz y la preparación."""
-    return StoredCheckResults()
+    return StoredCheckResults(reference_now=clock())
 
 
 def report_missing_context(exc: ScopeNotApproved | CategorizationNotCurrent) -> typer.Exit:
@@ -1829,6 +1829,12 @@ CHECK_FOOTER = (
 )
 
 
+CHECK_NEXT_STEP = (
+    "Siguiente paso: corrige lo que falla, vuelve a recoger y ejecuta `ens-evidence check --all`; "
+    "el detalle por medida está en `ens-evidence assessment status`."
+)
+
+
 def check_exit_code(outcomes: list[ConnectorOutcome]) -> int:
     """2 si algún conector no se pudo evaluar (config, historial, rechazo); 4 con algún FAIL;
     3 con UNKNOWN, ERROR, intento incompleto o nada configurado; 0 si todo es PASS."""
@@ -1864,7 +1870,7 @@ def print_check_outcome(outcome: ConnectorOutcome, last_key: str | None) -> None
         if outcome.kind is OutcomeKind.RECORDED
         else f"sin cambios desde {last_key}"
     )
-    counts = {s: sum(1 for r in run.results if r.status is s) for s in STATUS_ORDER}
+    counts = count_statuses(run.results)
     typer.echo(f"{name}: {written}")
     typer.echo("  " + "  ".join(f"{s.value} {n}" for s, n in counts.items()))
     for result in run.results:
@@ -1885,7 +1891,9 @@ def check(
     ] = False,
 ) -> None:
     """Evalúa los checks sobre lo ya recogido (sin red) y registra la ejecución. Sale con 0 si
-    todo es PASS, 4 con algún FAIL, 3 con UNKNOWN o ERROR y 2 si no se pudo evaluar."""
+    todo es PASS, 4 con algún FAIL, 3 con UNKNOWN, ERROR, ejecución incompleta o ningún conector
+    configurado, y 2 si no se pudo evaluar (configuración inválida, historial ilegible, ejecución
+    rechazada o alcance no aprobado)."""
     if not all_checks:
         raise fail("Indica --all para evaluar los checks de todos los conectores configurados.")
     store = open_workspace(ctx)
@@ -1900,8 +1908,11 @@ def check(
         print_check_outcome(outcome, last.key if last else None)
     if not any(o.run for o in outcomes):
         typer.echo("Ningún conector configurado: no se ha evaluado nada.")
+    code = check_exit_code(outcomes)
+    if any(r.status is not CheckStatus.PASS for o in outcomes if o.run for r in o.run.results):
+        typer.echo(CHECK_NEXT_STEP)
     typer.echo(CHECK_FOOTER)
-    raise typer.Exit(check_exit_code(outcomes))
+    raise typer.Exit(code)
 
 
 @report_app.command("daily")

@@ -6,17 +6,25 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ens_evidence.checks.catalog import KNOWN_CHECKS
+from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.matrix.documents import OrgDocumentSource
 from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess
 from ens_evidence.matrix.links import link_label
 from ens_evidence.matrix.model import CheckLink
 from ens_evidence.matrix.obligations import RowKind
-from ens_evidence.matrix.technical import CheckResultsSource, CheckRun, latest_run, load_checks
+from ens_evidence.matrix.technical import (
+    CheckResultsSource,
+    CheckRun,
+    StaticCheckResults,
+    latest_run,
+    load_checks,
+)
 from ens_evidence.models.enums import MeasureAssessment
 from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.workspace import WorkspaceStore
 
 NO_CHECK_RUN = "sin ejecución; ejecuta `ens-evidence check --all`"
+CONNECTOR_NOT_CONFIGURED = "conector no configurado; configúralo si lo usas o desvincula el check"
 IRREGULAR_REVIEW_BLOCKERS = {
     BlockerKind.MISSING_REVIEW,
     BlockerKind.EXPIRED_REVIEW,
@@ -37,12 +45,22 @@ class RowStatus:
         return self.row.blockers
 
 
-def check_line(link: CheckLink, runs: Sequence[CheckRun], at: datetime) -> str:
+def check_line(
+    link: CheckLink, runs: Sequence[CheckRun], at: datetime, configured: bool = True
+) -> str:
     """Qué ejecución del motor respalda (o no) un enlace a un check."""
     connector = KNOWN_CHECKS.get(link.check_id)
     run = latest_run(runs, connector, at) if connector else None
-    detail = NO_CHECK_RUN if run is None else f"ejecución de {run.finished_at.isoformat()}"
+    if run is not None:
+        detail = f"ejecución de {run.finished_at.isoformat()}"
+    else:
+        detail = NO_CHECK_RUN if configured else CONNECTOR_NOT_CONFIGURED
     return f"{link_label(link)}: {detail}"
+
+
+def _is_configured(store: WorkspaceStore, link: CheckLink) -> bool:
+    connector = KNOWN_CHECKS.get(link.check_id)
+    return connector is None or store.exists(connector_config_key(connector))
 
 
 def row_status(row: AssessmentRow, check_lines: tuple[str, ...] = ()) -> RowStatus:
@@ -71,11 +89,17 @@ def matrix_status(
     checks: CheckResultsSource | None = None,
     documents: OrgDocumentSource | None = None,
 ) -> tuple[AssessmentResult, tuple[RowStatus, ...]]:
-    result = assess(store, at, checks=checks, documents=documents)
-    runs, _ = load_checks(checks, store, at)
+    runs, problems = load_checks(checks, store, at)
+    result = assess(
+        store, at, checks=StaticCheckResults(runs, problems=problems), documents=documents
+    )
 
     def lines(row: AssessmentRow) -> tuple[str, ...]:
         links = row.entry.links if row.entry else []
-        return tuple(check_line(link, runs, at) for link in links if isinstance(link, CheckLink))
+        return tuple(
+            check_line(link, runs, at, _is_configured(store, link))
+            for link in links
+            if isinstance(link, CheckLink)
+        )
 
     return result, tuple(row_status(r, lines(r)) for r in result.rows)

@@ -159,3 +159,47 @@ def test_un_ultimo_intento_fallido_no_recupera_el_pass_anterior(ready, monkeypat
     assert checked.exit_code == 3
     only_blocked_by(ready, "check_last_run_failed:github")
     assert "no se usa el resultado anterior" in ready.status().output
+
+
+# --- SEC-1: el último registro ya no se puede borrar para lavar un FAIL ------------------------
+
+
+def test_borrar_la_ultima_ejecucion_con_fail_no_devuelve_el_pass_anterior(ready):
+    ready.collect(secret_scanning_off=True, at=COLLECTED + timedelta(hours=3))
+    assert ready.check_all(AFTER_THE_RUN).exit_code == 4
+    last = scan_runs(ready.store).last("github").key
+
+    (ready.store._root / last).unlink()
+
+    only_blocked_by(ready, "check_run_missing:github")
+    assert "hay evidencia recogida después de la última ejecución" in ready.status().output
+    assert "ens-evidence check --all" in ready.status().output
+
+
+def test_una_recogida_nueva_sin_check_all_bloquea_hasta_ejecutarlo(ready):
+    ready.collect(at=COLLECTED + timedelta(hours=3))
+
+    only_blocked_by(ready, "check_run_missing:github")
+    assert ready.check_all(NOW - timedelta(minutes=10)).exit_code == 0
+    assert ready.status().exit_code == 0
+
+
+def test_con_el_reloj_atrasado_el_fail_nuevo_no_se_registra_ni_deja_el_pass_en_pie(ready):
+    ready.collect(secret_scanning_off=True, at=COLLECTED + timedelta(hours=3))
+    runs_before = ready.runs()
+
+    rejected = ready.check_all(AFTER_THE_RUN - timedelta(hours=2))
+
+    assert rejected.exit_code == 2
+    assert "finished_at anterior al del último intento" in rejected.output
+    assert ready.runs() == runs_before
+    only_blocked_by(ready, "check_run_missing:github")
+
+
+def test_con_el_reloj_adelantado_el_fail_cuenta_y_no_se_puede_registrar_nada_anterior(ready):
+    ready.collect(secret_scanning_off=True, at=COLLECTED + timedelta(hours=3))
+    ahead = NOW + 2 * THE_NEXT_DAY
+    assert ready.check_all(ahead).exit_code == 4
+
+    only_blocked_by(ready, f"check_failed:{SECRET}:infra", at=ahead)
+    assert ready.check_all(NOW).exit_code == 2
