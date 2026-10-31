@@ -103,6 +103,11 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
   matriz como `coverage_gaps`. El motor de checks (`checks-engine`) consume
   solo esa función.
 
+- **Política de fuentes por medida** (`matrix/policy.py`): las cláusulas de
+  op.exp.9 solo se sustentan con el historial verificado de un incidente
+  cerrado (`incident-history`, 0013). Cualquier otra fuente se rechaza al
+  enlazar y al evaluar.
+
 ## Consecuencias
 
 - Hasta que exista el motor de checks no cuenta ningún check: la única vía de
