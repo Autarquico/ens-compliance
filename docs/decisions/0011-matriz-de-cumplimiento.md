@@ -76,10 +76,10 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
   matriz (revisiones, `matrix.yaml`, aprobaciones) se rechazan si repiten una
   clave, también anidada: `safe_load` se quedaría con la última.
 - **Los historiales de solo adición se contrastan con su clave.** La clave de
-  una revisión codifica su instante; la de una firma archivada, instante y
-  huella (`<instante>-<sha12>.yaml`); la de una aprobación documental, documento
+  una revisión codifica su instante y la huella de su contenido validado
+  (`<instante>-<sha12>.yaml`), igual que la de una firma archivada; la de una aprobación documental, documento
   e instante; el id de una evidencia, el día de su alta. Si el contenido no
-  coincide (p. ej. `recorded_at` o `approved_at` retocados), el registro es
+  coincide (p. ej. `recorded_at`, la valoración o `approved_at` retocados), el registro es
   ilegible: `review_unreadable`, `declaration_history_unreadable`,
   `org_document_unreadable` o la evidencia no verificada. Una edición a mano no
   puede favorecer a la organización: o se detecta y bloquea, o no cambia nada.
