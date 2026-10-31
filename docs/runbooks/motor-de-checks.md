@@ -138,10 +138,9 @@ caso.
 - Borrar a la vez la última ejecución y la evidencia recogida después de ella
   no deja rastro dentro del workspace.
 - Borrar la última ejecución **y** el manifiesto de la evidencia posterior.
-- Cambiar la procedencia de un manifiesto de `collector` a otra.
 
 Editar un campo del manifiesto de la evidencia (`asset_id`, `collected_at`,
-`collector.name`) sí se detecta: el motor compara el manifiesto con su
+`collector.name`, `provenance.kind`) sí se detecta: el motor compara el manifiesto con su
 artefacto y bloquea con `check_evidence_inconsistent`. Ojo: `evidence verify`
 local no compara esos campos, así que puede dar la evidencia por íntegra.
 

@@ -48,7 +48,11 @@ regla de preparación de `docs/vision.md` exige READY solo si:
     activo y `collected_at`), que está verificado por hash, y no por los
     campos del manifiesto, que se pueden editar. Si algún manifiesto de
     procedencia collector no coincide con su artefacto (fuente, collector,
-    activo o fecha), o su artefacto no verifica, los conectores a los que
+    activo o fecha), o su artefacto no verifica, o un manifiesto de otra
+    procedencia (`manual`) tiene un artefacto íntegro que es un
+    `CollectionResult` de un conector (la procedencia declarada no decide qué
+    es candidato; los paquetes de endpoints y la evidencia manual legítimos no
+    lo son), los conectores a los que
     pudiera pertenecer (el del artefacto y el que declara el manifiesto; si no
     se puede saber, todos) dan `UNKNOWN` con `evidence_inconsistent` o
     `evidence_unverified`, y la matriz bloquea con `check_evidence_inconsistent`
@@ -95,10 +99,13 @@ regla de preparación de `docs/vision.md` exige READY solo si:
 - **Límite: manipulación coordinada.** Editar un campo del manifiesto
   (`asset_id`, `collected_at`, `collector.name`) ya no basta para que la
   evidencia deje de ser candidata: bloquea (ver «Identidad de la evidencia»).
-  Quedan dos vías que no dejan rastro dentro del workspace: borrar a la vez la
-  última ejecución y el manifiesto de la evidencia posterior, o cambiar la
-  procedencia del manifiesto de `collector` a otra. Solo las detecta contrastar
-  con la copia externa inmutable (ADR 0008, `backup`). Lo limitan además los
+  Cambiar `provenance.kind` de `collector` a otra tampoco: el artefacto sigue
+  siendo de collector y el conector bloquea. Queda una vía que no deja rastro
+  dentro del workspace: borrar a la vez la última ejecución y el manifiesto de
+  la evidencia posterior; o cambiar `provenance.kind` y además romper el
+  artefacto, de modo que ya no se sabe que era de collector (`evidence verify`
+  sí lo señala). Solo lo detecta contrastar con la copia externa
+  inmutable (ADR 0008, `backup`). Lo limitan además los
   30 días de vigencia de la evidencia técnica.
 - **La huella no autentica.** El `sha12` del nombre detecta ediciones a mano,
   no una falsificación que recalcule contenido y nombre. Ambas se detectan

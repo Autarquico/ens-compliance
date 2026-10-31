@@ -90,24 +90,43 @@ def _read_entry(store: WorkspaceStore, manifest: EvidenceManifest) -> _Entry:
     )
 
 
+def _read_foreign_entry(store: WorkspaceStore, manifest: EvidenceManifest) -> _Entry | None:
+    """Un manifiesto que no declara procedencia collector. Es ajeno (None) salvo que su artefacto,
+    íntegro, sea un `CollectionResult` de un conector: entonces la procedencia declarada miente.
+    Las evidencias manuales y los paquetes de endpoints legítimos no son de un conector."""
+    result = _read_result(store, manifest)
+    if not isinstance(result, CollectionResult) or result.source == ENDPOINT_SOURCE:
+        return None
+    declared = {manifest.collector.name} if manifest.collector else set()
+    return _Entry(
+        manifest,
+        error=EVIDENCE_INCONSISTENT,
+        affected=frozenset({result.collector, *declared}),
+        problems=(f"procedencia {manifest.provenance.kind.value} con artefacto de collector",),
+    )
+
+
+def _read_candidate(store: WorkspaceStore, manifest: EvidenceManifest) -> _Entry | None:
+    if manifest.provenance.kind is ProvenanceKind.COLLECTOR:
+        return _read_entry(store, manifest)
+    return _read_foreign_entry(store, manifest)
+
+
 def select_collector_input(
     store: WorkspaceStore, connector: str, asset_id: str, at: datetime | None = None
 ) -> InputSelection:
     """La última evidencia del conector para el activo; con `at`, la recogida hasta entonces.
 
     La identidad sale del artefacto, que está verificado por hash, y no de los campos del
-    manifiesto, que se pueden editar. Si algún manifiesto de collector no cuadra con su artefacto
-    o su artefacto no verifica, el conector al que pudiera pertenecer se bloquea: retocar el
-    manifiesto de la última evidencia no puede hacer elegir una anterior.
+    manifiesto, que se pueden editar, tampoco la procedencia declarada. Si algún manifiesto de
+    collector no cuadra con su artefacto, su artefacto no verifica, o un manifiesto de otra
+    procedencia tiene un artefacto de collector, el conector al que pudiera pertenecer se bloquea:
+    retocar el manifiesto de la última evidencia no puede hacer elegir una anterior.
     """
     listing = list_manifests(store)
     if listing.errors:
         return InputSelection(EVIDENCE_UNREADABLE, problems=tuple(listing.errors))
-    entries = [
-        _read_entry(store, m)
-        for m in listing.manifests
-        if m.provenance.kind is ProvenanceKind.COLLECTOR
-    ]
+    entries = [e for e in (_read_candidate(store, m) for m in listing.manifests) if e is not None]
     blocking = sorted(
         (e for e in entries if e.error and (e.affected is None or connector in e.affected)),
         key=lambda e: (e.error != EVIDENCE_UNVERIFIED, e.manifest.id),

@@ -22,7 +22,12 @@ from ens_evidence.checks.inputs import (
 from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.connectors.github.config import GitHubConfig
 from ens_evidence.endpoint.normalize import SOURCE as ENDPOINT_SOURCE
-from ens_evidence.evidence.importer import canonical_json, import_attested_package, import_collected
+from ens_evidence.evidence.importer import (
+    canonical_json,
+    import_attested_package,
+    import_collected,
+    import_manual,
+)
 from ens_evidence.evidence.layout import artifact_key, manifest_key, sha256_hex
 from ens_evidence.evidence.manifests import render_manifest
 from ens_evidence.matrix.evidence import manifest_sha256
@@ -475,3 +480,37 @@ def test_invalid_config_is_an_error_without_values(store):
 
     assert loaded.config is None
     assert loaded.error
+
+
+# --- procedencia declarada -----------------------------------------------------------------------
+
+
+def test_a_retouched_provenance_kind_never_selects_the_older_evidence(store):
+    collect(store, collected_at=NOW - timedelta(days=1), marker="old")
+    latest = collect(store, marker="new")
+    rewrite_manifest(store, latest.id, r"^  kind: collector$", "  kind: manual")
+
+    selected = select(store)
+
+    assert selected.error == EVIDENCE_INCONSISTENT
+    assert selected.result is None
+    assert selected.evidence_id == latest.id
+
+
+def test_a_retouched_provenance_kind_blocks_the_status_too(store):
+    old = collect(store, collected_at=NOW - timedelta(days=1), marker="old")
+    latest = collect(store, marker="new")
+    rewrite_manifest(store, latest.id, r"^  kind: collector$", "  kind: manual")
+
+    assert after_run(store, run_citing(old.id)) == CHECK_EVIDENCE_INCONSISTENT
+
+
+def test_a_manual_evidence_does_not_affect_the_connector(store):
+    mine = collect(store)
+    import_manual(
+        store, b"politica en pdf", asset_id=ASSET, submitted_by="ana", now=NOW + timedelta(hours=1)
+    )
+    import_package(store)
+
+    assert select(store).evidence_id == mine.id
+    assert after_run(store, run_citing(mine.id)) is None
