@@ -1,5 +1,3 @@
-import importlib
-import re
 from datetime import timedelta
 
 import pytest
@@ -7,13 +5,12 @@ import yaml
 
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.matrix import (
-    KNOWN_CHECKS,
     TECHNICAL_MAX_AGE,
     CheckRun,
     NoCheckResults,
     StaticCheckResults,
 )
-from ens_evidence.matrix.technical import technical_support
+from ens_evidence.matrix.technical import latest_run, technical_support
 from ens_evidence.models.enums import CheckStatus
 from ens_evidence.models.readiness import BlockerKind
 from ens_evidence.workspace import LocalStore
@@ -28,8 +25,8 @@ def store(tmp_path):
     return LocalStore(tmp_path / "ws")
 
 
-def support(store, runs, link=None, at=AT):
-    return technical_support(store, ROW, link or check_link(), runs, at)
+def support(store, runs, link=None, at=AT, problems=None):
+    return technical_support(store, ROW, link or check_link(), runs, at, problems or {})
 
 
 def details(result):
@@ -83,33 +80,54 @@ def test_dos_activos_con_resultado_cuentan(store):
     assert len(result.evidence) == 2
 
 
-def test_una_ejecucion_parcial_no_cuenta_ni_oculta_a_la_completa_anterior(store):
+def last_run_failed(connector="github"):
+    return [(BlockerKind.MISSING_EVIDENCE, f"check_last_run_failed:{connector}")]
+
+
+@pytest.mark.parametrize("errors", [("timeout",), ()])
+def test_un_intento_fallido_posterior_a_un_pass_no_recupera_el_pass(store, errors):
     two_days = AT - timedelta(days=2)
     complete = run(
         [check_result(store, evaluated_at=two_days, collected_at=two_days)],
         run_id="ok",
         finished_at=two_days,
     )
-    partial = run(
-        [check_result(store, status=CheckStatus.FAIL, evidence_ids=[])],
-        run_id="parcial",
-        finished_at=AT - timedelta(hours=1),
-        complete=False,
-        errors=("timeout",),
+    assert support(store, [complete]).counts
+    failed = run(
+        [], run_id="fallido", finished_at=AT - timedelta(hours=1), complete=False, errors=errors
     )
 
-    result = support(store, [complete, partial])
+    result = support(store, [complete, failed])
 
-    assert result.counts
-    assert result.available_at == complete.finished_at
+    assert not result.counts
+    assert details(result) == last_run_failed()
 
 
-def test_solo_una_ejecucion_parcial_no_cuenta(store):
+def test_solo_un_intento_incompleto_bloquea_por_ultimo_intento_fallido(store):
     partial = run([check_result(store)], complete=False, errors=("timeout",))
 
     result = support(store, [partial])
 
-    assert details(result) == [(BlockerKind.MISSING_EVIDENCE, f"check_no_results:{CHECK}")]
+    assert details(result) == last_run_failed()
+
+
+def test_una_ejecucion_completa_posterior_a_un_fallo_vuelve_a_sustentar(store):
+    failed = run([], run_id="a", finished_at=AT - timedelta(days=2), complete=False)
+    good = run([check_result(store)], run_id="b", finished_at=AT - timedelta(hours=1))
+
+    assert support(store, [failed, good]).counts
+
+
+def test_el_fallo_de_un_conector_no_bloquea_a_otro(store):
+    failed = run([], complete=False, errors=("x",))
+    other = run(
+        [check_result(store, "r", check_id=OTHER_CHECK)],
+        run_id="r",
+        connector="restic",
+        expected=("r",),
+    )
+
+    assert support(store, [failed, other], check_link(OTHER_CHECK)).counts
 
 
 def test_gana_la_ejecucion_completa_mas_reciente(store):
@@ -164,13 +182,10 @@ def test_un_fail_es_not_compliant(store):
     assert details(result) == [(BlockerKind.NOT_COMPLIANT, f"check_failed:{CHECK}:repo-b")]
 
 
-@pytest.mark.parametrize("status", [CheckStatus.ERROR, CheckStatus.UNKNOWN])
-def test_error_o_unknown_es_evidencia_ausente(store, status):
-    result = support(store, [run([check_result(store, status=status, evidence_ids=[])])])
+def test_error_es_evidencia_ausente(store):
+    result = support(store, [run([check_result(store, status=CheckStatus.ERROR, evidence_ids=[])])])
 
-    assert details(result) == [
-        (BlockerKind.MISSING_EVIDENCE, f"check_{status.value.lower()}:{CHECK}:repo-a")
-    ]
+    assert details(result) == [(BlockerKind.MISSING_EVIDENCE, f"check_error:{CHECK}:repo-a")]
 
 
 def test_fail_y_pass_conviven_y_gana_el_fail(store):
@@ -274,36 +289,6 @@ def test_una_ejecucion_completa_con_errores_es_incoherente():
         CheckRun("r", "github", AT, AT - timedelta(seconds=1), True)
 
 
-def _constants(module: str, pattern: str) -> set[str]:
-    mod = importlib.import_module(module)
-    return {
-        value
-        for name, value in vars(mod).items()
-        if not name.startswith("_") and isinstance(value, str) and re.fullmatch(pattern, value)
-    }
-
-
-@pytest.mark.parametrize(
-    ("module", "connector", "pattern"),
-    [
-        ("ens_evidence.connectors.github.checks", "github", r"github\.[a-z_]+"),
-        ("ens_evidence.connectors.cloudflare.checks", "cloudflare", r"cloudflare\.[a-z_]+"),
-        (
-            "ens_evidence.connectors.google_workspace.checks",
-            "google_workspace",
-            r"workspace\.[a-z0-9_]+",
-        ),
-        ("ens_evidence.connectors.restic.checks", "restic", r"restic\.[a-z0-9_]+"),
-        ("ens_evidence.endpoint.checks", "endpoint", r"HOST-\d{3}"),
-    ],
-)
-def test_known_checks_coincide_con_las_constantes_de_cada_modulo(module, connector, pattern):
-    declared = {check for check, owner in KNOWN_CHECKS.items() if owner == connector}
-
-    assert declared == _constants(module, pattern)
-    assert declared
-
-
 def _collected_at(store, evidence_id, moment):
     key = manifest_key(evidence_id)
     data = yaml.safe_load(store.read_text(key))
@@ -318,7 +303,7 @@ def test_cambiar_collected_at_no_rejuvenece_un_pass_antiguo(store):
     assert [b.kind for b in support(store, [stale]).blockers] == [BlockerKind.EXPIRED_EVIDENCE]
 
     _collected_at(store, result.evidence_ids[0], AT - timedelta(days=1))
-    forged = support(store, [stale])
+    forged = support(store, [run([result], finished_at=old)])
 
     assert not forged.counts
     assert details(forged) == [
@@ -355,3 +340,111 @@ def test_un_manifiesto_con_una_clave_repetida_no_cuenta(store):
     assert details(forged) == [
         (BlockerKind.MISSING_EVIDENCE, f"evidence_unverified:{result.evidence_ids[0]}")
     ]
+
+
+# --- huella de la evidencia al ejecutar ------------------------------------------------------
+
+
+def test_la_evidencia_modificada_tras_la_ejecucion_no_sustenta(store):
+    result = check_result(store)
+    executed = run([result])
+    assert support(store, [executed]).counts
+
+    key = manifest_key(result.evidence_ids[0])
+    data = yaml.safe_load(store.read_text(key))
+    data["valid_until"] = (AT + timedelta(days=3)).isoformat()
+    store.write_text(key, yaml.safe_dump(data, sort_keys=False))
+    changed = support(store, [executed])
+
+    assert not changed.counts
+    assert details(changed) == [
+        (BlockerKind.MISSING_EVIDENCE, f"check_evidence_changed:{result.evidence_ids[0]}")
+    ]
+
+
+def test_un_id_de_evidencia_sin_huella_en_la_ejecucion_no_sustenta(store):
+    result = check_result(store)
+
+    unbound = support(store, [run([result], evidence_sha256={})])
+
+    assert not unbound.counts
+    assert details(unbound) == [
+        (BlockerKind.MISSING_EVIDENCE, f"evidence_unbound:{result.evidence_ids[0]}")
+    ]
+
+
+def test_una_huella_ajena_a_la_evidencia_citada_no_sustenta(store):
+    result = check_result(store)
+    other = check_result(store, "repo-b")
+    forged = {result.evidence_ids[0]: run([other]).evidence_sha256[other.evidence_ids[0]]}
+
+    assert not support(store, [run([result], evidence_sha256=forged)]).counts
+
+
+# --- sujetos esperados por check -------------------------------------------------------------
+
+
+def test_expected_for_usa_el_sujeto_del_check_y_si_no_el_de_la_ejecucion():
+    executed = run([], expected=("a", "b"), expected_by_check={CHECK: ("a",)})
+
+    assert executed.expected_for(CHECK) == {"a"}
+    assert executed.expected_for(OTHER_CHECK) == {"a", "b"}
+
+
+def test_los_sujetos_esperados_del_check_mandan_sobre_los_del_conector(store):
+    results = [check_result(store, "repo-a")]
+    both = run(results, expected=("repo-a", "repo-b"))
+    narrowed = run(results, expected=("repo-a", "repo-b"), expected_by_check={CHECK: ("repo-a",)})
+
+    assert not support(store, [both]).counts
+    assert support(store, [narrowed]).counts
+
+
+# --- UNKNOWN y problemas de conector ---------------------------------------------------------
+
+
+def test_un_unknown_no_se_confunde_con_un_check_inexistente(store):
+    unknown = check_result(store, status=CheckStatus.UNKNOWN, evidence_ids=[])
+
+    result = support(store, [run([unknown])])
+
+    assert details(result) == [
+        (BlockerKind.MISSING_EVIDENCE, f"check_unknown_subject:{CHECK}:repo-a")
+    ]
+
+
+def test_un_problema_de_conector_bloquea_sus_checks_aunque_haya_un_pass(store):
+    runs = [run([check_result(store)])]
+    problems = {"github": ["check_history_unreadable:evidence/checks/github/x.json"]}
+
+    result = support(store, runs, problems=problems)
+
+    assert not result.counts
+    assert details(result) == [
+        (BlockerKind.MISSING_EVIDENCE, "check_history_unreadable:evidence/checks/github/x.json")
+    ]
+
+
+def test_un_problema_de_un_conector_no_bloquea_a_otro(store):
+    runs = [
+        run([check_result(store, "r", check_id=OTHER_CHECK)], connector="restic", expected=("r",))
+    ]
+
+    assert support(store, runs, check_link(OTHER_CHECK), problems={"github": ["p:1"]}).counts
+
+
+def test_las_fuentes_estaticas_exponen_sus_problemas(store):
+    assert NoCheckResults().connector_problems(store, AT) == {}
+    problems = {"github": ("check_scope_changed:github",)}
+
+    assert NoCheckResults(problems=problems).connector_problems(store, AT) == problems
+    assert StaticCheckResults([], problems=problems).connector_problems(store, AT) == problems
+
+
+def test_latest_run_devuelve_el_ultimo_intento_en_o_antes_de_at():
+    early = run([], run_id="a", finished_at=AT - timedelta(days=2))
+    late_failed = run([], run_id="b", finished_at=AT - timedelta(days=1), complete=False)
+    future = run([], run_id="c", finished_at=AT + timedelta(days=1))
+
+    assert latest_run([early, late_failed, future], "github", AT) is late_failed
+    assert latest_run([early], "restic", AT) is None

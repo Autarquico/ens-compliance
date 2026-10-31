@@ -9,6 +9,7 @@ revisado figura como «sin revisar», nunca como «no conforme». Nada declara c
 from collections.abc import Iterable
 
 from ens_evidence.applicability import DeclarationState
+from ens_evidence.checks.catalog import ENDPOINT_CONNECTOR, KNOWN_CHECKS
 from ens_evidence.matrix.obligations import COMPENSATION, RowKind
 from ens_evidence.models.enums import Category, MeasureAssessment, Readiness, Role
 from ens_evidence.models.readiness import Blocker, BlockerKind
@@ -35,7 +36,8 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "la última revisión pide revisarla de nuevo. Siguiente paso: " + REVIEW_STEP
     ),
     (BlockerKind.NOT_COMPLIANT, "check_failed"): (
-        "el check {a} ha fallado en «{b}». Corrige el problema y espera a una ejecución nueva"
+        "el check {a} ha fallado en «{b}». Siguiente paso: corrige el problema en el sistema, "
+        "recoge de nuevo (ens-evidence {c}) y ejecuta ens-evidence check --all"
     ),
     (BlockerKind.MISSING_REVIEW, "review_missing"): (
         "sin revisar: nadie ha valorado esta medida todavía. Siguiente paso: " + REVIEW_STEP
@@ -124,10 +126,74 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_unknown"): "el check {a} no existe",
     (BlockerKind.MISSING_EVIDENCE, "check_no_results"): (
-        "el check {a} aún no tiene ejecución completa; espera a la siguiente ejecución"
+        "el check {a} aún no tiene ejecución. Siguiente paso: ens-evidence {c} "
+        "y ens-evidence check --all"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_incomplete"): (
-        "el check {a} no cubrió «{b}» en su última ejecución completa"
+        "el check {a} no cubrió «{b}» en su última ejecución"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_last_run_failed"): (
+        "la última ejecución de los checks de {a} no terminó bien y no se usa el resultado "
+        "anterior. Siguiente paso: ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_history_unreadable"): (
+        "el historial de ejecuciones de checks tiene un registro ilegible ({a}) y no se sabe si "
+        "revoca un resultado anterior. Siguiente paso: restaura evidence/checks/ desde la copia "
+        "de seguridad (ens-evidence backup …) y ejecuta ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_run_missing"): (
+        "hay evidencia recogida después de la última ejecución de los checks de {a}; puede faltar "
+        "una ejecución. Siguiente paso: ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_scope_changed"): (
+        "el alcance ha cambiado desde la última ejecución de los checks de {a}. Siguiente paso: "
+        "ens-evidence {c} y ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_config_changed"): (
+        "la configuración del conector {a} (connectors/{a}.yaml) cambió después de la última "
+        "ejecución de sus checks. Siguiente paso: ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_config_missing"): (
+        "falta o no se lee connectors/{a}.yaml, que existía en la última ejecución de los checks "
+        "de {a}. Siguiente paso: restáuralo desde la copia o configura {a} de nuevo y ejecuta "
+        "ens-evidence check --all; si ya no usas {a}, desvincula sus checks (matrix unlink)"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_run_in_future"): (
+        "la última ejecución de los checks de {a} tiene fecha futura ({b}): el reloj del equipo "
+        "iba adelantado. Siguiente paso: corrige la hora del equipo y ejecuta ens-evidence check "
+        "--all --clock-corrected (no borra nada), o espera a esa hora"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "evidence_unreadable"): (
+        "no se puede leer algún registro de evidencia y no se sabe si hay una recogida posterior "
+        "a la última ejecución de los checks de {a}. Siguiente paso: ens-evidence evidence verify "
+        "--all, restaura evidence/ desde la copia (ens-evidence backup …) y ejecuta "
+        "ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_connector_unknown"): (
+        "evidence/checks/{a}/ tiene ejecuciones de un conector que esta versión no conoce. "
+        "Siguiente paso: si es un resto de un conector retirado o una copia, sácalo de "
+        "evidence/checks/ (la herramienta no borra nada); si no, restaura evidence/checks/ desde "
+        "la copia"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "evidence_unbound"): (
+        "la ejecución del check no registró la huella de la evidencia {a}: no se sabe si es la "
+        "que vio el check. Siguiente paso: ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_evidence_inconsistent"): (
+        "algún registro de evidencia de un collector no coincide con su artefacto (fuente, "
+        "collector, activo o fecha) y no se sabe cuál es la última recogida de {a}; no se usa "
+        "ninguna anterior. Siguiente paso: ens-evidence evidence verify --all, restaura "
+        "evidence/ desde la copia (ens-evidence backup …) y ejecuta ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_evidence_unverified"): (
+        "algún artefacto de evidencia de un collector no pasa la verificación de integridad y no "
+        "se sabe cuál es la última recogida de {a}; no se usa ninguna anterior. Siguiente paso: "
+        "ens-evidence evidence verify --all, restaura evidence/ desde la copia "
+        "(ens-evidence backup …) y ejecuta ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_evidence_changed"): (
+        "la evidencia {a} ha cambiado desde que se ejecutó el check. Siguiente paso: "
+        "ens-evidence {c} y ens-evidence check --all"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_error"): "el check {a} dio error en «{b}»",
     (BlockerKind.MISSING_EVIDENCE, "check_unknown_subject"): "el check {a} no pudo valorar «{b}»",
@@ -223,22 +289,51 @@ def role_label(role: Role) -> str:
     return ROLE_LABELS.get(role, role.value)
 
 
+def collect_step(token: str) -> str:
+    """Cómo se recoge la evidencia de un check (o de un conector). El endpoint se importa; el
+    resto, se recoge con su conector."""
+    connector = KNOWN_CHECKS.get(token) or (token if token in KNOWN_CHECKS.values() else None)
+    if connector is None:
+        return "collect CONECTOR"
+    if connector == ENDPOINT_CONNECTOR:
+        return "evidence import --source endpoint …"
+    return f"collect {connector}"
+
+
 def _fill(template: str, measure_id: str | None, args: list[str]) -> str:
     a = args[0] if args else ""
     b = ":".join(args[1:])
-    return template.format(m=measure_id or "MEDIDA", a=a, b=b)
+    return template.format(m=measure_id or "MEDIDA", a=a, b=b, c=collect_step(a))
 
 
 def blocker_text(blocker: Blocker) -> str:
     """Un bloqueo en castellano llano y con el siguiente paso."""
     head, *args = blocker.detail.split(":")
-    if head == "check_unknown" and len(args) > 1:
-        head = "check_unknown_subject"
     template = BLOCKER_TEXTS.get((blocker.kind, head))
     if template is None:
         fallback = KIND_FALLBACK[blocker.kind]
         return f"{fallback}: {blocker.detail}" if blocker.detail else fallback
     return _fill(template, blocker.measure_id, args)
+
+
+def _is_check_problem(blocker: Blocker) -> bool:
+    head = blocker.detail.partition(":")[0]
+    return head.startswith("check_") or head == "evidence_unreadable"
+
+
+def _without_generic_gap(blockers: list[Blocker]) -> list[Blocker]:
+    """Si el check de la medida ya da su propio bloqueo, «sin evidencia → matrix link» sobra: lo
+    que hay que arreglar es el sistema o volver a ejecutar, no vincular una evidencia manual."""
+    with_check_problem = {b.measure_id for b in blockers if _is_check_problem(b)}
+    return [
+        b
+        for b in blockers
+        if not (
+            b.kind is BlockerKind.MISSING_EVIDENCE
+            and not b.detail
+            and b.measure_id in with_check_problem
+        )
+    ]
 
 
 def blocker_lines(
@@ -247,6 +342,7 @@ def blocker_lines(
     """Textos sin repetir, con las cláusulas o las obligaciones sin evidencia en una sola línea.
     `compensated`: cláusulas que sustituye la compensación; se enlazan con
     `--covers compensation`."""
+    blockers = _without_generic_gap(list(blockers))
     grouped: dict[tuple[str | None, str], list[str]] = {}
     texts: list[str] = []
     for blocker in blockers:

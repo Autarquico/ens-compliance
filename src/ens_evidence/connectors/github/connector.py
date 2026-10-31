@@ -1,7 +1,7 @@
 """Conector de GitHub: solo lectura, token solo por entorno."""
 
 import os
-from collections.abc import Callable, Mapping
+from collections.abc import Callable, Iterable, Mapping
 from datetime import UTC, datetime
 
 import httpx
@@ -54,7 +54,7 @@ class GitHubConnector(Connector):
             )
         return GitHubRun(
             **config.model_dump(),
-            inventory_repos=[_repo_name(entry, config) for entry in asset.repos or []],
+            inventory_repos=inventory_repo_names(asset.repos or [], config.organization),
         )
 
     def collect(self, config: BaseModel) -> CollectionResult:
@@ -103,11 +103,13 @@ class GitHubConnector(Connector):
         verify_token(client)
 
 
-def _repo_name(entry: str, config: GitHubConfig) -> str:
-    """`repo` o `organización/repo`; un repositorio de otra organización no es válido."""
-    owner, separator, name = entry.rpartition("/")
-    if separator and owner.lower() != config.organization.lower():
-        raise WorkspaceError(
-            f"repos: {entry} no pertenece a la organización {config.organization}."
-        )
-    return name
+def inventory_repo_names(entries: Iterable[str], organization: str) -> list[str]:
+    """Nombres de repositorio del inventario: `repo` o `organización/repo`; uno de otra
+    organización no es válido."""
+    names = []
+    for entry in entries:
+        owner, separator, name = entry.rpartition("/")
+        if separator and owner.lower() != organization.lower():
+            raise WorkspaceError(f"repos: {entry} no pertenece a la organización {organization}.")
+        names.append(name)
+    return names

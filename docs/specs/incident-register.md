@@ -6,7 +6,7 @@ status: active
 priority: P0
 size: S
 issue: 22
-prs: []
+prs: [49]
 related_issues: [22]
 depends_on: [org-docs-templates, evidence-storage]
 supersedes: []
