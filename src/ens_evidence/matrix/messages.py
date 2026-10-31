@@ -124,10 +124,32 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_unknown"): "el check {a} no existe",
     (BlockerKind.MISSING_EVIDENCE, "check_no_results"): (
-        "el check {a} aún no tiene ejecución completa; espera a la siguiente ejecución"
+        "el check {a} aún no tiene ejecución. Siguiente paso: ens-evidence collect <conector> "
+        "y ens-evidence check --all"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_incomplete"): (
-        "el check {a} no cubrió «{b}» en su última ejecución completa"
+        "el check {a} no cubrió «{b}» en su última ejecución"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_last_run_failed"): (
+        "la última ejecución de los checks de {a} no terminó bien y no se usa el resultado "
+        "anterior. Siguiente paso: ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_history_unreadable"): (
+        "el historial de ejecuciones de checks tiene un registro ilegible ({a}) y no se sabe si "
+        "revoca un resultado anterior. Restáuralo desde la copia de seguridad: "
+        "ens-evidence evidence verify"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_scope_changed"): (
+        "el alcance ha cambiado desde la última ejecución de los checks de {a}. Siguiente paso: "
+        "ens-evidence collect {a} y ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "evidence_unbound"): (
+        "la ejecución del check no registró la huella de la evidencia {a}: no se sabe si es la "
+        "que vio el check. Siguiente paso: ens-evidence check --all"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "check_evidence_changed"): (
+        "la evidencia {a} ha cambiado desde que se ejecutó el check. Siguiente paso: "
+        "ens-evidence collect <conector> y ens-evidence check --all"
     ),
     (BlockerKind.MISSING_EVIDENCE, "check_error"): "el check {a} dio error en «{b}»",
     (BlockerKind.MISSING_EVIDENCE, "check_unknown_subject"): "el check {a} no pudo valorar «{b}»",
@@ -232,8 +254,6 @@ def _fill(template: str, measure_id: str | None, args: list[str]) -> str:
 def blocker_text(blocker: Blocker) -> str:
     """Un bloqueo en castellano llano y con el siguiente paso."""
     head, *args = blocker.detail.split(":")
-    if head == "check_unknown" and len(args) > 1:
-        head = "check_unknown_subject"
     template = BLOCKER_TEXTS.get((blocker.kind, head))
     if template is None:
         fallback = KIND_FALLBACK[blocker.kind]

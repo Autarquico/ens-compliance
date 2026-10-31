@@ -78,11 +78,34 @@ def test_las_clausulas_sin_evidencia_van_en_una_sola_linea():
 
 
 def test_check_con_sujeto_y_check_desconocido_no_se_confunden():
-    subject = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_unknown:c1:repo-a"))
+    subject = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_unknown_subject:c1:repo-a"))
     unknown = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_unknown:c1"))
 
     assert "repo-a" in subject and "no pudo valorar" in subject
     assert "no existe" in unknown
+
+
+def test_check_no_results_indica_collect_y_check_all():
+    text = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, "check_no_results:c1"))
+
+    assert "ens-evidence collect <conector>" in text
+    assert "ens-evidence check --all" in text
+
+
+@pytest.mark.parametrize(
+    "detail",
+    [
+        "check_last_run_failed:github",
+        "check_history_unreadable:evidence/checks/github/000002.json",
+        "check_scope_changed:github",
+        "evidence_unbound:EV-20260101-aaaa",
+        "check_evidence_changed:EV-20260101-aaaa",
+    ],
+)
+def test_los_bloqueos_de_checks_tienen_texto_propio(detail):
+    text = blocker_text(blocker(BlockerKind.MISSING_EVIDENCE, detail))
+
+    assert detail.split(":")[0] not in text
 
 
 def test_los_textos_no_afirman_conformidad():

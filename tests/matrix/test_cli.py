@@ -588,7 +588,7 @@ def test_status_indica_que_los_checks_estan_pendientes_en_la_medida_con_check(in
     result = initialized("matrix", "status")
 
     assert f"    {CHECKS_PENDING}" in result.output
-    assert "aún no tiene ejecución completa" in result.output
+    assert "ens-evidence check --all" in result.output
 
 
 def test_status_sin_matriz_ni_declaracion_vigente_sale_con_1(ens_cli, signed):

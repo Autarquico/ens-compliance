@@ -9,7 +9,14 @@ from ens_evidence.matrix.documents import (
     default_document_source,
     documents_snapshot,
 )
-from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess
+from ens_evidence.matrix.evaluate import (
+    AssessmentResult,
+    AssessmentRow,
+    FindingsSource,
+    NoFindings,
+    StaticFindings,
+    assess,
+)
 from ens_evidence.matrix.evidence import LinkSupport
 from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
 from ens_evidence.matrix.history import (
@@ -100,6 +107,9 @@ __all__ = [
     "save_report",
     "AssessmentResult",
     "AssessmentRow",
+    "FindingsSource",
+    "NoFindings",
+    "StaticFindings",
     "assess",
     "CHECKS_PENDING",
     "COMPENSATION",
