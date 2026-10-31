@@ -154,6 +154,25 @@ class ReadinessInput(Strict):
     open_findings: list[OpenFinding] = Field(default_factory=list)
     judgment_executed: bool
     evaluated_at: AwareDatetime
+    coverage_gaps: list["Blocker"] = Field(
+        default_factory=list,
+        description=(
+            "Huecos que un llamante (la matriz de cumplimiento) añade a la regla de cada medida; "
+            "cada uno nombra una medida de `measures`."
+        ),
+    )
+
+    @model_validator(mode="after")
+    def _gaps_name_a_known_measure(self) -> Self:
+        known = {m.id for m in self.measures}
+        unknown = sorted(
+            {str(g.measure_id) for g in self.coverage_gaps if g.measure_id not in known}
+        )
+        if unknown:
+            raise ValueError(
+                f"coverage_gaps con medidas que no están en measures: {', '.join(unknown)}"
+            )
+        return self
 
 
 class Blocker(Strict):
@@ -206,7 +225,7 @@ def _evidence_blockers(measure: Measure, now: AwareDatetime) -> list[Blocker]:
     ]
 
 
-def _measure_blockers(measure: Measure, now: AwareDatetime) -> list[Blocker]:
+def measure_blockers(measure: Measure, now: AwareDatetime) -> list[Blocker]:
     match measure.applicability:
         case Applicability.UNDETERMINED:
             return [Blocker(kind=BlockerKind.UNDETERMINED_APPLICABILITY, measure_id=measure.id)]
@@ -235,12 +254,18 @@ def _measure_blockers(measure: Measure, now: AwareDatetime) -> list[Blocker]:
             return _evidence_blockers(measure, now) + _review_blockers(measure, now)
 
 
+def unique_blockers(blockers: list[Blocker]) -> list[Blocker]:
+    """Quita los repetidos (mismo tipo, medida y detalle) conservando el orden."""
+    return list({(b.kind, b.measure_id, b.detail): b for b in blockers}.values())
+
+
 def evaluate_readiness(data: ReadinessInput) -> ReadinessResult:
-    blockers = [
-        blocker
-        for measure in data.measures
-        for blocker in _measure_blockers(measure, data.evaluated_at)
-    ]
+    blockers = unique_blockers(
+        [
+            *(b for measure in data.measures for b in measure_blockers(measure, data.evaluated_at)),
+            *data.coverage_gaps,
+        ]
+    )
     blockers += [
         Blocker(kind=BlockerKind.OPEN_FINDING, detail=finding.id) for finding in data.open_findings
     ]

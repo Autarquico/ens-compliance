@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: L
 issue: 20
-prs: []
+prs: [48]
 related_issues: [20]
 depends_on: [ens-applicability, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-30
 ---
 
 # Matriz de cumplimiento por medida
@@ -54,6 +54,11 @@ aplicable.
 ## Notas técnicas / riesgos
 
 - Cita verificada en el BOE: anexo III, 2.1.
+- Contrato y decisiones: ADR 0011. Guía: `docs/runbooks/matriz-de-cumplimiento.md`.
+- Umbrales decididos por el usuario (2026-10-30): periodicidad explícita por
+  medida, máximo 365 días; evidencia técnica sin caducidad, 30 días; evidencia
+  manual sin caducidad, dentro de la periodicidad; revisan el administrador
+  del sistema o su delegado (anexo III, 2.1.a).
 
 ## Tasks (no autoritativo — el board manda)
 

@@ -15,6 +15,7 @@ from ens_evidence.models import (
     Review,
     Role,
     evaluate_readiness,
+    measure_blockers,
 )
 from ens_evidence.models.readiness import EvidenceRef, OpenFinding
 
@@ -237,3 +238,52 @@ def test_evidencia_futura_caducada_no_genera_bloqueo_de_caducidad():
         ]
     )
     assert kinds(evaluate(measure)) == [BlockerKind.EXPIRED_EVIDENCE]
+
+
+def gap(measure_id="m1", detail="clause:x.1", kind=BlockerKind.MISSING_EVIDENCE):
+    return Blocker(kind=kind, measure_id=measure_id, detail=detail)
+
+
+def evaluate_with_gaps(*gaps, measures=None):
+    return evaluate_readiness(
+        ReadinessInput(
+            measures=measures or [good_measure()],
+            judgment_executed=True,
+            evaluated_at=NOW,
+            coverage_gaps=list(gaps),
+        )
+    )
+
+
+def test_un_hueco_de_cobertura_bloquea_una_medida_que_la_regla_da_por_buena():
+    assert evaluate(good_measure()).readiness is Readiness.READY
+
+    result = evaluate_with_gaps(gap())
+
+    assert result.readiness is Readiness.NOT_READY
+    assert result.blockers == [gap()]
+
+
+def test_un_hueco_no_duplica_un_bloqueo_que_la_regla_ya_da():
+    measure = good_measure(review=None)
+    rule = Blocker(kind=BlockerKind.MISSING_REVIEW, measure_id="m1")
+
+    result = evaluate_with_gaps(rule, gap(), gap(), measures=[measure])
+
+    assert result.blockers == [rule, gap()]
+
+
+def test_coverage_gaps_con_una_medida_inexistente_se_rechaza():
+    with pytest.raises(ValidationError, match="m9"):
+        evaluate_with_gaps(gap("m9"))
+
+
+def test_coverage_gaps_sin_medida_se_rechaza():
+    with pytest.raises(ValidationError):
+        evaluate_with_gaps(Blocker(kind=BlockerKind.MISSING_EVIDENCE))
+
+
+def test_measure_blockers_es_la_regla_publica_de_una_medida():
+    assert measure_blockers(good_measure(review=None), NOW) == [
+        Blocker(kind=BlockerKind.MISSING_REVIEW, measure_id="m1")
+    ]

@@ -9,6 +9,7 @@ from pydantic import AwareDatetime, BaseModel, ValidationError, field_validator
 from ens_evidence.models.contracts import Strict
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.models import Asset, AssetType, Deployment
+from ens_evidence.yaml_unique import safe_load_unique
 
 RECONCILED_TYPES = frozenset({AssetType.LAPTOP, AssetType.SERVER})
 
@@ -65,7 +66,7 @@ def normalize_hostname(hostname: str) -> str:
 def parse_observed(text: str) -> ObservedHosts:
     """Valida la entrada; agrega los errores por entrada sin imprimir valores."""
     try:
-        raw = yaml.safe_load(text)
+        raw = safe_load_unique(text)
     except yaml.YAMLError:
         raise ObservedInputError(
             ["entrada observada: no es YAML ni JSON válido; revisa la sintaxis"]

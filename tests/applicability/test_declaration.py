@@ -394,3 +394,15 @@ def test_la_declaracion_por_cli_se_firma_con_by_y_no_admite_otro_rol(ready, ens_
     assert refused.exit_code == 2
     assert signed_ok.exit_code == 0, signed_ok.output
     assert "security_officer" in signed_ok.output
+
+
+def test_una_firma_archivada_con_la_fecha_retocada_no_coincide_con_su_nombre(tmp_path):
+    from ens_evidence.applicability.declaration import DECLARATIONS_PREFIX, declaration_history
+    from ens_evidence.workspace import LocalStore
+
+    store = LocalStore(tmp_path)
+    assert declaration_history(store) == ([], [])
+    key = f"{DECLARATIONS_PREFIX}/20260101T000000000000Z-000000000000.yaml"
+    store.write_text(key, "approved_at: 2026-01-01T00:00:00Z\n")
+
+    assert declaration_history(store)[1] == [key]

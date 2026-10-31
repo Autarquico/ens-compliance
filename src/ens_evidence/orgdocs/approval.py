@@ -12,6 +12,7 @@ from enum import StrEnum
 import yaml
 from pydantic import AwareDatetime, Field, ValidationError, field_validator
 
+from ens_evidence.approvals import safe_load_unique
 from ens_evidence.catalog import catalog_sha256
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.enums import Role
@@ -103,6 +104,7 @@ class DocumentStatus:
     state: DocumentState
     reasons: list[str] = field(default_factory=list)
     approval: DocumentApproval | None = None
+    unreadable: list[str] = field(default_factory=list)
 
     @property
     def current(self) -> bool:
@@ -145,22 +147,39 @@ def _read(store: WorkspaceStore, key: str) -> str | None:
 def _meta(store: WorkspaceStore, name: str) -> DocumentMeta | None:
     text = _read(store, meta_key(name))
     try:
-        return DocumentMeta.model_validate(yaml.safe_load(text)) if text else None
+        return DocumentMeta.model_validate(safe_load_unique(text)) if text else None
     except (yaml.YAMLError, ValidationError):
         return None
 
 
-def approval_history(store: WorkspaceStore, name: str) -> list[DocumentApproval]:
-    """Aprobaciones del documento, de la más antigua a la más reciente; ignora las ilegibles."""
+def scan_approvals(store: WorkspaceStore, name: str) -> tuple[list[DocumentApproval], list[str]]:
+    """Aprobaciones legibles (de la más antigua a la más reciente) y claves de las ilegibles.
+
+    Un registro ilegible, o cuyo contenido no coincide con su clave, podría ser una aprobación
+    posterior: su contenido es desconocido."""
     records = []
+    unreadable = []
     prefix = f"{APPROVALS_PREFIX}/{name}/"
     for key in sorted(k for k in store.list(prefix) if k.startswith(prefix)):
         text = _read(store, key)
         try:
-            records.append(DocumentApproval.model_validate(yaml.safe_load(text or "")))
-        except (yaml.YAMLError, ValidationError):
-            continue
-    return records
+            if text is None:
+                raise ValueError(key)
+            approval = DocumentApproval.model_validate(safe_load_unique(text))
+            # La clave codifica documento e instante: un registro que no los repite no es de fiar
+            # (p. ej. `approved_at` retrofechado para que no parezca posterior a un registro).
+            expected = f"{prefix}{approval.approved_at.astimezone(UTC).strftime(STAMP)}.yaml"
+            if key != expected or approval.document != name:
+                raise ValueError(key)
+            records.append(approval)
+        except (yaml.YAMLError, ValidationError, ValueError):
+            unreadable.append(key)
+    return records, unreadable
+
+
+def approval_history(store: WorkspaceStore, name: str) -> list[DocumentApproval]:
+    """Aprobaciones legibles del documento, de la más antigua a la más reciente."""
+    return scan_approvals(store, name)[0]
 
 
 def _relevant_pending(report: AnswersReport, loaded: LoadedTemplate) -> list[str]:
@@ -283,18 +302,20 @@ def document_status(store: WorkspaceStore, name: str) -> DocumentStatus:
     meta = _meta(store, name)
     if _read(store, document_key(name)) is None or meta is None:
         return DocumentStatus(name, DocumentState.NOT_GENERATED)
-    history = approval_history(store, name)
+    history, unreadable = scan_approvals(store, name)
+    broken = [f"registro de aprobación ilegible: {key}" for key in unreadable]
     if not history:
         reasons = _drift(_basis_of_meta(meta), store, loaded, meta)
-        return DocumentStatus(name, DocumentState.GENERATED, reasons)
+        return DocumentStatus(name, DocumentState.GENERATED, reasons + broken, None, unreadable)
     approval = history[-1]
     reasons = (
         _drift(_basis_of_approval(approval), store, loaded, meta)
         + _signatory_drift(store, loaded, approval)
         + _scope_drift(store, approval)
+        + broken
     )
     state = DocumentState.OBSOLETE if reasons else DocumentState.APPROVED
-    return DocumentStatus(name, state, reasons, approval)
+    return DocumentStatus(name, state, reasons, approval, unreadable)
 
 
 def all_statuses(store: WorkspaceStore) -> list[DocumentStatus]:

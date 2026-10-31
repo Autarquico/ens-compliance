@@ -1,8 +1,9 @@
 """Declaración de Aplicabilidad (art. 28.2 del RD 311/2022): relación de medidas seleccionadas
 firmada por el responsable de la seguridad, con las huellas del contexto en que se firmó."""
 
+import hashlib
 from dataclasses import dataclass, field
-from datetime import datetime
+from datetime import UTC, datetime
 from enum import StrEnum
 
 import yaml
@@ -27,9 +28,10 @@ from ens_evidence.models.enums import Applicability, Category, Role
 from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.sync import MEASURES_KEY
-from ens_evidence.workspace import WorkspaceStore
+from ens_evidence.workspace import AlreadyExists, WorkspaceStore
 
 DECLARATION_KEY = "controls/applicability.yaml"
+DECLARATIONS_PREFIX = "controls/declarations"
 
 
 class SelectedMeasure(Strict):
@@ -183,11 +185,43 @@ def approve_declaration(store: WorkspaceStore, by: str, now: datetime) -> Declar
         )
     except ValidationError as exc:
         raise DeclarationRejected(describe_validation("firma", exc)) from None
-    store.write_text(
-        DECLARATION_KEY,
-        yaml.safe_dump(declaration.model_dump(mode="json"), sort_keys=False, allow_unicode=True),
-    )
+    text = yaml.safe_dump(declaration.model_dump(mode="json"), sort_keys=False, allow_unicode=True)
+    store.write_text(DECLARATION_KEY, text)
+    _archive(store, declaration, text)
     return declaration
+
+
+def _archive(store: WorkspaceStore, declaration: Declaration, text: str) -> None:
+    """Copia de solo adición de cada firma: la Declaración vigente se sobrescribe y, sin esta
+    copia, volver a un contexto anterior sería indistinguible de no haberlo dejado nunca."""
+    try:
+        store.create_bytes(_archive_key(declaration, text.encode()), text.encode())
+    except AlreadyExists:
+        pass
+
+
+def _archive_key(declaration: Declaration, data: bytes) -> str:
+    """`<instante de la firma>-<sha256 de los bytes, 12>.yaml`: lo que la clave codifica y
+    `declaration_history` contrasta con el contenido."""
+    stamp = declaration.approved_at.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
+    return f"{DECLARATIONS_PREFIX}/{stamp}-{hashlib.sha256(data).hexdigest()[:12]}.yaml"
+
+
+def declaration_history(store: WorkspaceStore) -> tuple[list[Declaration], list[str]]:
+    """Declaraciones firmadas, de la más antigua a la más reciente, y los ficheros ilegibles
+    (su contenido es desconocido). No incluye la vigente si se firmó antes de existir la copia."""
+    found: list[Declaration] = []
+    errors: list[str] = []
+    for key in store.list(DECLARATIONS_PREFIX):
+        declaration, _ = read_record(store, key, Declaration, "no se puede reconstruir")
+        # Una copia cuyo contenido no es lo que su nombre dice (p. ej. `approved_at` retrofechado)
+        # es tan desconocida como una ilegible.
+        if declaration is None or key != _archive_key(declaration, store.read_bytes(key)):
+            errors.append(key)
+        else:
+            found.append(declaration)
+    found.sort(key=lambda d: d.approved_at)
+    return found, errors
 
 
 def _stored(store: WorkspaceStore) -> tuple[Declaration | None, list[str]]:

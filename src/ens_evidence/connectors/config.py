@@ -8,6 +8,7 @@ from pydantic import BaseModel, ValidationError
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import NotFound, NotText, WorkspaceError, WorkspaceStore
 from ens_evidence.workspace.settings import reject_credential_keys
+from ens_evidence.yaml_unique import safe_load_unique
 
 # Claves de configuración cuyo nombre contiene un marcador de credencial pero no lo es.
 _ALLOWED_KEYS = frozenset({"token_kind"})
@@ -24,7 +25,7 @@ def connector_config_key(name: str) -> str:
 def load_connector_config[M: BaseModel](store: WorkspaceStore, name: str, model: type[M]) -> M:
     key = connector_config_key(name)
     try:
-        raw = yaml.safe_load(store.read_text(key))
+        raw = safe_load_unique(store.read_text(key))
     except NotFound:
         raise ConnectorConfigError(
             f"{key}: no existe; créalo (ver docs/connectors/{name}.md)"

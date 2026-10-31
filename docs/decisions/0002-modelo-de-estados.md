@@ -86,6 +86,11 @@ Salida: `Readiness`, lista de bloqueos y `pending_human_review`. Bloqueos:
   cuenta; si no queda ninguna válida, bloqueo `MISSING_EVIDENCE` con
   detalle `evidence_in_future:<id>`. Las evidencias sin `collected_at` se
   siguen aceptando (0008).
+- `coverage_gaps`: bloqueos que aporta la matriz de cumplimiento (0011),
+  cada uno de una medida existente: falta de responsable o de periodicidad,
+  cláusulas sin cubrir y revisiones caducadas por cambio de fuentes o de
+  contexto. La función pública `measure_blockers` aplica la regla a una
+  medida y `matrix.assess()` es el único punto que combina ambas.
 
 ### Transiciones del expediente
 

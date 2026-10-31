@@ -1,0 +1,278 @@
+from datetime import timedelta
+
+import pytest
+import yaml
+
+from ens_evidence.approvals import safe_load_unique
+from ens_evidence.matrix import (
+    MATRIX_KEY,
+    ApplicabilityReview,
+    CheckLink,
+    MatrixEntry,
+    MatrixFile,
+    MeasureReviewRecord,
+    add_review,
+    effective_reviews,
+    read_matrix,
+    read_reviews,
+    save_matrix,
+)
+from ens_evidence.matrix.store import content_digest
+from ens_evidence.models import MeasureAssessment
+from ens_evidence.scope.sync import SYNCED_KEYS
+from ens_evidence.workspace import AlreadyExists
+
+from .helpers import RECORDED, SHA, applicability_review, measure_review, review
+
+CATALOG = {"snapshot_sha256": SHA, "consolidation_date": "2022-05-03"}
+
+
+def matrix() -> MatrixFile:
+    return MatrixFile(
+        catalog_version=CATALOG,
+        entries=[MatrixEntry(id="org.1", links=[CheckLink(check_id="x.y", covers=["base"])])],
+    )
+
+
+def test_matrix_is_not_synced():
+    assert MATRIX_KEY not in SYNCED_KEYS
+
+
+class TestMatrixFile:
+    def test_missing_file_is_not_an_error(self, store):
+        assert read_matrix(store) == (None, [])
+
+    def test_roundtrip(self, store):
+        save_matrix(store, matrix())
+        loaded, errors = read_matrix(store)
+        assert (loaded, errors) == (matrix(), [])
+
+    def test_save_replaces_the_previous_version(self, store):
+        save_matrix(store, matrix())
+        save_matrix(store, MatrixFile(catalog_version=CATALOG, entries=[]))
+        loaded, _ = read_matrix(store)
+        assert loaded.entries == []
+
+    def test_invalid_yaml_is_reported(self, store):
+        store.write_text(MATRIX_KEY, "entries: [")
+        loaded, errors = read_matrix(store)
+        assert loaded is None and "no es YAML válido" in errors[0]
+
+    def test_validation_errors_are_reported_with_the_key(self, store):
+        store.write_text(
+            MATRIX_KEY,
+            yaml.safe_dump(
+                {
+                    "catalog_version": CATALOG,
+                    "entries": [{"id": "org.1", "review_every_days": 400}],
+                }
+            ),
+        )
+        loaded, errors = read_matrix(store)
+        assert loaded is None and errors and errors[0].startswith(MATRIX_KEY)
+
+    def test_secrets_are_rejected(self, store):
+        store.write_text(
+            MATRIX_KEY,
+            yaml.safe_dump(
+                {
+                    "catalog_version": CATALOG,
+                    "entries": [{"id": "org.1", "notes": "token", "password": "hunter2hunter2"}],
+                }
+            ),
+        )
+        loaded, errors = read_matrix(store)
+        assert loaded is None
+        assert any("parece un secreto" in e for e in errors)
+
+
+class TestAppendOnlyReviews:
+    def test_stores_under_the_measure_with_a_timestamp_key(self, store):
+        record = measure_review()
+        key = add_review(store, record)
+        assert key == f"controls/reviews/org.1/20260610T120000000000Z-{content_digest(record)}.yaml"
+        assert store.exists(key)
+
+    def test_never_overwrites_an_existing_review(self, store):
+        add_review(store, measure_review())
+        with pytest.raises(AlreadyExists):
+            add_review(store, measure_review(assessment=MeasureAssessment.NON_COMPLIANT))
+        (stored,), _ = read_reviews(store, "org.1")
+        assert stored.record.assessment is MeasureAssessment.COMPLIANT
+
+    def test_reads_back_both_axes_as_their_own_type(self, store):
+        add_review(store, measure_review(recorded_at=RECORDED))
+        add_review(store, applicability_review(recorded_at=RECORDED + timedelta(days=1)))
+        reviews, errors = read_reviews(store, "org.1")
+        assert errors == []
+        assert [type(r.record) for r in reviews] == [MeasureReviewRecord, ApplicabilityReview]
+
+    def test_reviews_of_other_measures_are_not_mixed(self, store):
+        add_review(store, measure_review("org.1"))
+        add_review(store, measure_review("org.2"))
+        reviews, _ = read_reviews(store, "org.2")
+        assert [r.record.measure_id for r in reviews] == ["org.2"]
+
+    def test_a_review_filed_under_another_measure_is_reported(self, store):
+        key = add_review(store, measure_review("org.2"))
+        store.write_text(key.replace("/org.2/", "/org.1/"), store.read_text(key))
+        reviews, errors = read_reviews(store, "org.1")
+        assert reviews == [] and "otra medida" in errors[0]
+
+    def test_unreadable_files_are_reported_and_do_not_hide_the_valid_ones(self, store):
+        add_review(store, measure_review())
+        store.write_text("controls/reviews/org.1/zzz.yaml", "axis: nope\n")
+        store.write_text("controls/reviews/org.1/aaa.yaml", "axis: implementation\n")
+        reviews, errors = read_reviews(store, "org.1")
+        assert len(reviews) == 1
+        assert any("zzz.yaml: no es una revisión" in e for e in errors)
+        assert any(e.startswith("controls/reviews/org.1/aaa.yaml") for e in errors)
+
+    def test_effective_reviews_list_the_unreadable_keys(self, store):
+        add_review(store, measure_review())
+        store.write_text("controls/reviews/org.1/aaa.yaml", "axis: implementation\n")
+        store.write_text("controls/reviews/org.1/notes.txt", "hola\n")
+        found = effective_reviews(store, "org.1", RECORDED + timedelta(days=1))
+        assert found.implementation is not None
+        assert found.unreadable == [
+            "controls/reviews/org.1/aaa.yaml",
+            "controls/reviews/org.1/notes.txt",
+        ]
+
+    def test_secrets_in_a_review_are_rejected(self, store):
+        key = add_review(store, measure_review())
+        data = yaml.safe_load(store.read_text(key))
+        data["api_key"] = "sk-abcdefghijklmnopqrstuvwxyz0123456789"
+        store.write_text(key, yaml.safe_dump(data))
+        reviews, errors = read_reviews(store, "org.1")
+        assert reviews == [] and any("parece un secreto" in e for e in errors)
+
+
+class TestTemporalSelection:
+    def at(self, days: float):
+        return RECORDED + timedelta(days=days)
+
+    def test_no_reviews(self, store):
+        found = effective_reviews(store, "org.1", self.at(0))
+        assert (found.implementation, found.applicability, found.errors) == (None, None, [])
+
+    def test_picks_the_latest_recorded_up_to_the_query(self, store):
+        add_review(
+            store,
+            measure_review(recorded_at=self.at(0), assessment=MeasureAssessment.NON_COMPLIANT),
+        )
+        add_review(store, measure_review(recorded_at=self.at(5)))
+        found = effective_reviews(store, "org.1", self.at(6))
+        assert found.implementation.record.assessment is MeasureAssessment.COMPLIANT
+
+    def test_a_later_review_does_not_exist_yet_at_an_earlier_query(self, store):
+        add_review(
+            store,
+            measure_review(recorded_at=self.at(0), assessment=MeasureAssessment.NON_COMPLIANT),
+        )
+        add_review(store, measure_review(recorded_at=self.at(5)))
+        found = effective_reviews(store, "org.1", self.at(4))
+        assert found.implementation.record.assessment is MeasureAssessment.NON_COMPLIANT
+
+    def test_query_before_any_review_finds_none(self, store):
+        add_review(store, measure_review(recorded_at=self.at(0)))
+        assert effective_reviews(store, "org.1", self.at(-1)).implementation is None
+
+    def test_query_exactly_at_recording_includes_it(self, store):
+        add_review(store, measure_review(recorded_at=self.at(0)))
+        assert effective_reviews(store, "org.1", self.at(0)).implementation is not None
+
+    def test_selection_uses_recorded_at_not_the_declared_review_date(self, store):
+        late_declared = measure_review(
+            recorded_at=self.at(1),
+            review=review(reviewed_at=self.at(0)),
+            assessment=MeasureAssessment.NON_COMPLIANT,
+        )
+        early_declared = measure_review(
+            recorded_at=self.at(2), review=review(reviewed_at=self.at(-30))
+        )
+        add_review(store, late_declared)
+        add_review(store, early_declared)
+        found = effective_reviews(store, "org.1", self.at(3))
+        assert found.implementation.record.assessment is MeasureAssessment.COMPLIANT
+
+    def test_a_second_file_for_the_same_instant_under_another_name_is_unreadable(self, store):
+        add_review(store, measure_review(recorded_at=self.at(0)))
+        other = measure_review(recorded_at=self.at(0), assessment=MeasureAssessment.NON_COMPLIANT)
+        store.create_bytes(
+            "controls/reviews/org.1/b.yaml", yaml.safe_dump(other.model_dump(mode="json")).encode()
+        )
+
+        found = effective_reviews(store, "org.1", self.at(1))
+
+        assert found.unreadable == ["controls/reviews/org.1/b.yaml"]
+        assert found.implementation.record.assessment is MeasureAssessment.COMPLIANT
+
+    def test_recorded_at_must_match_the_instant_encoded_in_the_key(self, store):
+        key = add_review(store, measure_review(recorded_at=self.at(0)))
+        data = yaml.safe_load(store.read_text(key))
+        data["recorded_at"] = self.at(500).isoformat()
+        store.write_text(key, yaml.safe_dump(data))
+
+        found = effective_reviews(store, "org.1", self.at(1000))
+
+        assert found.implementation is None and found.unreadable == [key]
+
+    def test_each_axis_has_its_own_latest(self, store):
+        add_review(store, measure_review(recorded_at=self.at(0)))
+        add_review(store, applicability_review(recorded_at=self.at(1)))
+        found = effective_reviews(store, "org.1", self.at(2))
+        assert found.implementation.record.recorded_at == self.at(0)
+        assert found.applicability.record.recorded_at == self.at(1)
+
+    def test_an_applicability_review_never_replaces_the_assessment(self, store):
+        add_review(store, measure_review(recorded_at=self.at(0)))
+        add_review(store, applicability_review(recorded_at=self.at(1)))
+        found = effective_reviews(store, "org.1", self.at(2))
+        assert found.implementation.record.assessment is MeasureAssessment.COMPLIANT
+
+
+class TestDuplicateKeys:
+    def test_matrix_yaml_con_una_clave_repetida_no_se_lee(self, store):
+        store.write_text(
+            MATRIX_KEY,
+            yaml.safe_dump({"catalog_version": CATALOG, "entries": []})
+            + "entries:\n  - id: org.1\n",
+        )
+
+        loaded, errors = read_matrix(store)
+
+        assert loaded is None and "repite una clave" in errors[0]
+
+    def test_la_clave_repetida_anidada_tambien_se_rechaza(self):
+        with pytest.raises(yaml.YAMLError, match="clave duplicada: 'b'"):
+            safe_load_unique("a:\n  b: 1\n  b: 2\n")
+
+    def test_las_claves_repetidas_en_listas_de_mapas_se_rechazan(self):
+        with pytest.raises(yaml.YAMLError):
+            safe_load_unique("a:\n  - x: 1\n    x: 2\n")
+
+    def test_un_yaml_sin_repeticiones_se_lee_igual_que_con_safe_load(self):
+        text = "a: 1\nb:\n  - c: 2\n  - c: 3\nd: {e: [1, 2]}\n"
+        assert safe_load_unique(text) == yaml.safe_load(text)
+
+    def test_una_revision_con_axis_repetido_es_ilegible(self, store):
+        add_review(store, measure_review("org.1"))
+        key = store.list("controls/reviews/org.1")[0]
+        store.write_text(key, store.read_text(key) + "axis: applicability\n")
+
+        reviews = effective_reviews(store, "org.1", RECORDED + timedelta(days=1))
+
+        assert reviews.implementation is None and reviews.unreadable == [key]
+
+
+def test_cambiar_solo_la_valoracion_de_una_revision_la_hace_ilegible(store):
+    key = add_review(store, measure_review(assessment=MeasureAssessment.NON_COMPLIANT))
+    data = yaml.safe_load(store.read_text(key))
+    data["assessment"] = "COMPLIANT"
+    store.write_text(key, yaml.safe_dump(data, sort_keys=False, allow_unicode=True))
+
+    found = effective_reviews(store, "org.1", RECORDED + timedelta(days=1))
+
+    assert found.implementation is None
+    assert found.unreadable == [key]

@@ -8,6 +8,7 @@ from ens_evidence.applicability.declaration import (
     DeclarationState,
     DeclarationStatus,
     approve_declaration,
+    declaration_history,
     declaration_status,
 )
 from ens_evidence.applicability.propose import ProposalResult, propose_applicability
@@ -30,6 +31,7 @@ __all__ = [
     "Selection",
     "Validation",
     "approve_declaration",
+    "declaration_history",
     "declaration_status",
     "propose_applicability",
     "select",

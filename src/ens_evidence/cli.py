@@ -3,6 +3,7 @@ import os
 import shutil
 from collections.abc import Callable
 from datetime import UTC, datetime
+from enum import StrEnum
 from importlib.resources import files
 from pathlib import Path
 from typing import Annotated, Any
@@ -75,6 +76,39 @@ from ens_evidence.evidence import (
     verify_one,
 )
 from ens_evidence.evidence.importer import import_collected
+from ens_evidence.matrix import (
+    CHECKS_PENDING,
+    DECLARATION_REPORTS_PREFIX,
+    MATRIX_REPORTS_PREFIX,
+    ExportRejected,
+    MatrixRejected,
+    ReviewPlan,
+    RowKind,
+    RowStatus,
+    add_link,
+    assess,
+    build_export,
+    build_link,
+    init_matrix,
+    link_label,
+    matrix_status,
+    parse_covers,
+    prepare_review,
+    record_review,
+    remove_link,
+    render_declaration,
+    render_json,
+    render_markdown,
+    save_report,
+    set_entry,
+)
+from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE
+from ens_evidence.matrix.messages import (
+    DECLARATION_LABELS,
+    READINESS_LABELS,
+    blocker_lines,
+    obligation_label,
+)
 from ens_evidence.models.enums import CollectionStatus, Role
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
@@ -157,6 +191,10 @@ controls_app = typer.Typer(help="Estado de las medidas de la organización.", no
 endpoint_app = typer.Typer(help="Evidencia de endpoints con script guiado.", no_args_is_help=True)
 docs_app = typer.Typer(help="Documentación organizativa.", no_args_is_help=True)
 risk_app = typer.Typer(help="Análisis de riesgos y su aprobación anual.", no_args_is_help=True)
+matrix_app = typer.Typer(
+    help="Matriz de cumplimiento por medida: responsable, periodicidad, fuentes y revisiones.",
+    no_args_is_help=True,
+)
 app.add_typer(report_app, name="report")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
@@ -172,6 +210,7 @@ app.add_typer(controls_app, name="controls")
 app.add_typer(endpoint_app, name="endpoint")
 app.add_typer(docs_app, name="docs")
 app.add_typer(risk_app, name="risk")
+app.add_typer(matrix_app, name="matrix")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -829,6 +868,32 @@ def applicability_show_status(ctx: typer.Context) -> None:
         raise typer.Exit(1)
 
 
+@applicability_app.command("show")
+@handled
+def applicability_show(
+    ctx: typer.Context,
+    annotated: Annotated[
+        bool, typer.Option("--annotated", help="Añade el estado de cada medida en la matriz.")
+    ] = False,
+    save: Annotated[
+        bool, typer.Option("--save", help="Guarda una copia en evidence/reports/declaration/.")
+    ] = False,
+) -> None:
+    """Muestra la Declaración de Aplicabilidad en forma legible. Sale con 1 si no está vigente."""
+    store = open_workspace(ctx)
+    now = clock()
+    status = declaration_status(store, now)
+    text = render_declaration(store, now, evaluation=assess(store, now) if annotated else None)
+    typer.echo(text, nl=False)
+    if save and status.declaration is not None:
+        key = save_report(store, DECLARATION_REPORTS_PREFIX, now, "md", text)
+        typer.echo(f"Guardada en {key}", err=True)
+    elif save:
+        typer.echo("No hay Declaración firmada y legible: no se guarda.", err=True)
+    if status.state is not DeclarationState.CURRENT:
+        raise typer.Exit(1)
+
+
 def backup_settings(ctx: typer.Context) -> BackupSettings:
     configured = load_settings(resolve_settings_path(ctx.obj)).backup
     if configured is None:
@@ -1401,6 +1466,288 @@ def risk_show_status(ctx: typer.Context) -> None:
     print_errors(status.errors)
     if status.state is not RiskState.APPROVED:
         raise typer.Exit(1)
+
+
+def matrix_rejected(title: str, exc: MatrixRejected) -> typer.Exit:
+    typer.echo(title, err=True)
+    print_errors(exc.errors)
+    return typer.Exit(1)
+
+
+def print_coverage(plan: ReviewPlan) -> None:
+    for obligation in plan.attribution:
+        typer.echo(f"  {obligation_label(obligation.obligation)}:")
+        for clause in obligation.clauses:
+            sources = ", ".join(clause.sources) or "sin fuente que cuente"
+            typer.echo(f"    {clause.unit}  <- {sources}")
+    for note in plan.notes:
+        typer.echo(f"  Aviso: {note}", err=True)
+
+
+@matrix_app.command("init")
+@handled
+def matrix_init(ctx: typer.Context) -> None:
+    """Crea una entrada por cada medida de la Declaración vigente; conserva lo existente."""
+    try:
+        outcome = init_matrix(open_workspace(ctx), clock())
+    except MatrixRejected as exc:
+        raise matrix_rejected("No se inicializa la matriz:", exc) from None
+    typer.echo(
+        f"Matriz inicializada: {len(outcome.created)} entradas nuevas, {outcome.kept} conservadas."
+    )
+    if outcome.extra:
+        typer.echo(
+            "Aviso: sobran entradas de medidas que ya no están en la Declaración: "
+            + ", ".join(outcome.extra)
+            + " (se conservan).",
+            err=True,
+        )
+    if outcome.catalog_updated:
+        typer.echo(
+            "matrix.yaml pasa de la versión del catálogo "
+            f"{outcome.file_catalog.consolidation_date} a la actual "
+            f"{outcome.current_catalog.consolidation_date}."
+        )
+
+
+@matrix_app.command("set")
+@handled
+def matrix_set(
+    ctx: typer.Context,
+    measure: Annotated[str, typer.Argument(help="p. ej. op.acc.5")],
+    owner: Annotated[str | None, typer.Option("--owner", help="Nombre del responsable.")] = None,
+    owner_role: Annotated[str | None, typer.Option("--owner-role", help="Rol.")] = None,
+    every: Annotated[
+        int | None, typer.Option("--every", help="Periodicidad de revisión en días (1 a 365).")
+    ] = None,
+) -> None:
+    """Fija el responsable y la periodicidad de revisión de una medida."""
+    try:
+        entry = set_entry(
+            open_workspace(ctx),
+            clock(),
+            measure,
+            owner_name=owner,
+            owner_role=owner_role,
+            every_days=every,
+        )
+    except MatrixRejected as exc:
+        raise matrix_rejected(f"No se actualiza {measure}:", exc) from None
+    who = f"{entry.owner.name} ({entry.owner.role.value})" if entry.owner else "sin responsable"
+    days = f"cada {entry.review_every_days} días" if entry.review_every_days else "sin periodicidad"
+    typer.echo(f"{measure}: {who}; revisión {days}.")
+
+
+def source_target(evidence: str | None, check: str | None, document: str | None) -> tuple[str, str]:
+    given = [(k, v) for k, v in ((EVIDENCE, evidence), (CHECK, check), (DOCUMENT, document)) if v]
+    if len(given) != 1:
+        raise fail("Indica exactamente una fuente: --evidence, --check o --document.")
+    return given[0]
+
+
+@matrix_app.command("link")
+@handled
+def matrix_link(
+    ctx: typer.Context,
+    measure: Annotated[str, typer.Argument(help="p. ej. op.acc.5")],
+    covers: Annotated[
+        str, typer.Option("--covers", help="Qué cubre: base, R1, compensation o ids de cláusula.")
+    ],
+    evidence: Annotated[str | None, typer.Option("--evidence", help="Id EV-… manual.")] = None,
+    check: Annotated[str | None, typer.Option("--check", help="Id de un check.")] = None,
+    document: Annotated[str | None, typer.Option("--document", help="Documento de docs.")] = None,
+) -> None:
+    """Vincula una fuente (evidencia manual, check o documento) a las cláusulas que cubre."""
+    kind, target = source_target(evidence, check, document)
+    try:
+        link = build_link(kind, target, parse_covers(covers))
+        outcome = add_link(open_workspace(ctx), clock(), measure, link)
+    except MatrixRejected as exc:
+        raise matrix_rejected(f"No se vincula a {measure}:", exc) from None
+    typer.echo(f"Vinculado {link_label(link)} a {measure}.")
+    typer.echo(f"Cubre: {', '.join(outcome.declared)}.")
+    typer.echo(
+        f"Sin cubrir por ningún enlace: {', '.join(outcome.pending)}."
+        if outcome.pending
+        else "Todas las cláusulas tienen algún enlace declarado."
+    )
+    typer.echo("Es lo que se declara cubrir; la revisión de una persona lo confirma.")
+
+
+@matrix_app.command("unlink")
+@handled
+def matrix_unlink(
+    ctx: typer.Context,
+    measure: Annotated[str, typer.Argument(help="p. ej. op.acc.5")],
+    covers: Annotated[
+        str | None,
+        typer.Option("--covers", help="Quita solo estas coberturas (por defecto, todo el enlace)."),
+    ] = None,
+    evidence: Annotated[str | None, typer.Option("--evidence", help="Id EV-… manual.")] = None,
+    check: Annotated[str | None, typer.Option("--check", help="Id de un check.")] = None,
+    document: Annotated[str | None, typer.Option("--document", help="Documento de docs.")] = None,
+) -> None:
+    """Desvincula una fuente de una medida. Las revisiones anteriores quedan caducadas."""
+    kind, target = source_target(evidence, check, document)
+    try:
+        outcome = remove_link(
+            open_workspace(ctx),
+            clock(),
+            measure,
+            kind,
+            target,
+            parse_covers(covers) if covers is not None else None,
+        )
+    except MatrixRejected as exc:
+        raise matrix_rejected(f"No se desvincula de {measure}:", exc) from None
+    typer.echo(
+        f"{'Desvinculado' if outcome.removed else 'Coberturas quitadas de'} {target} en {measure}."
+    )
+    if outcome.pending:
+        typer.echo(f"Sin cubrir por ningún enlace: {', '.join(outcome.pending)}.")
+
+
+@matrix_app.command("review")
+@handled
+def matrix_review(
+    ctx: typer.Context,
+    measure: Annotated[str, typer.Argument(help="p. ej. op.acc.5")],
+    by: Annotated[str, typer.Option("--by", help="Nombre de quien revisa (declarado).")],
+    role: Annotated[
+        str, typer.Option("--role", help="system_administrator o system_administrator_delegate.")
+    ],
+    conclusion: Annotated[str, typer.Option("--conclusion", help="Conclusión de la revisión.")],
+    assessment: Annotated[
+        str | None,
+        typer.Option(
+            "--assessment",
+            help="COMPLIANT, NON_COMPLIANT o REQUIRES_REVIEW (solo en medidas aplicables).",
+        ),
+    ] = None,
+    at: Annotated[str | None, typer.Option("--at", help="Cuándo se revisó (no futuro).")] = None,
+) -> None:
+    """Registra la revisión de una persona sobre una medida. La herramienta no declara
+    conformidad: `COMPLIANT` se rechaza si falta responsable, periodicidad o cobertura."""
+    reviewed_at = parse_instant("--at", at)
+    store = open_workspace(ctx)
+    try:
+        plan = prepare_review(
+            store,
+            clock(),
+            measure,
+            by=by,
+            role=role,
+            conclusion=conclusion,
+            assessment=assessment,
+            at=reviewed_at,
+        )
+    except MatrixRejected as exc:
+        raise matrix_rejected(f"No se registra la revisión de {measure}:", exc) from None
+    if plan.row.obligations:
+        typer.echo(f"Cobertura atribuida a {measure}:")
+        print_coverage(plan)
+    if plan.problems:
+        typer.echo(f"No se registra la revisión de {measure}:", err=True)
+        print_errors(list(plan.problems))
+        raise typer.Exit(1)
+    record_review(store, plan)
+    typer.echo(f"Revisión registrada para {measure}. El nombre es declarado; no se autentica.")
+
+
+def print_row_status(status: RowStatus) -> None:
+    spec = status.row.spec
+    if spec.kind is RowKind.SELECTED:
+        if status.implemented:
+            implemented = "sí"
+        else:
+            implemented = "sin revisar" if status.row.review is None else "no"
+        line = f"{spec.measure_id}  seleccionada  implantada: {implemented}  "
+    else:
+        line = f"{spec.measure_id}  no aplicable  "
+    line += f"revisión regular: {'sí' if status.regularly_reviewed else 'no'}"
+    if status.sources:
+        line += f"  evidencias: {', '.join(status.sources)}"
+    typer.echo(line)
+    if status.has_check_links:
+        typer.echo(f"    {CHECKS_PENDING}")
+    for obligation in spec.obligations:
+        if obligation.compensating_measures:
+            typer.echo(
+                "    compensada por: " + "; ".join(obligation.compensating_measures) + ". "
+                "La evidencia ha de mostrar esas medidas, no las cláusulas que sustituyen."
+            )
+    for text in blocker_lines(status.blockers, spec.compensated_clauses):
+        typer.echo(f"    bloqueo: {text}")
+
+
+@matrix_app.command("status")
+@handled
+def matrix_show_status(
+    ctx: typer.Context,
+    measure: Annotated[
+        str | None, typer.Argument(help="Solo esta medida (p. ej. op.acc.5); por defecto, todas.")
+    ] = None,
+    at: Annotated[str | None, typer.Option("--at", help="Instante a evaluar.")] = None,
+) -> None:
+    """Estado de cada medida y preparación. Sale con 1 si hay bloqueos o ficheros ilegibles."""
+    instant = parse_instant("--at", at) or clock()
+    result, rows = matrix_status(open_workspace(ctx), instant)
+    shown = [s for s in rows if measure is None or s.row.spec.measure_id == measure]
+    if measure is not None and not shown:
+        raise fail(f"{measure} no es una medida de la Declaración de Aplicabilidad.", 1)
+    typer.echo(f"Declaración de Aplicabilidad: {DECLARATION_LABELS[result.declaration_state]}.")
+    typer.echo(f"Aviso: {CHECKS_PENDING}.")
+    for status in shown:
+        print_row_status(status)
+    print_errors(list(result.errors))
+    readiness = result.readiness
+    if measure is None:
+        count = len(readiness.blockers)
+        blocked_by = f"{count} bloqueo" if count == 1 else f"{count} bloqueos"
+        if result.declaration_state is not DeclarationState.CURRENT:
+            blocked_by = "todas las medidas bloqueadas: la Declaración no está vigente"
+        typer.echo(
+            f"Preparación: {READINESS_LABELS[readiness.readiness]}, {blocked_by}. "
+            "La herramienta no declara conformidad; la valoración es de la persona que revisa."
+        )
+    blocked = bool(readiness.blockers) if measure is None else any(s.blockers for s in shown)
+    if blocked or result.errors:
+        raise typer.Exit(1)
+
+
+class ExportFormat(StrEnum):
+    JSON = "json"
+    MD = "md"
+
+
+@matrix_app.command("export")
+@handled
+def matrix_export(
+    ctx: typer.Context,
+    fmt: Annotated[
+        ExportFormat, typer.Option("--format", help="Formato de la exportación.")
+    ] = ExportFormat.JSON,
+    at: Annotated[str | None, typer.Option("--at", help="Instante a evaluar.")] = None,
+    stdout: Annotated[
+        bool, typer.Option("--stdout", help="Imprime en vez de guardar en el workspace.")
+    ] = False,
+) -> None:
+    """Exporta la matriz con sus fuentes y marcas de tiempo a `evidence/reports/matrix/`.
+    Falla si falta alguna fila de la Declaración. No declara conformidad."""
+    store = open_workspace(ctx)
+    generated_at = clock()
+    evaluation = assess(store, parse_instant("--at", at) or generated_at)
+    try:
+        export = build_export(store, evaluation, generated_at=generated_at)
+    except ExportRejected as exc:
+        typer.echo("No se exporta la matriz:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    text = render_json(export) if fmt is ExportFormat.JSON else render_markdown(export)
+    if stdout:
+        typer.echo(text, nl=False)
+        return
+    typer.echo(save_report(store, MATRIX_REPORTS_PREFIX, generated_at, fmt.value, text))
 
 
 def connector_registry() -> ConnectorRegistry:

@@ -20,6 +20,7 @@ from ens_evidence.scope.models import (
 )
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 ASSETS_KEY = "scope/assets.yaml"
 SERVICES_KEY = "scope/services.yaml"
@@ -84,7 +85,7 @@ def _load_file(
         errors.append(f"{key}: no es texto UTF-8; guárdalo como UTF-8")
         return None
     try:
-        raw: Any = yaml.safe_load(text)
+        raw: Any = safe_load_unique(text)
     except yaml.YAMLError:
         errors.append(f"{key}: no es YAML válido; revisa la sintaxis")
         return None

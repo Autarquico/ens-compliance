@@ -22,6 +22,7 @@ from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.enums import Role
 from ens_evidence.scope import load_assets
 from ens_evidence.workspace import AlreadyExists, WorkspaceError, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 RESTORE_TESTS_PREFIX = f"{EVIDENCE_ROOT}/restore-tests"
 MAX_DAYS_AFTER_RESTORE = 7
@@ -110,7 +111,7 @@ def record_restore_test(
     `ValidationError` si la declaración no vale; `BackupError` si no cuadra con el registro.
     """
     try:
-        loaded = yaml.safe_load(data)
+        loaded = safe_load_unique(data)
     except yaml.YAMLError:
         raise BackupError("el fichero no es YAML válido") from None
     declaration = RestoreTestDeclaration.model_validate(loaded)
@@ -170,7 +171,7 @@ def _require_performed_just_after(finished_at: datetime | None, performed_at: da
 def _require_not_cited_yet(store: WorkspaceStore, restore_id: str) -> None:
     for key in store.list(RESTORE_TESTS_PREFIX):
         try:
-            loaded = yaml.safe_load(store.read_bytes(key))
+            loaded = safe_load_unique(store.read_bytes(key))
         except (WorkspaceError, yaml.YAMLError):
             continue
         if isinstance(loaded, dict) and loaded.get("restore_id") == restore_id:

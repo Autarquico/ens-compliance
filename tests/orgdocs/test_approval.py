@@ -300,3 +300,72 @@ def test_si_cambia_el_rol_que_aprueba_la_aprobacion_queda_obsoleta(built):
 
     assert status.state is DocumentState.OBSOLETE
     assert "ha cambiado el rol que aprueba el documento" in status.reasons
+
+
+def test_un_registro_de_aprobacion_ilegible_se_expone_y_el_documento_deja_de_estar_vigente(built):
+    approve_document(
+        built, "politica-seguridad", "Marta Ibáñez Soler", Role.MANAGEMENT, DOCUMENT_APPROVED_AT
+    )
+    (key,) = approval_keys(built, "politica-seguridad")
+    assert document_status(built, "politica-seguridad").state is DocumentState.APPROVED
+    built.write_text(key, "approved_by: [")
+
+    status = document_status(built, "politica-seguridad")
+
+    assert status.unreadable == [key]
+    assert status.state is not DocumentState.APPROVED
+    assert f"registro de aprobación ilegible: {key}" in status.reasons
+
+
+def test_docs_status_muestra_el_registro_ilegible_y_sale_con_1(built, settings):
+    approve_document(
+        built, "politica-seguridad", "Marta Ibáñez Soler", Role.MANAGEMENT, DOCUMENT_APPROVED_AT
+    )
+    (key,) = approval_keys(built, "politica-seguridad")
+    built.write_text(key, "document: [")
+
+    result = ens(settings, "docs", "status")
+
+    assert result.exit_code == 1
+    assert f"registro de aprobación ilegible: {key}" in result.output
+
+
+def test_una_clave_repetida_en_una_aprobacion_la_hace_ilegible(built):
+    approve_document(
+        built, "politica-seguridad", "Marta Ibáñez Soler", Role.MANAGEMENT, DOCUMENT_APPROVED_AT
+    )
+    (key,) = approval_keys(built, "politica-seguridad")
+    built.write_text(key, built.read_text(key) + "role: security_officer\n")
+
+    status = document_status(built, "politica-seguridad")
+
+    assert status.unreadable == [key]
+    assert approval_history(built, "politica-seguridad") == []
+
+
+def test_retrofechar_el_approved_at_de_una_aprobacion_la_hace_ilegible(built):
+    approve_document(
+        built, "politica-seguridad", "Marta Ibáñez Soler", Role.MANAGEMENT, DOCUMENT_APPROVED_AT
+    )
+    (key,) = approval_keys(built, "politica-seguridad")
+    text = built.read_text(key)
+    stamped = yaml.safe_load(text)["approved_at"]
+    assert stamped in text
+    built.write_text(key, text.replace(stamped, "2020-01-01T00:00:00Z"))
+
+    status = document_status(built, "politica-seguridad")
+
+    assert status.unreadable == [key]
+    assert status.state is not DocumentState.APPROVED
+    assert approval_history(built, "politica-seguridad") == []
+
+
+def test_una_aprobacion_copiada_a_otro_documento_es_ilegible_alli(built):
+    approve_document(
+        built, "politica-seguridad", "Marta Ibáñez Soler", Role.MANAGEMENT, DOCUMENT_APPROVED_AT
+    )
+    (key,) = approval_keys(built, "politica-seguridad")
+    stray = key.replace("politica-seguridad", "normativa-seguridad")
+    built.create_bytes(stray, built.read_bytes(key))
+
+    assert document_status(built, "normativa-seguridad").unreadable == [stray]

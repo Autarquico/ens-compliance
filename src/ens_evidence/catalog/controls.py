@@ -16,6 +16,7 @@ from ens_evidence.models.readiness import Measure
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.sync import MEASURES_KEY
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.yaml_unique import safe_load_unique
 
 
 class CatalogVersion(Strict):
@@ -82,7 +83,7 @@ def load_measures(store: WorkspaceStore) -> MeasuresFile | None:
             [f"{MEASURES_KEY}: no es texto UTF-8; guárdalo como UTF-8"]
         ) from None
     try:
-        raw: Any = yaml.safe_load(text)
+        raw: Any = safe_load_unique(text)
     except yaml.YAMLError:
         raise MeasuresFileError(
             [f"{MEASURES_KEY}: no es YAML válido; revisa la sintaxis"]

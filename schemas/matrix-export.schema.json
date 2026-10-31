@@ -1,0 +1,903 @@
+{
+  "$defs": {
+    "Blocker": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/BlockerKind"
+        },
+        "measure_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measure Id"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Blocker",
+      "type": "object"
+    },
+    "BlockerKind": {
+      "enum": [
+        "UNDETERMINED_APPLICABILITY",
+        "NOT_APPLICABLE_WITHOUT_JUSTIFICATION",
+        "MISSING_EVIDENCE",
+        "EXPIRED_EVIDENCE",
+        "MISSING_REVIEW",
+        "EXPIRED_REVIEW",
+        "NOT_COMPLIANT",
+        "OPEN_FINDING"
+      ],
+      "title": "BlockerKind",
+      "type": "string"
+    },
+    "CatalogVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "consolidation_date": {
+          "format": "date",
+          "title": "Consolidation Date",
+          "type": "string"
+        },
+        "snapshot_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_sha256",
+        "consolidation_date"
+      ],
+      "title": "CatalogVersion",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "BASICA",
+        "MEDIA",
+        "ALTA"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "CheckSource": {
+      "additionalProperties": false,
+      "properties": {
+        "check_id": {
+          "title": "Check Id",
+          "type": "string"
+        },
+        "connector": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Connector"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "last_run_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Last Run At"
+        },
+        "measures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Measures",
+          "type": "array"
+        }
+      },
+      "required": [
+        "check_id",
+        "connector",
+        "measures",
+        "last_run_at",
+        "evidence_ids"
+      ],
+      "title": "CheckSource",
+      "type": "object"
+    },
+    "DeclarationState": {
+      "enum": [
+        "INVALID",
+        "NOT_APPROVED",
+        "STALE",
+        "CURRENT"
+      ],
+      "title": "DeclarationState",
+      "type": "string"
+    },
+    "DocumentSource": {
+      "additionalProperties": false,
+      "properties": {
+        "approved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Approved At"
+        },
+        "document_sha256": {
+          "title": "Document Sha256",
+          "type": "string"
+        },
+        "measures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Measures",
+          "type": "array"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "document_sha256",
+        "approved_at",
+        "measures"
+      ],
+      "title": "DocumentSource",
+      "type": "object"
+    },
+    "EvidenceSource": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_sha256": {
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "collected_at": {
+          "format": "date-time",
+          "title": "Collected At",
+          "type": "string"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "manifest_key": {
+          "title": "Manifest Key",
+          "type": "string"
+        },
+        "provenance": {
+          "$ref": "#/$defs/Provenance"
+        },
+        "source": {
+          "title": "Source",
+          "type": "string"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Valid Until"
+        }
+      },
+      "required": [
+        "id",
+        "manifest_key",
+        "source",
+        "artifact_sha256",
+        "provenance",
+        "collected_at",
+        "valid_until"
+      ],
+      "title": "EvidenceSource",
+      "type": "object"
+    },
+    "ExportSources": {
+      "additionalProperties": false,
+      "properties": {
+        "checks": {
+          "items": {
+            "$ref": "#/$defs/CheckSource"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/DocumentSource"
+          },
+          "title": "Documents",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/EvidenceSource"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "reviews": {
+          "items": {
+            "$ref": "#/$defs/ReviewSource"
+          },
+          "title": "Reviews",
+          "type": "array"
+        }
+      },
+      "required": [
+        "evidence",
+        "checks",
+        "documents",
+        "reviews"
+      ],
+      "title": "ExportSources",
+      "type": "object"
+    },
+    "ExportedDeclaration": {
+      "additionalProperties": false,
+      "properties": {
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "approved_by": {
+          "title": "Approved By",
+          "type": "string"
+        },
+        "catalog_version": {
+          "$ref": "#/$defs/CatalogVersion"
+        },
+        "categorization_sha256": {
+          "title": "Categorization Sha256",
+          "type": "string"
+        },
+        "category": {
+          "$ref": "#/$defs/Category"
+        },
+        "measures_sha256": {
+          "title": "Measures Sha256",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "scope_fingerprint": {
+          "title": "Scope Fingerprint",
+          "type": "string"
+        },
+        "state": {
+          "$ref": "#/$defs/DeclarationState"
+        }
+      },
+      "required": [
+        "state",
+        "approved_by",
+        "role",
+        "approved_at",
+        "category",
+        "catalog_version",
+        "measures_sha256",
+        "categorization_sha256",
+        "scope_fingerprint"
+      ],
+      "title": "ExportedDeclaration",
+      "type": "object"
+    },
+    "ExportedLink": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "title": "Counts",
+          "type": "boolean"
+        },
+        "covers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Covers",
+          "type": "array"
+        },
+        "kind": {
+          "enum": [
+            "evidence",
+            "check",
+            "org_document"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "target": {
+          "title": "Target",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "target",
+        "covers",
+        "counts"
+      ],
+      "title": "ExportedLink",
+      "type": "object"
+    },
+    "ExportedObligation": {
+      "additionalProperties": false,
+      "properties": {
+        "clauses": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Clauses",
+          "type": "array"
+        },
+        "compensating_measures": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Compensating Measures",
+          "type": "array"
+        },
+        "id": {
+          "title": "Id",
+          "type": "string"
+        },
+        "replaces": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Replaces",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "clauses",
+        "replaces",
+        "compensating_measures"
+      ],
+      "title": "ExportedObligation",
+      "type": "object"
+    },
+    "ExportedReview": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/MeasureAssessment"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "axis": {
+          "enum": [
+            "implementation",
+            "applicability"
+          ],
+          "title": "Axis",
+          "type": "string"
+        },
+        "conclusion": {
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "obligations": {
+          "items": {
+            "$ref": "#/$defs/ReviewedObligation"
+          },
+          "title": "Obligations",
+          "type": "array"
+        },
+        "record_sha256": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Record Sha256"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "reviewed_at": {
+          "format": "date-time",
+          "title": "Reviewed At",
+          "type": "string"
+        },
+        "reviewer": {
+          "title": "Reviewer",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "key",
+        "axis",
+        "assessment",
+        "reviewer",
+        "role",
+        "conclusion",
+        "reviewed_at",
+        "valid_until",
+        "recorded_at",
+        "record_sha256",
+        "obligations"
+      ],
+      "title": "ExportedReview",
+      "type": "object"
+    },
+    "ExportedRow": {
+      "additionalProperties": false,
+      "properties": {
+        "blockers": {
+          "items": {
+            "$ref": "#/$defs/Blocker"
+          },
+          "title": "Blockers",
+          "type": "array"
+        },
+        "compensated_clauses": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Compensated Clauses",
+          "type": "array"
+        },
+        "implemented": {
+          "title": "Implemented",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/RowKind"
+        },
+        "last_review": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ExportedReview"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "manual": {
+          "items": {
+            "$ref": "#/$defs/ExportedLink"
+          },
+          "title": "Manual",
+          "type": "array"
+        },
+        "measure_id": {
+          "title": "Measure Id",
+          "type": "string"
+        },
+        "name": {
+          "title": "Name",
+          "type": "string"
+        },
+        "obligations": {
+          "items": {
+            "$ref": "#/$defs/ExportedObligation"
+          },
+          "title": "Obligations",
+          "type": "array"
+        },
+        "owner": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Owner"
+            },
+            {
+              "type": "null"
+            }
+          ]
+        },
+        "review_current": {
+          "title": "Review Current",
+          "type": "boolean"
+        },
+        "review_every_days": {
+          "anyOf": [
+            {
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Review Every Days"
+        },
+        "technical": {
+          "items": {
+            "$ref": "#/$defs/ExportedLink"
+          },
+          "title": "Technical",
+          "type": "array"
+        }
+      },
+      "required": [
+        "measure_id",
+        "name",
+        "kind",
+        "obligations",
+        "compensated_clauses",
+        "technical",
+        "manual",
+        "owner",
+        "review_every_days",
+        "last_review",
+        "implemented",
+        "review_current",
+        "blockers"
+      ],
+      "title": "ExportedRow",
+      "type": "object"
+    },
+    "MeasureAssessment": {
+      "enum": [
+        "COMPLIANT",
+        "NON_COMPLIANT",
+        "REQUIRES_REVIEW",
+        "NOT_ASSESSED"
+      ],
+      "title": "MeasureAssessment",
+      "type": "string"
+    },
+    "Owner": {
+      "additionalProperties": false,
+      "properties": {
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        }
+      },
+      "required": [
+        "name",
+        "role"
+      ],
+      "title": "Owner",
+      "type": "object"
+    },
+    "Provenance": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/ProvenanceKind"
+        },
+        "submitted_at": {
+          "format": "date-time",
+          "title": "Submitted At",
+          "type": "string"
+        },
+        "submitted_by": {
+          "minLength": 1,
+          "title": "Submitted By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "submitted_by",
+        "submitted_at"
+      ],
+      "title": "Provenance",
+      "type": "object"
+    },
+    "ProvenanceKind": {
+      "enum": [
+        "collector",
+        "manual"
+      ],
+      "title": "ProvenanceKind",
+      "type": "string"
+    },
+    "Readiness": {
+      "enum": [
+        "READY",
+        "NOT_READY"
+      ],
+      "title": "Readiness",
+      "type": "string"
+    },
+    "ReviewSource": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "title": "Key",
+          "type": "string"
+        },
+        "measure_id": {
+          "title": "Measure Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure_id",
+        "key"
+      ],
+      "title": "ReviewSource",
+      "type": "object"
+    },
+    "ReviewedClause": {
+      "additionalProperties": false,
+      "description": "Cl\u00e1usula que la revisi\u00f3n confirm\u00f3 y las fuentes (`tipo:destino`) que la cubren.",
+      "properties": {
+        "clause": {
+          "minLength": 1,
+          "title": "Clause",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Sources",
+          "type": "array"
+        }
+      },
+      "required": [
+        "clause"
+      ],
+      "title": "ReviewedClause",
+      "type": "object"
+    },
+    "ReviewedDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "document_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Document Sha256",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "document_sha256"
+      ],
+      "title": "ReviewedDocument",
+      "type": "object"
+    },
+    "ReviewedEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "artifact_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Artifact Sha256",
+          "type": "string"
+        },
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "description": "Huella del manifiesto completo revisado (procedencia, vigencia, artefacto).",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "artifact_sha256",
+        "manifest_sha256"
+      ],
+      "title": "ReviewedEvidence",
+      "type": "object"
+    },
+    "ReviewedObligation": {
+      "additionalProperties": false,
+      "description": "Fuentes que la persona revisora vio para una obligaci\u00f3n de la medida.\n\n`coverage` es la \u00fanica lista de cl\u00e1usulas confirmadas.",
+      "properties": {
+        "checks": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Checks",
+          "type": "array"
+        },
+        "coverage": {
+          "description": "Qu\u00e9 fuentes cubr\u00edan cada cl\u00e1usula al revisar.",
+          "items": {
+            "$ref": "#/$defs/ReviewedClause"
+          },
+          "title": "Coverage",
+          "type": "array"
+        },
+        "documents": {
+          "items": {
+            "$ref": "#/$defs/ReviewedDocument"
+          },
+          "title": "Documents",
+          "type": "array"
+        },
+        "evidence": {
+          "items": {
+            "$ref": "#/$defs/ReviewedEvidence"
+          },
+          "title": "Evidence",
+          "type": "array"
+        },
+        "obligation": {
+          "minLength": 1,
+          "title": "Obligation",
+          "type": "string"
+        }
+      },
+      "required": [
+        "obligation"
+      ],
+      "title": "ReviewedObligation",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "management",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "RowKind": {
+      "enum": [
+        "selected",
+        "not_selected",
+        "absent_assets"
+      ],
+      "title": "RowKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "blockers": {
+      "items": {
+        "$ref": "#/$defs/Blocker"
+      },
+      "title": "Blockers",
+      "type": "array"
+    },
+    "catalog_version": {
+      "$ref": "#/$defs/CatalogVersion"
+    },
+    "declaration": {
+      "$ref": "#/$defs/ExportedDeclaration"
+    },
+    "disclaimer": {
+      "default": "La herramienta no declara conformidad; la valoraci\u00f3n es de la persona que revisa.",
+      "title": "Disclaimer",
+      "type": "string"
+    },
+    "errors": {
+      "description": "Ficheros ilegibles al evaluar; cada uno bloquea lo que afecta.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "evaluated_at": {
+      "format": "date-time",
+      "title": "Evaluated At",
+      "type": "string"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "matrix_sha256": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Matrix Sha256"
+    },
+    "product_version": {
+      "title": "Product Version",
+      "type": "string"
+    },
+    "readiness": {
+      "$ref": "#/$defs/Readiness"
+    },
+    "rows": {
+      "items": {
+        "$ref": "#/$defs/ExportedRow"
+      },
+      "title": "Rows",
+      "type": "array"
+    },
+    "sources": {
+      "$ref": "#/$defs/ExportSources"
+    }
+  },
+  "required": [
+    "generated_at",
+    "evaluated_at",
+    "product_version",
+    "catalog_version",
+    "declaration",
+    "matrix_sha256",
+    "readiness",
+    "blockers",
+    "rows",
+    "sources"
+  ],
+  "title": "MatrixExport",
+  "type": "object"
+}
