@@ -3,6 +3,7 @@
 `matrix.yaml` no está en `SYNCED_KEYS`: un push no debe revocar el alcance ni la Declaración.
 """
 
+import hashlib
 from dataclasses import dataclass, field
 from datetime import UTC, datetime
 from typing import Any
@@ -12,7 +13,7 @@ from pydantic import BaseModel
 
 from ens_evidence.approvals import load_model, safe_load_unique
 from ens_evidence.matrix.model import ApplicabilityReview, MatrixFile, MeasureReviewRecord
-from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
+from ens_evidence.workspace import AlreadyExists, NotFound, NotText, WorkspaceStore
 
 MATRIX_KEY = "controls/matrix.yaml"
 REVIEWS_PREFIX = "controls/reviews"
@@ -66,11 +67,24 @@ def instant_stamp(moment: datetime) -> str:
     return moment.astimezone(UTC).strftime("%Y%m%dT%H%M%S%fZ")
 
 
+def content_digest(record: Record) -> str:
+    """Huella del contenido validado: cualquier valor editado a mano la cambia."""
+    return hashlib.sha256(_dump(record).encode("utf-8")).hexdigest()[:12]
+
+
+def review_key(record: Record) -> str:
+    stamp = instant_stamp(record.recorded_at)
+    return f"{reviews_prefix(record.measure_id)}/{stamp}-{content_digest(record)}.yaml"
+
+
 def add_review(store: WorkspaceStore, record: Record) -> str:
     """Escribe la revisión como fichero nuevo y devuelve su clave; nunca sobrescribe.
 
-    La clave codifica el instante: al leer, `recorded_at` debe coincidir con él."""
-    key = f"{reviews_prefix(record.measure_id)}/{instant_stamp(record.recorded_at)}.yaml"
+    La clave codifica el instante y la huella del contenido: al leer, ambos deben coincidir."""
+    key = review_key(record)
+    same_instant = f"{reviews_prefix(record.measure_id)}/{instant_stamp(record.recorded_at)}-"
+    if any(k.startswith(same_instant) for k in store.list(reviews_prefix(record.measure_id))):
+        raise AlreadyExists(key)
     store.create_bytes(key, _dump(record).encode("utf-8"))
     return key
 
@@ -121,8 +135,8 @@ def _read_one(
     if record.measure_id != measure_id:
         errors.append(f"{key}: la revisión es de otra medida ({record.measure_id})")
         return None
-    if not key.endswith(f"/{instant_stamp(record.recorded_at)}.yaml"):
-        errors.append(f"{key}: recorded_at no coincide con el instante de la clave")
+    if key != review_key(record):
+        errors.append(f"{key}: el contenido no coincide con el instante y la huella de la clave")
         return None
     return StoredReview(key, record)
 

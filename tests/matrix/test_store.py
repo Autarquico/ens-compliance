@@ -17,6 +17,7 @@ from ens_evidence.matrix import (
     read_reviews,
     save_matrix,
 )
+from ens_evidence.matrix.store import content_digest
 from ens_evidence.models import MeasureAssessment
 from ens_evidence.scope.sync import SYNCED_KEYS
 from ens_evidence.workspace import AlreadyExists
@@ -87,8 +88,9 @@ class TestMatrixFile:
 
 class TestAppendOnlyReviews:
     def test_stores_under_the_measure_with_a_timestamp_key(self, store):
-        key = add_review(store, measure_review())
-        assert key == "controls/reviews/org.1/20260610T120000000000Z.yaml"
+        record = measure_review()
+        key = add_review(store, record)
+        assert key == f"controls/reviews/org.1/20260610T120000000000Z-{content_digest(record)}.yaml"
         assert store.exists(key)
 
     def test_never_overwrites_an_existing_review(self, store):
@@ -112,9 +114,8 @@ class TestAppendOnlyReviews:
         assert [r.record.measure_id for r in reviews] == ["org.2"]
 
     def test_a_review_filed_under_another_measure_is_reported(self, store):
-        add_review(store, measure_review("org.2"))
-        text = store.read_text("controls/reviews/org.2/20260610T120000000000Z.yaml")
-        store.write_text("controls/reviews/org.1/20260610T120000000000Z.yaml", text)
+        key = add_review(store, measure_review("org.2"))
+        store.write_text(key.replace("/org.2/", "/org.1/"), store.read_text(key))
         reviews, errors = read_reviews(store, "org.1")
         assert reviews == [] and "otra medida" in errors[0]
 
@@ -139,8 +140,7 @@ class TestAppendOnlyReviews:
         ]
 
     def test_secrets_in_a_review_are_rejected(self, store):
-        add_review(store, measure_review())
-        key = "controls/reviews/org.1/20260610T120000000000Z.yaml"
+        key = add_review(store, measure_review())
         data = yaml.safe_load(store.read_text(key))
         data["api_key"] = "sk-abcdefghijklmnopqrstuvwxyz0123456789"
         store.write_text(key, yaml.safe_dump(data))
@@ -264,3 +264,15 @@ class TestDuplicateKeys:
         reviews = effective_reviews(store, "org.1", RECORDED + timedelta(days=1))
 
         assert reviews.implementation is None and reviews.unreadable == [key]
+
+
+def test_cambiar_solo_la_valoracion_de_una_revision_la_hace_ilegible(store):
+    key = add_review(store, measure_review(assessment=MeasureAssessment.NON_COMPLIANT))
+    data = yaml.safe_load(store.read_text(key))
+    data["assessment"] = "COMPLIANT"
+    store.write_text(key, yaml.safe_dump(data, sort_keys=False, allow_unicode=True))
+
+    found = effective_reviews(store, "org.1", RECORDED + timedelta(days=1))
+
+    assert found.implementation is None
+    assert found.unreadable == [key]
