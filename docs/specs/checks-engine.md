@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Motor de checks y regla de preparación
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 23
