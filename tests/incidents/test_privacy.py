@@ -65,6 +65,40 @@ def test_sensitive_value_is_rejected_naming_the_field_but_not_the_value(label, p
     assert not any(raw in e for e in errors for raw in SENSITIVE.values())
 
 
+LABELLED_PHONES = [
+    "tel:600123456",
+    "tlf=600123456",
+    "+34 600123456",
+    "(600123456)",
+    "tel:+34600123456",
+    "Contacto/600 123 456",
+]
+LABELLED_CREDENTIALS = [
+    "password=ClaveSintetica123!",
+    "Pwd:Sintetica123",
+    "contraseña=Sintetica1",
+    "api_key:abcd1234",
+    "db_password = Sintetica1",
+    'token="abc123"',
+]
+
+
+@pytest.mark.parametrize("text", LABELLED_PHONES)
+@pytest.mark.parametrize("path", [FLAT, *NESTED], ids=dotted)
+def test_labelled_phone_is_rejected(text, path):
+    errors, _ = check_incident_payload(put(full_payload(), path, f"Contacto {text} ok"))
+    assert any(e.startswith(dotted(path)) and "teléfono" in e for e in errors), errors
+    assert not any("600" in e for e in errors)
+
+
+@pytest.mark.parametrize("text", LABELLED_CREDENTIALS)
+@pytest.mark.parametrize("path", [FLAT, *NESTED], ids=dotted)
+def test_labelled_credential_is_rejected_without_echoing_the_value(text, path):
+    errors, _ = check_incident_payload(put(full_payload(), path, f"Alta {text} fin"))
+    assert any(e.startswith(dotted(path)) and "credencial" in e for e in errors), errors
+    assert not any("Sintetica" in e or "abc123" in e or "abcd1234" in e for e in errors)
+
+
 def test_error_does_not_contain_the_value_even_when_it_is_the_whole_field():
     payload = put(full_payload(), FLAT, SENSITIVE["correo"])
     errors, _ = check_incident_payload(payload)
@@ -96,7 +130,17 @@ def test_ip_in_free_text_is_a_warning_not_an_error():
 
 
 @pytest.mark.parametrize(
-    "text", ["Versión 1.2.3.4.5", "Hora 12:30:45", "Fecha 2026-10-15 y 20261015 a las", "999.1.1.1"]
+    "text",
+    [
+        "Versión 1.2.3.4.5",
+        "Hora 12:30:45",
+        "la clave del problema fue el reloj",
+        "Se rotó el token del servicio",
+        "clave: revisar",
+        "Ruta 10/20261015",
+        "Fecha 2026-10-15 y 20261015 a las",
+        "999.1.1.1",
+    ],
 )
 def test_non_identifiers_do_not_trigger(text):
     payload = put(full_payload(), ("state", "analysis", "summary"), text)
@@ -200,3 +244,19 @@ def test_ordinary_asset_and_alert_ids_still_pass():
     payload = put(payload, ("state", "source", "alert_ids", 0), "1700000000.1234")
 
     assert check_incident_payload(payload) == ([], [])
+
+
+@pytest.mark.parametrize(
+    ("text", "rejected"),
+    [
+        ("password: Secreto123", True),
+        ("api_key: sk_live_9f8e7d", True),
+        ("clave: revisar", False),
+        ("token: abc", False),
+    ],
+)
+def test_una_credencial_tras_dos_puntos_y_espacio_se_rechaza_si_parece_un_secreto(text, rejected):
+    errors, _ = check_incident_payload({"state": {"title": text}})
+
+    assert bool(errors) is rejected
+    assert all("Secreto123" not in e and "sk_live" not in e for e in errors)

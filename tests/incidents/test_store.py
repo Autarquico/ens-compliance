@@ -364,7 +364,14 @@ def test_a_closed_incident_without_history_points_to_the_recovery_command(world)
 
 @pytest.mark.parametrize(
     "by",
-    ["ana@ejemplo.invalid", "12345678Z", "AKIAABCDEFGHIJKLMNOP", "x" * 121],
+    [
+        "ana@ejemplo.invalid",
+        "12345678Z",
+        "AKIAABCDEFGHIJKLMNOP",
+        "x" * 121,
+        "tel:600123456",
+        "password=Sintetica123",
+    ],
 )
 def test_the_declared_author_is_minimized_like_any_other_field(world, by):
     error = rejection(
@@ -375,6 +382,15 @@ def test_the_declared_author_is_minimized_like_any_other_field(world, by):
 
     assert error.errors and all(e.startswith("--by") for e in error.errors)
     assert by not in " ".join(error.errors)
+    assert world.written() == []
+
+
+@pytest.mark.parametrize("text", ["password=ClaveSintetica123!", "Contacto tel:600123456"])
+def test_labelled_credentials_and_phones_in_text_create_no_key(world, text):
+    error = rejection(lambda: world.open(title=text))
+
+    assert "title" in " ".join(error.errors)
+    assert text.split("=")[-1].split(":")[-1] not in " ".join(error.errors)
     assert world.written() == []
 
 

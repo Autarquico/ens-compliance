@@ -101,6 +101,22 @@ class TestNew:
         assert "AKIAABCDEFGHIJKLMNOP" not in result.output
         assert stored(world) == []
 
+    @pytest.mark.parametrize("text", ["password=ClaveSintetica123!", "Contacto tel:600123456"])
+    def test_labelled_credential_or_phone_in_title_is_rejected(self, cli, world, text):
+        result = cli(*[text if a == "Acceso indebido" else a for a in NEW])
+        assert result.exit_code == 1
+        assert "title" in result.output
+        assert "ClaveSintetica" not in result.output and "600123456" not in result.output
+        assert stored(world) == []
+
+    @pytest.mark.parametrize("by", ["tel:600123456", "password=Sintetica123"])
+    def test_labelled_values_in_by_are_rejected(self, cli, world, by):
+        result = cli(*[by if a == "Ana" else a for a in NEW])
+        assert result.exit_code == 1
+        assert "--by" in result.output
+        assert "Sintetica123" not in result.output and "600123456" not in result.output
+        assert stored(world) == []
+
     def test_simulation_without_approved_procedure_is_rejected(self, cli, world):
         result = cli(*NEW, "--simulated")
         assert result.exit_code == 1

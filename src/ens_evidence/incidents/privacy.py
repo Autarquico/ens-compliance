@@ -57,10 +57,20 @@ _SAFE_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,40}$")
 _EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
 _DNI_NIE = re.compile(r"(?<![\w])(?:\d{8}|[XYZ]\d{7})-?[A-Z](?![\w])", re.IGNORECASE)
 _IBAN = re.compile(r"(?<![\w])[A-Z]{2}\d{2}(?:[ -]?[A-Z0-9]){11,30}(?![\w])")
+# Límite izquierdo: no dentro de un token, IP ni fecha; sí tras etiquetas ("tel:", "tlf=", "/").
+_PHONE_LEFT = r"(?<![\w.-])(?<!\d[:/])(?<!::)"
 _PHONE_ES = re.compile(
-    r"(?<![\w.:/-])(?:(?:\+|00)\d{1,3}[ .-]?)?[6-9]\d{2}(?:[ .-]?\d{2,3}){2,3}(?![\w])"
+    _PHONE_LEFT + r"(?:(?:\+|00)\d{1,3}[ .-]?)?[6-9]\d{2}(?:[ .-]?\d{2,3}){2,3}(?![\w])"
 )
-_PHONE_INTL = re.compile(r"(?<![\w.:/-])(?:\+|00)\d{1,3}(?:[ .-]?\d){7,12}(?![\w])")
+_PHONE_INTL = re.compile(_PHONE_LEFT + r"(?:\+|00)\d{1,3}(?:[ .-]?\d){7,12}(?![\w])")
+_CREDENTIAL = re.compile(
+    r"(?<![A-Za-z0-9])(?:password|passwd|pwd|contrase[ñn]a|clave|secret|token|api[_-]?key"
+    r"|access[_-]?key)[\"']?"
+    # «=» admite espacios; «:» pegado al valor, o con espacio si el valor parece un secreto
+    # (6+ caracteres sin espacios con algún dígito o símbolo): «clave: revisar» no se marca.
+    r"(?:(?:\s*=\s*|:)[\"']?[^\s\"',;]{3,}|:\s+[\"']?(?=[^\s\"',;]*[\d\W_])[^\s\"',;]{6,})",
+    re.IGNORECASE,
+)
 _IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 _IPV6 = re.compile(r"(?<![\w:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:])")
 
@@ -90,6 +100,8 @@ def _identifiers(text: str) -> list[str]:
         found.append("un IBAN")
     if _PHONE_ES.search(text) or _PHONE_INTL.search(text):
         found.append("un teléfono")
+    if _CREDENTIAL.search(text):
+        found.append("una credencial")
     return found
 
 
