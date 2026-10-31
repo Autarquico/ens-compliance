@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: S
 issue: 22
-prs: []
+prs: [49]
 related_issues: [22]
 depends_on: [org-docs-templates, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 # Procedimiento y registro de incidentes
