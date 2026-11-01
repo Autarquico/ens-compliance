@@ -137,7 +137,7 @@ def test_ip_in_free_text_is_a_warning_not_an_error():
         "la clave del problema fue el reloj",
         "Se rotó el token del servicio",
         "clave: revisar",
-        "Ruta 10/20261015",
+        "Ruta 10/2026",
         "Fecha 2026-10-15 y 20261015 a las",
         "999.1.1.1",
     ],
@@ -149,7 +149,9 @@ def test_non_identifiers_do_not_trigger(text):
 
 def test_iban_needs_valid_checksum():
     payload = put(full_payload(), FLAT, "Ref ES00 2100 0418 4502 0005 1332 interna")
-    assert check_incident_payload(payload) == ([], [])
+    errors, _ = check_incident_payload(payload)
+    # Sin checksum válido no es un IBAN, pero sus 20 dígitos siguen siendo un número largo.
+    assert errors == ["state.title: contiene un teléfono; quítalo"]
 
 
 @pytest.mark.parametrize("alert", ["has space", "a@b.es", "x" * 129, "", 7])
@@ -241,7 +243,7 @@ def test_an_ip_in_an_opaque_id_list_is_a_warning(path):
 
 def test_ordinary_asset_and_alert_ids_still_pass():
     payload = put(full_payload(), ("state", "assets", 0), "srv-ficheros-01")
-    payload = put(payload, ("state", "source", "alert_ids", 0), "1700000000.1234")
+    payload = put(payload, ("state", "source", "alert_ids", 0), "wazuh-1234")
 
     assert check_incident_payload(payload) == ([], [])
 
@@ -260,3 +262,59 @@ def test_una_credencial_tras_dos_puntos_y_espacio_se_rechaza_si_parece_un_secret
 
     assert bool(errors) is rejected
     assert all("Secreto123" not in e and "sk_live" not in e for e in errors)
+
+
+WAZUH_ALERT_ID = "1700000000.1234"
+ALERT_IDS = ("state", "source", "alert_ids")
+
+
+def test_a_wazuh_alert_id_is_admitted_in_alert_ids():
+    payload = put(full_payload(), (*ALERT_IDS, 0), WAZUH_ALERT_ID)
+
+    assert check_incident_payload(payload) == ([], [])
+
+
+@pytest.mark.parametrize("path", [FLAT, ("state", "assets", 0)], ids=["title", "assets"])
+def test_the_same_number_is_rejected_outside_alert_ids(path):
+    payload = put(full_payload(), path, WAZUH_ALERT_ID)
+
+    errors, _ = check_incident_payload(payload)
+
+    assert errors and WAZUH_ALERT_ID not in " ".join(errors)
+
+
+@pytest.mark.parametrize("value", ["6001234567", "6001234567.", "1700000000.12345678901"])
+def test_a_ten_digit_phone_or_a_malformed_fraction_is_rejected_in_alert_ids(value):
+    payload = put(full_payload(), (*ALERT_IDS, 0), value)
+
+    errors, _ = check_incident_payload(payload)
+
+    assert any(e.startswith("state.source.alert_ids[0]") for e in errors)
+
+
+@pytest.mark.parametrize("text", ["203.0.113.7:8080", "[2001:db8::1]:443", "203.0.113.7:65535"])
+def test_an_ip_with_a_valid_port_is_a_warning(text):
+    payload = put(full_payload(), FLAT, f"Origen {text} bloqueado")
+
+    errors, warnings = check_incident_payload(payload)
+
+    assert errors == []
+    assert warnings and text not in warnings[0]
+
+
+@pytest.mark.parametrize("text", ["203.0.113.7:0", "203.0.113.7:65536", "203.0.113.7:999999"])
+def test_a_port_out_of_range_is_rejected(text):
+    payload = put(full_payload(), FLAT, f"Origen {text} bloqueado")
+
+    errors, _ = check_incident_payload(payload)
+
+    assert errors == ["state.title: contiene un teléfono; quítalo"]
+
+
+@pytest.mark.parametrize("text", ["999.999.999.999:8080", "300.300.300.300:80"])
+def test_an_invalid_ip_with_a_port_is_rejected(text):
+    payload = put(full_payload(), FLAT, f"Origen {text} bloqueado")
+
+    errors, _ = check_incident_payload(payload)
+
+    assert errors == ["state.title: contiene un teléfono; quítalo"]

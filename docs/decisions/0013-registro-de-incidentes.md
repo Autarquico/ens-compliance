@@ -84,6 +84,21 @@ dejar rastro, no serviría para acreditar nada.
     DNI/NIE, IBAN, teléfono) en todos los campos, incluidos `assets`,
     `alert_ids` y `--by`;
   - las IP se admiten con aviso;
+  - la detección es estructural y conservadora, no por formato: se rechaza
+    cualquier secuencia de 9 o más dígitos aunque la separen espacios,
+    puntos, guiones, barras, paréntesis, `+` o `:`. Solo se admite, si el
+    tramo completo encaja, una IP válida (con aviso), una IP con puerto
+    (`IPv4:puerto` o `[IPv6]:puerto`, IP válida y puerto 1-65535; mismo
+    aviso) o un instante ISO 8601. Hay dos excepciones más: en
+    `source.alert_ids`, y solo ahí, se admite el id de alerta de Wazuh con
+    formato exacto `^\d{10}\.\d{1,10}$` (epoch con fracción; el mismo número
+    en texto libre u otro campo se rechaza), y los ids propios (`INC-…`,
+    `SIM-…`, `EV-…`) no cuentan. Puede rechazar textos con números largos
+    (un id de alerta numérico fuera de ese formato, un hash con 9 dígitos
+    seguidos); se describen por referencia. IBAN,
+    DNI/NIE y correo se buscan sin distinguir mayúsculas y con separadores;
+    las credenciales admiten espacios alrededor de `=` y `:`, y un valor
+    entrecomillado se analiza completo;
   - no se adjuntan logs;
   - los errores nombran el campo, nunca el valor.
 - `incidents/` no se publica con `workspace push`; entra en la copia restic.

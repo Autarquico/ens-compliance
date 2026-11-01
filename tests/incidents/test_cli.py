@@ -11,6 +11,7 @@ from ens_evidence.evidence.manifests import list_manifests
 from ens_evidence.matrix import MATRIX_KEY
 
 from .helpers import DETECTED, RECORDED
+from .variants import REJECTED
 from .world import World
 
 DETECTED_AT = DETECTED.isoformat()
@@ -116,6 +117,18 @@ class TestNew:
         assert "--by" in result.output
         assert "Sintetica123" not in result.output and "600123456" not in result.output
         assert stored(world) == []
+
+    @pytest.mark.parametrize("label", list(REJECTED))
+    def test_format_variants_in_by_title_and_summary_write_nothing(self, cli, world, label):
+        value = REJECTED[label]
+        assert cli(*[value if a == "Ana" else a for a in NEW]).exit_code == 1
+        assert cli(*[f"Aviso {value}" if a == "Acceso indebido" else a for a in NEW]).exit_code == 1
+        open_incident(cli)
+        before = world.written()
+        result = cli("incident", "update", "INC-2026-001", "--by", "Ana", "--summary", value)
+        assert result.exit_code == 1
+        assert value not in result.output
+        assert world.written() == before
 
     def test_simulation_without_approved_procedure_is_rejected(self, cli, world):
         result = cli(*NEW, "--simulated")

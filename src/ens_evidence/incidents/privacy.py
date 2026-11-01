@@ -6,6 +6,7 @@ escribir nada. Los mensajes nombran el campo, nunca el valor.
 
 import ipaddress
 import re
+import string
 from typing import Any
 
 from ens_evidence.incidents.model import OPAQUE_ID_PATTERN, TITLE_MAX
@@ -14,6 +15,7 @@ from ens_evidence.scope.secrets import find_secrets
 _TEXT = "text"  # texto libre: se busca de todo
 _ID = "id"  # valor estructurado (id, hash, instante, enum): solo secretos
 _OPAQUE_LIST = ("opaque",)  # lista de ids opacos con formato fijo
+_ALERT_IDS = ("alert_ids",)  # ids opacos que además admiten ids de alerta de Wazuh
 
 _Shape = Any
 _RECORD: dict[str, _Shape] = {
@@ -30,7 +32,7 @@ _RECORD: dict[str, _Shape] = {
         "severity": _TEXT,
         "detected_at": _ID,
         "assets": _OPAQUE_LIST,
-        "source": {"system": _TEXT, "alert_ids": _OPAQUE_LIST},
+        "source": {"system": _TEXT, "alert_ids": _ALERT_IDS},
         "personal_data": _ID,
         "analysis": {"summary": _TEXT, "recommendations": [_TEXT]},
         "actions": [{"kind": _ID, "at": _ID, "description": _TEXT}],
@@ -54,32 +56,101 @@ _RECORD: dict[str, _Shape] = {
 
 _OPAQUE = re.compile(OPAQUE_ID_PATTERN)
 _SAFE_KEY = re.compile(r"^[A-Za-z_][A-Za-z0-9_]{0,40}$")
-_EMAIL = re.compile(r"[\w.+-]+@[\w-]+(?:\.[\w-]+)+")
-_DNI_NIE = re.compile(r"(?<![\w])(?:\d{8}|[XYZ]\d{7})-?[A-Z](?![\w])", re.IGNORECASE)
-_IBAN = re.compile(r"(?<![\w])[A-Z]{2}\d{2}(?:[ -]?[A-Z0-9]){11,30}(?![\w])")
-# Límite izquierdo: no dentro de un token, IP ni fecha; sí tras etiquetas ("tel:", "tlf=", "/").
-_PHONE_LEFT = r"(?<![\w.-])(?<!\d[:/])(?<!::)"
-_PHONE_ES = re.compile(
-    _PHONE_LEFT + r"(?:(?:\+|00)\d{1,3}[ .-]?)?[6-9]\d{2}(?:[ .-]?\d{2,3}){2,3}(?![\w])"
-)
-_PHONE_INTL = re.compile(_PHONE_LEFT + r"(?:\+|00)\d{1,3}(?:[ .-]?\d){7,12}(?![\w])")
-_CREDENTIAL = re.compile(
-    r"(?<![A-Za-z0-9])(?:password|passwd|pwd|contrase[ñn]a|clave|secret|token|api[_-]?key"
-    r"|access[_-]?key)[\"']?"
-    # «=» admite espacios; «:» pegado al valor, o con espacio si el valor parece un secreto
-    # (6+ caracteres sin espacios con algún dígito o símbolo): «clave: revisar» no se marca.
-    r"(?:(?:\s*=\s*|:)[\"']?[^\s\"',;]{3,}|:\s+[\"']?(?=[^\s\"',;]*[\d\W_])[^\s\"',;]{6,})",
+_EMAIL = re.compile(r"[\w.+-]+\s?@\s?[\w-]+(?:\.[\w-]+)+")
+# DNI/NIE: dígitos con separadores opcionales y letra final. Si la letra va separada, debe ser la
+# letra de control válida («20261015 a las» no es un DNI); pegada, cualquier letra.
+_DNI_NIE = re.compile(
+    r"(?<![A-Za-z0-9])(?P<body>(?:\d(?:[ .-]?\d){7}|[XYZ](?:[ .-]?\d){7}))"
+    r"(?P<sep>[ .-]?)(?P<letter>[A-Z])(?![A-Za-z0-9])",
     re.IGNORECASE,
 )
+_CONTROL_LETTERS = "TRWAGMYFPDXBNJZSQVHLCKE"
+_IBAN_START = re.compile(r"(?<![A-Za-z0-9])[A-Za-z]{2}\d{2}")
+_IBAN_SEPARATORS = " .-_/"
+_ALNUM = frozenset(string.ascii_letters + string.digits)
+# Ids propios del registro: no son teléfonos aunque lleven muchos dígitos.
+_OWN_IDS = re.compile(r"(?<![\w-])(?:(?:INC|SIM)-\d{4}-\d{3}|EV-\d{8}-[0-9a-f]{8})(?!\w)")
+# Tramo de dígitos con separadores habituales de un número (espacio . - / ( ) + :).
+_DIGIT_RUN = re.compile(r"\d(?:[\d\s().+/:-]*\d)?")
+_PHONE_MIN_DIGITS = 9
+# Id de alerta de Wazuh: epoch con fracción. Solo se admite en `source.alert_ids`.
+_WAZUH_ALERT_ID = re.compile(r"\d{10}\.\d{1,10}")
+_IP_PORT = re.compile(r"(?:(?P<v4>[\d.]+)|\[(?P<v6>[0-9A-Fa-f:.]+)\]):(?P<port>\d{1,5})")
+_ISO_TIME = r"\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[+-]\d{2}(?::?\d{2})?)?"
+_ISO_8601 = re.compile(rf"(?:\d{{4}}-\d{{2}}-\d{{2}}(?:[T ]{_ISO_TIME})?|{_ISO_TIME})")
+_CREDENTIAL_KEY = re.compile(
+    r"(?<![A-Za-z0-9])(?:password|passwd|pwd|contrase[ñn]a|clave|secret|token|api[_-]?key"
+    r"|access[_-]?key)[\"']?\s*(?P<sep>[=:])(?P<gap>\s*)",
+    re.IGNORECASE,
+)
+_UNQUOTED_VALUE = re.compile(r"[^\s\"',;]*")
+_LOOKS_SECRET = re.compile(r"[\d_]|[^\w\s]")
 _IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 _IPV6 = re.compile(r"(?<![\w:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:])")
 
 
-def _valid_iban(candidate: str) -> bool:
-    digits = re.sub(r"[ -]", "", candidate)
-    rearranged = digits[4:] + digits[:4]
-    number = "".join(str(int(c, 36)) for c in rearranged)
-    return 15 <= len(digits) <= 34 and int(number) % 97 == 1
+def _has_iban(text: str) -> bool:
+    """IBAN sin distinguir mayúsculas y con separadores; el checksum se valida normalizado."""
+    for start in _IBAN_START.finditer(text):
+        normalized = ""
+        for i in range(start.start(), len(text)):
+            char = text[i]
+            if char in _ALNUM:
+                normalized += char.upper()
+                follows_alnum = i + 1 < len(text) and text[i + 1] in _ALNUM
+                if 15 <= len(normalized) and not follows_alnum and _iban_checksum(normalized):
+                    return True
+            elif char not in _IBAN_SEPARATORS or text[i - 1] in _IBAN_SEPARATORS:
+                break
+            if len(normalized) >= 34:
+                break
+    return False
+
+
+def _iban_checksum(iban: str) -> bool:
+    rearranged = iban[4:] + iban[:4]
+    return int("".join(str(int(c, 36)) for c in rearranged)) % 97 == 1
+
+
+def _has_dni_nie(text: str) -> bool:
+    for m in _DNI_NIE.finditer(text):
+        if not m["sep"]:
+            return True
+        prefix = str("XYZ".index(m["body"][0].upper())) if m["body"][0].isalpha() else ""
+        number = int(prefix + re.sub(r"\D", "", m["body"]))
+        if _CONTROL_LETTERS[number % 23] == m["letter"].upper():
+            return True
+    return False
+
+
+def _has_phone(text: str) -> bool:
+    """Cualquier tramo de 9+ dígitos (con separadores) es un posible teléfono o identificador
+    numérico, salvo que el tramo completo sea una IP o un instante ISO 8601."""
+    for m in _DIGIT_RUN.finditer(_OWN_IDS.sub("_", text)):
+        run = m.group()
+        if sum(c.isdigit() for c in run) < _PHONE_MIN_DIGITS:
+            continue
+        if not (_is_ip(run) or _is_ip_with_port(run) or _ISO_8601.fullmatch(run)):
+            return True
+    return False
+
+
+def _has_credential(text: str) -> bool:
+    for m in _CREDENTIAL_KEY.finditer(text):
+        rest = text[m.end() :]
+        if rest[:1] in ("'", '"'):
+            closing = rest.find(rest[0], 1)
+            value = rest[1:] if closing < 0 else rest[1:closing]
+        else:
+            value = _UNQUOTED_VALUE.match(rest).group()
+        # «=» o «:» pegado al valor: basta con 3 caracteres. «: valor» con espacio: solo si
+        # parece un secreto (6+ caracteres con algún dígito o símbolo): «clave: revisar» no.
+        if m["sep"] == "=" or not m["gap"]:
+            if len(value) >= 3:
+                return True
+        elif len(value) >= 6 and _LOOKS_SECRET.search(value):
+            return True
+    return False
 
 
 def _is_ip(candidate: str) -> bool:
@@ -90,19 +161,23 @@ def _is_ip(candidate: str) -> bool:
     return True
 
 
+def _is_ip_with_port(candidate: str) -> bool:
+    """`IPv4:puerto` o `[IPv6]:puerto` completos, con IP válida y puerto 1-65535."""
+    m = _IP_PORT.fullmatch(candidate)
+    if not m or not 1 <= int(m["port"]) <= 65535:
+        return False
+    return _is_ip(m["v4"] or m["v6"])
+
+
 def _identifiers(text: str) -> list[str]:
-    found = []
-    if _EMAIL.search(text):
-        found.append("un correo electrónico")
-    if _DNI_NIE.search(text):
-        found.append("un DNI/NIE")
-    if any(_valid_iban(m.group()) for m in _IBAN.finditer(text)):
-        found.append("un IBAN")
-    if _PHONE_ES.search(text) or _PHONE_INTL.search(text):
-        found.append("un teléfono")
-    if _CREDENTIAL.search(text):
-        found.append("una credencial")
-    return found
+    checks = [
+        ("un correo electrónico", lambda t: _EMAIL.search(t) is not None),
+        ("un DNI/NIE", _has_dni_nie),
+        ("un IBAN", _has_iban),
+        ("un teléfono", _has_phone),
+        ("una credencial", _has_credential),
+    ]
+    return [what for what, found in checks if found(text)]
 
 
 def _has_ip(text: str) -> bool:
@@ -127,8 +202,8 @@ class _Walk:
             self._mapping(shape, value, path)
         elif isinstance(shape, list):
             self._items(shape[0], value, path)
-        elif shape == _OPAQUE_LIST:
-            self._opaque(value, path)
+        elif shape in (_OPAQUE_LIST, _ALERT_IDS):
+            self._opaque(value, path, shape == _ALERT_IDS)
         else:
             self._leaf(shape, value, path)
 
@@ -150,7 +225,7 @@ class _Walk:
         for index, item in enumerate(value):
             self.node(item_shape, item, f"{path}[{index}]")
 
-    def _opaque(self, value: Any, path: str) -> None:
+    def _opaque(self, value: Any, path: str, allow_alert_id: bool = False) -> None:
         if not isinstance(value, list):
             self.errors.append(f"{path}: se esperaba una lista")
             return
@@ -158,6 +233,8 @@ class _Walk:
             where = f"{path}[{index}]"
             if not isinstance(item, str) or not _OPAQUE.match(item):
                 self.errors.append(f"{where}: no es un id opaco (A-Z a-z 0-9 . _ : -, 1-128)")
+            elif allow_alert_id and _WAZUH_ALERT_ID.fullmatch(item):
+                self._leaf(_ID, item, where)
             else:
                 self._leaf(_TEXT, item, where)
 
