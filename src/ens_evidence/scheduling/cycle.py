@@ -8,10 +8,10 @@ Los checks y los informes usan siempre el reloj real del intento, nunca `due_at`
 import secrets
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Literal
 
-from pydantic import BaseModel, ValidationError
+from pydantic import BaseModel, TypeAdapter, ValidationError
 
 from ens_evidence.backup import BackupOutcome, run_configured_backup
 from ens_evidence.checks.engine import run_all
@@ -31,16 +31,16 @@ from ens_evidence.reports.monthly import build_monthly, previous_month
 from ens_evidence.reports.render_html import render_daily_html, render_monthly_html
 from ens_evidence.reports.store import (
     Kind,
-    cycle_finished,
     load_json_strict,
     pairs,
+    reading_finished,
     run_ids,
     save_html,
     save_pair,
     stages_of,
     write_stage,
 )
-from ens_evidence.scheduling.calendar import JobKind, local_date
+from ens_evidence.scheduling.calendar import JobKind
 from ens_evidence.scheduling.collect import CollectOutcome, Plugins, collect_all, load_plugins
 from ens_evidence.scheduling.config import ScheduleConfig
 from ens_evidence.scheduling.lock import CycleContext, WaitClock
@@ -52,6 +52,9 @@ ChecksResult = Literal["ok", "skipped", "error"]
 BACKUP_DISABLED = "disabled"
 BACKUP_NOT_CONFIGURED = "not_configured"
 SKIPPED_SCOPE = "skipped:scope_not_approved"
+RUN_WINDOW = timedelta(days=40)
+_STAMP = "%Y%m%dT%H%M%S"
+_ATTEMPTS = TypeAdapter(list[ConnectorAttempts])
 
 
 @dataclass(frozen=True)
@@ -82,7 +85,7 @@ def _pending_run(store: WorkspaceStore, period: str) -> tuple[str, CycleStage] |
     candidates: list[tuple[str, CycleStage]] = []
     for run_id in run_ids(store):
         reading = stages_of(store, run_id)
-        if reading.problems or cycle_finished(store, run_id):
+        if reading.problems or reading_finished(reading):
             continue
         started = next((m for m in reading.stages if m.stage == "started"), None)
         if started is not None and started.period == period:
@@ -91,7 +94,48 @@ def _pending_run(store: WorkspaceStore, period: str) -> tuple[str, CycleStage] |
 
 
 def _new_run_id(at: datetime) -> str:
-    return f"{at.strftime('%Y%m%dT%H%M%S')}-{secrets.token_hex(3)}"
+    return f"{at.astimezone(UTC).strftime(_STAMP)}-{secrets.token_hex(3)}"
+
+
+def _job_kind(period: str) -> JobKind:
+    return "daily" if is_day(period) else "monthly"
+
+
+def finished_periods(store: WorkspaceStore, now: datetime) -> set[tuple[JobKind, str]]:
+    """Los `(trabajo, periodo)` con ciclo terminado en los últimos 40 días, según el workspace."""
+    oldest = (now - RUN_WINDOW).astimezone(UTC).strftime(_STAMP)
+    done: set[tuple[JobKind, str]] = set()
+    for run_id in run_ids(store):
+        if run_id[: len(oldest)] < oldest:
+            continue
+        reading = stages_of(store, run_id)
+        started = next((m for m in reading.stages if m.stage == "started"), None)
+        if started is not None and reading_finished(reading):
+            done.add((_job_kind(started.period), started.period))
+    return done
+
+
+@dataclass(frozen=True)
+class InterruptedRun:
+    run_id: str
+    last_stage: str
+    started_at: datetime
+
+
+def interrupted_runs(store: WorkspaceStore) -> tuple[list[InterruptedRun], list[str]]:
+    """Ciclos sin terminar y legibles, y los `run_id` de los que no se pueden leer."""
+    interrupted: list[InterruptedRun] = []
+    unreadable: list[str] = []
+    for run_id in run_ids(store):
+        reading = stages_of(store, run_id)
+        if reading_finished(reading):
+            continue
+        started = next((m for m in reading.stages if m.stage == "started"), None)
+        if started is None or reading.problems:
+            unreadable.append(run_id)
+        else:
+            interrupted.append(InterruptedRun(run_id, reading.stages[-1].stage, started.at))
+    return interrupted, unreadable
 
 
 def _attempts(outcomes: list[CollectOutcome]) -> list[ConnectorAttempts]:
@@ -106,6 +150,17 @@ def _attempts(outcomes: list[CollectOutcome]) -> list[ConnectorAttempts]:
             )
         )
     return entries
+
+
+def _encode_attempts(attempts: list[ConnectorAttempts]) -> str:
+    return _ATTEMPTS.dump_json(attempts).decode("utf-8")
+
+
+def _decode_attempts(reference: str | None) -> list[ConnectorAttempts]:
+    try:
+        return _ATTEMPTS.validate_json(reference or "[]")
+    except ValidationError:
+        return []
 
 
 def _run_checks(store: WorkspaceStore, clock: WaitClock) -> tuple[ChecksResult, str | None]:
@@ -205,13 +260,15 @@ def run_cycle(
 ) -> CycleOutcome:
     """Un intento del ciclo de `period` (`YYYY-MM-DD` diario, `YYYY-MM` mensual).
 
-    El trabajo mensual publica además el informe del mes natural anterior. Con un `run_id` del
-    mismo `period` sin terminar, se reanudan solo las etapas pendientes.
+    El diario recoge, evalúa, informa y copia. El mensual solo genera el informe del mes natural
+    anterior (`started` -> `reported`). Con un `run_id` del mismo `period` sin terminar, se
+    reanudan solo las etapas pendientes.
     """
     if not (is_day(period) if job == "daily" else is_month(period)):
         raise ValueError("period no corresponde al tipo de trabajo")
     pending = _pending_run(store, period)
     resumed = pending is not None
+    collected_reference: str | None = None
     if pending is None:
         started_at = clock.now()
         run_id = _new_run_id(started_at)
@@ -220,28 +277,32 @@ def run_cycle(
     else:
         run_id, started = pending
         started_at = started.at
-        done = {m.stage for m in stages_of(store, run_id).stages}
+        markers = stages_of(store, run_id).stages
+        done = {m.stage for m in markers}
+        collected_reference = next((m.reference for m in markers if m.stage == "collected"), None)
 
     def mark(stage: str, reference: str | None = None) -> None:
         write_stage(store, run_id, stage, at=clock.now(), period=period, reference=reference)
         done.add(stage)
 
     collected: list[CollectOutcome] = []
-    if "collected" not in done:
-        loaded = plugins if plugins is not None else load_plugins()
-        collected = collect_all(store, settings, loaded, clock.now(), cfg.collect, clock)
-        mark("collected")
-
+    attempts = _decode_attempts(collected_reference)
     checks: ChecksResult | None = None
-    if "checked" not in done:
-        checks, reference = _run_checks(store, clock)
-        mark("checked", reference)
+    if job == "daily":
+        if "collected" not in done:
+            loaded = plugins if plugins is not None else load_plugins()
+            collected = collect_all(store, settings, loaded, clock.now(), cfg.collect, clock)
+            attempts = _attempts(collected)
+            mark("collected", _encode_attempts(attempts))
+        if "checked" not in done:
+            checks, reference = _run_checks(store, clock)
+            mark("checked", reference)
 
     reports: list[str] = []
     if "reported" not in done:
         try:
-            reports = _publish_reports(
-                store, run_id, job, period, due_at, started_at, trigger, collected, cfg, clock
+            reports = _publish_report(
+                store, run_id, job, period, due_at, started_at, trigger, attempts, cfg, clock
             )
         except Exception as error:
             return CycleOutcome(
@@ -257,7 +318,7 @@ def run_cycle(
         mark("reported", reports[-1])
 
     backup_stage = next((s for s in done if s.startswith("backup") or s == "backed_up"), None)
-    if backup_stage is None:
+    if job == "daily" and backup_stage is None:
         backup_stage, reference = _backup(ctx, store, settings, env, cfg, clock)
         mark(backup_stage, reference)
     return CycleOutcome(
@@ -265,7 +326,7 @@ def run_cycle(
     )
 
 
-def _publish_reports(
+def _publish_report(
     store: WorkspaceStore,
     run_id: str,
     job: JobKind,
@@ -273,11 +334,11 @@ def _publish_reports(
     due_at: datetime,
     started_at: datetime,
     trigger: Trigger,
-    collected: list[CollectOutcome],
+    attempts: list[ConnectorAttempts],
     cfg: ScheduleConfig,
     clock: WaitClock,
 ) -> list[str]:
-    """El diario y, si el trabajo es mensual, el mensual. Cada uno se reanuda por separado."""
+    """El informe del trabajo: el diario del día o el mensual del mes natural anterior."""
     zone = cfg.zone
     cutoff = clock.now()
     info = CycleInfo(
@@ -287,38 +348,34 @@ def _publish_reports(
         due_at=due_at,
         started_at=started_at,
         data_cutoff=cutoff,
-        connector_attempts=_attempts(collected),
+        connector_attempts=attempts,
     )
     checks = StoredCheckResults(reference_now=cutoff)
-    day = period if job == "daily" else local_date(due_at, zone).isoformat()
-    keys = [
-        _publish(
+    if job == "daily":
+        key = _publish(
             store,
             "daily",
-            day,
+            period,
             run_id,
             DailyReport,
             lambda: build_daily(
-                store, generated_at=cutoff, period=day, tz=zone, cycle=info, checks=checks
+                store, generated_at=cutoff, period=period, tz=zone, cycle=info, checks=checks
             ),
             render_daily_html,
             clock,
         )
-    ]
-    if job == "monthly":
-        month = previous_month(period)
-        keys.append(
-            _publish(
-                store,
-                "monthly",
-                month,
-                run_id,
-                MonthlyReport,
-                lambda: build_monthly(
-                    store, generated_at=cutoff, period=month, tz=zone, checks=checks, cycle=info
-                ),
-                lambda report: render_monthly_html(report, zone),
-                clock,
-            )
-        )
-    return keys
+        return [key]
+    month = previous_month(period)
+    key = _publish(
+        store,
+        "monthly",
+        month,
+        run_id,
+        MonthlyReport,
+        lambda: build_monthly(
+            store, generated_at=cutoff, period=month, tz=zone, checks=checks, cycle=info
+        ),
+        lambda report: render_monthly_html(report, zone),
+        clock,
+    )
+    return [key]

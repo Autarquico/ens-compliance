@@ -290,7 +290,16 @@ def stages_of(store: WorkspaceStore, run_id: str) -> StageReading:
     return StageReading(stages, problems)
 
 
+def reading_finished(reading: StageReading) -> bool:
+    """Un ciclo diario termina con su etapa final (hecha, fallida u omitida); el mensual, que
+    solo informa, con `reported`. Con algún marcador ilegible nunca está terminado."""
+    if reading.problems:
+        return False
+    started = next((m for m in reading.stages if m.stage == "started"), None)
+    monthly = started is not None and is_month(started.period)
+    final = TERMINAL_STAGES | {"reported"} if monthly else TERMINAL_STAGES
+    return any(m.stage in final for m in reading.stages)
+
+
 def cycle_finished(store: WorkspaceStore, run_id: str) -> bool:
-    """Terminado: hay etapa final (hecha, fallida u omitida) y todos los marcadores se leen."""
-    reading = stages_of(store, run_id)
-    return not reading.problems and any(m.stage in TERMINAL_STAGES for m in reading.stages)
+    return reading_finished(stages_of(store, run_id))

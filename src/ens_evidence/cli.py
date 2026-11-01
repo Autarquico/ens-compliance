@@ -1,6 +1,7 @@
 import functools
 import os
 import shutil
+import threading
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -151,6 +152,7 @@ from ens_evidence.risk import (
     validate_risk,
 )
 from ens_evidence.scheduling.calendar import JobKind
+from ens_evidence.scheduling.clock import SystemClock
 from ens_evidence.scheduling.collect import (
     CollectOutcome,
     Plugins,
@@ -167,6 +169,14 @@ from ens_evidence.scheduling.config import (
 )
 from ens_evidence.scheduling.cycle import run_cycle
 from ens_evidence.scheduling.lock import CycleBusy, CycleContext, CycleLock
+from ens_evidence.scheduling.scheduler import (
+    CycleExecutor,
+    Scheduler,
+    render_status,
+    scheduler_status,
+    stop_on_signals,
+    workspace_done_periods,
+)
 from ens_evidence.scope import (
     ObservedInputError,
     ScopeApprovalRejected,
@@ -270,11 +280,6 @@ SCOPE_SKELETON = {
         "included_assets: []\nincluded_services: []\nexclusions: []\n"
     ),
 }
-
-
-def not_implemented() -> None:
-    typer.echo("not implemented", err=True)
-    raise typer.Exit(2)
 
 
 def fail(message: str, code: int = 2) -> typer.Exit:
@@ -2134,8 +2139,8 @@ def report_command(
         )  # fmt: skip
         if not outcome.completed:
             raise fail(f"El ciclo no ha publicado el informe ({outcome.failure}); reintenta.")
-        daily_bytes = store.read_bytes(outcome.reports[0])
-    daily_model = DailyReport.model_validate(load_json_strict(daily_bytes))
+        daily_bytes = store.read_bytes(outcome.reports[0]) if kind == "daily" else None
+    daily_model = DailyReport.model_validate(load_json_strict(daily_bytes)) if daily_bytes else None
     last = outcome.reports[-1]
     if stdout:
         key = last if chosen is ReportFormat.JSON else last.removesuffix(".json") + ".html"
@@ -2180,8 +2185,8 @@ def report_monthly(
     stdout: ReportStdout = False,
     fmt: ReportFormatOption = None,
 ) -> None:
-    """Informe mensual del mes natural anterior. Con --cycle publica además el diario. Salida:
-    0 escrito, 3 (solo con --cycle) conectores en error o sin ejecución, 2 no escrito."""
+    """Informe mensual del mes natural anterior. Con --cycle solo genera el mensual (sin recoger
+    ni evaluar; el diario es otro trabajo). Salida: 0 escrito, 2 no escrito o ciclo en curso."""
     report_command(ctx, "monthly", cycle, at, stdout, fmt)
 
 
@@ -2196,6 +2201,38 @@ def scheduler_init_config(ctx: typer.Context) -> None:
         typer.echo(f"{SCHEDULE_KEY} ya existe; no se toca.")
         return
     typer.echo(f"Escrito {SCHEDULE_KEY} con los valores por defecto.")
+
+
+@scheduler_app.command("run")
+@handled
+def scheduler_run(ctx: typer.Context) -> None:
+    """Proceso de larga duración: ciclo diario y mensual según reports/schedule.yaml. Recarga la
+    configuración en cada vuelta. Sale con 2 si la configuración es inválida al arrancar y con 0
+    tras SIGTERM o SIGINT."""
+    settings = resolved_settings(ctx)
+    store = open_store(settings)
+    load_schedule_config(store)
+    stop = threading.Event()
+    system_clock = SystemClock(stop)
+    scheduler = Scheduler(
+        system_clock,
+        CycleExecutor(store, settings, os.environ, system_clock, stop),
+        lambda: load_schedule_config(store).config,
+        workspace_done_periods(store, system_clock),
+        stop,
+    )
+    with stop_on_signals(stop):
+        scheduler.run()
+
+
+@scheduler_app.command("status")
+@handled
+def scheduler_show_status(ctx: typer.Context) -> None:
+    """Configuración efectiva, próximos disparos, últimos informes, ciclos interrumpidos y días
+    sin informe del mes. Solo lectura: no toma el lock ni escribe."""
+    store = open_workspace(ctx)
+    status = scheduler_status(store, load_schedule_config(store), clock())
+    typer.echo(render_status(status), nl=False)
 
 
 class StatusFormat(StrEnum):

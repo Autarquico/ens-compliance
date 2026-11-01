@@ -194,13 +194,13 @@ def test_con_cycle_una_recogida_que_deja_el_conector_en_error_sale_con_3(cli, st
     assert pairs(store, "daily", PERIOD)[0].published
 
 
-def test_report_monthly_con_cycle_publica_el_diario_y_el_mensual(cli, store, checked):
+def test_report_monthly_con_cycle_publica_solo_el_mensual(cli, store, checked):
     only_stored_evidence(store)
 
     result = cli("report", "monthly", "--cycle")
 
     assert result.exit_code == 0, result.output
-    assert pairs(store, "daily", PERIOD)[0].published
+    assert not pairs(store, "daily", PERIOD)
     assert pairs(store, "monthly", "2026-09")[0].published
 
 

@@ -215,8 +215,8 @@ def test_un_ciclo_terminado_no_se_reanuda_y_el_siguiente_abre_otro_run(
     assert len(run_ids(store)) == 2
 
 
-def test_el_trabajo_mensual_publica_ademas_el_informe_del_mes_anterior(
-    store, settings, env, context, plugins, fake, restic
+def test_el_trabajo_mensual_solo_genera_el_informe_mensual(
+    store, settings, env, context, plugins, fake, restic, hooks
 ):
     fake("ok")
 
@@ -224,14 +224,66 @@ def test_el_trabajo_mensual_publica_ademas_el_informe_del_mes_anterior(
         store, settings, env, context, plugins, TickClock(), job="monthly", period="2026-11"
     )
 
-    assert outcome.completed and len(outcome.reports) == 2
-    (daily,) = daily_reports(store, "2026-11-01")
+    assert outcome.completed and len(outcome.reports) == 1
+    assert stage_names(store, outcome.run_id) == ["started", "reported"]
+    assert cycle_finished(store, outcome.run_id)
+    assert (outcome.checks, outcome.backup_stage, outcome.collected) == (None, None, ())
+    assert {name: hooks.count(name) for name in hooks.calls} == {}
+    assert pairs(store, "daily", PERIOD) == []
+    assert list_runs(store) == ([], [])
     monthly = MonthlyReport.model_validate(
         load_json_strict(store.read_bytes(pairs(store, "monthly", "2026-10")[0].json_key))
     )
-    assert (daily.cycle.run_id, monthly.cycle.run_id) == (outcome.run_id, outcome.run_id)
-    assert monthly.period == "2026-10"
+    assert monthly.cycle.run_id == outcome.run_id and monthly.period == "2026-10"
     assert pairs(store, "monthly", "2026-10")[0].published
+
+
+def test_un_ciclo_mensual_a_medias_se_reanuda_y_no_cuenta_como_terminado_hasta_reported(
+    store, settings, env, context, plugins, fake, restic, monkeypatch
+):
+    fake("ok")
+    monkeypatch.setattr(cycle_module, "build_monthly", lambda *a, **k: (_ for _ in ()).throw(Crash))
+    with pytest.raises(Crash):
+        cycle(store, settings, env, context, plugins, TickClock(), job="monthly", period="2026-11")
+    (run_id,) = run_ids(store)
+    assert not cycle_finished(store, run_id)
+    assert cycle_module.finished_periods(store, STARTS) == set()
+    monkeypatch.undo()
+
+    outcome = cycle(
+        store, settings, env, context, plugins, TickClock(), job="monthly", period="2026-11"
+    )
+
+    assert (outcome.run_id, outcome.resumed) == (run_id, True)
+    assert cycle_module.finished_periods(store, STARTS) == {("monthly", "2026-11")}
+
+
+def test_el_marcador_collected_guarda_los_intentos_y_la_reanudacion_los_conserva(
+    store, settings, env, context, plugins, fake, restic, hooks
+):
+    fake("ok")
+    hooks.crash_at = "run_all"
+    with pytest.raises(Crash):
+        cycle(store, settings, env, context, plugins, TickClock())
+    (run_id,) = run_ids(store)
+    collected = next(m for m in stages_of(store, run_id).stages if m.stage == "collected")
+    assert "github" in collected.reference
+    hooks.crash_at = None
+
+    cycle(store, settings, env, context, plugins, TickClock(STARTS + timedelta(minutes=5)))
+
+    (report,) = daily_reports(store)
+    assert [(a.connector, a.attempts) for a in report.cycle.connector_attempts] == [("github", 1)]
+
+
+def test_finished_periods_deriva_lo_hecho_de_los_marcadores(
+    store, settings, env, context, plugins, fake, restic
+):
+    fake("ok")
+    cycle(store, settings, env, context, plugins, TickClock())
+
+    assert cycle_module.finished_periods(store, STARTS) == {("daily", PERIOD)}
+    assert cycle_module.finished_periods(store, STARTS + timedelta(days=41)) == set()
 
 
 # --- caída entre etapas y reanudación ----------------------------------------------------------

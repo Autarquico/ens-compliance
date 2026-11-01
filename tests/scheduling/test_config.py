@@ -137,7 +137,13 @@ def test_non_utf8_file_is_a_config_error(store, tmp_path):
 def test_default_yaml_is_valid_yaml_with_documented_keys():
     data = yaml.safe_load(default_schedule_yaml())
     assert set(data) == {
-        "timezone", "daily", "monthly", "collect", "cycle", "expiry_warnings", "backup"
+        "timezone",
+        "daily",
+        "monthly",
+        "collect",
+        "cycle",
+        "expiry_warnings",
+        "backup",
     }
     assert data["daily"]["time"] == "06:00"
 

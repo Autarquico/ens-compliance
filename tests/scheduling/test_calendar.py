@@ -84,9 +84,12 @@ def test_property_next_daily_is_after_and_on_configured_local_time(time, start):
         if shown.time() != configured:
             # solo puede diferir en el hueco primaveral, y entonces por el salto de una hora
             assert shown.date() == dt.date(2026, 3, 29)
-            assert shown.time() == (
-                dt.datetime.combine(dt.date(2026, 3, 29), configured) + dt.timedelta(hours=1)
-            ).time()
+            assert (
+                shown.time()
+                == (
+                    dt.datetime.combine(dt.date(2026, 3, 29), configured) + dt.timedelta(hours=1)
+                ).time()
+            )
         now += dt.timedelta(minutes=37)
 
 
