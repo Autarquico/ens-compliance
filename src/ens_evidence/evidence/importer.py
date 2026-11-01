@@ -16,6 +16,10 @@ from ens_evidence.models.contracts import (
 from ens_evidence.workspace import AlreadyExists, WorkspaceError, WorkspaceStore
 
 MANUAL_SOURCE = "manual"
+INCIDENT_RECORD_SOURCE = "incident-record"
+INCIDENT_HISTORY_SOURCE = "incident-history"
+# Las genera la herramienta a partir de sus propios registros: `evidence import` no las admite.
+GENERATED_SOURCES = frozenset({INCIDENT_RECORD_SOURCE, INCIDENT_HISTORY_SOURCE})
 ID_ATTEMPTS = 5
 
 
@@ -41,6 +45,35 @@ def import_manual(
         asset_id=asset_id,
         collected_at=collected_at or now,
         valid_until=valid_until,
+        artifact=Artifact(storage="workspace", key=artifact_key(sha256), sha256=sha256),
+        provenance=Provenance(
+            kind=ProvenanceKind.MANUAL, submitted_by=submitted_by, submitted_at=now
+        ),
+    )
+    _store_artifact(store, manifest.artifact, data)
+    return _store_manifest(store, manifest, now)
+
+
+def import_generated(
+    store: WorkspaceStore,
+    data: bytes,
+    *,
+    source: str,
+    asset_id: str,
+    submitted_by: str,
+    now: datetime,
+    collected_at: datetime,
+) -> EvidenceManifest:
+    """Registra bytes que la propia herramienta generó (`GENERATED_SOURCES`), con procedencia manual
+    y sin caducidad; `ValidationError` si los datos no valen."""
+    if source not in GENERATED_SOURCES:
+        raise ValueError(f"{source} no es una fuente generada por la herramienta")
+    sha256 = sha256_hex(data)
+    manifest = EvidenceManifest(
+        id=new_evidence_id(now),
+        source=source,
+        asset_id=asset_id,
+        collected_at=collected_at,
         artifact=Artifact(storage="workspace", key=artifact_key(sha256), sha256=sha256),
         provenance=Provenance(
             kind=ProvenanceKind.MANUAL, submitted_by=submitted_by, submitted_at=now

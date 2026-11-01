@@ -22,6 +22,12 @@ from ens_evidence.matrix.links import (
     require_current,
     row_of,
 )
+from ens_evidence.matrix.messages import (
+    blocker_text,
+    has_broken_history,
+    source_policy_step,
+    with_simulated_mark,
+)
 from ens_evidence.matrix.model import (
     ApplicabilityReview,
     CheckLink,
@@ -68,6 +74,8 @@ class ReviewPlan:
     notes: tuple[str, ...]
     problems: tuple[str, ...]
     record: MeasureReviewRecord | ApplicabilityReview | None
+    simulated: bool = False
+    incident_history: bool = False
 
 
 def parse_assessment(text: str | None) -> MeasureAssessment | None:
@@ -124,7 +132,9 @@ def _attribution(
         ObligationAttribution(
             o.id,
             tuple(
-                ClauseAttribution(unit, tuple(link_label(s.link) for s in found))
+                ClauseAttribution(
+                    unit, tuple(with_simulated_mark(link_label(s.link), s.simulated) for s in found)
+                )
                 for unit, found in by_unit.items()
             ),
         )
@@ -184,6 +194,15 @@ def _before_sources(supports: Iterable[LinkSupport], reviewed_at: datetime | Non
     ]
 
 
+def _source_policy_step(measure_id: str, supports: list[LinkSupport]) -> list[str]:
+    """Una medida con política de fuentes dice de dónde sale la evidencia que le falta, salvo que
+    un historial enlazado esté roto: entonces el paso es `incident verify`."""
+    if has_broken_history(b for s in supports for b in s.blockers):
+        return []
+    step = source_policy_step(measure_id)
+    return [] if step is None else [step]
+
+
 def _problems(
     entry: MatrixEntry,
     assessment: MeasureAssessment | None,
@@ -240,16 +259,26 @@ def prepare_review(
         if selected
         else []
     )
-    problems = _problems(
-        entry, verdict, _missing(row, supports) if selected else [], _before_sources(supports, at)
-    )
-    notes = tuple(
-        f"{link_label(s.link)}: {b.kind.value} {b.detail}" for s in supports for b in s.blockers
-    )
+    missing = _missing(row, supports) if selected else []
+    problems = _problems(entry, verdict, missing, _before_sources(supports, at))
+    if missing and verdict is MeasureAssessment.COMPLIANT:
+        problems += _source_policy_step(measure_id, supports)
+    notes = tuple(f"{link_label(s.link)}: {blocker_text(b)}" for s in supports for b in s.blockers)
     covering = _covering(row, supports)
     attribution = _attribution(covering)
+    used = [s for _, by_unit in covering for found in by_unit.values() for s in found]
+    simulated = any(s.simulated for s in used)
+    from_register = any(s.incident_history for s in used)
     if problems:
-        return ReviewPlan(row, attribution, notes, tuple(problems), None)
+        return ReviewPlan(
+            row,
+            attribution,
+            notes,
+            tuple(problems),
+            None,
+            simulated=simulated,
+            incident_history=from_register,
+        )
 
     reviewed_at = at or now
     assert entry.review_every_days is not None
@@ -278,7 +307,9 @@ def prepare_review(
             recorded_at=now,
             measure_context_sha256=row.measure_context_sha256,
         )
-    return ReviewPlan(row, attribution, notes, (), record)
+    return ReviewPlan(
+        row, attribution, notes, (), record, simulated=simulated, incident_history=from_register
+    )
 
 
 def record_review(store: WorkspaceStore, plan: ReviewPlan) -> str:

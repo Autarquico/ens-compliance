@@ -12,7 +12,7 @@ depends_on: [org-docs-templates, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 # Procedimiento y registro de incidentes

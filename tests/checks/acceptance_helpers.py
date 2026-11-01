@@ -30,7 +30,9 @@ from applicability.helpers import (
 from applicability.helpers import (
     NOW as APPROVAL_DAY,
 )
+from incidents.acceptance_helpers import PROCEDURE, REGISTER_MEASURE, Scenario, run_simulation
 from matrix.acceptance_helpers import (
+    APPROVER,
     SELF,
     Clock,
     configure_measure,
@@ -42,6 +44,7 @@ from matrix.acceptance_helpers import (
 )
 from matrix.evaluate_helpers import NOW
 from matrix.helpers import COMPENSATION, SIGNED_AT
+from orgdocs.orgdocs_helpers import SIGNATORY, fixture_answers, write_answers
 from scope.scope_helpers import edit
 
 from ens_evidence.applicability import approve_declaration, propose_applicability
@@ -49,6 +52,7 @@ from ens_evidence.checks.store import scan_runs
 from ens_evidence.evidence.importer import import_collected
 from ens_evidence.matrix import plan_obligations
 from ens_evidence.models.enums import Applicability
+from ens_evidence.orgdocs import approve_document, build_documents
 from ens_evidence.workspace import LocalStore
 
 from .test_expected import COLLECTED, gh_evidence
@@ -149,6 +153,14 @@ def _signed_workspace(path: Path) -> LocalStore:
     return store
 
 
+def _approve_incident_procedure(store: LocalStore) -> None:
+    """op.exp.9 exige el procedimiento de incidentes aprobado antes de cerrar un incidente."""
+    write_answers(store, fixture_answers())
+    build_documents(store)
+    role = APPROVER[PROCEDURE]
+    approve_document(store, PROCEDURE, SIGNATORY[role], role, NOW - timedelta(days=1))
+
+
 def _cli(path: Path, monkeypatch, at) -> tuple[Clock, object]:
     clock = Clock(monkeypatch)
     clock.now = at
@@ -161,11 +173,14 @@ def _build_linked(path: Path) -> None:
     from checks.test_engine import write_config
 
     store = _signed_workspace(path)
+    _approve_incident_procedure(store)
     write_config(store, "github", GITHUB_CONFIG)
     with pytest.MonkeyPatch.context() as monkeypatch:
         clock, run = _cli(path, monkeypatch, NOW - timedelta(hours=2))
         assert run("matrix", "init").exit_code == 0
         evidence_id = import_manual_evidence(run, path)
+        incident_history = run_simulation(Scenario(store, path, run, clock))
+        clock.now = NOW - timedelta(hours=2)
         rows = plan_obligations(store, NOW).rows
         assert len(rows) >= 69
         for row in rows:
@@ -176,6 +191,8 @@ def _build_linked(path: Path) -> None:
                 continue
             if row.measure_id == CHECK_MEASURE:
                 link(run, row.measure_id, "check", SECRET, "base")
+            elif row.measure_id == REGISTER_MEASURE:  # solo admite el historial de un incidente
+                link(run, row.measure_id, "evidence", incident_history, "base")
             else:
                 covers = ",".join(o.id for o in row.obligations)
                 link(run, row.measure_id, "evidence", evidence_id, covers)

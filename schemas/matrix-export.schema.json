@@ -346,6 +346,12 @@
           "title": "Kind",
           "type": "string"
         },
+        "simulated": {
+          "default": false,
+          "description": "Historial de un incidente de simulacro: no es un incidente.",
+          "title": "Simulated",
+          "type": "boolean"
+        },
         "target": {
           "title": "Target",
           "type": "string"

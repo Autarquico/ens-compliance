@@ -30,7 +30,7 @@ def test_las_plantillas_reales_cumplen_el_contrato_del_motor():
 @pytest.mark.parametrize(
     "question_id",
     ["resp_sistema", "personas", "relacion_seguridad_sistema", "firmante_direccion"]
-    + ["autoridad_procedimientos"],
+    + ["autoridad_procedimientos", "incidentes_niveles"],
 )
 def test_renombrar_una_pregunta_de_la_que_depende_el_motor_rompe_la_carga(question_id):
     with pytest.raises(TemplateError, match=question_id):
@@ -44,6 +44,17 @@ def test_quitar_el_campo_nombre_de_las_personas_rompe_la_carga():
         return question
 
     with pytest.raises(TemplateError, match="nombre"):
+        check_engine_contract(mutated(change))
+
+
+@pytest.mark.parametrize("field", ["nivel", "criterio", "escalado"])
+def test_quitar_un_campo_de_los_niveles_de_incidentes_rompe_la_carga(field):
+    def change(question):
+        if question.id == "incidentes_niveles":
+            question.fields = [f for f in question.fields if f.id != field]
+        return question
+
+    with pytest.raises(TemplateError, match=field):
         check_engine_contract(mutated(change))
 
 

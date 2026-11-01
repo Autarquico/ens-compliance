@@ -10,6 +10,7 @@ from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.matrix.documents import OrgDocumentSource
 from ens_evidence.matrix.evaluate import AssessmentResult, AssessmentRow, assess
 from ens_evidence.matrix.links import link_label
+from ens_evidence.matrix.messages import with_simulated_mark
 from ens_evidence.matrix.model import CheckLink
 from ens_evidence.matrix.obligations import RowKind
 from ens_evidence.matrix.technical import (
@@ -38,6 +39,7 @@ class RowStatus:
     implemented: bool
     regularly_reviewed: bool
     sources: tuple[str, ...]
+    incident_history: bool
     check_lines: tuple[str, ...]
 
     @property
@@ -77,7 +79,10 @@ def row_status(row: AssessmentRow, check_lines: tuple[str, ...] = ()) -> RowStat
         row,
         implemented,
         regular,
-        tuple(link_label(s.link) for s in row.supports if s.counts),
+        tuple(
+            with_simulated_mark(link_label(s.link), s.simulated) for s in row.supports if s.counts
+        ),
+        any(s.incident_history for s in row.supports if s.counts),
         check_lines,
     )
 

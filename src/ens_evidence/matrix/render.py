@@ -34,6 +34,7 @@ from ens_evidence.matrix.messages import (
     blocker_text,
     obligation_label,
     role_label,
+    with_simulated_mark,
 )
 from ens_evidence.matrix.model import (
     CheckLink,
@@ -83,6 +84,9 @@ class ExportedLink(Strict):
     target: str
     covers: list[str]
     counts: bool
+    simulated: bool = Field(
+        default=False, description="Historial de un incidente de simulacro: no es un incidente."
+    )
 
 
 class ExportedObligation(Strict):
@@ -185,14 +189,15 @@ def _blocker_key(blocker: Blocker) -> tuple[str, str, str]:
 
 
 def _links(row: AssessmentRow, kinds: set[str]) -> list[ExportedLink]:
-    counting = {s.link.target for s in row.supports if s.counts}
+    supports = {s.link.target: s for s in row.supports}
     links = row.entry.links if row.entry else []
     return [
         ExportedLink(
             kind=link.kind,
             target=link.target[1],
             covers=list(link.covers),
-            counts=link.target in counting,
+            counts=link.target in supports and supports[link.target].counts,
+            simulated=link.target in supports and supports[link.target].simulated,
         )
         for link in links
         if link.kind in kinds
@@ -437,7 +442,7 @@ def _links_text(links: list[ExportedLink], *, evaluated: bool) -> str:
         return "—"
     unused = " (no cuenta)" if evaluated else " (no evaluada)"
     return "; ".join(
-        md_escape(link.target)
+        with_simulated_mark(md_escape(link.target), link.simulated)
         + f" (cubre {md_escape(', '.join(obligation_label(c) for c in link.covers))})"
         + ("" if link.counts else unused)
         for link in links
@@ -508,6 +513,7 @@ TABLE_HEADER = (
 
 
 def _source_lines(sources: ExportSources, rows: list[ExportedRow]) -> list[str]:
+    simulated = {link.target for row in rows for link in row.manual if link.simulated}
     lines = ["## Fuentes", "", "### Evidencias", ""]
     for e in sources.evidence:
         valid = (
@@ -516,7 +522,8 @@ def _source_lines(sources: ExportSources, rows: list[ExportedRow]) -> list[str]:
             else "sin fecha de caducidad (cuenta dentro de la periodicidad de la medida)"
         )
         lines.append(
-            f"- {e.id} · manifiesto `{e.manifest_key}` · origen {md_escape(e.source)} · "
+            f"- {with_simulated_mark(e.id, e.id in simulated)} · manifiesto `{e.manifest_key}` · "
+            f"origen {md_escape(e.source)} · "
             f"sha256 `{e.artifact_sha256}` · procedencia {e.provenance.kind.value} "
             f"({md_escape(e.provenance.submitted_by)}, {_instant(e.provenance.submitted_at)}) · "
             f"recogida {_instant(e.collected_at)} · {valid}"
@@ -540,16 +547,17 @@ def _source_lines(sources: ExportSources, rows: list[ExportedRow]) -> list[str]:
     for review_row in rows:
         review = review_row.last_review
         if review is not None:
-            lines += _review_lines(review_row.measure_id, review)
+            marked = {link.target for link in review_row.manual if link.simulated}
+            lines += _review_lines(review_row.measure_id, review, marked)
     return lines
 
 
-def _reviewed_source(code: str) -> str:
+def _reviewed_source(code: str, simulated: set[str]) -> str:
     kind, _, target = code.partition(":")
-    return source_label(kind, target)
+    return with_simulated_mark(source_label(kind, target), target in simulated)
 
 
-def _review_lines(measure_id: str, review: ExportedReview) -> list[str]:
+def _review_lines(measure_id: str, review: ExportedReview, simulated: set[str]) -> list[str]:
     sha = f"`{review.record_sha256}`" if review.record_sha256 else "sin huella"
     lines = [
         f"- {measure_id} · registro `{review.key}` · sha256 {sha} · {review_text(review)} · "
@@ -558,7 +566,10 @@ def _review_lines(measure_id: str, review: ExportedReview) -> list[str]:
     for obligation in review.obligations:
         lines.append(f"  - {md_escape(obligation_label(obligation.obligation))}: fuentes revisadas")
         for clause in obligation.coverage:
-            sources = ", ".join(_reviewed_source(code) for code in clause.sources) or "sin fuente"
+            sources = (
+                ", ".join(_reviewed_source(code, simulated) for code in clause.sources)
+                or "sin fuente"
+            )
             lines.append(f"    - cláusula {md_escape(clause.clause)} ← {md_escape(sources)}")
     return lines
 

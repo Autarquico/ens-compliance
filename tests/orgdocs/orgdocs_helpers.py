@@ -20,6 +20,7 @@ DOCUMENTS = (
     "politica-seguridad",
     "procedimientos-seguridad",
     "proceso-autorizacion",
+    "procedimiento-incidentes",
 )
 
 

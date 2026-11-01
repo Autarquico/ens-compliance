@@ -1,0 +1,187 @@
+id: procedimiento-incidentes
+title: "Procedimiento de gestión de incidentes de seguridad"
+questions:
+  - id: organizacion
+    text: "¿Cómo se llama la organización y a qué se dedica?"
+    clause: org.1.1
+    help: "Nombre legal y una frase sobre qué hace. Ejemplo: «Talleres Norte S.L., fabricación de piezas para clientes industriales»."
+  - id: incidentes_alcance
+    text: "¿A qué sistemas, servicios y tipos de incidente se aplica este procedimiento?"
+    clause: art.25.1
+    help: "Art. 25.1: la entidad dispondrá de procedimientos de gestión de incidentes de seguridad. Indica a qué sistemas y servicios del alcance se aplica y qué se considera un incidente en vuestra organización. Esta herramienta no verifica la Instrucción Técnica de Seguridad ni el Real Decreto 43/2021 a los que remite el art. 25.1."
+  - id: incidentes_deteccion
+    text: "¿Qué mecanismos de detección de incidentes tenéis?"
+    type: list
+    clause: art.25.2
+    help: "Art. 25.2: mecanismos de detección. Uno por línea: alertas de herramientas, revisión de registros, avisos del personal, avisos de proveedores o clientes... Indica quién recibe cada aviso."
+  - id: incidentes_informe_eventos
+    text: "¿Cómo se informa de los eventos de seguridad y de las debilidades detectadas, y quién los recibe?"
+    clause: op.exp.7.1
+    help: "op.exp.7.1: informe de eventos de seguridad y debilidades. Quién informa, a quién, por qué canal y qué datos se anotan. Una debilidad es una vulnerabilidad o fallo de control observado aunque todavía no haya causado un incidente."
+  - id: incidentes_niveles
+    text: "¿Qué niveles de clasificación de incidentes usa la organización y cómo se escala cada uno?"
+    type: records
+    clause: op.exp.7.1
+    help: "op.exp.7.1 y art. 25.2: criterios de clasificación y escalado de la notificación. Ni el Real Decreto ni esta herramienta fijan niveles: los declaráis vosotros. Una fila por nivel, con el nombre que le dais, el criterio para asignarlo y a quién y cómo se escala."
+    fields:
+      - {id: nivel, text: "Nivel"}
+      - {id: criterio, text: "Criterio de clasificación"}
+      - {id: escalado, text: "Escalado: a quién y cómo"}
+  - id: incidentes_analisis
+    text: "¿Cómo se analizan y se resuelven los incidentes, y quién lo hace?"
+    clause: art.25.2
+    help: "Art. 25.2: procedimientos de análisis y resolución. Pasos desde que se clasifica el incidente hasta que se da por resuelto, quién dirige la resolución y cómo se decide que ha terminado."
+  - id: incidentes_comunicacion
+    text: "¿Cuáles son los cauces de comunicación a las partes interesadas durante un incidente?"
+    clause: art.25.2
+    help: "Art. 25.2: cauces de comunicación a las partes interesadas. Quién comunica a clientes, personal, proveedores y autoridades que corresponda, por qué medio y quién lo autoriza."
+  - id: incidentes_registro
+    text: "¿Cómo se registran las actuaciones sobre un incidente?"
+    clause: art.25.2
+    help: "Art. 25.2: registro de las actuaciones. Dónde se anotan, quién lo hace y qué se anota: aviso inicial, avances, actuaciones de emergencia, cambios en el sistema y cierre. Si usáis el registro de esta herramienta (ens-evidence incident), indicadlo aquí: es el único que la matriz acepta para op.exp.9."
+  - id: incidentes_mejora
+    text: "¿Cómo se usa ese registro para mejorar la seguridad del sistema?"
+    clause: art.25.2
+    help: "Art. 25.2: el registro se empleará para la mejora continua de la seguridad del sistema. Cuándo se revisan los incidentes cerrados, quién lo hace y qué se hace con las conclusiones."
+  - id: incidentes_datos_personales
+    text: "¿Cómo se tienen en cuenta el RGPD y la Ley Orgánica 3/2018 cuando un incidente afecta a datos personales?"
+    clause: op.exp.7.2
+    help: "op.exp.7.2. Quién determina si un incidente afecta a datos personales, a quién se avisa dentro de la organización (por ejemplo, la persona responsable de protección de datos, si existe) y dónde se anota esa decisión. Describe vuestro procedimiento; esta herramienta no fija plazos ni contenidos de comunicación a la autoridad de control."
+  - id: servicios_externalizados
+    text: "¿Prestáis servicios a una administración u otra entidad que se apoyan en vuestros sistemas?"
+    clause: art.13.5
+    help: "Es el caso habitual de quien entra en el ENS por contrato con el sector público (art. 2.3): por ejemplo, gestionáis las nóminas de un ayuntamiento o alojáis sus datos. En ese caso el art. 13.5 obliga a designar un punto de contacto de seguridad (POC). Responde «sí» o «no»."
+    choices: ["sí", "no"]
+  - id: incibe_quien
+    text: "¿Quién notifica los incidentes al INCIBE-CERT?"
+    clause: art.33.7
+    help: "Art. 33.7: las organizaciones del sector privado que presten servicios a las entidades públicas notificarán al INCIBE-CERT los incidentes que les afecten a través de su equipo de respuesta a incidentes de seguridad informática. Indica la persona o el equipo que notifica."
+    required_if: {question: servicios_externalizados, any_of: ["sí"]}
+  - id: incibe_como
+    text: "¿Cómo se notifica al INCIBE-CERT?"
+    clause: art.33.7
+    help: "Canal o medio que se usa y quién lo autoriza. Esta herramienta no fija el contenido de la notificación: depende de la Instrucción Técnica de Seguridad aplicable, que no está verificada."
+    required_if: {question: servicios_externalizados, any_of: ["sí"]}
+  - id: incibe_cuando
+    text: "¿Cuándo se notifica al INCIBE-CERT, según vuestros niveles de clasificación?"
+    clause: art.33.7
+    help: "En qué momento del procedimiento se notifica, según el nivel. El art. 33.7 habla de los incidentes que os afecten; los umbrales y plazos dependen de la Instrucción Técnica de Seguridad aplicable, que esta herramienta no ha verificado."
+    required_if: {question: servicios_externalizados, any_of: ["sí"]}
+  - id: incidentes_evidencia
+    text: "¿Quién decide qué evidencia de un incidente puede tener relevancia jurisdiccional, y quién da el asesoramiento legal?"
+    clause: op.exp.9.2
+    help: "op.exp.9.2: se registrará la evidencia que pueda dirimirse en un ámbito jurisdiccional, con asesoramiento legal. Nombra a quien decide qué evidencia se preserva y a quien da el asesoramiento legal (interno o externo)."
+  - id: incidentes_eventos_auditables
+    text: "¿Cuándo y quién revisa la determinación de los eventos auditables a raíz del análisis de incidentes?"
+    clause: op.exp.9.3
+    help: "op.exp.9.3: como consecuencia del análisis de los incidentes, se revisará la determinación de los eventos auditables. Indica cuándo se hace (por ejemplo, al cerrar cada incidente) y quién."
+  - id: autoridad_procedimientos
+    text: "¿Quién aprueba los procedimientos y el proceso de autorización?"
+    clause: org.3.r1.1
+    help: "Autoridad que valida los procedimientos (org.3 R1: validación por la autoridad correspondiente); para el proceso de autorización es una decisión de esta herramienta. Se registra en la aprobación del documento. Escribe una de estas opciones: la dirección, el responsable de la seguridad o el responsable del sistema."
+    choices: ["la dirección", "el responsable de la seguridad", "el responsable del sistema"]
+  - id: firmante_direccion
+    text: "¿Quién firma en nombre de la dirección?"
+    clause: art.2.3
+    help: "Una persona concreta, con el nombre que figura en la lista de personas, que aprueba los documentos en nombre de la dirección aunque esta sea un órgano (por ejemplo, un consejo de administración). Si no ocupa ningún cargo de seguridad, añádela igualmente a esa lista."
+sections:
+  - id: introduccion
+    title: "Introducción"
+    covers: []
+    body: |
+      Organización: {{organizacion}}
+  - id: alcance
+    title: "Alcance del procedimiento"
+    covers: []
+    body: |
+      {{incidentes_alcance}}
+  - id: deteccion
+    title: "Mecanismos de detección"
+    covers: [art.25.2]
+    body: |
+      {{#each incidentes_deteccion}}
+      - {{.}}
+      {{/each}}
+  - id: informe_eventos
+    title: "Informe de eventos de seguridad y debilidades"
+    covers: [op.exp.7.1]
+    body: |
+      {{incidentes_informe_eventos}}
+  - id: clasificacion
+    title: "Criterios de clasificación y escalado"
+    covers: [art.25.2, op.exp.7.1]
+    body: |
+      Niveles declarados por la organización:
+
+      {{#each incidentes_niveles}}
+      ### {{.nivel}}
+
+      - Criterio: {{.criterio}}
+      - Escalado: {{.escalado}}
+
+      {{/each}}
+  - id: analisis
+    title: "Análisis y resolución"
+    covers: [art.25.2]
+    body: |
+      {{incidentes_analisis}}
+  - id: comunicacion
+    title: "Comunicación a las partes interesadas"
+    covers: [art.25.2]
+    body: |
+      {{incidentes_comunicacion}}
+  - id: registro
+    title: "Registro de las actuaciones y mejora continua"
+    covers: [art.25.2]
+    body: |
+      Registro: {{incidentes_registro}}
+
+      Mejora continua: {{incidentes_mejora}}
+  - id: datos_personales
+    title: "Incidentes que afectan a datos personales"
+    covers: [op.exp.7.2]
+    body: |
+      {{incidentes_datos_personales}}
+  - id: notificacion_incibe
+    title: "Notificación al INCIBE-CERT"
+    covers: [art.33.7]
+    when: {question: servicios_externalizados, any_of: ["sí"]}
+    body: |
+      La organización declara que presta servicios a una administración u otra entidad que se apoyan en sus sistemas. Si alguna es una entidad pública, el art. 33.7 obliga a notificar al INCIBE-CERT:
+
+      Quién notifica: {{incibe_quien}}
+
+      Cómo: {{incibe_como}}
+
+      Cuándo, según los niveles de clasificación: {{incibe_cuando}}
+  - id: sin_notificacion_incibe
+    title: "Notificación al INCIBE-CERT"
+    covers: []
+    when: {question: servicios_externalizados, any_of: ["no"]}
+    body: |
+      La organización declara que no presta a entidades públicas servicios que se apoyen en sus sistemas. Si presta cualquier servicio a una entidad pública, revisad el art. 33.7 (notificación al INCIBE-CERT).
+  - id: evidencia_y_eventos_auditables
+    title: "Evidencia y eventos auditables"
+    covers: []
+    body: |
+      Evidencia con relevancia jurisdiccional y asesoramiento legal: {{incidentes_evidencia}}
+
+      Revisión de los eventos auditables: {{incidentes_eventos_auditables}}
+  - id: aprobacion_direccion
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["la dirección"]}
+    body: |
+      Lo aprueba: la dirección, en cuyo nombre firma {{firmante_direccion}}.
+  - id: aprobacion_seguridad
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["el responsable de la seguridad"]}
+    body: |
+      Lo aprueba: el responsable de la seguridad.
+  - id: aprobacion_sistema
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["el responsable del sistema"]}
+    body: |
+      Lo aprueba: el responsable del sistema.
