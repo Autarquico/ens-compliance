@@ -136,7 +136,9 @@ def _has_phone(text: str) -> bool:
         run = m.group()
         if sum(c.isdigit() for c in run) < _PHONE_MIN_DIGITS:
             continue
-        if not (_is_ip(run) or _is_ip_with_port(run) or _ISO_8601.fullmatch(run)):
+        if not (
+            _is_ip(run) or _is_ip_with_port(run) or _ISO_8601.fullmatch(run) or _is_ip_list(run)
+        ):
             return True
     return False
 
@@ -169,6 +171,12 @@ def _is_ip(candidate: str) -> bool:
     except ValueError:
         return False
     return True
+
+
+def _is_ip_list(candidate: str) -> bool:
+    """Lista de IP separadas por comas («203.0.113.7,198.51.100.2»): cada elemento es una IP."""
+    parts = [part.strip() for part in candidate.split(",")]
+    return len(parts) > 1 and all(_is_ip(p) or _is_ip_with_port(p) for p in parts)
 
 
 def _is_ip_with_port(candidate: str) -> bool:

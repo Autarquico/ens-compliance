@@ -82,3 +82,13 @@ def test_a_valid_ip_is_a_warning_even_with_many_digits():
 def test_a_valid_dni_letter_is_required_when_it_is_separated():
     assert check_declared_name("12345678 Q") == []
     assert check_declared_name("12345678 Z")
+
+
+def test_una_lista_de_ip_separadas_por_comas_es_un_aviso_no_un_telefono():
+    summary = ("state", "analysis", "summary")
+    errors, warnings = check_incident_payload(
+        put(full_payload(), summary, "Origen 203.0.113.7,198.51.100.2")
+    )
+
+    assert errors == []
+    assert any("dirección IP" in w for w in warnings)
