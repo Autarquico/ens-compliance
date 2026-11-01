@@ -21,6 +21,10 @@ REJECTED = {
     "DNI con separadores": "12.345.678-Z",
     "NIE con espacios": "x 1234567 l",
     "correo en mayúsculas": "CONTACTO.FICTICIO@EXAMPLE.ORG",
+    "contraseña solo con letras tras ': '": "password : abcdef",
+    "frase de contraseña entrecomillada": 'password : "correct horse battery staple"',
+    "secret solo con letras": "secret: abcdef",
+    "teléfono con comas": "tel: 612,345,678",
 }
 
 # Textos que se siguen admitiendo (sin error).
@@ -37,4 +41,6 @@ ACCEPTED = [
     "token: abc",
     'clave: "revisar el tema"',
     "Fecha 2026-10-15 y 20261015 a las",
+    "Pasos 1, 2, 3, 4, 5, 6, 7, 8 y 9",
+    "secret scanning activado en todos los repos",
 ]

@@ -70,8 +70,9 @@ _IBAN_SEPARATORS = " .-_/"
 _ALNUM = frozenset(string.ascii_letters + string.digits)
 # Ids propios del registro: no son teléfonos aunque lleven muchos dígitos.
 _OWN_IDS = re.compile(r"(?<![\w-])(?:(?:INC|SIM)-\d{4}-\d{3}|EV-\d{8}-[0-9a-f]{8})(?!\w)")
-# Tramo de dígitos con separadores habituales de un número (espacio . - / ( ) + :).
-_DIGIT_RUN = re.compile(r"\d(?:[\d\s().+/:-]*\d)?")
+# Tramo de dígitos con separadores habituales de un número (espacio . - / ( ) + :), y la coma
+# solo pegada a dígitos («612,345,678»; «1, 2, 3» no se une).
+_DIGIT_RUN = re.compile(r"\d(?:(?:[\d\s().+/:-]|,(?=\d))*\d)?")
 _PHONE_MIN_DIGITS = 9
 # Id de alerta de Wazuh: epoch con fracción. Solo se admite en `source.alert_ids`.
 _WAZUH_ALERT_ID = re.compile(r"\d{10}\.\d{1,10}")
@@ -79,9 +80,14 @@ _IP_PORT = re.compile(r"(?:(?P<v4>[\d.]+)|\[(?P<v6>[0-9A-Fa-f:.]+)\]):(?P<port>\
 _ISO_TIME = r"\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[+-]\d{2}(?::?\d{2})?)?"
 _ISO_8601 = re.compile(rf"(?:\d{{4}}-\d{{2}}-\d{{2}}(?:[T ]{_ISO_TIME})?|{_ISO_TIME})")
 _CREDENTIAL_KEY = re.compile(
-    r"(?<![A-Za-z0-9])(?:password|passwd|pwd|contrase[ñn]a|clave|secret|token|api[_-]?key"
+    r"(?<![A-Za-z0-9])(?P<label>password|passwd|pwd|contrase[ñn]a|clave|secret|token|api[_-]?key"
     r"|access[_-]?key)[\"']?\s*(?P<sep>[=:])(?P<gap>\s*)",
     re.IGNORECASE,
+)
+# Etiquetas que solo pueden nombrar una credencial: cualquier valor tras ellas se rechaza.
+# «clave» y «token» también aparecen en prosa («clave: revisar»), y siguen la regla general.
+_UNAMBIGUOUS_LABELS = re.compile(
+    r"password|passwd|pwd|contrase[ñn]a|secret|api[_-]?key|access[_-]?key", re.IGNORECASE
 )
 _UNQUOTED_VALUE = re.compile(r"[^\s\"',;]*")
 _LOOKS_SECRET = re.compile(r"[\d_]|[^\w\s]")
@@ -143,9 +149,13 @@ def _has_credential(text: str) -> bool:
             value = rest[1:] if closing < 0 else rest[1:closing]
         else:
             value = _UNQUOTED_VALUE.match(rest).group()
-        # «=» o «:» pegado al valor: basta con 3 caracteres. «: valor» con espacio: solo si
-        # parece un secreto (6+ caracteres con algún dígito o símbolo): «clave: revisar» no.
-        if m["sep"] == "=" or not m["gap"]:
+        # Etiqueta inequívoca: cualquier valor. «=» o «:» pegado: basta con 3 caracteres.
+        # «: valor» con espacio tras una etiqueta ambigua: solo si parece un secreto (6+
+        # caracteres con algún dígito o símbolo): «clave: revisar» no.
+        if _UNAMBIGUOUS_LABELS.fullmatch(m["label"]):
+            if value.strip():
+                return True
+        elif m["sep"] == "=" or not m["gap"]:
             if len(value) >= 3:
                 return True
         elif len(value) >= 6 and _LOOKS_SECRET.search(value):
