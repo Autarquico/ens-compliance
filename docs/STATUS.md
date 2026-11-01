@@ -21,6 +21,7 @@
 - #19 Evidencia de endpoints con script guiado
 - #20 Matriz de cumplimiento por medida
 - #21 Plantillas de documentación organizativa
+- #23 Motor de checks y regla de preparación
 <!-- /pm-sync:done-this-week -->
 
 ---
@@ -28,7 +29,7 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-_(nada)_
+- #22 Procedimiento y registro de incidentes
 <!-- /pm-sync:in-progress -->
 
 ---

@@ -10,6 +10,7 @@ from ens_evidence.matrix import (
     DocumentLink,
     ManualEvidenceLink,
     StaticCheckResults,
+    StaticFindings,
     add_review,
     prepare_review,
 )
@@ -24,6 +25,7 @@ from ens_evidence.models import (
     ReadinessInput,
     evaluate_readiness,
 )
+from ens_evidence.models.readiness import OpenFinding
 from ens_evidence.workspace import LocalStore
 
 from .evaluate_helpers import (
@@ -749,3 +751,120 @@ def test_una_clave_repetida_anidada_en_una_revision_tambien_bloquea(signed):
 
     assert (MISSING_REVIEW, f"review_unreadable:{key}") in details(row)
     assert not row_status(row).implemented
+
+
+# --- checks: problemas de conector y último intento en la agregación compartida ---------------
+
+PROBLEMS = {"github": ("check_history_unreadable:evidence/checks/github/000002.json",)}
+
+
+def check_measure(store, measure_id=ONE_CLAUSE):
+    matrix_entry = entry(measure_id, CheckLink(check_id=CHECK, covers=["base"]))
+    configure(store, matrix_entry)
+    return matrix_entry
+
+
+def passing(store):
+    later = NOW - timedelta(hours=1)
+    return run([check_result(store, evaluated_at=later)], finished_at=later)
+
+
+def review(store, checks):
+    return prepare_review(
+        store,
+        NOW,
+        ONE_CLAUSE,
+        by="Ana",
+        role="system_administrator",
+        conclusion="Revisada",
+        assessment="COMPLIANT",
+        documents=FakeDocuments(),
+        checks=checks,
+    )
+
+
+def test_sin_problemas_de_conector_el_pass_sustenta_y_se_puede_registrar_compliant(signed):
+    check_measure(signed)
+
+    plan = review(signed, StaticCheckResults([passing(signed)]))
+
+    assert plan.problems == ()
+    assert plan.record is not None
+
+
+def test_assess_con_un_problema_de_conector_no_sustenta_la_medida_y_lo_informa(signed):
+    matrix_entry = check_measure(signed)
+    record(signed, matrix_entry, checks=[CHECK])
+    source = StaticCheckResults([passing(signed)], problems=PROBLEMS)
+
+    result = assess_now(signed, checks=source)
+    row = row_of(result, ONE_CLAUSE)
+
+    assert (MISSING_EVIDENCE, PROBLEMS["github"][0]) in details(row)
+    assert row.covered == frozenset()
+    assert any(PROBLEMS["github"][0] in error for error in result.errors)
+    assert result.readiness.readiness is Readiness.NOT_READY
+
+
+def test_prepare_review_con_un_problema_de_conector_impide_registrar_compliant(signed):
+    check_measure(signed)
+
+    plan = review(signed, StaticCheckResults([passing(signed)], problems=PROBLEMS))
+
+    assert plan.record is None
+    assert plan.problems
+    unreadable_record = PROBLEMS["github"][0].partition(":")[2]
+    assert any(unreadable_record in note for note in plan.notes)
+
+
+def test_assess_tras_un_intento_fallido_no_vuelve_al_pass_anterior(signed):
+    matrix_entry = check_measure(signed)
+    record(signed, matrix_entry, checks=[CHECK])
+    failed = run([], run_id="fallido", finished_at=NOW - timedelta(minutes=5), complete=False)
+
+    row = row_of(
+        assess_now(signed, checks=StaticCheckResults([passing(signed), failed])), ONE_CLAUSE
+    )
+
+    assert (MISSING_EVIDENCE, "check_last_run_failed:github") in details(row)
+    assert row.covered == frozenset()
+
+
+def test_prepare_review_tras_un_intento_fallido_no_registra_compliant(signed):
+    check_measure(signed)
+    failed = run([], run_id="fallido", finished_at=NOW - timedelta(minutes=5), complete=False)
+
+    plan = review(signed, StaticCheckResults([passing(signed), failed]))
+
+    assert plan.record is None
+
+
+# --- hallazgos abiertos -----------------------------------------------------------------------
+
+
+def test_sin_fuente_de_hallazgos_el_juicio_sigue_pendiente_y_no_hay_bloqueo_de_hallazgo(signed):
+    result = assess_now(signed)
+
+    assert result.readiness.pending_human_review is True
+    assert not any(b.kind is BlockerKind.OPEN_FINDING for b in result.readiness.blockers)
+
+
+def test_medidas_satisfechas_con_un_hallazgo_abierto_dan_not_ready(signed):
+    reviewed_measure(signed)
+    finding = OpenFinding(id="F-1", description="Acceso sin MFA")
+
+    result = assess_now(signed, findings=StaticFindings([finding]))
+
+    assert row_of(result, ONE_CLAUSE).blockers == ()
+    assert result.readiness.readiness is Readiness.NOT_READY
+    assert (BlockerKind.OPEN_FINDING, "F-1") in {
+        (b.kind, b.detail) for b in result.readiness.blockers
+    }
+
+
+def test_la_fuente_de_hallazgos_decide_si_el_juicio_se_ejecuto(signed):
+    executed = assess_now(signed, findings=StaticFindings([], executed=True))
+    pending = assess_now(signed, findings=StaticFindings([], executed=False))
+
+    assert executed.readiness.pending_human_review is False
+    assert pending.readiness.pending_human_review is True

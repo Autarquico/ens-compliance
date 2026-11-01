@@ -40,7 +40,7 @@ from ens_evidence.matrix.model import (
 )
 from ens_evidence.matrix.obligations import MatrixRowSpec, Obligation, RowKind
 from ens_evidence.matrix.store import add_review
-from ens_evidence.matrix.technical import CheckResultsSource, NoCheckResults
+from ens_evidence.matrix.technical import CheckResultsSource, load_checks
 from ens_evidence.models.contracts import Review
 from ens_evidence.models.dossier import SELF_ASSESSORS
 from ens_evidence.models.enums import MeasureAssessment
@@ -253,8 +253,12 @@ def prepare_review(
 
     entry = entry_of(load_matrix(store), measure_id)
     snapshot = documents_snapshot(store, now, documents)
-    runs = tuple((checks or NoCheckResults()).runs(store, now))
-    supports = link_supports(store, row, entry, runs, snapshot, now) if selected else []
+    runs, connector_problems = load_checks(checks, store, now)
+    supports = (
+        link_supports(store, row, entry, runs, snapshot, now, connector_problems)
+        if selected
+        else []
+    )
     missing = _missing(row, supports) if selected else []
     problems = _problems(entry, verdict, missing, _before_sources(supports, at))
     if missing and verdict is MeasureAssessment.COMPLIANT:

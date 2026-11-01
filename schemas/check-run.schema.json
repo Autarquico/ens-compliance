@@ -1,0 +1,234 @@
+{
+  "$defs": {
+    "CheckInput": {
+      "additionalProperties": false,
+      "description": "Una evidencia que la ejecuci\u00f3n ley\u00f3 y la huella de su manifiesto en ese momento.",
+      "properties": {
+        "evidence_id": {
+          "title": "Evidence Id",
+          "type": "string"
+        },
+        "manifest_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Manifest Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "evidence_id",
+        "manifest_sha256"
+      ],
+      "title": "CheckInput",
+      "type": "object"
+    },
+    "CheckResult": {
+      "additionalProperties": false,
+      "properties": {
+        "asset_id": {
+          "title": "Asset Id",
+          "type": "string"
+        },
+        "check_id": {
+          "title": "Check Id",
+          "type": "string"
+        },
+        "collection_status": {
+          "$ref": "#/$defs/CollectionStatus",
+          "default": "SUCCESS"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "reason": {
+          "title": "Reason",
+          "type": "string"
+        },
+        "reason_code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason Code"
+        },
+        "status": {
+          "$ref": "#/$defs/CheckStatus"
+        },
+        "subject": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Subject"
+        }
+      },
+      "required": [
+        "check_id",
+        "asset_id",
+        "status",
+        "evaluated_at",
+        "reason"
+      ],
+      "title": "CheckResult",
+      "type": "object"
+    },
+    "CheckStatus": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "ERROR",
+        "UNKNOWN"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "ClockCorrection": {
+      "additionalProperties": false,
+      "description": "Constancia de que la hora del equipo se corrigi\u00f3: el intento que la lleva sustituye a las\nejecuciones `superseded` (claves), guardadas con el reloj adelantado. No se borra ninguna.",
+      "properties": {
+        "superseded": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Superseded",
+          "type": "array"
+        }
+      },
+      "required": [
+        "superseded"
+      ],
+      "title": "ClockCorrection",
+      "type": "object"
+    },
+    "CollectionStatus": {
+      "enum": [
+        "SUCCESS",
+        "ERROR",
+        "PERMISSION_DENIED",
+        "NOT_SUPPORTED"
+      ],
+      "title": "CollectionStatus",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Un intento del motor para un conector, completo o no.\n\n`seq` lo asigna el almac\u00e9n al registrarlo. `expected_subjects`: sujetos que cada check deb\u00eda\ncubrir. `config_sha256` y `scope_fingerprint` fijan con qu\u00e9 configuraci\u00f3n y alcance se ejecut\u00f3.",
+  "properties": {
+    "clock_correction": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/ClockCorrection"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "complete": {
+      "title": "Complete",
+      "type": "boolean"
+    },
+    "config_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Config Sha256",
+      "type": "string"
+    },
+    "connector": {
+      "title": "Connector",
+      "type": "string"
+    },
+    "engine_version": {
+      "title": "Engine Version",
+      "type": "string"
+    },
+    "errors": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Errors",
+      "type": "array"
+    },
+    "expected_subjects": {
+      "additionalProperties": {
+        "items": {
+          "type": "string"
+        },
+        "type": "array"
+      },
+      "title": "Expected Subjects",
+      "type": "object"
+    },
+    "finished_at": {
+      "format": "date-time",
+      "title": "Finished At",
+      "type": "string"
+    },
+    "inputs": {
+      "items": {
+        "$ref": "#/$defs/CheckInput"
+      },
+      "title": "Inputs",
+      "type": "array"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/CheckResult"
+      },
+      "title": "Results",
+      "type": "array"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "scope_fingerprint": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Scope Fingerprint",
+      "type": "string"
+    },
+    "seq": {
+      "description": "N\u00famero de orden dentro del conector, desde 1.",
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "started_at": {
+      "format": "date-time",
+      "title": "Started At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "seq",
+    "connector",
+    "engine_version",
+    "started_at",
+    "finished_at",
+    "complete",
+    "scope_fingerprint",
+    "config_sha256"
+  ],
+  "title": "StoredCheckRun",
+  "type": "object"
+}

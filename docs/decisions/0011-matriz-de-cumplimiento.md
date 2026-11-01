@@ -110,8 +110,8 @@ de la Declaración, qué la sustenta, quién la revisa y cada cuánto.
 
 ## Consecuencias
 
-- Hasta que exista el motor de checks no cuenta ningún check: la única vía de
-  evidencia es la manual o la documental, y `matrix status` lo dice.
+- Los checks cuentan con las ejecuciones que guarda `check --all` (0012); sin
+  ejecución, el check vinculado bloquea con `check_no_results`.
 - Un FAIL en un check vinculado bloquea la medida aunque haya una revisión
   favorable. Para quitarlo hay que desvincular el check, y ese cambio queda
   visible y obliga a revisar de nuevo.

@@ -10,6 +10,7 @@ RAW_PREFIX = f"{EVIDENCE_ROOT}/raw"
 MANIFESTS_PREFIX = f"{EVIDENCE_ROOT}/manifests"
 REVIEWS_PREFIX = f"{EVIDENCE_ROOT}/reviews"
 BACKUPS_PREFIX = f"{EVIDENCE_ROOT}/backups"
+CHECKS_PREFIX = f"{EVIDENCE_ROOT}/checks"
 # Reservado a la copia: nunca se importa al workspace.
 BACKUP_META_PREFIX = ".ens-backup"
 

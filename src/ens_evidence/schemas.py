@@ -11,6 +11,7 @@ from ens_evidence.backup.restore_test import RestoreTest, RestoreTestDeclaration
 from ens_evidence.catalog import MeasureCard
 from ens_evidence.catalog.controls import MeasuresFile
 from ens_evidence.categorization import CategorizationApproval, CategorizationFile
+from ens_evidence.checks.model import StoredCheckRun
 from ens_evidence.incidents import IncidentRecord
 from ens_evidence.incidents.history import IncidentHistory
 from ens_evidence.matrix import (
@@ -54,6 +55,7 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "categorization": CategorizationFile,
     "categorization-approval": CategorizationApproval,
     "check-result": CheckResult,
+    "check-run": StoredCheckRun,
     "collection-result": CollectionResult,
     "compliance-matrix": MatrixFile,
     "controls-measures": MeasuresFile,

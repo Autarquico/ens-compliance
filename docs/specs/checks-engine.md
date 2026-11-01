@@ -2,11 +2,11 @@
 codename: ens-compliance
 title: Motor de checks y regla de preparación
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 23
-prs: []
+prs: [50]
 related_issues: [23]
 depends_on:
   - collector-github
@@ -18,7 +18,7 @@ depends_on:
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-10-31
 ---
 
 # Motor de checks y regla de preparación

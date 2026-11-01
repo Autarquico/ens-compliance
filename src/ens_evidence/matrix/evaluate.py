@@ -9,7 +9,8 @@ aquí declara conformidad: `COMPLIANT` solo sale de una revisión humana registr
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
-from typing import NamedTuple
+from types import MappingProxyType
+from typing import NamedTuple, Protocol
 
 from ens_evidence.applicability import Declaration, DeclarationState, declaration_history
 from ens_evidence.catalog.controls import MeasuresFileError, load_measures
@@ -42,7 +43,9 @@ from ens_evidence.matrix.store import StoredReview, effective_reviews, read_matr
 from ens_evidence.matrix.technical import (
     CheckResultsSource,
     CheckRun,
-    NoCheckResults,
+    ConnectorProblems,
+    load_checks,
+    problem_errors,
     technical_support,
 )
 from ens_evidence.models.contracts import Review
@@ -52,6 +55,7 @@ from ens_evidence.models.readiness import (
     BlockerKind,
     EvidenceRef,
     Measure,
+    OpenFinding,
     ReadinessInput,
     ReadinessResult,
     evaluate_readiness,
@@ -85,6 +89,28 @@ class AssessmentResult:
     blockers: tuple[Blocker, ...]
     readiness: ReadinessResult
     errors: tuple[str, ...] = field(default=())
+
+
+class FindingsSource(Protocol):
+    def open_findings(self, store: WorkspaceStore, at: datetime) -> tuple[list[OpenFinding], bool]:
+        """Hallazgos abiertos en `at` y si el juicio (pre-auditoría) se ha ejecutado."""
+        ...
+
+
+class StaticFindings:
+    def __init__(self, findings: Iterable[OpenFinding] = (), *, executed: bool = True) -> None:
+        self._findings = list(findings)
+        self._executed = executed
+
+    def open_findings(self, store: WorkspaceStore, at: datetime) -> tuple[list[OpenFinding], bool]:
+        return list(self._findings), self._executed
+
+
+class NoFindings(StaticFindings):
+    """Hasta `pre-audit` no hay fuente real: sin hallazgos y sin juicio ejecutado."""
+
+    def __init__(self) -> None:
+        super().__init__((), executed=False)
 
 
 def _gap(kind: BlockerKind, measure_id: str, detail: str) -> Blocker:
@@ -144,6 +170,7 @@ def link_supports(
     runs: tuple[CheckRun, ...],
     snapshot: DocumentsSnapshot,
     at: datetime,
+    problems: ConnectorProblems = MappingProxyType({}),
 ) -> list[LinkSupport]:
     """Lo que cada enlace sustenta en `at`: la única agregación de fuentes (`assess` y
     `prepare_review`). No compara con revisiones anteriores: una revisión nueva se registra en
@@ -160,7 +187,7 @@ def link_supports(
             case ManualEvidenceLink():
                 found.append(manual_support(store, row, link, at, entry.review_every_days))
             case CheckLink():
-                found.append(technical_support(store, row, link, runs, at))
+                found.append(technical_support(store, row, link, runs, at, problems))
             case DocumentLink():
                 found.append(document_support(snapshot, row, link, at))
     return found
@@ -328,6 +355,7 @@ def _assess_row(
     entry: MatrixEntry | None,
     decision: Measure | None,
     runs: tuple[CheckRun, ...],
+    problems: ConnectorProblems,
     snapshot: DocumentsSnapshot,
     signings: Signings,
     now: datetime,
@@ -352,7 +380,7 @@ def _assess_row(
     supports = (
         [
             _sustains_review(s, row, implementation)
-            for s in link_supports(store, row, entry, runs, snapshot, now)
+            for s in link_supports(store, row, entry, runs, snapshot, now, problems)
         ]
         if selected
         else []
@@ -404,6 +432,7 @@ def assess(
     *,
     checks: CheckResultsSource | None = None,
     documents: OrgDocumentSource | None = None,
+    findings: FindingsSource | None = None,
 ) -> AssessmentResult:
     """Filas, bloqueos de la matriz y `ReadinessResult` en `now`; único punto de integración."""
     plan = plan_obligations(store, now)
@@ -414,7 +443,8 @@ def assess(
     entries = {e.id: e for e in matrix.entries} if matrix else {}
     decisions, decision_errors = _decisions(store)
     errors = [*plan.errors, *errors, *decision_errors]
-    runs = tuple((checks or NoCheckResults()).runs(store, now))
+    runs, problems = load_checks(checks, store, now)
+    errors += problem_errors(problems)
     snapshot = documents_snapshot(store, now, documents)
     errors += [
         f"{key}: registro de aprobación ilegible (documento {name})"
@@ -435,6 +465,7 @@ def assess(
             entries.get(spec.measure_id),
             decisions.get(spec.measure_id),
             runs,
+            problems,
             snapshot,
             signings,
             now,
@@ -443,10 +474,12 @@ def assess(
         gaps += row_gaps
         errors += review_errors
 
+    open_findings, judgment_executed = (findings or NoFindings()).open_findings(store, now)
     readiness = evaluate_readiness(
         ReadinessInput(
             measures=[r.measure for r in rows],
-            judgment_executed=False,
+            open_findings=open_findings,
+            judgment_executed=judgment_executed,
             evaluated_at=now,
             coverage_gaps=gaps,
         )
