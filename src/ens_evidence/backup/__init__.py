@@ -1,5 +1,6 @@
 """Copia independiente de las evidencias con restic (ADR 0008)."""
 
+from ens_evidence.backup.configured import BackupFailure, BackupOutcome, run_configured_backup
 from ens_evidence.backup.environment import (
     ACCESS_KEY_VAR,
     PASSWORD_VAR,
@@ -49,6 +50,8 @@ __all__ = [
     "PASSWORD_VAR",
     "SECRET_KEY_VAR",
     "BackupError",
+    "BackupFailure",
+    "BackupOutcome",
     "BackupRun",
     "BackupSecrets",
     "BackupStatus",
@@ -77,6 +80,7 @@ __all__ = [
     "restore_snapshot",
     "run_backup",
     "run_check",
+    "run_configured_backup",
     "subprocess_env",
     "verify_immutability",
 ]

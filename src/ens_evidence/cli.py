@@ -1,7 +1,9 @@
 import functools
 import os
 import shutil
-from collections.abc import Callable
+import time
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from datetime import UTC, datetime
 from enum import StrEnum
 from importlib.resources import files
@@ -12,7 +14,7 @@ import typer
 import yaml
 from pydantic import ValidationError
 
-from ens_evidence import __version__, schemas
+from ens_evidence import schemas
 from ens_evidence.applicability import (
     ApplicabilityRejected,
     DeclarationRejected,
@@ -41,14 +43,13 @@ from ens_evidence.backup import (
     dump,
     failed_check_recorder,
     failed_restore_recorder,
-    failed_run_recorder,
     list_runs,
     load_secrets,
     parse_s3_repository,
     record_restore_test,
     restore_recorded,
-    run_backup,
     run_check,
+    run_configured_backup,
     verify_immutability,
 )
 from ens_evidence.backup.environment import ACCESS_KEY_VAR, SECRET_KEY_VAR, redact
@@ -71,7 +72,6 @@ from ens_evidence.checks.engine import CONFIG_INVALID, ConnectorOutcome, Outcome
 from ens_evidence.checks.inputs import NO_EVIDENCE
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.checks.store import scan_runs
-from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.connectors.registry import ConnectorLoadError, ConnectorRegistry
 from ens_evidence.endpoint.bundle import BundleTargetError, write_bundle
 from ens_evidence.endpoint.evaluate import evaluate_workspace
@@ -85,7 +85,6 @@ from ens_evidence.evidence import (
     verify_all,
     verify_one,
 )
-from ens_evidence.evidence.importer import import_collected
 from ens_evidence.matrix import (
     DECLARATION_REPORTS_PREFIX,
     MATRIX_REPORTS_PREFIX,
@@ -144,6 +143,15 @@ from ens_evidence.risk import (
     risk_status,
     validate_risk,
 )
+from ens_evidence.scheduling.collect import (
+    CollectOutcome,
+    Plugins,
+    collect_all,
+    collect_one,
+    load_plugins,
+)
+from ens_evidence.scheduling.config import CollectConfig, load_schedule_config
+from ens_evidence.scheduling.lock import CycleBusy, CycleContext, CycleLock
 from ens_evidence.scope import (
     ObservedInputError,
     ScopeApprovalRejected,
@@ -978,22 +986,42 @@ def backup_init(ctx: typer.Context) -> None:
 @handled
 def backup_run(ctx: typer.Context) -> None:
     """Copia el workspace completo al repositorio restic y registra la ejecución."""
-    restic, configured, secrets = backup_restic(ctx, failed_run_recorder(clock))
-    run = run_backup(
-        open_workspace(ctx),
-        restic,
-        configured.restic_repository,
-        secrets,
-        clock,
-        optional_repository_id(restic),
-    )
-    if run.status == "failed":
+    settings = resolved_settings(ctx)
+    store = open_store(settings)
+    with exclusive_cycle(settings) as context:
+        outcome = run_configured_backup(
+            store, settings.backup, os.environ, clock(), clock=clock, context=context
+        )
+    run = outcome.run
+    if outcome.status == "ok":
+        assert run is not None
+        typer.echo(
+            f"Copia {run.run_id} completada. Snapshot: {run.snapshot_id}; "
+            f"{len(run.inventory or {})} ficheros en el inventario."
+        )
+        return
+    if run is not None:
         typer.echo(f"La copia {run.run_id} ha fallado: {run.error}", err=True)
         raise typer.Exit(1)
-    typer.echo(
-        f"Copia {run.run_id} completada. Snapshot: {run.snapshot_id}; "
-        f"{len(run.inventory or {})} ficheros en el inventario."
-    )
+    raise fail(BACKUP_RUN_MESSAGES[outcome.code])
+
+
+BACKUP_RUN_MESSAGES = {
+    "skipped_not_configured": (
+        "Faltan los ajustes de la copia: añade backup.restic_repository al fichero de ajustes."
+    ),
+    "failed:invalid_credentials": (
+        "Credenciales de la copia no válidas: deben estar completas y ser distintas de las del "
+        "workspace; revisa las variables ENS_BACKUP_*."
+    ),
+    "failed:previous_run_unfinished": (
+        "Hay una copia anterior sin finalizar; revísala con `backup status` antes de repetir."
+    ),
+    "failed:workspace_unreadable": "No se pueden leer los registros de la copia del workspace.",
+    "failed:record_not_persisted": (
+        "No se pudo escribir el registro de la copia; la ejecución queda como interrumpida."
+    ),
+}
 
 
 @backup_app.command("status")
@@ -1772,6 +1800,34 @@ def connector_registry() -> ConnectorRegistry:
     return registry
 
 
+class SystemWaitClock:
+    """El reloj de la CLI: `clock()` (sustituible en tests) y una espera real."""
+
+    def now(self) -> datetime:
+        return clock()
+
+    def sleep(self, seconds: float) -> None:
+        time.sleep(seconds)
+
+
+@contextmanager
+def exclusive_cycle(settings: Settings) -> Iterator[CycleContext]:
+    """El lock del ciclo para una entrada externa; ocupado, sale con 2."""
+    lock = CycleLock.for_settings(settings)
+    try:
+        lock.acquire()
+    except CycleBusy:
+        raise fail("Hay un ciclo en curso para este workspace; espera a que termine.") from None
+    except OSError:
+        raise fail(
+            "No se puede tomar el lock del ciclo (directorio de estado no escribible)."
+        ) from None
+    try:
+        yield CycleContext(lock)
+    finally:
+        lock.release()
+
+
 @app.command()
 @handled
 def collect(
@@ -1779,34 +1835,58 @@ def collect(
     source: Annotated[str | None, typer.Argument(help="Conector a ejecutar.")] = None,
     all_sources: Annotated[bool, typer.Option("--all", help="Todos los conectores.")] = False,
 ) -> None:
-    """Recoge evidencias. Salida: 0 todo recogido, 3 parcial (secciones o estado global
-    sin permiso/no soportado), 1 error."""
-    if all_sources or source is None:
-        not_implemented()
-    try:
-        registry = connector_registry()
-    except ConnectorLoadError:
-        raise fail(
-            "No se pueden cargar los conectores instalados: hay un plugin defectuoso. "
-            "Revisa los paquetes que declaran el grupo ens_evidence.connectors."
-        ) from None
-    try:
-        connector_class = registry.get(source)
-    except KeyError:
-        raise fail(
-            f"Conector desconocido: {source}. Disponibles: {', '.join(registry.names())}."
-        ) from None
+    """Recoge evidencias. Un fallo del conector queda registrado como evidencia en ERROR.
+    Salida: 0 todo recogido, 3 parcial (secciones o estado global sin permiso/no soportado),
+    1 error, 2 configuración inválida o ciclo en curso."""
+    if all_sources == (source is not None):
+        raise fail("Indica un conector o --all.")
+    if source is not None:
+        try:
+            plugins = Plugins(connector_registry())
+        except ConnectorLoadError:
+            raise fail(
+                "No se pueden cargar los conectores instalados: hay un plugin defectuoso. "
+                "Revisa los paquetes que declaran el grupo ens_evidence.connectors."
+            ) from None
+        if source not in plugins.names():
+            raise fail(
+                f"Conector desconocido: {source}. Disponibles: {', '.join(plugins.names())}."
+            )
+    else:
+        plugins = load_plugins()
+        for broken in plugins.broken:
+            typer.echo(f"Plugin defectuoso, no se carga: {broken}", err=True)
     settings = resolved_settings(ctx)
     store = open_store(settings)
-    config = load_connector_config(store, source, connector_class.config_model)
-    connector = connector_class.from_settings(settings)
-    result = connector.collect(connector.prepare(config, store))
-    manifest = import_collected(store, result, collector_version=__version__, now=datetime.now(UTC))
-    typer.echo(f"Evidencia registrada: {manifest.id}")
+    with exclusive_cycle(settings):
+        if source is not None:
+            outcomes = [
+                collect_one(
+                    store, settings, plugins, source, clock(), clock=SystemWaitClock(),
+                    cfg=CollectConfig(retries=0), isolated=False,
+                )
+            ]  # fmt: skip
+        else:
+            cfg = load_schedule_config(store).config.collect.model_copy(update={"retries": 0})
+            outcomes = collect_all(store, settings, plugins, clock(), cfg, SystemWaitClock())
+    if not outcomes:
+        typer.echo("Ningún conector configurado: no se ha recogido nada.")
+        raise typer.Exit(3)
+    codes = [print_collect_outcome(outcome, labelled=source is None) for outcome in outcomes]
+    raise typer.Exit(2 if 2 in codes else 1 if 1 in codes else 3 if 3 in codes else 0)
+
+
+def print_collect_outcome(outcome: CollectOutcome, *, labelled: bool) -> int:
+    prefix = f"{outcome.connector}: " if labelled else ""
+    result = outcome.result
+    if result is None:
+        typer.echo(f"{prefix}no se ha recogido: {outcome.problem}", err=True)
+        return 2
+    typer.echo(f"{prefix}Evidencia registrada: {outcome.evidence_id}")
     sections = result.data.get("sections", {})
     for name, section in sections.items():
         typer.echo(f"  {name}: {section['status']}")
-    raise typer.Exit(collect_exit_code(result.collection_status, result.data, sections))
+    return collect_exit_code(result.collection_status, result.data, sections)
 
 
 def collect_exit_code(status: CollectionStatus, data: dict, sections: dict) -> int:
@@ -1930,30 +2010,32 @@ def check(
     rechazada o alcance no aprobado)."""
     if not all_checks:
         raise fail("Indica --all para evaluar los checks de todos los conectores configurados.")
-    store = open_workspace(ctx)
-    try:
-        outcomes = run_all(store, clock(), accept_clock_correction=clock_corrected)
-    except ScopeNotApproved as exc:
-        report_missing_context(exc)
-        raise typer.Exit(2) from None
-    scan = scan_runs(store)
-    for outcome in outcomes:
-        last = scan.last(outcome.connector)
-        print_check_outcome(outcome, last.key if last else None)
-        if outcome.kind is OutcomeKind.RECORDED and last and last.run.clock_correction:
-            replaced = ", ".join(last.run.clock_correction.superseded)
-            typer.echo(
-                f"  corrección del reloj: las ejecuciones con fecha futura ya no cuentan y siguen "
-                f"guardadas ({replaced})"
-            )
-    if not any(o.run for o in outcomes):
-        typer.echo("Ningún conector configurado: no se ha evaluado nada.")
-    code = check_exit_code(outcomes)
-    for step in check_next_steps(outcomes):
-        typer.echo(step)
-    if any(o.kind in (OutcomeKind.RECORDED, OutcomeKind.UNCHANGED) for o in outcomes):
-        typer.echo(CHECK_FOOTER)
-    raise typer.Exit(code)
+    settings = resolved_settings(ctx)
+    store = open_store(settings)
+    with exclusive_cycle(settings):
+        try:
+            outcomes = run_all(store, clock(), accept_clock_correction=clock_corrected)
+        except ScopeNotApproved as exc:
+            report_missing_context(exc)
+            raise typer.Exit(2) from None
+        scan = scan_runs(store)
+        for outcome in outcomes:
+            last = scan.last(outcome.connector)
+            print_check_outcome(outcome, last.key if last else None)
+            if outcome.kind is OutcomeKind.RECORDED and last and last.run.clock_correction:
+                replaced = ", ".join(last.run.clock_correction.superseded)
+                typer.echo(
+                    "  corrección del reloj: las ejecuciones con fecha futura ya no cuentan y "
+                    f"siguen guardadas ({replaced})"
+                )
+        if not any(o.run for o in outcomes):
+            typer.echo("Ningún conector configurado: no se ha evaluado nada.")
+        code = check_exit_code(outcomes)
+        for step in check_next_steps(outcomes):
+            typer.echo(step)
+        if any(o.kind in (OutcomeKind.RECORDED, OutcomeKind.UNCHANGED) for o in outcomes):
+            typer.echo(CHECK_FOOTER)
+        raise typer.Exit(code)
 
 
 @report_app.command("daily")

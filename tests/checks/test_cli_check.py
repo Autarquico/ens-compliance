@@ -30,6 +30,7 @@ FOOTER = "Un check en PASS no da por implantada ninguna medida"
 @pytest.fixture
 def cli(store, tmp_path, monkeypatch):  # noqa: F811
     monkeypatch.setattr("ens_evidence.cli.clock", lambda: NOW)
+    monkeypatch.setenv("ENS_STATE_DIR", str(tmp_path / "state"))
     settings = tmp_path / "settings.yaml"
     settings.write_text(
         yaml.safe_dump({"workspace": {"backend": "local", "local": {"path": str(store._root)}}})

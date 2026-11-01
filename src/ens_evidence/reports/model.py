@@ -6,7 +6,7 @@ obtener nunca se presenta como 0 ni como «sin cambios». Ningún campo expresa 
 
 import json
 import re
-from datetime import date
+from datetime import date, timedelta
 from typing import Literal
 
 from pydantic import AwareDatetime, Field, model_validator
@@ -14,6 +14,7 @@ from pydantic import AwareDatetime, Field, model_validator
 from ens_evidence.assessment.render import NO_CONFORMITY
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness
+from ens_evidence.orgdocs.approval import DocumentState
 
 DAY_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
 MONTH_PATTERN = r"^\d{4}-\d{2}$"
@@ -26,6 +27,8 @@ SourceKind = Literal[
     "check_run",
     "collection",
     "review",
+    "config",
+    "inventory",
     "document",
     "approval",
     "scope",
@@ -119,6 +122,15 @@ class AssetsSummary(Strict):
     by_type: dict[str, int]
 
 
+class DocumentEntry(Strict):
+    """Estado de un documento organizativo. Sin caducidad (ADR 0010): solo el estado."""
+
+    name: str = Field(min_length=1)
+    state: DocumentState
+    approved_at: AwareDatetime | None = None
+    reasons: list[str] = Field(default_factory=list)
+
+
 class ReadinessValue(Strict):
     readiness: Readiness
     blockers: list[str]
@@ -145,7 +157,23 @@ class Entry(Strict):
     detail: str
 
 
+class Window(Strict):
+    """Mes natural local, guardado en UTC: `start` incluido, `end` excluido."""
+
+    start: AwareDatetime
+    end: AwareDatetime
+
+    @model_validator(mode="after")
+    def _utc_and_ordered(self) -> "Window":
+        if self.start.utcoffset() != timedelta(0) or self.end.utcoffset() != timedelta(0):
+            raise ValueError("la ventana se guarda en UTC")
+        if self.start >= self.end:
+            raise ValueError("la ventana termina antes de empezar")
+        return self
+
+
 class Aggregate(Strict):
+    label: str | None = Field(default=None, description="Rótulo de la sección si no es obvio.")
     coverage: Coverage
     counts: dict[str, int] = Field(default_factory=dict)
     items: list[Entry] = Field(default_factory=list)
@@ -173,6 +201,7 @@ class DailyReport(_Report):
     checks: Section[CheckCounts]
     connectors: list[ConnectorEntry]
     readiness: Section[ReadinessValue]
+    documents: Section[list[DocumentEntry]]
     expiring: Section[list[ExpiryItem]]
     critical_alerts: Section[list[str]]
     open_incidents: Section[list[str]]
@@ -188,6 +217,7 @@ class DailyReport(_Report):
 class MonthlyReport(_Report):
     kind: Literal["monthly"] = "monthly"
     period: str = Field(pattern=MONTH_PATTERN)
+    window: Window
     cycle: CycleInfo | None
     inventory: Section[Aggregate]
     changes: Section[Aggregate]

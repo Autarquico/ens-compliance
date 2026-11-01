@@ -12,7 +12,6 @@ runner = CliRunner()
 @pytest.mark.parametrize(
     "args",
     [
-        ["collect", "--all"],
         ["report", "daily"],
         ["report", "monthly"],
     ],

@@ -19,6 +19,19 @@
           },
           "title": "Items",
           "type": "array"
+        },
+        "label": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "R\u00f3tulo de la secci\u00f3n si no es obvio.",
+          "title": "Label"
         }
       },
       "required": [
@@ -199,6 +212,8 @@
             "check_run",
             "collection",
             "review",
+            "config",
+            "inventory",
             "document",
             "approval",
             "scope",
@@ -262,6 +277,28 @@
         "reason"
       ],
       "title": "Unavailable",
+      "type": "object"
+    },
+    "Window": {
+      "additionalProperties": false,
+      "description": "Mes natural local, guardado en UTC: `start` incluido, `end` excluido.",
+      "properties": {
+        "end": {
+          "format": "date-time",
+          "title": "End",
+          "type": "string"
+        },
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start",
+        "end"
+      ],
+      "title": "Window",
       "type": "object"
     }
   },
@@ -344,6 +381,9 @@
     },
     "vulnerabilities": {
       "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "window": {
+      "$ref": "#/$defs/Window"
     }
   },
   "required": [
@@ -351,6 +391,7 @@
     "product_version",
     "notices",
     "period",
+    "window",
     "cycle",
     "inventory",
     "changes",

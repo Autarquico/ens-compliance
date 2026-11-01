@@ -234,6 +234,56 @@
       "title": "CycleInfo",
       "type": "object"
     },
+    "DocumentEntry": {
+      "additionalProperties": false,
+      "description": "Estado de un documento organizativo. Sin caducidad (ADR 0010): solo el estado.",
+      "properties": {
+        "approved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/DocumentState"
+        }
+      },
+      "required": [
+        "name",
+        "state"
+      ],
+      "title": "DocumentEntry",
+      "type": "object"
+    },
+    "DocumentState": {
+      "enum": [
+        "NOT_GENERATED",
+        "GENERATED",
+        "APPROVED",
+        "OBSOLETE"
+      ],
+      "title": "DocumentState",
+      "type": "string"
+    },
     "ExpiryItem": {
       "additionalProperties": false,
       "properties": {
@@ -381,6 +431,16 @@
         }
       ]
     },
+    "Section_list_DocumentEntry__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_DocumentEntry__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
     "Section_list_ExpiryItem__": {
       "anyOf": [
         {
@@ -430,6 +490,8 @@
             "check_run",
             "collection",
             "review",
+            "config",
+            "inventory",
             "document",
             "approval",
             "scope",
@@ -568,6 +630,32 @@
       "title": "Sourced[ReadinessValue]",
       "type": "object"
     },
+    "Sourced_list_DocumentEntry__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/DocumentEntry"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[DocumentEntry]]",
+      "type": "object"
+    },
     "Sourced_list_ExpiryItem__": {
       "additionalProperties": false,
       "properties": {
@@ -696,6 +784,9 @@
         }
       ]
     },
+    "documents": {
+      "$ref": "#/$defs/Section_list_DocumentEntry__"
+    },
     "expiring": {
       "$ref": "#/$defs/Section_list_ExpiryItem__"
     },
@@ -752,6 +843,7 @@
     "checks",
     "connectors",
     "readiness",
+    "documents",
     "expiring",
     "critical_alerts",
     "open_incidents",

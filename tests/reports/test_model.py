@@ -1,3 +1,5 @@
+from datetime import timedelta, timezone
+
 import pytest
 from pydantic import ValidationError
 
@@ -10,6 +12,7 @@ from ens_evidence.reports.model import (
     Sourced,
     SourceRef,
     Unavailable,
+    Window,
     render_json,
 )
 
@@ -96,6 +99,7 @@ def test_monthly_sections_are_all_present():
                     "kind",
                     "period",
                     "cycle",
+                    "window",
                 }
             ]
         )
@@ -119,3 +123,17 @@ def test_render_is_deterministic_and_round_trips():
 
 def test_source_in_section_round_trips():
     assert ref().key in render_json(daily()).decode()
+
+
+def test_window_is_utc_and_ordered():
+    start, end = NOON, NOON.replace(day=2)
+    Window(start=start, end=end)
+    with pytest.raises(ValidationError):
+        Window(start=end, end=start)
+    with pytest.raises(ValidationError):
+        Window(start=start.astimezone(timezone(timedelta(hours=2))), end=end)
+
+
+def test_source_kinds_include_config_and_inventory():
+    for kind in ("config", "inventory"):
+        SourceRef(kind=kind, key="k", sha256=SHA, at=NOON)

@@ -8,6 +8,12 @@ NOW = datetime(2026, 6, 1, tzinfo=UTC)
 SHA = "a" * 64
 
 
+@pytest.fixture(autouse=True)
+def _isolated_state_dir(tmp_path_factory, monkeypatch):
+    """El lock del ciclo vive en `ENS_STATE_DIR`: en los tests, nunca en el `~` real."""
+    monkeypatch.setenv("ENS_STATE_DIR", str(tmp_path_factory.mktemp("state")))
+
+
 @pytest.fixture
 def now() -> datetime:
     return NOW

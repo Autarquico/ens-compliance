@@ -12,6 +12,7 @@ from ens_evidence.reports.model import (
     Sourced,
     SourceRef,
     Unavailable,
+    Window,
 )
 from ens_evidence.reports.model import render_json as render_model
 from ens_evidence.reports.store import save_pair
@@ -41,6 +42,7 @@ def daily(period: str = "2026-11-01", **overrides) -> DailyReport:
         readiness=Sourced[ReadinessValue](
             value=ReadinessValue(readiness=Readiness.NOT_READY, blockers=["x"]), sources=[ref()]
         ),
+        documents=gone,
         expiring=gone,
         critical_alerts=gone,
         open_incidents=gone,
@@ -61,6 +63,9 @@ def monthly(period: str = "2026-10", **overrides) -> MonthlyReport:
         product_version="0.1.0",
         notices=[NO_CONFORMITY],
         period=period,
+        window=Window(
+            start=datetime(2026, 9, 30, 22, tzinfo=UTC), end=datetime(2026, 10, 31, 23, tzinfo=UTC)
+        ),
         cycle=None,
     )
     fields.update({n: gone for n in names})
