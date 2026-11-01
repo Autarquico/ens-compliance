@@ -34,14 +34,13 @@ def _calls() -> int:
     return count
 
 
-def _result(status: CollectionStatus, data: dict) -> CollectionResult:
+def _result(status: CollectionStatus, data: dict, **identity: str) -> CollectionResult:
+    fields = {"source": "github", "collector": "github", "asset_id": "gh-taller", **identity}
     return CollectionResult(
-        source="github",
-        collector="github",
         collected_at=datetime(2026, 10, 29, 9, tzinfo=UTC),
-        asset_id="gh-taller",
         data=data,
         collection_status=status,
+        **fields,
     )
 
 
@@ -91,6 +90,9 @@ class FakeConnector(Connector):
                 return _result(CollectionStatus.SUCCESS, {"leak": {"detail": LEAK}})
             case "secret_error":
                 return _result(CollectionStatus.ERROR, {"error": f"fallo con {LEAK}"})
+            case "foreign_source" | "foreign_collector" | "foreign_asset_id":
+                field = mode.removeprefix("foreign_")
+                return _result(CollectionStatus.SUCCESS, {"organization": "x"}, **{field: LEAK[:8]})
             case "hang":
                 (_state() / "pid").write_text(str(os.getpid()))
                 time.sleep(600)

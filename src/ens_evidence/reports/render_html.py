@@ -11,6 +11,7 @@ from html import escape
 from ens_evidence.reports.model import (
     Aggregate,
     AssetsSummary,
+    BackupStageResult,
     Changes,
     CheckCounts,
     CycleInfo,
@@ -117,6 +118,14 @@ def _interrupted_rows(items: list[InterruptedCycle]) -> list[Row]:
     return [
         (i.run_id, f"última etapa {i.last_stage}; inicio {_instant(i.started_at)}") for i in items
     ]
+
+
+def _backup_rows(value: BackupStageResult) -> list[Row]:
+    result = value.outcome + (f":{value.code}" if value.code else "")
+    rows = [(f"ciclo {value.run_id}", f"{result}; fin {_instant(value.finished_at)}")]
+    if value.configuration_error:
+        rows.append(("fallo de configuración", "la copia está activada y no hay ajustes de copia"))
+    return rows
 
 
 def _incident_rows(items: list[IncidentEntry]) -> list[Row]:
@@ -267,6 +276,7 @@ def render_daily_html(report: DailyReport) -> str:
             report.interrupted_cycles,
             _interrupted_rows,
         ),
+        _section("Copia de seguridad", "copia de seguridad", report.backup, _backup_rows),
     ]
     return _document(f"Informe diario {report.period}", report, sections)
 

@@ -23,6 +23,55 @@
       "title": "AssetsSummary",
       "type": "object"
     },
+    "BackupStageResult": {
+      "additionalProperties": false,
+      "description": "Resultado de la etapa de copia del \u00faltimo ciclo diario terminado. `code` es el motivo\n(sin el prefijo del resultado); `configuration_error`: la copia est\u00e1 activada y no hay\najustes de copia, un fallo de configuraci\u00f3n y no una copia omitida.",
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "configuration_error": {
+          "default": false,
+          "title": "Configuration Error",
+          "type": "boolean"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "backed_up",
+            "backup_failed",
+            "backup_skipped"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "outcome",
+        "finished_at"
+      ],
+      "title": "BackupStageResult",
+      "type": "object"
+    },
     "ChangeItem": {
       "additionalProperties": false,
       "properties": {
@@ -510,6 +559,16 @@
         }
       ]
     },
+    "Section_BackupStageResult_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_BackupStageResult_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
     "Section_Changes_": {
       "anyOf": [
         {
@@ -669,6 +728,28 @@
         "sources"
       ],
       "title": "Sourced[AssetsSummary]",
+      "type": "object"
+    },
+    "Sourced_BackupStageResult_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/BackupStageResult"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[BackupStageResult]",
       "type": "object"
     },
     "Sourced_Changes_": {
@@ -913,6 +994,9 @@
     "assets_without_agent": {
       "$ref": "#/$defs/Section_list_str__"
     },
+    "backup": {
+      "$ref": "#/$defs/Section_BackupStageResult_"
+    },
     "changes": {
       "$ref": "#/$defs/Section_Changes_"
     },
@@ -1003,7 +1087,8 @@
     "critical_alerts",
     "open_incidents",
     "changes",
-    "interrupted_cycles"
+    "interrupted_cycles",
+    "backup"
   ],
   "title": "DailyReport",
   "type": "object"

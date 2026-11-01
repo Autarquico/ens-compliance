@@ -223,6 +223,40 @@ def test_evidencia_tecnica_avisa_7_dias_antes_de_sus_30(store, age_days, listed)
         assert (item.kind, item.days_left) == ("technical_evidence", 7)
 
 
+def test_evidencia_de_collector_con_fuente_ajena_no_se_lista_y_va_a_problemas(store):
+    collected = CUTOFF - timedelta(days=24)
+    collect_evidence(
+        store,
+        now=collected + timedelta(minutes=1),
+        collected_at=collected,
+        source="<script>x</script>",
+    )
+
+    result = scan(store)
+
+    assert result.items == ()
+    assert len(result.problems) == 1
+    assert result.problems[0].endswith("identidad no coincide con el conector")
+    assert "script" not in result.problems[0]
+
+
+def test_evidencia_de_collector_con_activo_ajeno_al_configurado_no_se_lista(store):
+    config = connector_config_key("github")
+    store.write_text(config, "asset_id: gh-taller\norganization: taller-norte\n")
+    collected = CUTOFF - timedelta(days=24)
+    collect_evidence(
+        store,
+        now=collected + timedelta(minutes=1),
+        collected_at=collected,
+        asset_id="otro-activo",
+    )
+
+    result = scan(store)
+
+    assert result.items == ()
+    assert len(result.problems) == 1
+
+
 def test_evidencia_posterior_al_corte_no_existe(store):
     manual(store, valid_in_days=5, collected=CUTOFF + timedelta(days=1))
 

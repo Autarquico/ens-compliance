@@ -49,6 +49,7 @@ def daily(period: str = "2026-11-01", **overrides) -> DailyReport:
         open_incidents=gone,
         changes=gone,
         interrupted_cycles=gone,
+        backup=gone,
     )
     return DailyReport(**{**fields, **overrides})
 

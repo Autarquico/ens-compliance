@@ -205,6 +205,35 @@ def test_el_subproceso_no_hereda_el_descriptor_del_lock(
     assert outcome.result.data == {"inherited_lock": False}
 
 
+# --- identidad del resultado -------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("field", ["source", "collector", "asset_id"])
+@pytest.mark.parametrize("isolated", [False, True])
+def test_un_resultado_con_identidad_ajena_no_se_importa_y_el_pass_anterior_no_reaparece(
+    store, settings, plugins, fake, field, isolated
+):
+    collect(store)
+    assert CheckStatus.PASS in github_statuses(store)
+    fake(f"foreign_{field}")
+
+    outcome = run_one(store, settings, plugins, isolated=isolated)
+
+    result = outcome.result
+    assert result.collection_status is CollectionStatus.ERROR
+    assert (result.source, result.collector, result.asset_id) == ("github", "github", "gh-taller")
+    assert result.data == {
+        "error": f"identity_mismatch:{field}",
+        "generated_by": GENERATED_BY,
+        "phase": Phase.RESULT_REJECTED.value,
+    }
+    assert [a.phase for a in outcome.attempts] == [Phase.RESULT_REJECTED]
+    assert LEAK[:8] not in everything_stored(store)
+    statuses = github_statuses(store)
+    assert statuses
+    assert CheckStatus.PASS not in statuses
+
+
 # --- frontera de secretos ----------------------------------------------------------------------
 
 

@@ -19,7 +19,7 @@ from ens_evidence.checks.catalog import KNOWN_CHECKS
 from ens_evidence.checks.inputs import load_endpoint_inputs
 from ens_evidence.endpoint.evidence import latest_by_host
 from ens_evidence.endpoint.importer import ENDPOINT_ASSET_TYPES
-from ens_evidence.evidence.layout import manifest_key
+from ens_evidence.evidence.layout import BACKUPS_PREFIX, manifest_key
 from ens_evidence.incidents.layout import INCIDENTS_PREFIX, StoredRecord
 from ens_evidence.incidents.model import IncidentState, IncidentStatus
 from ens_evidence.incidents.verify import check_all_incidents
@@ -41,9 +41,11 @@ from ens_evidence.reports.changes import changes_since_base
 from ens_evidence.reports.expiries import scan_expiries
 from ens_evidence.reports.model import (
     AssetsSummary,
+    BackupStageResult,
     CheckCounts,
     ConnectorEntry,
     CycleInfo,
+    CycleStage,
     DailyReport,
     DocumentEntry,
     ExpiryItem,
@@ -56,8 +58,15 @@ from ens_evidence.reports.model import (
     SourceKind,
     SourceRef,
     Unavailable,
+    is_day,
 )
-from ens_evidence.reports.store import CYCLES_PREFIX, cycle_finished, run_ids, stages_of
+from ens_evidence.reports.store import (
+    CYCLES_PREFIX,
+    TERMINAL_STAGES,
+    cycle_finished,
+    run_ids,
+    stages_of,
+)
 from ens_evidence.risk.models import APPROVAL_KEY as RISK_APPROVAL_KEY
 from ens_evidence.scope import APPROVAL_KEY as SCOPE_APPROVAL_KEY
 from ens_evidence.scope.inventory import ASSETS_KEY, load_assets
@@ -124,6 +133,7 @@ def build_daily(
         open_incidents=_open_incidents(store, cutoff),
         changes=Unavailable(reason="pendiente"),
         interrupted_cycles=_interrupted_cycles(store, cycle, cutoff),
+        backup=_backup(store, cycle, cutoff),
     )
     expiring, expiry_notice = _expiring(store, cutoff, date.fromisoformat(period), tz)
     fields["expiring"] = expiring
@@ -454,3 +464,49 @@ def _interrupted_cycles(
     if unreadable:
         return Unavailable(reason="marcadores de ciclo ilegibles: " + ", ".join(unreadable))
     return _sourced(interrupted, consulted, "no hay marcadores de ciclo registrados")
+
+
+def _backup(
+    store: WorkspaceStore, current: CycleInfo | None, cutoff: datetime
+) -> Section[BackupStageResult]:
+    """La etapa de copia del último ciclo diario terminado (no el actual: su copia va después
+    del informe). Con algún marcador ilegible no se elige ninguno: podría ser el último."""
+    last: tuple[datetime, str, CycleStage] | None = None
+    unreadable: list[str] = []
+    for run_id in run_ids(store):
+        if current is not None and run_id == current.run_id:
+            continue
+        reading = stages_of(store, run_id)
+        if reading.problems:
+            unreadable.append(run_id)
+            continue
+        started = next((s for s in reading.stages if s.stage == "started"), None)
+        final = next(
+            (s for s in reading.stages if s.stage in TERMINAL_STAGES and s.at <= cutoff), None
+        )
+        if started is None or final is None or not is_day(started.period):
+            continue
+        if last is None or final.at > last[0]:
+            last = (final.at, run_id, final)
+    if unreadable:
+        return Unavailable(reason="marcadores de ciclo ilegibles: " + ", ".join(unreadable))
+    if last is None:
+        return Unavailable(reason="ningún ciclo diario terminado con etapa de copia")
+    at, run_id, final = last
+    reference = final.reference
+    code = reference.removeprefix("failed:") if reference else None
+    run_source = reference is not None and reference.startswith(f"{BACKUPS_PREFIX}/")
+    if run_source:
+        code = "restic_failed" if final.stage == "backup_failed" else None
+    value = BackupStageResult(
+        run_id=run_id,
+        outcome=final.stage,
+        code=None if code == "ok" else code,
+        configuration_error=final.stage == "backup_failed" and reference == "not_configured",
+        finished_at=at,
+    )
+    marker_key = f"{CYCLES_PREFIX}/{run_id}.{final.stage}.json"
+    sources = [source_ref(store, "cycle", marker_key, at)]
+    if run_source:
+        sources.append(source_ref(store, "backup_run", str(reference), at))
+    return _sourced(value, sources, f"{marker_key}: no se puede leer")

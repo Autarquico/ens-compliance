@@ -25,6 +25,8 @@ from ens_evidence.categorization.approval import (
     APPROVAL_KEY as CATEGORIZATION_APPROVAL_KEY,
 )
 from ens_evidence.categorization.approval import CategorizationApproval
+from ens_evidence.checks.inputs import config_asset_id
+from ens_evidence.checks.registry import CONFIG_MODELS
 from ens_evidence.connectors.config import (
     ConnectorConfigError,
     connector_config_key,
@@ -180,7 +182,8 @@ def _evidence(scan: _Scan, restore_test_artifacts: set[str]) -> None:
         for m in listing.manifests
         if m.collected_at <= scan.cutoff and m.artifact.sha256 not in restore_test_artifacts
     ]
-    for manifest in _latest_per_source_asset(visible):
+    trusted = [m for m in visible if _identity_holds(scan, m)]
+    for manifest in _latest_per_source_asset(trusted):
         label = f"{manifest.source} {manifest.asset_id} ({manifest.id})"
         source = scan.ref("evidence", manifest_key(manifest.id), manifest.collected_at)
         if manifest.provenance.kind is ProvenanceKind.COLLECTOR:
@@ -188,6 +191,30 @@ def _evidence(scan: _Scan, restore_test_artifacts: set[str]) -> None:
             scan.add("technical_evidence", label, expires, source)
         elif manifest.valid_until is not None:
             scan.add("manual_evidence", label, manifest.valid_until, source)
+
+
+def _identity_holds(scan: _Scan, manifest: EvidenceManifest) -> bool:
+    """La evidencia de collector solo vale con la identidad del conector que la recogió: su
+    `source` es el nombre del collector y, si el conector está configurado, su `asset_id` el de
+    la configuración. Si no, se descarta (a `problems` con el id del manifiesto, nunca con los
+    valores)."""
+    if manifest.provenance.kind is not ProvenanceKind.COLLECTOR:
+        return True
+    name = manifest.collector.name if manifest.collector else None
+    if name is not None and name == manifest.source and _asset_matches(scan, name, manifest):
+        return True
+    scan.problems.append(f"{manifest.id}: identidad no coincide con el conector")
+    return False
+
+
+def _asset_matches(scan: _Scan, name: str, manifest: EvidenceManifest) -> bool:
+    model = CONFIG_MODELS.get(name)
+    if model is None or not scan.store.exists(connector_config_key(name)):
+        return True
+    try:
+        return manifest.asset_id == config_asset_id(load_connector_config(scan.store, name, model))
+    except (ConnectorConfigError, WorkspaceError, KeyError):
+        return False
 
 
 @dataclass(frozen=True)

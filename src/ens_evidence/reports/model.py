@@ -153,6 +153,24 @@ class InterruptedCycle(Strict):
     started_at: AwareDatetime
 
 
+class BackupStageResult(Strict):
+    """Resultado de la etapa de copia del último ciclo diario terminado. `code` es el motivo
+    (sin el prefijo del resultado); `configuration_error`: la copia está activada y no hay
+    ajustes de copia, un fallo de configuración y no una copia omitida."""
+
+    run_id: str = Field(pattern=RUN_ID_PATTERN)
+    outcome: Literal["backed_up", "backup_failed", "backup_skipped"]
+    code: str | None = None
+    configuration_error: bool = False
+    finished_at: AwareDatetime
+
+    @model_validator(mode="after")
+    def _configuration_error_is_a_failure(self) -> "BackupStageResult":
+        if self.configuration_error and self.outcome != "backup_failed":
+            raise ValueError("un fallo de configuración es una copia fallida")
+        return self
+
+
 class IncidentRecordRef(Strict):
     seq: int = Field(ge=1)
     kind: RecordKind
@@ -236,6 +254,7 @@ class DailyReport(_Report):
     open_incidents: Section[list[IncidentEntry]]
     changes: Section[Changes]
     interrupted_cycles: Section[list[InterruptedCycle]]
+    backup: Section[BackupStageResult]
 
     @model_validator(mode="after")
     def _real_date(self) -> "DailyReport":

@@ -275,6 +275,27 @@ def _synthetic(
     )
 
 
+def _identity_mismatch(result: CollectionResult, name: str, asset_id: str) -> str | None:
+    """El primer campo de identidad que no es el del conector (su nombre, no su valor)."""
+    for field, found, expected in (
+        ("source", result.source, name),
+        ("collector", result.collector, name),
+        ("asset_id", result.asset_id, asset_id),
+    ):
+        if found != expected:
+            return field
+    return None
+
+
+def _rejection(result: CollectionResult, name: str, asset_id: str) -> str | None:
+    """Por qué no se importa el resultado: identidad ajena o secreto (nunca los valores)."""
+    if field := _identity_mismatch(result, name, asset_id):
+        return f"identity_mismatch:{field}"
+    if leaked := _leaked_paths(result.data):
+        return f"secret_detected:{_safe_secret_path(leaked[0])}"
+    return None
+
+
 def _attempt(
     store: WorkspaceStore,
     settings: Settings,
@@ -295,13 +316,11 @@ def _attempt(
         reply = _run_sequence(store, settings, name, connector_class)
     if reply.problem is not None:
         return reply.problem, None, False
-    if reply.result is not None and not (leaked := _leaked_paths(reply.result.data)):
-        status = reply.result.collection_status
-        return reply.result, Attempt(number, at, status), status is CollectionStatus.ERROR
     if reply.result is not None:
-        reply = _Reply(
-            phase=Phase.RESULT_REJECTED, error=f"secret_detected:{_safe_secret_path(leaked[0])}"
-        )
+        if (rejection := _rejection(reply.result, name, asset_id)) is None:
+            status = reply.result.collection_status
+            return reply.result, Attempt(number, at, status), status is CollectionStatus.ERROR
+        reply = _Reply(phase=Phase.RESULT_REJECTED, error=rejection)
     assert reply.phase is not None and reply.error is not None
     result = _synthetic(name, asset_id, at, reply.phase, reply.error)
     attempt = Attempt(number, at, CollectionStatus.ERROR, reply.phase, reply.error)

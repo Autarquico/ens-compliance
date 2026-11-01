@@ -12,6 +12,7 @@ from ens_evidence.orgdocs.approval import DocumentState
 from ens_evidence.reports.model import (
     Aggregate,
     AssetsSummary,
+    BackupStageResult,
     ChangeItem,
     Changes,
     CheckCounts,
@@ -173,6 +174,12 @@ def hostile_daily():
             value=[InterruptedCycle(run_id="r1", last_stage=h[2], started_at=NOON)],
             sources=refs,
         ),
+        backup=Sourced[BackupStageResult](
+            value=BackupStageResult(
+                run_id="r1", outcome="backup_failed", code=h[2], finished_at=NOON
+            ),
+            sources=refs,
+        ),
         cycle=CycleInfo(
             run_id="r1",
             trigger="scheduled",
@@ -325,6 +332,28 @@ def test_daily_documents_section_shows_state_sources_and_reasons():
     row = next(r for r in probe(document).rows if r[0] == "politica")
     assert "APPROVED" in row[1] and "revisar" in row[1]
     assert "docs/politica" in row[2] and f"sha256:{SHA}" in row[2]
+
+
+def test_daily_backup_shows_outcome_code_and_flags_a_configuration_failure():
+    value = BackupStageResult(
+        run_id="r1",
+        outcome="backup_failed",
+        code="not_configured",
+        configuration_error=True,
+        finished_at=NOON,
+    )
+    document = render_daily_html(
+        daily(backup=Sourced[BackupStageResult](value=value, sources=[src("cycles/r1")]))
+    )
+    rows = probe(document).rows
+    assert any("backup_failed:not_configured" in r[1] for r in rows)
+    assert any(r[0] == "fallo de configuración" for r in rows)
+
+
+def test_daily_backup_unavailable_states_the_reason():
+    document = render_daily_html(daily(backup=Unavailable(reason="ningún ciclo")))
+    assert "<h2>Copia de seguridad</h2>" in document
+    assert "no disponible: ningún ciclo" in document
 
 
 def test_daily_documents_unavailable_states_the_reason():
