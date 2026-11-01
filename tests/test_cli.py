@@ -1,25 +1,11 @@
 import json
 
-import pytest
 from typer.testing import CliRunner
 
 from ens_evidence import schemas
 from ens_evidence.cli import app
 
 runner = CliRunner()
-
-
-@pytest.mark.parametrize(
-    "args",
-    [
-        ["report", "daily"],
-        ["report", "monthly"],
-    ],
-)
-def test_comandos_stub_fallan_explicitamente_con_codigo_2(args):
-    result = runner.invoke(app, args)
-    assert result.exit_code == 2
-    assert "not implemented" in result.output
 
 
 def test_collect_de_conector_desconocido_falla_con_codigo_2_y_lista_los_disponibles():

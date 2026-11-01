@@ -4,7 +4,7 @@ import shutil
 import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
-from datetime import UTC, datetime
+from datetime import UTC, datetime, tzinfo
 from enum import StrEnum
 from importlib.resources import files
 from pathlib import Path
@@ -72,6 +72,7 @@ from ens_evidence.checks.engine import CONFIG_INVALID, ConnectorOutcome, Outcome
 from ens_evidence.checks.inputs import NO_EVIDENCE
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.checks.store import scan_runs
+from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.connectors.registry import ConnectorLoadError, ConnectorRegistry
 from ens_evidence.endpoint.bundle import BundleTargetError, write_bundle
 from ens_evidence.endpoint.evaluate import evaluate_workspace
@@ -135,6 +136,12 @@ from ens_evidence.orgdocs import (
     requirement_label,
     skeleton,
 )
+from ens_evidence.reports.daily import build_daily
+from ens_evidence.reports.model import DailyReport, Unavailable
+from ens_evidence.reports.model import render_json as render_report_json
+from ens_evidence.reports.monthly import build_monthly, previous_month
+from ens_evidence.reports.render_html import render_daily_html, render_monthly_html
+from ens_evidence.reports.store import load_json_strict, save_pair
 from ens_evidence.risk import (
     RiskApprovalRejected,
     RiskState,
@@ -143,6 +150,7 @@ from ens_evidence.risk import (
     risk_status,
     validate_risk,
 )
+from ens_evidence.scheduling.calendar import JobKind
 from ens_evidence.scheduling.collect import (
     CollectOutcome,
     Plugins,
@@ -150,7 +158,14 @@ from ens_evidence.scheduling.collect import (
     collect_one,
     load_plugins,
 )
-from ens_evidence.scheduling.config import CollectConfig, load_schedule_config
+from ens_evidence.scheduling.config import (
+    SCHEDULE_KEY,
+    CollectConfig,
+    ScheduleConfig,
+    default_schedule_yaml,
+    load_schedule_config,
+)
+from ens_evidence.scheduling.cycle import run_cycle
 from ens_evidence.scheduling.lock import CycleBusy, CycleContext, CycleLock
 from ens_evidence.scope import (
     ObservedInputError,
@@ -170,6 +185,7 @@ from ens_evidence.scope.models import Deployment
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SCOPE_KEYS, synced_keys
 from ens_evidence.workspace import (
+    AlreadyExists,
     BackupSettings,
     LocalStore,
     NotText,
@@ -185,6 +201,7 @@ from ens_evidence.workspace import (
 
 app = typer.Typer(help="Prepara evidencias para el ENS. No certifica.", no_args_is_help=True)
 report_app = typer.Typer(help="Informes.", no_args_is_help=True)
+scheduler_app = typer.Typer(help="Planificador de informes.", no_args_is_help=True)
 assessment_app = typer.Typer(help="Evaluación.", no_args_is_help=True)
 evidence_app = typer.Typer(help="Evidencias.", no_args_is_help=True)
 schema_app = typer.Typer(help="Esquemas de los contratos.", no_args_is_help=True)
@@ -214,6 +231,7 @@ matrix_app = typer.Typer(
     no_args_is_help=True,
 )
 app.add_typer(report_app, name="report")
+app.add_typer(scheduler_app, name="scheduler")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(schema_app, name="schema")
@@ -2038,16 +2056,146 @@ def check(
         raise typer.Exit(code)
 
 
+class ReportFormat(StrEnum):
+    JSON = "json"
+    HTML = "html"
+
+
+def report_exit_code(store: WorkspaceStore, report: DailyReport | None) -> int:
+    """3 si algún conector configurado está en error o sin ejecución en el informe diario."""
+    if report is None:
+        return 0
+    for entry in report.connectors:
+        if not store.exists(connector_config_key(entry.connector)):
+            continue
+        collection = entry.collection
+        if isinstance(collection, Unavailable) or collection.value is not CollectionStatus.SUCCESS:
+            return 3
+    return 0
+
+
+def local_period(kind: JobKind, instant: datetime, zone: tzinfo) -> str:
+    day = instant.astimezone(zone).date()
+    return day.isoformat() if kind == "daily" else f"{day.year:04d}-{day.month:02d}"
+
+
+def write_report(
+    store: WorkspaceStore, kind: JobKind, cfg: ScheduleConfig, instant: datetime, stdout: bool,
+    fmt: ReportFormat,
+) -> tuple[str, DailyReport | None]:  # fmt: skip
+    """Genera el informe del estado actual a `instant`: nada de red ni de plugins."""
+    checks = StoredCheckResults(reference_now=instant)
+    if kind == "daily":
+        period = local_period("daily", instant, cfg.zone)
+        daily_report = build_daily(
+            store, generated_at=instant, period=period, tz=cfg.zone, cycle=None, checks=checks
+        )
+        model, html = daily_report, render_daily_html(daily_report)
+    else:
+        period = previous_month(local_period("monthly", instant, cfg.zone))
+        monthly_report = build_monthly(
+            store, generated_at=instant, period=period, tz=cfg.zone, checks=checks
+        )
+        model, html = monthly_report, render_monthly_html(monthly_report, cfg.zone)
+    daily_model = model if isinstance(model, DailyReport) else None
+    if stdout:
+        text = html if fmt is ReportFormat.HTML else render_report_json(model).decode("utf-8")
+        return text, daily_model
+    pair = save_pair(
+        store, kind, period, render_report_json(model), html.encode("utf-8"), at=clock()
+    )
+    return pair.json_key, daily_model
+
+
+def report_command(
+    ctx: typer.Context, kind: JobKind, cycle: bool, at: str | None, stdout: bool,
+    fmt: ReportFormat | None,
+) -> None:  # fmt: skip
+    if cycle and at is not None:
+        raise fail("--at solo se admite sin --cycle: el ciclo usa siempre el reloj real.")
+    if fmt is not None and not stdout:
+        raise fail("--format solo se admite con --stdout.")
+    chosen = fmt or ReportFormat.JSON
+    instant = parse_instant("--at", at) or clock()
+    settings = resolved_settings(ctx)
+    store = open_store(settings)
+    cfg = load_schedule_config(store).config
+    if not cycle:
+        output, daily_model = write_report(store, kind, cfg, instant, stdout, chosen)
+        typer.echo(output, nl=not stdout)
+        raise typer.Exit(report_exit_code(store, daily_model))
+    plugins = load_plugins()
+    for broken in plugins.broken:
+        typer.echo(f"Plugin defectuoso, no se carga: {broken}", err=True)
+    with exclusive_cycle(settings) as context:
+        outcome = run_cycle(
+            context, store, settings, os.environ, kind, local_period(kind, instant, cfg.zone),
+            instant, clock=SystemWaitClock(), cfg=cfg, trigger="manual", plugins=plugins,
+        )  # fmt: skip
+        if not outcome.completed:
+            raise fail(f"El ciclo no ha publicado el informe ({outcome.failure}); reintenta.")
+        daily_bytes = store.read_bytes(outcome.reports[0])
+    daily_model = DailyReport.model_validate(load_json_strict(daily_bytes))
+    last = outcome.reports[-1]
+    if stdout:
+        key = last if chosen is ReportFormat.JSON else last.removesuffix(".json") + ".html"
+        typer.echo(store.read_text(key), nl=False)
+    else:
+        typer.echo("\n".join(outcome.reports))
+    if outcome.backup_stage == "backup_failed":
+        typer.echo("La copia ha fallado: se verá en el siguiente informe.", err=True)
+    raise typer.Exit(report_exit_code(store, daily_model))
+
+
+ReportAt = Annotated[str | None, typer.Option("--at", help="Instante del informe (sin --cycle).")]
+ReportCycle = Annotated[
+    bool, typer.Option("--cycle", help="Recoge, evalúa, informa y copia (toma el lock).")
+]
+ReportStdout = Annotated[bool, typer.Option("--stdout", help="Imprime sin escribir.")]
+ReportFormatOption = Annotated[
+    ReportFormat | None, typer.Option("--format", help="Formato con --stdout (json por defecto).")
+]
+
+
 @report_app.command("daily")
-def report_daily() -> None:
-    """Informe diario."""
-    not_implemented()
+@handled
+def report_daily(
+    ctx: typer.Context,
+    cycle: ReportCycle = False,
+    at: ReportAt = None,
+    stdout: ReportStdout = False,
+    fmt: ReportFormatOption = None,
+) -> None:
+    """Informe diario. Sin --cycle, del estado actual (sin red ni plugins). Salida: 0 escrito,
+    3 escrito con conectores en error o sin ejecución, 2 no escrito o ciclo en curso."""
+    report_command(ctx, "daily", cycle, at, stdout, fmt)
 
 
 @report_app.command("monthly")
-def report_monthly() -> None:
-    """Informe mensual."""
-    not_implemented()
+@handled
+def report_monthly(
+    ctx: typer.Context,
+    cycle: ReportCycle = False,
+    at: ReportAt = None,
+    stdout: ReportStdout = False,
+    fmt: ReportFormatOption = None,
+) -> None:
+    """Informe mensual del mes natural anterior. Con --cycle publica además el diario. Salida:
+    0 escrito, 3 (solo con --cycle) conectores en error o sin ejecución, 2 no escrito."""
+    report_command(ctx, "monthly", cycle, at, stdout, fmt)
+
+
+@scheduler_app.command("init-config")
+@handled
+def scheduler_init_config(ctx: typer.Context) -> None:
+    """Escribe reports/schedule.yaml con los valores por defecto si no existe."""
+    store = open_workspace(ctx)
+    try:
+        store.create_bytes(SCHEDULE_KEY, default_schedule_yaml().encode("utf-8"))
+    except AlreadyExists:
+        typer.echo(f"{SCHEDULE_KEY} ya existe; no se toca.")
+        return
+    typer.echo(f"Escrito {SCHEDULE_KEY} con los valores por defecto.")
 
 
 class StatusFormat(StrEnum):
