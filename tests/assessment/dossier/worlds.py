@@ -48,3 +48,18 @@ def edit_answers(store: LocalStore, field: str, text: str) -> None:
     answers = yaml.safe_load(store.read_text("org/answers.yaml"))
     answers[field] = text
     store.write_text("org/answers.yaml", yaml.safe_dump(answers, allow_unicode=True))
+
+
+def basic_ready_world(tmp_path, monkeypatch):
+    """Mundo READY BÁSICA real de checks (nivel BAJO) con la designación de responsables aprobada.
+
+    El mundo de checks solo aprueba el procedimiento de incidentes; el expediente exige además la
+    designación (`resp_seguridad`, `resp_sistema`, `firmante_direccion`).
+    """
+    from checks.acceptance_helpers import make_world
+
+    from .transition_helpers import approve_designation
+
+    world = make_world(tmp_path, monkeypatch, "ready", level="BAJO")
+    approve_designation(world.store)
+    return world
