@@ -1,0 +1,763 @@
+{
+  "$defs": {
+    "AssetsSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "by_type": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Type",
+          "type": "object"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "by_type"
+      ],
+      "title": "AssetsSummary",
+      "type": "object"
+    },
+    "ChangeItem": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "enum": [
+            "added",
+            "removed",
+            "changed"
+          ],
+          "title": "Change",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject",
+        "change"
+      ],
+      "title": "ChangeItem",
+      "type": "object"
+    },
+    "Changes": {
+      "additionalProperties": false,
+      "properties": {
+        "base_period": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "title": "Base Period",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChangeItem"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "base_period",
+        "items"
+      ],
+      "title": "Changes",
+      "type": "object"
+    },
+    "CheckCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/CheckStatus"
+          },
+          "title": "Counts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "counts"
+      ],
+      "title": "CheckCounts",
+      "type": "object"
+    },
+    "CheckStatus": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "ERROR",
+        "UNKNOWN"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "CollectionStatus": {
+      "enum": [
+        "SUCCESS",
+        "ERROR",
+        "PERMISSION_DENIED",
+        "NOT_SUPPORTED"
+      ],
+      "title": "CollectionStatus",
+      "type": "string"
+    },
+    "ConnectorAttempts": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "connector": {
+          "minLength": 1,
+          "title": "Connector",
+          "type": "string"
+        },
+        "last_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CollectionStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "connector",
+        "attempts"
+      ],
+      "title": "ConnectorAttempts",
+      "type": "object"
+    },
+    "ConnectorEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempts"
+        },
+        "checks": {
+          "$ref": "#/$defs/Section_CheckCounts_"
+        },
+        "collection": {
+          "$ref": "#/$defs/Section_CollectionStatus_"
+        },
+        "connector": {
+          "minLength": 1,
+          "title": "Connector",
+          "type": "string"
+        }
+      },
+      "required": [
+        "connector",
+        "collection",
+        "checks"
+      ],
+      "title": "ConnectorEntry",
+      "type": "object"
+    },
+    "CycleInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "connector_attempts": {
+          "items": {
+            "$ref": "#/$defs/ConnectorAttempts"
+          },
+          "title": "Connector Attempts",
+          "type": "array"
+        },
+        "data_cutoff": {
+          "format": "date-time",
+          "title": "Data Cutoff",
+          "type": "string"
+        },
+        "due_at": {
+          "format": "date-time",
+          "title": "Due At",
+          "type": "string"
+        },
+        "period": {
+          "title": "Period",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "trigger": {
+          "enum": [
+            "scheduled",
+            "manual",
+            "recovery"
+          ],
+          "title": "Trigger",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "trigger",
+        "period",
+        "due_at",
+        "started_at",
+        "data_cutoff"
+      ],
+      "title": "CycleInfo",
+      "type": "object"
+    },
+    "ExpiryItem": {
+      "additionalProperties": false,
+      "properties": {
+        "days_left": {
+          "description": "Negativo: ya vencido.",
+          "title": "Days Left",
+          "type": "integer"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "subject": {
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "expires_at",
+        "days_left",
+        "sources"
+      ],
+      "title": "ExpiryItem",
+      "type": "object"
+    },
+    "InterruptedCycle": {
+      "additionalProperties": false,
+      "properties": {
+        "last_stage": {
+          "title": "Last Stage",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "last_stage",
+        "started_at"
+      ],
+      "title": "InterruptedCycle",
+      "type": "object"
+    },
+    "Readiness": {
+      "enum": [
+        "READY",
+        "NOT_READY"
+      ],
+      "title": "Readiness",
+      "type": "string"
+    },
+    "ReadinessValue": {
+      "additionalProperties": false,
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blockers",
+          "type": "array"
+        },
+        "readiness": {
+          "$ref": "#/$defs/Readiness"
+        }
+      },
+      "required": [
+        "readiness",
+        "blockers"
+      ],
+      "title": "ReadinessValue",
+      "type": "object"
+    },
+    "Section_AssetsSummary_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_AssetsSummary_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_Changes_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_Changes_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_CheckCounts_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_CheckCounts_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_CollectionStatus_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_CollectionStatus_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_ReadinessValue_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_ReadinessValue_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_ExpiryItem__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_ExpiryItem__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_InterruptedCycle__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_InterruptedCycle__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_str__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_str__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "key": {
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "evidence",
+            "check_run",
+            "collection",
+            "review",
+            "document",
+            "approval",
+            "scope",
+            "risk",
+            "backup_run",
+            "restore_test",
+            "report",
+            "incident",
+            "cycle"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "key",
+        "sha256",
+        "at"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    },
+    "Sourced_AssetsSummary_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/AssetsSummary"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[AssetsSummary]",
+      "type": "object"
+    },
+    "Sourced_Changes_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/Changes"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[Changes]",
+      "type": "object"
+    },
+    "Sourced_CheckCounts_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/CheckCounts"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[CheckCounts]",
+      "type": "object"
+    },
+    "Sourced_CollectionStatus_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/CollectionStatus"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[CollectionStatus]",
+      "type": "object"
+    },
+    "Sourced_ReadinessValue_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/ReadinessValue"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[ReadinessValue]",
+      "type": "object"
+    },
+    "Sourced_list_ExpiryItem__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/ExpiryItem"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[ExpiryItem]]",
+      "type": "object"
+    },
+    "Sourced_list_InterruptedCycle__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/InterruptedCycle"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[InterruptedCycle]]",
+      "type": "object"
+    },
+    "Sourced_list_str__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[str]]",
+      "type": "object"
+    },
+    "Unavailable": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "Unavailable",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "assets": {
+      "$ref": "#/$defs/Section_AssetsSummary_"
+    },
+    "assets_without_agent": {
+      "$ref": "#/$defs/Section_list_str__"
+    },
+    "changes": {
+      "$ref": "#/$defs/Section_Changes_"
+    },
+    "checks": {
+      "$ref": "#/$defs/Section_CheckCounts_"
+    },
+    "connectors": {
+      "items": {
+        "$ref": "#/$defs/ConnectorEntry"
+      },
+      "title": "Connectors",
+      "type": "array"
+    },
+    "critical_alerts": {
+      "$ref": "#/$defs/Section_list_str__"
+    },
+    "cycle": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CycleInfo"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "expiring": {
+      "$ref": "#/$defs/Section_list_ExpiryItem__"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "interrupted_cycles": {
+      "$ref": "#/$defs/Section_list_InterruptedCycle__"
+    },
+    "kind": {
+      "const": "daily",
+      "default": "daily",
+      "title": "Kind",
+      "type": "string"
+    },
+    "notices": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Notices",
+      "type": "array"
+    },
+    "open_incidents": {
+      "$ref": "#/$defs/Section_list_str__"
+    },
+    "period": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "title": "Period",
+      "type": "string"
+    },
+    "product_version": {
+      "title": "Product Version",
+      "type": "string"
+    },
+    "readiness": {
+      "$ref": "#/$defs/Section_ReadinessValue_"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "generated_at",
+    "product_version",
+    "notices",
+    "period",
+    "cycle",
+    "assets",
+    "assets_without_agent",
+    "checks",
+    "connectors",
+    "readiness",
+    "expiring",
+    "critical_alerts",
+    "open_incidents",
+    "changes",
+    "interrupted_cycles"
+  ],
+  "title": "DailyReport",
+  "type": "object"
+}

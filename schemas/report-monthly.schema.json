@@ -1,0 +1,370 @@
+{
+  "$defs": {
+    "Aggregate": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "Counts",
+          "type": "object"
+        },
+        "coverage": {
+          "$ref": "#/$defs/Coverage"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/Entry"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "coverage"
+      ],
+      "title": "Aggregate",
+      "type": "object"
+    },
+    "CollectionStatus": {
+      "enum": [
+        "SUCCESS",
+        "ERROR",
+        "PERMISSION_DENIED",
+        "NOT_SUPPORTED"
+      ],
+      "title": "CollectionStatus",
+      "type": "string"
+    },
+    "ConnectorAttempts": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "connector": {
+          "minLength": 1,
+          "title": "Connector",
+          "type": "string"
+        },
+        "last_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CollectionStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "connector",
+        "attempts"
+      ],
+      "title": "ConnectorAttempts",
+      "type": "object"
+    },
+    "Coverage": {
+      "additionalProperties": false,
+      "properties": {
+        "days_in_period": {
+          "minimum": 0,
+          "title": "Days In Period",
+          "type": "integer"
+        },
+        "days_with_report": {
+          "minimum": 0,
+          "title": "Days With Report",
+          "type": "integer"
+        },
+        "partial": {
+          "title": "Partial",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "days_with_report",
+        "days_in_period",
+        "partial"
+      ],
+      "title": "Coverage",
+      "type": "object"
+    },
+    "CycleInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "connector_attempts": {
+          "items": {
+            "$ref": "#/$defs/ConnectorAttempts"
+          },
+          "title": "Connector Attempts",
+          "type": "array"
+        },
+        "data_cutoff": {
+          "format": "date-time",
+          "title": "Data Cutoff",
+          "type": "string"
+        },
+        "due_at": {
+          "format": "date-time",
+          "title": "Due At",
+          "type": "string"
+        },
+        "period": {
+          "title": "Period",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "trigger": {
+          "enum": [
+            "scheduled",
+            "manual",
+            "recovery"
+          ],
+          "title": "Trigger",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "trigger",
+        "period",
+        "due_at",
+        "started_at",
+        "data_cutoff"
+      ],
+      "title": "CycleInfo",
+      "type": "object"
+    },
+    "Entry": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "title": "Detail",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject",
+        "detail"
+      ],
+      "title": "Entry",
+      "type": "object"
+    },
+    "Section_Aggregate_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_Aggregate_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "key": {
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "evidence",
+            "check_run",
+            "collection",
+            "review",
+            "document",
+            "approval",
+            "scope",
+            "risk",
+            "backup_run",
+            "restore_test",
+            "report",
+            "incident",
+            "cycle"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "key",
+        "sha256",
+        "at"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    },
+    "Sourced_Aggregate_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/Aggregate"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[Aggregate]",
+      "type": "object"
+    },
+    "Unavailable": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "Unavailable",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "access_reviews": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "backups": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "changes": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "corrective_actions": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "cycle": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CycleInfo"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "daily_reports": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "deviations": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "evidence": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "incidents": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "inventory": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "kind": {
+      "const": "monthly",
+      "default": "monthly",
+      "title": "Kind",
+      "type": "string"
+    },
+    "notices": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Notices",
+      "type": "array"
+    },
+    "pending": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "period": {
+      "pattern": "^\\d{4}-\\d{2}$",
+      "title": "Period",
+      "type": "string"
+    },
+    "product_version": {
+      "title": "Product Version",
+      "type": "string"
+    },
+    "restore_tests": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "vulnerabilities": {
+      "$ref": "#/$defs/Section_Aggregate_"
+    }
+  },
+  "required": [
+    "generated_at",
+    "product_version",
+    "notices",
+    "period",
+    "cycle",
+    "inventory",
+    "changes",
+    "deviations",
+    "evidence",
+    "incidents",
+    "vulnerabilities",
+    "backups",
+    "restore_tests",
+    "access_reviews",
+    "pending",
+    "corrective_actions",
+    "daily_reports"
+  ],
+  "title": "MonthlyReport",
+  "type": "object"
+}

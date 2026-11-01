@@ -1,0 +1,53 @@
+{
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "period": {
+      "title": "Period",
+      "type": "string"
+    },
+    "reference": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Clave del registro asociado.",
+      "title": "Reference"
+    },
+    "run_id": {
+      "pattern": "^[A-Za-z0-9_-]{1,64}$",
+      "title": "Run Id",
+      "type": "string"
+    },
+    "stage": {
+      "enum": [
+        "started",
+        "collected",
+        "checked",
+        "reported",
+        "backed_up",
+        "backup_failed",
+        "backup_skipped"
+      ],
+      "title": "Stage",
+      "type": "string"
+    }
+  },
+  "required": [
+    "run_id",
+    "stage",
+    "at",
+    "period"
+  ],
+  "title": "CycleStage",
+  "type": "object"
+}

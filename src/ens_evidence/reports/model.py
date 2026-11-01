@@ -1,0 +1,246 @@
+"""Contrato de los informes diario y mensual (guía :905-941).
+
+Cada dato lleva `sources` (`Sourced`) o es `Unavailable` con su motivo: lo que no se pudo
+obtener nunca se presenta como 0 ni como «sin cambios». Ningún campo expresa «cumple» (regla 12).
+"""
+
+import json
+import re
+from datetime import date
+from typing import Literal
+
+from pydantic import AwareDatetime, Field, model_validator
+
+from ens_evidence.assessment.render import NO_CONFORMITY
+from ens_evidence.models.contracts import SHA256_PATTERN, Strict
+from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness
+
+DAY_PATTERN = r"^\d{4}-\d{2}-\d{2}$"
+MONTH_PATTERN = r"^\d{4}-\d{2}$"
+RUN_ID_PATTERN = r"^[A-Za-z0-9_-]{1,64}$"
+_DAY = re.compile(DAY_PATTERN)
+_MONTH = re.compile(MONTH_PATTERN)
+
+SourceKind = Literal[
+    "evidence",
+    "check_run",
+    "collection",
+    "review",
+    "document",
+    "approval",
+    "scope",
+    "risk",
+    "backup_run",
+    "restore_test",
+    "report",
+    "incident",
+    "cycle",
+]
+
+
+class SourceRef(Strict):
+    kind: SourceKind
+    key: str = Field(min_length=1)
+    sha256: str = Field(pattern=SHA256_PATTERN)
+    at: AwareDatetime
+
+
+class Unavailable(Strict):
+    reason: str = Field(min_length=1)
+
+
+class Sourced[T](Strict):
+    value: T
+    sources: list[SourceRef] = Field(min_length=1)
+
+
+type Section[T] = Sourced[T] | Unavailable
+
+
+class ExpiryItem(Strict):
+    kind: str = Field(min_length=1)
+    subject: str = Field(min_length=1)
+    expires_at: AwareDatetime
+    days_left: int = Field(description="Negativo: ya vencido.")
+    sources: list[SourceRef] = Field(min_length=1)
+
+
+class Coverage(Strict):
+    days_with_report: int = Field(ge=0)
+    days_in_period: int = Field(ge=0)
+    partial: bool
+
+    @model_validator(mode="after")
+    def _consistent(self) -> "Coverage":
+        if self.days_with_report > self.days_in_period:
+            raise ValueError("days_with_report supera days_in_period")
+        if self.partial != (self.days_with_report < self.days_in_period):
+            raise ValueError("partial no coincide con la cobertura")
+        return self
+
+    @classmethod
+    def of(cls, days_with_report: int, days_in_period: int) -> "Coverage":
+        return cls(
+            days_with_report=days_with_report,
+            days_in_period=days_in_period,
+            partial=days_with_report < days_in_period,
+        )
+
+
+class ConnectorAttempts(Strict):
+    connector: str = Field(min_length=1)
+    attempts: int = Field(ge=0)
+    last_status: CollectionStatus | None = None
+
+
+class CycleInfo(Strict):
+    run_id: str = Field(pattern=RUN_ID_PATTERN)
+    trigger: Literal["scheduled", "manual", "recovery"]
+    period: str
+    due_at: AwareDatetime
+    started_at: AwareDatetime
+    data_cutoff: AwareDatetime
+    connector_attempts: list[ConnectorAttempts] = Field(default_factory=list)
+
+
+class CheckCounts(Strict):
+    counts: dict[CheckStatus, int]
+
+
+class ConnectorEntry(Strict):
+    connector: str = Field(min_length=1)
+    collection: Section[CollectionStatus]
+    checks: Section[CheckCounts]
+    attempts: int | None = Field(default=None, ge=0)
+
+
+class AssetsSummary(Strict):
+    total: int = Field(ge=0)
+    by_type: dict[str, int]
+
+
+class ReadinessValue(Strict):
+    readiness: Readiness
+    blockers: list[str]
+
+
+class ChangeItem(Strict):
+    subject: str = Field(min_length=1)
+    change: Literal["added", "removed", "changed"]
+
+
+class Changes(Strict):
+    base_period: str = Field(pattern=DAY_PATTERN)
+    items: list[ChangeItem]
+
+
+class InterruptedCycle(Strict):
+    run_id: str = Field(pattern=RUN_ID_PATTERN)
+    last_stage: str
+    started_at: AwareDatetime
+
+
+class Entry(Strict):
+    subject: str = Field(min_length=1)
+    detail: str
+
+
+class Aggregate(Strict):
+    coverage: Coverage
+    counts: dict[str, int] = Field(default_factory=dict)
+    items: list[Entry] = Field(default_factory=list)
+
+
+class _Report(Strict):
+    schema_version: str = "1.0"
+    generated_at: AwareDatetime
+    product_version: str
+    notices: list[str]
+
+    @model_validator(mode="after")
+    def _carries_disclaimer(self) -> "_Report":
+        if NO_CONFORMITY not in self.notices:
+            raise ValueError("falta el aviso de no conformidad")
+        return self
+
+
+class DailyReport(_Report):
+    kind: Literal["daily"] = "daily"
+    period: str = Field(pattern=DAY_PATTERN)
+    cycle: CycleInfo | None
+    assets: Section[AssetsSummary]
+    assets_without_agent: Section[list[str]]
+    checks: Section[CheckCounts]
+    connectors: list[ConnectorEntry]
+    readiness: Section[ReadinessValue]
+    expiring: Section[list[ExpiryItem]]
+    critical_alerts: Section[list[str]]
+    open_incidents: Section[list[str]]
+    changes: Section[Changes]
+    interrupted_cycles: Section[list[InterruptedCycle]]
+
+    @model_validator(mode="after")
+    def _real_date(self) -> "DailyReport":
+        date.fromisoformat(self.period)
+        return self
+
+
+class MonthlyReport(_Report):
+    kind: Literal["monthly"] = "monthly"
+    period: str = Field(pattern=MONTH_PATTERN)
+    cycle: CycleInfo | None
+    inventory: Section[Aggregate]
+    changes: Section[Aggregate]
+    deviations: Section[Aggregate]
+    evidence: Section[Aggregate]
+    incidents: Section[Aggregate]
+    vulnerabilities: Section[Aggregate]
+    backups: Section[Aggregate]
+    restore_tests: Section[Aggregate]
+    access_reviews: Section[Aggregate]
+    pending: Section[Aggregate]
+    corrective_actions: Section[Aggregate]
+    daily_reports: Section[Aggregate]
+
+    @model_validator(mode="after")
+    def _real_month(self) -> "MonthlyReport":
+        date.fromisoformat(f"{self.period}-01")
+        return self
+
+
+class CycleStage(Strict):
+    run_id: str = Field(pattern=RUN_ID_PATTERN)
+    stage: Literal[
+        "started",
+        "collected",
+        "checked",
+        "reported",
+        "backed_up",
+        "backup_failed",
+        "backup_skipped",
+    ]
+    at: AwareDatetime
+    period: str
+    reference: str | None = Field(default=None, description="Clave del registro asociado.")
+
+
+def is_day(text: str) -> bool:
+    try:
+        date.fromisoformat(text)
+    except ValueError:
+        return False
+    return bool(_DAY.match(text))
+
+
+def is_month(text: str) -> bool:
+    try:
+        date.fromisoformat(f"{text}-01")
+    except ValueError:
+        return False
+    return bool(_MONTH.match(text))
+
+
+def render_json(model: _Report | CycleStage) -> bytes:
+    """Bytes idénticos para el mismo modelo: claves ordenadas, sin reloj."""
+    document = model.model_dump(mode="json")
+    return (json.dumps(document, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode()
