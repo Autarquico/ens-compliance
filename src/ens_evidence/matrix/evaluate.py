@@ -22,8 +22,10 @@ from ens_evidence.matrix.documents import (
 )
 from ens_evidence.matrix.evidence import (
     LinkSupport,
+    evidence_source,
     manifest_sha256,
     manual_support,
+    policy_rejection,
     verified_manifest,
 )
 from ens_evidence.matrix.fingerprint import links_sha256, measure_context_sha256
@@ -36,6 +38,7 @@ from ens_evidence.matrix.model import (
     MeasureReviewRecord,
 )
 from ens_evidence.matrix.obligations import MatrixRowSpec, RowKind, plan_obligations
+from ens_evidence.matrix.policy import admits, source_policy
 from ens_evidence.matrix.store import StoredReview, effective_reviews, read_matrix
 from ens_evidence.matrix.technical import (
     CheckResultsSource,
@@ -172,9 +175,14 @@ def link_supports(
     """Lo que cada enlace sustenta en `at`: la única agregación de fuentes (`assess` y
     `prepare_review`). No compara con revisiones anteriores: una revisión nueva se registra en
     `at`, así que toda fuente existente es anterior a su registro y no bloquea re-revisar tras
-    importar evidencia nueva. `assess` añade `_sustains_review` sobre la revisión vigente."""
+    importar evidencia nueva. `assess` añade `_sustains_review` sobre la revisión vigente.
+    La política de fuentes de la medida (`policy`) descarta antes lo que ella no admite."""
     found: list[LinkSupport] = []
+    policy = source_policy(row.measure_id)
     for link in entry.links:
+        if policy and not admits(policy, evidence_source(store, link)):
+            found.append(policy_rejection(row, link, policy))
+            continue
         match link:
             case ManualEvidenceLink():
                 found.append(manual_support(store, row, link, at, entry.review_every_days))

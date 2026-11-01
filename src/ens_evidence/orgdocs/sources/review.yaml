@@ -1,4 +1,4 @@
 # Revisión humana del articulado empaquetado (ADR 0010). Cambiar el articulado exige una revisión nueva.
-articulado_sha256: e59affab976f6e6d1cf03cea8c7e53bd254bfc734cd16d9270f84f2f3d307b86
+articulado_sha256: 5af4d7472980c14c905c2cbd22ad75935d646410fce022509f95894fc38b0d92
 reviewed_by: Alejandro Perez
-reviewed_at: "2026-10-30T01:35:00+01:00"
+reviewed_at: "2026-10-31T03:30:00+01:00"

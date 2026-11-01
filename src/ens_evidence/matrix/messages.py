@@ -11,6 +11,7 @@ from collections.abc import Iterable
 from ens_evidence.applicability import DeclarationState
 from ens_evidence.checks.catalog import ENDPOINT_CONNECTOR, KNOWN_CHECKS
 from ens_evidence.matrix.obligations import COMPENSATION, RowKind
+from ens_evidence.matrix.policy import source_policy
 from ens_evidence.models.enums import Category, MeasureAssessment, Readiness, Role
 from ens_evidence.models.readiness import Blocker, BlockerKind
 
@@ -22,6 +23,26 @@ REVIEW_NOT_APPLICABLE_STEP = (
     'matrix review {m} --by "NOMBRE" --role system_administrator --conclusion "…"'
 )
 LINK_STEP = "matrix link {m} --evidence EV-… --covers {a} (texto de la cláusula: catalog show {m})"
+
+INCIDENT_RECORD_NOT_LINKABLE = (
+    "{a} es un registro del incidente; vincula su historial (EV del cierre)."
+)
+SIMULATED_LABEL = "simulacro"
+SIMULATION_REVIEW_NOTICE = (
+    "hay fuentes marcadas como simulacro: muestran que el registro funciona, no que se hayan "
+    "registrado incidentes reales. La valoración es tuya."
+)
+
+INCIDENT_REGISTER_NOTICE = (
+    "el registro de incidentes tiene problemas ({n}); esta medida se apoya en él. "
+    "Siguiente paso: ens-evidence incident verify"
+)
+
+
+def with_simulated_mark(label: str, simulated: bool) -> str:
+    """La única marca de simulacro de una fuente, para `status`, `review` y la exportación."""
+    return f"{label} ({SIMULATED_LABEL})" if simulated else label
+
 
 # (tipo, primera parte del detalle) -> texto. {m} medida; {a}, {b} partes siguientes del detalle.
 BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
@@ -115,6 +136,19 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "el historial de aprobaciones del documento {a} tiene un registro ilegible y no se sabe "
         "si revoca la aprobación anterior. Restaura el registro o vuelve a aprobar: "
         "docs approve {a}"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "op_exp_9_requires_incident_history"): (
+        "op.exp.9 solo se sustenta con el historial de un incidente cerrado (incident-history): "
+        "ni una evidencia manual, ni un registro de incidente, ni un documento ni un check bastan. "
+        "Siguiente paso: registra cada incidente (incident new, incident update, incident close) "
+        "o, si no ha habido ninguno en el periodo, ensaya con un simulacro (incident new "
+        "--simulated; un simulacro muestra que el registro funciona, no que haya incidentes "
+        "reales). Después, con el EV del historial: matrix link {m} --evidence EV-… --covers base"
+    ),
+    (BlockerKind.MISSING_EVIDENCE, "incident_history_broken"): (
+        "el historial de incidente {a} ya no coincide con los registros del incidente (falta, "
+        "sobra o se alteró algo). Comprueba: incident verify; vuelve a revisar la medida cuando "
+        "se resuelva: matrix review {m}"
     ),
     (BlockerKind.MISSING_EVIDENCE, "evidence_no_validity"): (
         "la evidencia {a} no tiene caducidad y la medida no tiene periodicidad. "
@@ -306,14 +340,42 @@ def _fill(template: str, measure_id: str | None, args: list[str]) -> str:
     return template.format(m=measure_id or "MEDIDA", a=a, b=b, c=collect_step(a))
 
 
+def _generic_missing_evidence(blocker: Blocker, head: str) -> bool:
+    """Falta evidencia sin más: el siguiente paso genérico («vincula cualquier EV») llevaría, en
+    una medida con política de fuentes, a una fuente que la medida no admite."""
+    return blocker.kind is BlockerKind.MISSING_EVIDENCE and head in ("", "clause", "obligation")
+
+
+def _text(kind: BlockerKind, measure_id: str | None, detail: str) -> str:
+    head, *args = detail.split(":")
+    template = BLOCKER_TEXTS.get((kind, head))
+    if template is None:
+        fallback = KIND_FALLBACK[kind]
+        return f"{fallback}: {detail}" if detail else fallback
+    return _fill(template, measure_id, args)
+
+
+def source_policy_step(measure_id: str) -> str | None:
+    """De dónde sale la evidencia que le falta a una medida con política de fuentes."""
+    policy = source_policy(measure_id)
+    if policy is None:
+        return None
+    return _text(BlockerKind.MISSING_EVIDENCE, measure_id, policy.detail)
+
+
 def blocker_text(blocker: Blocker) -> str:
     """Un bloqueo en castellano llano y con el siguiente paso."""
-    head, *args = blocker.detail.split(":")
-    template = BLOCKER_TEXTS.get((blocker.kind, head))
-    if template is None:
-        fallback = KIND_FALLBACK[blocker.kind]
-        return f"{fallback}: {blocker.detail}" if blocker.detail else fallback
-    return _fill(template, blocker.measure_id, args)
+    head = blocker.detail.split(":")[0]
+    if _generic_missing_evidence(blocker, head):
+        step = source_policy_step(blocker.measure_id or "")
+        if step is not None:
+            return step
+    return _text(blocker.kind, blocker.measure_id, blocker.detail)
+
+
+def has_broken_history(blockers: Iterable[Blocker]) -> bool:
+    """Con un historial enlazado y roto, el paso es `incident verify`, no registrar más."""
+    return any(b.detail.startswith("incident_history_broken:") for b in blockers)
 
 
 def _is_check_problem(blocker: Blocker) -> bool:
@@ -345,10 +407,19 @@ def blocker_lines(
     blockers = _without_generic_gap(list(blockers))
     grouped: dict[tuple[str | None, str], list[str]] = {}
     texts: list[str] = []
+    blockers = list(blockers)
+    broken = has_broken_history(blockers)
     for blocker in blockers:
         head, _, rest = blocker.detail.partition(":")
-        if blocker.kind is BlockerKind.MISSING_EVIDENCE and head in _GROUPED and rest:
+        if (
+            blocker.kind is BlockerKind.MISSING_EVIDENCE
+            and head in _GROUPED
+            and rest
+            and source_policy(blocker.measure_id or "") is None
+        ):
             grouped.setdefault((blocker.measure_id, head), []).append(rest)
+            continue
+        if broken and _generic_missing_evidence(blocker, head):
             continue
         text = blocker_text(blocker)
         if text not in texts:

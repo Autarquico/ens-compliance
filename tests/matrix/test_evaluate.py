@@ -813,7 +813,8 @@ def test_prepare_review_con_un_problema_de_conector_impide_registrar_compliant(s
 
     assert plan.record is None
     assert plan.problems
-    assert any(PROBLEMS["github"][0] in note for note in plan.notes)
+    unreadable_record = PROBLEMS["github"][0].partition(":")[2]
+    assert any(unreadable_record in note for note in plan.notes)
 
 
 def test_assess_tras_un_intento_fallido_no_vuelve_al_pass_anterior(signed):

@@ -20,6 +20,12 @@ REQUIRED_CLAUSES = {
     "normativa-seguridad": {"org.2.1", "org.2.2", "art.15.2"},
     "procedimientos-seguridad": {f"org.3.{n}" for n in range(1, 5)},
     "proceso-autorizacion": {f"org.4.{n}" for n in range(1, 9)},
+    "procedimiento-incidentes": {
+        "art.25.2",
+        "art.33.7",
+        "op.exp.7.1",
+        "op.exp.7.2",
+    },
 }
 
 

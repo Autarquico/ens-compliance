@@ -1,0 +1,398 @@
+{
+  "$defs": {
+    "Action": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "description": {
+          "maxLength": 500,
+          "minLength": 1,
+          "title": "Description",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/ActionKind"
+        }
+      },
+      "required": [
+        "kind",
+        "at",
+        "description"
+      ],
+      "title": "Action",
+      "type": "object"
+    },
+    "ActionKind": {
+      "description": "Vocabulario del producto, no del RD 311/2022: el real no clasifica las actuaciones.",
+      "enum": [
+        "emergency",
+        "system_change",
+        "notification",
+        "other"
+      ],
+      "title": "ActionKind",
+      "type": "string"
+    },
+    "Analysis": {
+      "additionalProperties": false,
+      "properties": {
+        "recommendations": {
+          "items": {
+            "maxLength": 500,
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Recommendations",
+          "type": "array"
+        },
+        "summary": {
+          "anyOf": [
+            {
+              "maxLength": 2000,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Summary"
+        }
+      },
+      "title": "Analysis",
+      "type": "object"
+    },
+    "AuditableEventsReview": {
+      "additionalProperties": false,
+      "description": "op.exp.9.3: revisi\u00f3n de los eventos auditables tras el an\u00e1lisis.",
+      "properties": {
+        "detail": {
+          "maxLength": 500,
+          "title": "Detail",
+          "type": "string"
+        },
+        "result": {
+          "$ref": "#/$defs/ReviewResult"
+        }
+      },
+      "required": [
+        "result",
+        "detail"
+      ],
+      "title": "AuditableEventsReview",
+      "type": "object"
+    },
+    "Closure": {
+      "additionalProperties": false,
+      "properties": {
+        "auditable_events_review": {
+          "$ref": "#/$defs/AuditableEventsReview"
+        },
+        "closed_at": {
+          "format": "date-time",
+          "title": "Closed At",
+          "type": "string"
+        },
+        "conclusion": {
+          "maxLength": 2000,
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "legal_advice": {
+          "anyOf": [
+            {
+              "maxLength": 500,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Legal Advice"
+        },
+        "legal_relevance": {
+          "$ref": "#/$defs/TriState"
+        },
+        "preserved_evidence_ids": {
+          "items": {
+            "pattern": "^EV-\\d{8}-[0-9a-f]{8}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Preserved Evidence Ids",
+          "type": "array"
+        }
+      },
+      "required": [
+        "closed_at",
+        "conclusion",
+        "legal_relevance",
+        "auditable_events_review"
+      ],
+      "title": "Closure",
+      "type": "object"
+    },
+    "IncidentSource": {
+      "additionalProperties": false,
+      "properties": {
+        "alert_ids": {
+          "items": {
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Alert Ids",
+          "type": "array"
+        },
+        "system": {
+          "maxLength": 64,
+          "minLength": 1,
+          "title": "System",
+          "type": "string"
+        }
+      },
+      "required": [
+        "system"
+      ],
+      "title": "IncidentSource",
+      "type": "object"
+    },
+    "IncidentState": {
+      "additionalProperties": false,
+      "properties": {
+        "actions": {
+          "items": {
+            "$ref": "#/$defs/Action"
+          },
+          "maxItems": 100,
+          "title": "Actions",
+          "type": "array"
+        },
+        "analysis": {
+          "$ref": "#/$defs/Analysis"
+        },
+        "assets": {
+          "items": {
+            "pattern": "^[A-Za-z0-9._:-]{1,128}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Assets",
+          "type": "array"
+        },
+        "closure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Closure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "detected_at": {
+          "format": "date-time",
+          "title": "Detected At",
+          "type": "string"
+        },
+        "evidence_ids": {
+          "items": {
+            "pattern": "^EV-\\d{8}-[0-9a-f]{8}$",
+            "type": "string"
+          },
+          "maxItems": 100,
+          "title": "Evidence Ids",
+          "type": "array"
+        },
+        "id": {
+          "pattern": "^(INC|SIM)-\\d{4}-\\d{3}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "personal_data": {
+          "$ref": "#/$defs/TriState",
+          "default": "unknown"
+        },
+        "procedure": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Procedure"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "maxLength": 64,
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Severity"
+        },
+        "simulated": {
+          "default": false,
+          "title": "Simulated",
+          "type": "boolean"
+        },
+        "source": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IncidentSource"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "status": {
+          "$ref": "#/$defs/IncidentStatus",
+          "default": "open"
+        },
+        "title": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "title",
+        "detected_at"
+      ],
+      "title": "IncidentState",
+      "type": "object"
+    },
+    "IncidentStatus": {
+      "enum": [
+        "open",
+        "closed"
+      ],
+      "title": "IncidentStatus",
+      "type": "string"
+    },
+    "Procedure": {
+      "additionalProperties": false,
+      "description": "Procedimiento vigente al dar de alta el incidente, verificable contra org-docs.",
+      "properties": {
+        "approval_key": {
+          "pattern": "^[A-Za-z0-9._/:-]{1,200}$",
+          "title": "Approval Key",
+          "type": "string"
+        },
+        "approved_at": {
+          "format": "date-time",
+          "title": "Approved At",
+          "type": "string"
+        },
+        "document_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Document Sha256",
+          "type": "string"
+        },
+        "name": {
+          "maxLength": 120,
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        }
+      },
+      "required": [
+        "name",
+        "document_sha256",
+        "approved_at",
+        "approval_key"
+      ],
+      "title": "Procedure",
+      "type": "object"
+    },
+    "RecordKind": {
+      "description": "Reporte inicial, intermedio y final (op.exp.9.1).",
+      "enum": [
+        "opened",
+        "updated",
+        "closed"
+      ],
+      "title": "RecordKind",
+      "type": "string"
+    },
+    "ReviewResult": {
+      "enum": [
+        "changed",
+        "no_change"
+      ],
+      "title": "ReviewResult",
+      "type": "string"
+    },
+    "TriState": {
+      "enum": [
+        "yes",
+        "no",
+        "unknown"
+      ],
+      "title": "TriState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "kind": {
+      "$ref": "#/$defs/RecordKind"
+    },
+    "previous_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Sha256"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "state": {
+      "$ref": "#/$defs/IncidentState"
+    }
+  },
+  "required": [
+    "seq",
+    "kind",
+    "recorded_at",
+    "state"
+  ],
+  "title": "IncidentRecord",
+  "type": "object"
+}

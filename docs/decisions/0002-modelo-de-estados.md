@@ -111,6 +111,12 @@ transición registra `actor`, `role`, `at` y `dossier_sha256`.
 
 Base: RD 311/2022, art. 38.1 y anexo III, 2.1.
 
+### Estado de un incidente
+
+`IncidentStatus` (abierto o cerrado, 0013) es el ciclo de vida de un
+incidente, no un eje de evaluación: nunca se traduce a `PASS` ni a
+`COMPLIANT`.
+
 ## Consecuencias
 
 - Ningún camino produce `PASS` sin evidencia ni `READY` por omisión.

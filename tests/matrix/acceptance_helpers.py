@@ -23,6 +23,7 @@ APPROVER = {
     "designacion-responsables": Role.MANAGEMENT,
     "procedimientos-seguridad": Role.SECURITY_OFFICER,
     "proceso-autorizacion": Role.SECURITY_OFFICER,
+    "procedimiento-incidentes": Role.SECURITY_OFFICER,
 }
 
 
@@ -56,7 +57,7 @@ def runner(settings: Path):
 
 
 def generate_and_approve_documents(store, approved_at: datetime = NOW - timedelta(days=1)) -> None:
-    """Los cinco documentos reales de org-docs, generados con las respuestas y aprobados."""
+    """Los seis documentos reales de org-docs, generados con las respuestas y aprobados."""
     write_answers(store, fixture_answers())
     build_documents(store)
     for name, role in APPROVER.items():

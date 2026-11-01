@@ -61,6 +61,11 @@ mínimo y quién aprueba:
   firmó deja de ser la persona declarada para ese rol, o si cambia el rol que
   aprueba el documento, aunque el texto no cambie.
 
+- **Versión de plantillas:** añadir una plantilla no cambia la versión;
+  modificar una existente sí. El procedimiento de incidentes
+  (`procedimiento-incidentes`, 0013) entra en v1. El articulado empaquetado
+  incluye también los arts. 25.1, 25.2 y 33.7, con su revisión humana firmada.
+
 ## Consecuencias
 
 - Cambiar el texto legal empaquetado exige una revisión humana nueva.

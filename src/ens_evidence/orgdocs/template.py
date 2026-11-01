@@ -16,6 +16,8 @@ from ens_evidence.orgdocs.clauses import clause_index
 from ens_evidence.orgdocs.contract import (
     AUTHORITY_ROLE,
     DECLARED_PERSON_QUESTIONS,
+    INCIDENT_LEVEL_FIELDS,
+    INCIDENT_LEVELS,
     PEOPLE,
     PERSON_NAME,
     PROCEDURES_AUTHORITY_QUESTION,
@@ -303,11 +305,21 @@ def check_engine_contract(templates: Iterable[LoadedTemplate]) -> None:
     by_id = {q.id: q for q in all_questions(templates)}
     problems = [
         f"falta la pregunta {name}, de la que depende el motor"
-        for name in (*DECLARED_PERSON_QUESTIONS, PEOPLE, RELATION, PROCEDURES_AUTHORITY_QUESTION)
+        for name in (
+            *DECLARED_PERSON_QUESTIONS,
+            PEOPLE,
+            RELATION,
+            PROCEDURES_AUTHORITY_QUESTION,
+            INCIDENT_LEVELS,
+        )
         if name not in by_id
     ]
     if (people := by_id.get(PEOPLE)) and PERSON_NAME not in {f.id for f in people.fields}:
         problems.append(f"{PEOPLE} debe tener el campo {PERSON_NAME}")
+    if levels := by_id.get(INCIDENT_LEVELS):
+        missing = sorted(set(INCIDENT_LEVEL_FIELDS) - {f.id for f in levels.fields})
+        if missing:
+            problems.append(f"{INCIDENT_LEVELS} debe tener los campos {missing}")
     if (relation := by_id.get(RELATION)) and SAME_PERSON not in relation.choices:
         problems.append(f"{RELATION} debe ofrecer la opción «{SAME_PERSON}»")
     authority = by_id.get(PROCEDURES_AUTHORITY_QUESTION)

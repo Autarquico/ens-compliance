@@ -2,7 +2,7 @@ regulation: Real Decreto 311/2022, de 3 de mayo
 url: https://www.boe.es/eli/es/rd/2022/05/03/311/con
 consolidation_date: '2024-11-06'
 snapshot: articulado.html
-snapshot_sha256: d97c9326865454708b7c9ef7c16185ac6970f10acb387d2455856b93dcc67fef
+snapshot_sha256: 4e1ef56b30b08d84872c874563e4107b67c95637394b840aadffe728c3179413
 clauses:
 - id: art.2.3
   reference: RD 311/2022, art. 2.3
@@ -130,6 +130,29 @@ clauses:
   reference: RD 311/2022, art. 15.2
   text: 2. El significado y alcance del uso seguro del sistema se concretará y plasmará en unas normas
     de seguridad que serán aprobadas por la dirección o el órgano superior correspondiente.
+- id: art.25.1
+  reference: RD 311/2022, art. 25.1
+  text: 1. La entidad titular de los sistemas de información del ámbito de este real decreto dispondrá
+    de procedimientos de gestión de incidentes de seguridad de acuerdo con lo previsto en el artículo
+    33, la Instrucción Técnica de Seguridad correspondiente y, en caso de tratarse de un operador de servicios
+    esenciales o de un proveedor de servicios digitales, de acuerdo con lo previsto en el anexo del Real
+    Decreto 43/2021, de 26 de enero, por el que se desarrolla el Real Decreto-ley 12/2018, de 7 de septiembre,
+    de seguridad de las redes y sistemas de información.
+- id: art.25.2
+  reference: RD 311/2022, art. 25.2
+  text: 2. Asimismo, se dispondrá de mecanismos de detección, criterios de clasificación, procedimientos
+    de análisis y resolución, así como de los cauces de comunicación a las partes interesadas y el registro
+    de las actuaciones. Este registro se empleará para la mejora continua de la seguridad del sistema.
+- id: art.33.7
+  reference: RD 311/2022, art. 33.7
+  text: 7. Las organizaciones del sector privado que presten servicios a las entidades públicas notificarán
+    al INCIBE-CERT, centro de respuesta a incidentes de seguridad de referencia para los ciudadanos y
+    entidades de derecho privado en España operado por la S.M.E. Instituto Nacional de Ciberseguridad
+    de España M.P., S.A. (INCIBE) dependiente del Ministerio de Asuntos Económicos y Transformación Digital,
+    los incidentes que les afecten a través de su equipo de respuesta a incidentes de seguridad informática,
+    quien, sin perjuicio de sus competencias y de lo previsto en los artículos 9, 10 y 11 del Real Decreto
+    43/2021, de 26 de enero, en relación con la Plataforma de Notificación y Seguimiento de Ciberincidentes,
+    lo pondrá inmediatamente en conocimiento del CCN-CERT.
 - id: anexo-iii.1.1.f
   reference: RD 311/2022, anexo III, 1.1.f
   text: f) Que existe un sistema de gestión de la seguridad de la información, documentado y con un proceso

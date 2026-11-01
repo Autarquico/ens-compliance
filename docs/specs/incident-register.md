@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Procedimiento y registro de incidentes
 type: task
-status: active
+status: shipped
 priority: P0
 size: S
 issue: 22
@@ -12,7 +12,7 @@ depends_on: [org-docs-templates, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-11-01
 ---
 
 # Procedimiento y registro de incidentes
