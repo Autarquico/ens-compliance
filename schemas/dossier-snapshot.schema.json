@@ -1,0 +1,202 @@
+{
+  "$defs": {
+    "CatalogVersion": {
+      "additionalProperties": false,
+      "properties": {
+        "consolidation_date": {
+          "format": "date",
+          "title": "Consolidation Date",
+          "type": "string"
+        },
+        "snapshot_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Snapshot Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "snapshot_sha256",
+        "consolidation_date"
+      ],
+      "title": "CatalogVersion",
+      "type": "object"
+    },
+    "Category": {
+      "enum": [
+        "BASICA",
+        "MEDIA",
+        "ALTA"
+      ],
+      "title": "Category",
+      "type": "string"
+    },
+    "JsonValue": {},
+    "Section": {
+      "additionalProperties": false,
+      "properties": {
+        "content": {
+          "$ref": "#/$defs/JsonValue"
+        },
+        "number": {
+          "maximum": 11,
+          "minimum": 1,
+          "title": "Number",
+          "type": "integer"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "title": "Sources",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/SectionState"
+        },
+        "title": {
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "number",
+        "title",
+        "state",
+        "sources",
+        "content"
+      ],
+      "title": "Section",
+      "type": "object"
+    },
+    "SectionState": {
+      "enum": [
+        "RECORDED",
+        "INCOMPLETE",
+        "PENDING_HUMAN_REVIEW"
+      ],
+      "title": "SectionState",
+      "type": "string"
+    },
+    "SnapshotInputs": {
+      "additionalProperties": false,
+      "description": "Entradas congeladas: con ellas la instant\u00e1nea se reproduce byte a byte.",
+      "properties": {
+        "catalog_version": {
+          "$ref": "#/$defs/CatalogVersion"
+        },
+        "evaluated_at": {
+          "format": "date-time",
+          "title": "Evaluated At",
+          "type": "string"
+        },
+        "generated_at": {
+          "format": "date-time",
+          "title": "Generated At",
+          "type": "string"
+        },
+        "methodology_version": {
+          "minLength": 1,
+          "title": "Methodology Version",
+          "type": "string"
+        },
+        "product_version": {
+          "minLength": 1,
+          "title": "Product Version",
+          "type": "string"
+        },
+        "reference_now": {
+          "format": "date-time",
+          "title": "Reference Now",
+          "type": "string"
+        }
+      },
+      "required": [
+        "generated_at",
+        "evaluated_at",
+        "reference_now",
+        "methodology_version",
+        "product_version",
+        "catalog_version"
+      ],
+      "title": "SnapshotInputs",
+      "type": "object"
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        },
+        "timestamps": {
+          "items": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Timestamps",
+          "type": "array"
+        }
+      },
+      "required": [
+        "kind",
+        "key",
+        "sha256",
+        "timestamps"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "category": {
+      "$ref": "#/$defs/Category"
+    },
+    "commitment": {
+      "default": "La herramienta no declara conformidad.",
+      "title": "Commitment",
+      "type": "string"
+    },
+    "inputs": {
+      "$ref": "#/$defs/SnapshotInputs"
+    },
+    "notice": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Notice"
+    },
+    "sections": {
+      "items": {
+        "$ref": "#/$defs/Section"
+      },
+      "title": "Sections",
+      "type": "array"
+    }
+  },
+  "required": [
+    "category",
+    "inputs",
+    "sections"
+  ],
+  "title": "DossierSnapshot",
+  "type": "object"
+}

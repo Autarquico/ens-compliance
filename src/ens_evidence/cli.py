@@ -1,4 +1,5 @@
 import functools
+import hashlib
 import json
 import os
 import re
@@ -30,6 +31,31 @@ from ens_evidence.assessment import (
     count_statuses,
     render_status_json,
     render_status_text,
+)
+from ens_evidence.assessment.dossier import (
+    DossierView,
+    TransitionRejected,
+    build_snapshot,
+    current_inputs,
+    dossier_status,
+    entries,
+    record_transition,
+    render_snapshot_md,
+    render_view_md,
+    scan_transitions,
+    snapshot_sha256,
+)
+from ens_evidence.assessment.dossier.build import DossierRejected
+from ens_evidence.assessment.dossier.model import DossierSnapshot
+from ens_evidence.assessment.dossier.package import PackageRejected, save_package, verify_package
+from ens_evidence.assessment.dossier.store import (
+    ASSESSMENTS_PREFIX,
+    DossierUnreadable,
+    list_dossiers,
+    load_snapshot,
+    save_markdown,
+    save_snapshot,
+    stored_snapshot_sha256,
 )
 from ens_evidence.backup import (
     IMMUTABILITY_PREFIX,
@@ -141,8 +167,10 @@ from ens_evidence.matrix.messages import (
     blocker_lines,
     collect_step,
     obligation_label,
+    role_label,
 )
-from ens_evidence.models.enums import CheckStatus, CollectionStatus, Role
+from ens_evidence.models.dossier import CorrectiveMeasure
+from ens_evidence.models.enums import Category, CheckStatus, CollectionStatus, DossierState, Role
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
     AnswersInvalid,
@@ -185,6 +213,7 @@ from ens_evidence.scope.models import Deployment
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SCOPE_KEYS, synced_keys
 from ens_evidence.workspace import (
+    AlreadyExists,
     BackupSettings,
     LocalStore,
     NotText,
@@ -231,6 +260,11 @@ matrix_app = typer.Typer(
 incident_app = typer.Typer(
     help="Registro de incidentes de seguridad (op.exp.7 y op.exp.9).", no_args_is_help=True
 )
+dossier_app = typer.Typer(
+    help="Expediente de autoevaluación: lo genera la herramienta; las personas lo avanzan.",
+    no_args_is_help=True,
+)
+assessment_app.add_typer(dossier_app, name="dossier")
 app.add_typer(report_app, name="report")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
@@ -2533,3 +2567,422 @@ def schema_export(
     if problems:
         raise typer.Exit(1)
     typer.echo("schemas up to date")
+
+
+# --- assessment dossier ------------------------------------------------------------------------
+
+DECLARED_NAME_NOTICE = "El nombre es declarado; no se autentica."
+DOSSIER_FOOTER = "La herramienta no declara conformidad: solo registra lo que las personas hacen."
+DossierIdArgument = Annotated[str, typer.Argument(help="Id del expediente (ver `dossier list`).")]
+AtOption = Annotated[
+    str | None,
+    typer.Option("--at", help="Cuándo hizo la persona el acto (por defecto, ahora)."),
+]
+
+
+class ViewFormat(StrEnum):
+    MD = "md"
+    JSON = "json"
+
+
+def dossier_rejected(title: str, errors: list[str]) -> typer.Exit:
+    typer.echo(title, err=True)
+    print_errors(errors)
+    return typer.Exit(1)
+
+
+def load_dossier(store: WorkspaceStore, dossier: str) -> DossierSnapshot:
+    try:
+        return load_snapshot(store, dossier)
+    except DossierUnreadable as exc:
+        raise dossier_rejected(f"El expediente {dossier} no se puede leer:", exc.problems) from None
+
+
+def dossier_step(dossier: str, snapshot: DossierSnapshot, state: DossierState) -> str:
+    """El siguiente paso tras llegar a `state`, nombrando quién lo da."""
+    basic = snapshot.category is Category.BASICA
+    match state:
+        case DossierState.GENERATED:
+            return (
+                f"Siguiente paso: {role_label(Role.SYSTEM_ADMINISTRATOR)} (o su delegado) revisa "
+                f"cada medida y registra `assessment dossier self-assess {dossier} --by <nombre> "
+                "--role system_administrator`."
+            )
+        case DossierState.SELF_ASSESSED:
+            return (
+                f"Siguiente paso: el {role_label(Role.SECURITY_OFFICER)} analiza y registra "
+                f"`assessment dossier analyze {dossier}` y eleva las conclusiones al "
+                f"{role_label(Role.SYSTEM_OWNER)}."
+            )
+        case DossierState.ANALYZED if basic:
+            return (
+                f"Siguiente paso: la {role_label(Role.MANAGEMENT)} decide y, si la organización "
+                f"declara, registra `assessment dossier declare {dossier} --by <nombre>`."
+            )
+        case DossierState.ANALYZED:
+            return (
+                "Siguiente paso: auditoría de certificación (art. 38.1); "
+                "la herramienta no registra una declaración en MEDIA/ALTA."
+            )
+        case _:
+            return "Siguiente paso: ninguno; el expediente no admite más transiciones."
+
+
+def print_notice(snapshot: DossierSnapshot) -> None:
+    if snapshot.notice:
+        typer.echo(snapshot.notice)
+
+
+@dossier_app.command("generate")
+@handled
+def dossier_generate(ctx: typer.Context) -> None:
+    """Genera la instantánea del expediente con el estado actual del workspace.
+
+    Exige categorización vigente y Declaración de Aplicabilidad legible. Se puede generar aunque
+    el sistema aún no esté preparado: el expediente lo dice. En MEDIA/ALTA genera también el
+    paquete por medida; en BÁSICA, `dossier package` lo genera bajo demanda."""
+    store = open_workspace(ctx)
+    now = clock()
+    try:
+        snapshot = build_snapshot(
+            store, current_inputs(now), checks=StoredCheckResults(reference_now=now)
+        )
+    except CategorizationNotCurrent as exc:
+        raise report_missing_context(exc) from None
+    except DossierRejected as exc:
+        raise dossier_rejected("No se genera el expediente:", exc.errors) from None
+    try:
+        dossier = save_snapshot(store, snapshot)
+    except AlreadyExists:
+        raise fail(
+            "Ya existe un expediente con ese contenido y ese instante; reintenta.", 1
+        ) from None
+    save_markdown(store, dossier, render_snapshot_md(snapshot))
+    typer.echo(f"Expediente {dossier} generado ({snapshot.category.value}).")
+    typer.echo(snapshot.commitment)
+    print_notice(snapshot)
+    if snapshot.category is not Category.BASICA:
+        try:
+            save_package(store, dossier, snapshot)
+        except PackageRejected as exc:
+            typer.echo(
+                f"El paquete por medida no se ha guardado: ejecuta `dossier package {dossier}`.",
+                err=True,
+            )
+            raise dossier_rejected("Paquete rechazado:", exc.errors) from None
+        typer.echo("Paquete por medida guardado.")
+    typer.echo(dossier_step(dossier, snapshot, DossierState.GENERATED))
+
+
+@dossier_app.command("list")
+@handled
+def dossier_list(ctx: typer.Context) -> None:
+    """Lista los expedientes con su categoría y su estado."""
+    store = open_workspace(ctx)
+    found = list_dossiers(store)
+    if not found:
+        typer.echo("No hay expedientes. Genera uno con `assessment dossier generate`.")
+    for item in found:
+        if item.snapshot is None:
+            typer.echo(f"{item.id}  ILEGIBLE ({'; '.join(item.problems)})")
+            continue
+        scan = scan_transitions(store, item.id)
+        state = scan.dossier.state.value if scan.dossier else "ROTO"
+        typer.echo(f"{item.id}  {item.snapshot.category.value}  {state}")
+
+
+@dossier_app.command("status")
+@handled
+def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
+    """Estado, integridad, deriva por sección, siguiente paso y huellas de un expediente.
+
+    Sale con 1 si hay deriva (el expediente ya no describe el estado actual) o problemas de
+    integridad."""
+    store = open_workspace(ctx)
+    status = dossier_status(store, dossier, now=clock())
+    category = status.category.value if status.category else "desconocida"
+    typer.echo(f"Expediente {dossier} ({category})")
+    typer.echo(f"Estado: {status.state.value if status.state else 'no fiable (cadena rota)'}")
+    if status.notice:
+        typer.echo(status.notice)
+    if status.integrity:
+        typer.echo("Integridad: PROBLEMAS", err=True)
+        print_errors(list(status.integrity))
+    else:
+        typer.echo("Integridad: íntegro.")
+    if status.drift is None:
+        typer.echo("Deriva: no se puede comprobar (instantánea ilegible).", err=True)
+    elif status.drift.current:
+        typer.echo("Deriva: ninguna; el expediente describe el estado actual.")
+    else:
+        typer.echo("Deriva: el expediente ya no describe el estado actual.", err=True)
+        for section, lines in status.drift.drift.items():
+            typer.echo(f"  {section}:", err=True)
+            for line in lines:
+                typer.echo(f"    - {line}", err=True)
+    typer.echo(f"Siguiente paso: {status.next_step}")
+    prints = status.fingerprints
+    for label, value in (
+        ("instantánea", prints.snapshot),
+        ("análisis", prints.analysis),
+        ("análisis citado por la declaración", prints.cited_analysis),
+        ("última transición", prints.last_transition),
+    ):
+        typer.echo(f"Huella {label}: {value or '—'}")
+    typer.echo(DOSSIER_FOOTER)
+    if status.integrity or status.drift is None or not status.drift.current:
+        raise typer.Exit(1)
+
+
+@dossier_app.command("show")
+@handled
+def dossier_show(
+    ctx: typer.Context,
+    dossier: DossierIdArgument,
+    fmt: Annotated[
+        ViewFormat, typer.Option("--format", help="Formato de la salida.")
+    ] = ViewFormat.MD,
+    save: Annotated[
+        bool,
+        typer.Option("--save", help="Guarda también la vista junto al expediente (solo adición)."),
+    ] = False,
+) -> None:
+    """Vista del expediente con las secciones 10 (conclusiones) y 11 (aprobación) al día."""
+    store = open_workspace(ctx)
+    snapshot = load_dossier(store, dossier)
+    try:
+        chain = entries(store, dossier)
+    except TransitionRejected as exc:
+        raise dossier_rejected(f"La cadena de {dossier} no se verifica:", exc.errors) from None
+    if fmt is ViewFormat.JSON:
+        text = DossierView(snapshot=snapshot, transitions=chain).model_dump_json(indent=2) + "\n"
+    else:
+        text = render_view_md(snapshot, chain)
+    typer.echo(text, nl=False)
+    if save:
+        digest = hashlib.sha256(text.encode()).hexdigest()[:12]
+        key = f"{ASSESSMENTS_PREFIX}/{dossier}/view/{len(chain):06d}-{digest}.{fmt.value}"
+        try:
+            store.create_bytes(key, text.encode())
+        except AlreadyExists:
+            typer.echo(f"Ya estaba guardada: {key}", err=True)
+        else:
+            typer.echo(f"Vista guardada en {key}", err=True)
+
+
+def record_dossier_transition(
+    ctx: typer.Context,
+    dossier: str,
+    to_state: DossierState,
+    *,
+    by: str,
+    role: Role,
+    at: str | None,
+    **details: Any,
+) -> None:
+    store = open_workspace(ctx)
+    now = clock()
+    instant = parse_instant("--at", at) or now
+    try:
+        recorded = record_transition(
+            store, dossier, to_state, by=by, role=role, at=instant, now=now, **details
+        )
+    except TransitionRejected as exc:
+        raise dossier_rejected(f"No se registra {to_state.value}:", exc.errors) from None
+    record = recorded.entry.record
+    typer.echo(
+        f"{to_state.value} registrado en {dossier} por {record.actor} ({role_label(record.role)})."
+    )
+    typer.echo(f"Huella del registro: {recorded.entry.sha256}")
+    typer.echo(DECLARED_NAME_NOTICE)
+    if recorded.notice:
+        typer.echo(recorded.notice)
+    snapshot = load_dossier(store, dossier)
+    typer.echo(dossier_step(dossier, snapshot, to_state))
+
+
+@dossier_app.command("self-assess")
+@handled
+def dossier_self_assess(
+    ctx: typer.Context,
+    dossier: DossierIdArgument,
+    by: By,
+    role: Annotated[
+        Role,
+        typer.Option(
+            "--role", help="system_administrator o system_administrator_delegate (anexo III 2.1.a)."
+        ),
+    ],
+    at: AtOption = None,
+) -> None:
+    """Registra la autoevaluación por quien administra el sistema o su delegado.
+
+    Exige una revisión humana en cada medida de la matriz."""
+    record_dossier_transition(ctx, dossier, DossierState.SELF_ASSESSED, by=by, role=role, at=at)
+
+
+@dossier_app.command("analyze")
+@handled
+def dossier_analyze(
+    ctx: typer.Context,
+    dossier: DossierIdArgument,
+    by: By,
+    conclusion: Annotated[str, typer.Option("--conclusion", help="Conclusiones del análisis.")],
+    elevated_to: Annotated[
+        str,
+        typer.Option(
+            "--elevated-to", help="Persona del responsable del sistema a quien se elevan."
+        ),
+    ],
+    elevated: Annotated[
+        bool,
+        typer.Option(
+            "--elevated",
+            help=(
+                "Confirmas que has elevado las conclusiones al responsable del sistema; la "
+                "herramienta no envía comunicaciones (anexo III 2.1.b)."
+            ),
+        ),
+    ] = False,
+    manual_judgment_review: Annotated[
+        bool,
+        typer.Option(
+            "--manual-judgment-review",
+            help=(
+                "Confirmas que una persona ha revisado el juicio manual pendiente "
+                "(medidas organizativas); sin esto no se podrá declarar."
+            ),
+        ),
+    ] = False,
+    corrective_measure: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--corrective-measure", help="Medida correctora para el responsable del sistema."
+        ),
+    ] = None,
+    at: AtOption = None,
+) -> None:
+    """Registra el análisis del responsable de la seguridad y la elevación de sus conclusiones."""
+    measures = [
+        CorrectiveMeasure(description=text, addressee=Role.SYSTEM_OWNER)
+        for text in corrective_measure or []
+    ]
+    record_dossier_transition(
+        ctx,
+        dossier,
+        DossierState.ANALYZED,
+        by=by,
+        role=Role.SECURITY_OFFICER,
+        at=at,
+        conclusions=conclusion,
+        corrective_measures=measures,
+        manual_judgment_review=manual_judgment_review,
+        elevated_to=elevated_to,
+        elevation_confirmed=elevated,
+    )
+
+
+@dossier_app.command("declare")
+@handled
+def dossier_declare(
+    ctx: typer.Context,
+    dossier: DossierIdArgument,
+    by: By,
+    evidence: Annotated[
+        str | None,
+        typer.Option(
+            "--evidence",
+            help=(
+                "Evidencia manual (EV-…) con el documento firmado; solo se verifica su "
+                "integridad, la firma y el formato los revisa una persona."
+            ),
+        ),
+    ] = None,
+    at: AtOption = None,
+) -> None:
+    """Registra la declaración de conformidad que hace la dirección (solo categoría BÁSICA).
+
+    La herramienta solo registra el acto de la organización: no redacta la declaración, no
+    genera el distintivo ni declara nada por sí sola. En MEDIA/ALTA se rechaza (art. 38.1)."""
+    record_dossier_transition(
+        ctx,
+        dossier,
+        DossierState.DECLARED,
+        by=by,
+        role=Role.MANAGEMENT,
+        at=at,
+        declaration_evidence_id=evidence,
+    )
+    typer.echo(
+        "Es un acto de la organización: la herramienta solo lo registra. "
+        "El documento y el distintivo no los genera ella."
+    )
+
+
+@dossier_app.command("verify")
+@handled
+def dossier_verify(ctx: typer.Context, dossier: DossierIdArgument) -> None:
+    """Reproduce la instantánea con sus entradas congeladas y verifica el paquete.
+
+    Sale con 1 si los bytes no coinciden o el paquete no se verifica."""
+    store = open_workspace(ctx)
+    snapshot = load_dossier(store, dossier)
+    problems: list[str] = []
+    try:
+        rebuilt = build_snapshot(store, snapshot.inputs)
+    except (DossierRejected, CategorizationNotCurrent) as exc:
+        problems.append(f"no se puede reproducir con las entradas congeladas ({exc})")
+    else:
+        if snapshot_sha256(rebuilt) != stored_snapshot_sha256(store, dossier):
+            problems.append("la reproducción con las entradas congeladas no da los mismos bytes")
+    if store.exists(f"{ASSESSMENTS_PREFIX}/{dossier}/package/index.json") or (
+        snapshot.category is not Category.BASICA
+    ):
+        problems += verify_package(store, dossier).problems
+    if problems:
+        raise dossier_rejected(f"La verificación de {dossier} ha fallado:", problems)
+    typer.echo(f"{dossier}: reproducible con sus entradas congeladas y paquete íntegro.")
+
+
+@dossier_app.command("package")
+@handled
+def dossier_package(ctx: typer.Context, dossier: DossierIdArgument) -> None:
+    """Genera el paquete por medida (en BÁSICA, bajo demanda). Nunca sobrescribe."""
+    store = open_workspace(ctx)
+    snapshot = load_dossier(store, dossier)
+    try:
+        save_package(store, dossier, snapshot)
+    except AlreadyExists:
+        raise fail(
+            f"{dossier} ya tiene paquete; no se sobrescribe (usa `dossier verify`).", 1
+        ) from None
+    except PackageRejected as exc:
+        raise dossier_rejected("No se guarda el paquete:", exc.errors) from None
+    typer.echo(f"Paquete de {dossier} guardado. Verifícalo con `assessment dossier verify`.")
+
+
+@dossier_app.command("render")
+@handled
+def dossier_render(ctx: typer.Context, dossier: DossierIdArgument) -> None:
+    """Recupera dossier.md y, en MEDIA/ALTA, el paquete si faltan. Nunca sobrescribe."""
+    store = open_workspace(ctx)
+    snapshot = load_dossier(store, dossier)
+    base = f"{ASSESSMENTS_PREFIX}/{dossier}"
+    recovered: list[str] = []
+    if not store.exists(f"{base}/dossier.md"):
+        save_markdown(store, dossier, render_snapshot_md(snapshot))
+        recovered.append("dossier.md")
+    if snapshot.category is not Category.BASICA and not store.exists(f"{base}/package/index.json"):
+        if store.list(f"{base}/package"):
+            raise dossier_rejected(
+                "El paquete está incompleto y no se sobrescribe:",
+                [f"restaura {base}/package desde la copia y ejecuta `dossier verify {dossier}`"],
+            )
+        try:
+            save_package(store, dossier, snapshot)
+        except PackageRejected as exc:
+            raise dossier_rejected("No se recupera el paquete:", exc.errors) from None
+        recovered.append("package")
+    typer.echo(
+        f"Recuperado: {', '.join(recovered)}." if recovered else "No falta nada; no se escribe."
+    )

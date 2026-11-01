@@ -6,6 +6,8 @@ from pathlib import Path
 from pydantic import BaseModel
 
 from ens_evidence.applicability import Declaration
+from ens_evidence.assessment.dossier.model import DossierSnapshot
+from ens_evidence.assessment.dossier.transitions import TransitionRecord
 from ens_evidence.backup.records import BackupRun, ImmutabilityCheck, IntegrityCheck, RestoreRecord
 from ens_evidence.backup.restore_test import RestoreTest, RestoreTestDeclaration
 from ens_evidence.catalog import MeasureCard
@@ -60,6 +62,8 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "compliance-matrix": MatrixFile,
     "controls-measures": MeasuresFile,
     "dossier": Dossier,
+    "dossier-snapshot": DossierSnapshot,
+    "dossier-transition": TransitionRecord,
     "evidence-manifest": EvidenceManifest,
     "incident-history": IncidentHistory,
     "incident-record": IncidentRecord,
