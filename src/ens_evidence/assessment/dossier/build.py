@@ -141,16 +141,16 @@ def _require_reproducible(inputs: SnapshotInputs) -> None:
 # --- textos exportables ------------------------------------------------------------------------
 
 
-def _walk(value: object, path: str = "") -> Iterator[tuple[str, str]]:
+def walk_texts(value: object, path: str = "") -> Iterator[tuple[str, str]]:
     """(ruta, texto) de cada cadena; las rutas de lista llevan índice."""
     if isinstance(value, str):
         yield path, value
     elif isinstance(value, dict):
         for key, child in value.items():
-            yield from _walk(child, f"{path}.{key}" if path else str(key))
+            yield from walk_texts(child, f"{path}.{key}" if path else str(key))
     elif isinstance(value, list):
         for index, child in enumerate(value):
-            yield from _walk(child, f"{path}[{index}]")
+            yield from walk_texts(child, f"{path}[{index}]")
 
 
 def _is_generated(path: str, text: str) -> bool:
@@ -159,11 +159,11 @@ def _is_generated(path: str, text: str) -> bool:
     return bool(_SHA256.fullmatch(text)) or field == "key" or field.endswith("_key")
 
 
-def _text_leaks(where: str, value: object) -> list[str]:
+def text_leaks(where: str, value: object) -> list[str]:
     """Credenciales y datos personales en el texto libre; solo errores, no avisos."""
     return [
         f"{where}{path}: {problem}"
-        for path, text in _walk(value)
+        for path, text in walk_texts(value)
         if not _is_generated(path, text)
         for problem in text_problems(text)[0]
     ]
@@ -174,7 +174,7 @@ def _leaks(store: WorkspaceStore, snapshot: DossierSnapshot) -> list[str]:
     found = [f"instantánea.{path}: parece un secreto" for path in find_secrets(document)]
     for section in document["sections"]:
         where = f"sección {section['number']} ({section['title']}): "
-        found += _text_leaks(where, section["content"])
+        found += text_leaks(where, section["content"])
     for key in sorted({s["key"] for sec in document["sections"] for s in sec["sources"]}):
         if key in HAND_EDITED:
             found += _file_leaks(store, key)
@@ -197,7 +197,7 @@ def _file_leaks(store: WorkspaceStore, key: str) -> list[str]:
     found = [f"{key}.{path}: parece un secreto" for path in find_secrets(raw)]
     return found + [
         f"{key}.{path}: contiene una credencial"
-        for path, value in _walk(raw)
+        for path, value in walk_texts(raw)
         if has_credential(value)
     ]
 
