@@ -1,3 +1,4 @@
+import hashlib
 from datetime import UTC, datetime
 
 from ens_evidence.assessment.render import NO_CONFORMITY
@@ -77,3 +78,10 @@ def monthly(period: str = "2026-10", **overrides) -> MonthlyReport:
 
 def put_daily(store, report: DailyReport, at: datetime, html: bytes = b"<html></html>"):
     return save_pair(store, "daily", report.period, render_model(report), html, at=at)
+
+
+def source_sha256(store, key: str) -> str:
+    """La huella real de una fuente: sus bytes, o el listado de claves si es un prefijo (`x/`)."""
+    if key.endswith("/"):
+        return hashlib.sha256("\n".join(sorted(store.list(key.rstrip("/")))).encode()).hexdigest()
+    return hashlib.sha256(store.read_bytes(key)).hexdigest()

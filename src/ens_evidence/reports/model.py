@@ -12,6 +12,7 @@ from typing import Literal
 from pydantic import AwareDatetime, Field, model_validator
 
 from ens_evidence.assessment.render import NO_CONFORMITY
+from ens_evidence.incidents.model import INCIDENT_ID_PATTERN, RecordKind
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness
 from ens_evidence.orgdocs.approval import DocumentState
@@ -152,6 +153,34 @@ class InterruptedCycle(Strict):
     started_at: AwareDatetime
 
 
+class IncidentRecordRef(Strict):
+    seq: int = Field(ge=1)
+    kind: RecordKind
+    recorded_at: AwareDatetime
+
+
+class IncidentEntry(Strict):
+    """Un incidente del registro. Con `problems` está roto: se muestra su error y ningún valor
+    (no se puede fiar de lo que declara); sin ellos, todos los valores existen."""
+
+    id: str = Field(pattern=INCIDENT_ID_PATTERN)
+    title: str | None = None
+    severity: str | None = Field(default=None, description="Declarada; None si no se declaró.")
+    detected_at: AwareDatetime | None = None
+    simulated: bool | None = None
+    last_record: IncidentRecordRef | None = None
+    problems: list[str] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _broken_or_complete(self) -> "IncidentEntry":
+        values = (self.title, self.detected_at, self.simulated, self.last_record)
+        if self.problems and (self.severity is not None or any(v is not None for v in values)):
+            raise ValueError("un incidente roto no lleva valores")
+        if not self.problems and any(v is None for v in values):
+            raise ValueError("un incidente verificado lleva todos sus valores")
+        return self
+
+
 class Entry(Strict):
     subject: str = Field(min_length=1)
     detail: str
@@ -204,7 +233,7 @@ class DailyReport(_Report):
     documents: Section[list[DocumentEntry]]
     expiring: Section[list[ExpiryItem]]
     critical_alerts: Section[list[str]]
-    open_incidents: Section[list[str]]
+    open_incidents: Section[list[IncidentEntry]]
     changes: Section[Changes]
     interrupted_cycles: Section[list[InterruptedCycle]]
 

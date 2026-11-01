@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 
 from ens_evidence.assessment.render import NO_CONFORMITY
+from ens_evidence.incidents.model import RecordKind
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness
 from ens_evidence.orgdocs.approval import DocumentState
 from ens_evidence.reports.model import (
@@ -21,6 +22,8 @@ from ens_evidence.reports.model import (
     DocumentEntry,
     Entry,
     ExpiryItem,
+    IncidentEntry,
+    IncidentRecordRef,
     InterruptedCycle,
     ReadinessValue,
     Sourced,
@@ -145,7 +148,20 @@ def hostile_daily():
             sources=refs,
         ),
         critical_alerts=Sourced[list[str]](value=h, sources=refs),
-        open_incidents=Unavailable(reason=h[3]),
+        open_incidents=Sourced[list[IncidentEntry]](
+            value=[
+                IncidentEntry(
+                    id="INC-2026-001",
+                    title=h[0],
+                    severity=h[1],
+                    detected_at=NOON,
+                    simulated=False,
+                    last_record=IncidentRecordRef(seq=1, kind=RecordKind.OPENED, recorded_at=NOON),
+                ),
+                IncidentEntry(id="SIM-2026-001", problems=[h[2], h[4]]),
+            ],
+            sources=refs,
+        ),
         changes=Sourced[Changes](
             value=Changes(
                 base_period="2026-10-31",
@@ -348,3 +364,26 @@ def test_hostile_document_name_and_label_stay_inert():
     )
     m = assert_inert(render_monthly_html(monthly(inventory=aggregate)))
     assert h[1] in "".join(m.text)
+
+
+def test_open_incidents_show_values_sources_and_broken_ones_without_values():
+    document = render_daily_html(hostile_daily())
+
+    p = assert_inert(document)
+    rows = {r[0]: r for r in p.rows if r and r[0] in {"INC-2026-001", "SIM-2026-001"}}
+    assert HOSTILE[0] in rows["INC-2026-001"][1]
+    assert "severidad " + HOSTILE[1] in rows["INC-2026-001"][1]
+    assert "último registro 1 (opened)" in rows["INC-2026-001"][1]
+    assert rows["SIM-2026-001"][1].startswith("NO VERIFICADO: " + HOSTILE[2])
+    assert "título" not in rows["SIM-2026-001"][1] and "detectado" not in rows["SIM-2026-001"][1]
+    assert "href" not in document
+
+
+def test_open_incidents_empty_list_still_cites_its_source():
+    empty = Sourced[list[IncidentEntry]](value=[], sources=[src("incidents/")])
+
+    document = render_daily_html(daily(open_incidents=empty))
+
+    row = next(r for r in probe(document).rows if r[0] == "incidentes abiertos")
+    assert "(sin elementos)" in row[1]
+    assert "incidents/" in row[2] and f"sha256:{SHA}" in row[2]

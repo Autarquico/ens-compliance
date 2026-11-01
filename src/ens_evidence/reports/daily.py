@@ -8,6 +8,7 @@ del último intento utilizable al corte (`StoredCheckResults`), no de los resúm
 
 import hashlib
 from collections.abc import Iterable
+from dataclasses import dataclass
 from datetime import UTC, date, datetime, tzinfo
 
 from ens_evidence import __version__
@@ -19,6 +20,9 @@ from ens_evidence.checks.inputs import load_endpoint_inputs
 from ens_evidence.endpoint.evidence import latest_by_host
 from ens_evidence.endpoint.importer import ENDPOINT_ASSET_TYPES
 from ens_evidence.evidence.layout import manifest_key
+from ens_evidence.incidents.layout import INCIDENTS_PREFIX, StoredRecord
+from ens_evidence.incidents.model import IncidentState, IncidentStatus
+from ens_evidence.incidents.verify import check_all_incidents
 from ens_evidence.matrix.messages import blocker_text
 from ens_evidence.matrix.store import MATRIX_KEY
 from ens_evidence.matrix.technical import (
@@ -29,6 +33,7 @@ from ens_evidence.matrix.technical import (
     latest_run,
     load_checks,
 )
+from ens_evidence.models.contracts import EvidenceManifest
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.orgdocs.approval import APPROVALS_PREFIX, STAMP, DocumentState, all_statuses
 from ens_evidence.orgdocs.keys import document_key
@@ -42,6 +47,8 @@ from ens_evidence.reports.model import (
     DailyReport,
     DocumentEntry,
     ExpiryItem,
+    IncidentEntry,
+    IncidentRecordRef,
     InterruptedCycle,
     ReadinessValue,
     Section,
@@ -57,7 +64,7 @@ from ens_evidence.scope.inventory import ASSETS_KEY, load_assets
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 
 CRITICAL_ALERTS_PENDING = "alertas críticas: no implementadas todavía (v0.3)"
-INCIDENTS_PENDING = "registro de incidentes pendiente de integrar"
+INCIDENTS_UNREADABLE = "registro de incidentes ilegible"
 PROBLEM_TEXT = {
     "check_history_unreadable": "historial de checks ilegible",
     "check_run_missing": "evidencia posterior al último check",
@@ -114,7 +121,7 @@ def build_daily(
         documents=_documents(store, cutoff),
         expiring=Unavailable(reason="pendiente"),
         critical_alerts=Unavailable(reason=CRITICAL_ALERTS_PENDING),
-        open_incidents=Unavailable(reason=INCIDENTS_PENDING),
+        open_incidents=_open_incidents(store, cutoff),
         changes=Unavailable(reason="pendiente"),
         interrupted_cycles=_interrupted_cycles(store, cycle, cutoff),
     )
@@ -311,6 +318,95 @@ def _notices(status: AssessmentStatus, *extra: str | None) -> list[str]:
     if status.pending_human_review:
         notices += [HUMAN_REVIEW_PENDING, NO_PRE_AUDIT]
     return [*notices, NO_CONFORMITY]
+
+
+# --- incidentes ---------------------------------------------------------------------------------
+
+
+@dataclass(frozen=True)
+class IncidentView:
+    """Un incidente del registro al corte: sus registros ya anteriores y sus problemas de
+    verificación (que lo dejan fuera de cualquier recuento)."""
+
+    incident_id: str
+    problems: tuple[str, ...]
+    records: tuple[StoredRecord, ...]
+    histories: tuple[EvidenceManifest, ...]
+
+    @property
+    def state(self) -> IncidentState:
+        return self.records[-1].record.state
+
+    @property
+    def broken(self) -> bool:
+        return bool(self.problems) or not self.records
+
+    def record_sources(self) -> list[SourceRef]:
+        return [
+            SourceRef(kind="incident", key=r.key, sha256=r.sha256, at=r.record.recorded_at)
+            for r in self.records
+        ]
+
+
+def read_incidents(
+    store: WorkspaceStore, *, until: datetime, inclusive: bool
+) -> tuple[list[IncidentView], SourceRef] | Unavailable:
+    """Los incidentes con registros anteriores a `until` (o iguales si `inclusive`) y la fuente
+    de lo consultado: el prefijo `incidents/`, con la huella de su listado de claves."""
+    try:
+        listing = "\n".join(sorted(store.list(INCIDENTS_PREFIX)))
+        checks = check_all_incidents(store)
+    except WorkspaceError:
+        return Unavailable(reason=f"{INCIDENTS_UNREADABLE} ({INCIDENTS_PREFIX}/)")
+    consulted = SourceRef(
+        kind="incident",
+        key=f"{INCIDENTS_PREFIX}/",
+        sha256=hashlib.sha256(listing.encode()).hexdigest(),
+        at=until,
+    )
+    views = []
+    for incident_id, check in checks.items():
+        records = tuple(
+            r
+            for r in check.scan.records
+            if (r.record.recorded_at <= until if inclusive else r.record.recorded_at < until)
+        )
+        if records or check.problems:
+            views.append(IncidentView(incident_id, check.problems, records, check.scan.histories))
+    return views, consulted
+
+
+def broken_incident(view: IncidentView) -> IncidentEntry:
+    problems = view.problems or ("sin registros legibles",)
+    return IncidentEntry(id=view.incident_id, problems=sorted(problems))
+
+
+def _open_incidents(store: WorkspaceStore, cutoff: datetime) -> Section[list[IncidentEntry]]:
+    reading = read_incidents(store, until=cutoff, inclusive=True)
+    if isinstance(reading, Unavailable):
+        return reading
+    views, consulted = reading
+    entries: list[IncidentEntry] = []
+    sources = [consulted]
+    for view in views:
+        if view.broken:
+            entries.append(broken_incident(view))
+        elif view.state.status is IncidentStatus.OPEN:
+            entries.append(_open_entry(view))
+            sources += view.record_sources()
+    return Sourced[list[IncidentEntry]](value=entries, sources=ordered_sources(sources))
+
+
+def _open_entry(view: IncidentView) -> IncidentEntry:
+    state, last = view.state, view.records[-1].record
+    return IncidentEntry(
+        id=view.incident_id,
+        title=state.title,
+        severity=state.severity,
+        detected_at=state.detected_at,
+        simulated=state.simulated,
+        last_record=IncidentRecordRef(seq=last.seq, kind=last.kind, recorded_at=last.recorded_at),
+    )
 
 
 # --- caducidades y ciclos -----------------------------------------------------------------------

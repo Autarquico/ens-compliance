@@ -1,4 +1,3 @@
-import hashlib
 import json
 from datetime import UTC, datetime, timedelta
 
@@ -21,7 +20,7 @@ from ens_evidence.reports.monthly import build_monthly, month_window, previous_m
 from ens_evidence.reports.store import save_pair
 from ens_evidence.workspace import LocalStore
 
-from .helpers import SHA, daily, put_daily, ref
+from .helpers import SHA, daily, put_daily, ref, source_sha256
 from .test_daily import walk
 from .world import MADRID, check_result, source_of, static_run
 
@@ -407,7 +406,7 @@ def test_evidencia_de_la_ventana(store):
 # --- secciones no disponibles, determinismo y trazabilidad --------------------------------------
 
 
-@pytest.mark.parametrize("name", ["incidents", "vulnerabilities", "access_reviews"])
+@pytest.mark.parametrize("name", ["vulnerabilities", "access_reviews"])
 def test_secciones_sin_registro_son_unavailable_con_motivo(store, name):
     fill_month(store)
     write_assets(store, "a1")
@@ -450,17 +449,18 @@ def test_cada_dato_tiene_fuentes_reales_o_es_unavailable(store):
         sourced_count += 1
         assert node["sources"], path
         for source in node["sources"]:
-            data = store.read_bytes(source["key"])
-            assert hashlib.sha256(data).hexdigest() == source["sha256"], (path, source["key"])
+            real = source_sha256(store, source["key"])
+            assert real == source["sha256"], (path, source["key"])
     assert sourced_count >= 6
 
 
 def test_workspace_vacio_no_presenta_nada_como_cero(store):
     report = monthly_at(store)
 
-    for name in AGGREGATES:
+    for name in set(AGGREGATES) - {"incidents"}:
         section = getattr(report, name)
         assert isinstance(section, Unavailable), name
+    assert [s.key for s in report.incidents.sources] == ["incidents/"]
 
 
 def test_el_informe_no_declara_cumplimiento(store):

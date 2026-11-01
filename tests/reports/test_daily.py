@@ -20,13 +20,12 @@ from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness, Role
 from ens_evidence.orgdocs import DocumentState, approve_document, build_documents
-from ens_evidence.reports.daily import INCIDENTS_PENDING
 from ens_evidence.reports.model import CycleInfo, Sourced, Unavailable, render_json
 from ens_evidence.reports.store import write_stage
 from ens_evidence.scope import approve_scope
 from ens_evidence.workspace import LocalStore
 
-from .helpers import put_daily
+from .helpers import put_daily, source_sha256
 from .world import (
     ASSETS_LAPTOP,
     CUTOFF,
@@ -228,11 +227,10 @@ def test_avisos_de_revision_humana_y_no_conformidad(ready):
 # --- alertas e incidentes ----------------------------------------------------------------------
 
 
-def test_alertas_criticas_e_incidentes_son_unavailable(store):
+def test_alertas_criticas_son_unavailable(store):
     report = daily_at(store, source_of())
 
     assert isinstance(report.critical_alerts, Unavailable)
-    assert report.open_incidents == Unavailable(reason=INCIDENTS_PENDING)
 
 
 # --- inventario --------------------------------------------------------------------------------
@@ -402,8 +400,8 @@ def test_cada_dato_tiene_fuentes_reales_o_es_unavailable(ready):
         sourced += 1
         assert node["sources"], path
         for source in node["sources"]:
-            data = ready.store.read_bytes(source["key"])
-            assert hashlib.sha256(data).hexdigest() == source["sha256"], (path, source["key"])
+            real = source_sha256(ready.store, source["key"])
+            assert real == source["sha256"], (path, source["key"])
     assert sourced >= 4
 
 

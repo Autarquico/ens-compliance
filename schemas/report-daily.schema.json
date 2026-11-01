@@ -326,6 +326,115 @@
       "title": "ExpiryItem",
       "type": "object"
     },
+    "IncidentEntry": {
+      "additionalProperties": false,
+      "description": "Un incidente del registro. Con `problems` est\u00e1 roto: se muestra su error y ning\u00fan valor\n(no se puede fiar de lo que declara); sin ellos, todos los valores existen.",
+      "properties": {
+        "detected_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detected At"
+        },
+        "id": {
+          "pattern": "^(INC|SIM)-\\d{4}-\\d{3}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IncidentRecordRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "problems": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Problems",
+          "type": "array"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Declarada; None si no se declar\u00f3.",
+          "title": "Severity"
+        },
+        "simulated": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Simulated"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "IncidentEntry",
+      "type": "object"
+    },
+    "IncidentRecordRef": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/RecordKind"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "kind",
+        "recorded_at"
+      ],
+      "title": "IncidentRecordRef",
+      "type": "object"
+    },
     "InterruptedCycle": {
       "additionalProperties": false,
       "properties": {
@@ -380,6 +489,16 @@
       ],
       "title": "ReadinessValue",
       "type": "object"
+    },
+    "RecordKind": {
+      "description": "Reporte inicial, intermedio y final (op.exp.9.1).",
+      "enum": [
+        "opened",
+        "updated",
+        "closed"
+      ],
+      "title": "RecordKind",
+      "type": "string"
     },
     "Section_AssetsSummary_": {
       "anyOf": [
@@ -445,6 +564,16 @@
       "anyOf": [
         {
           "$ref": "#/$defs/Sourced_list_ExpiryItem__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_IncidentEntry__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_IncidentEntry__"
         },
         {
           "$ref": "#/$defs/Unavailable"
@@ -682,6 +811,32 @@
       "title": "Sourced[list[ExpiryItem]]",
       "type": "object"
     },
+    "Sourced_list_IncidentEntry__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/IncidentEntry"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[IncidentEntry]]",
+      "type": "object"
+    },
     "Sourced_list_InterruptedCycle__": {
       "additionalProperties": false,
       "properties": {
@@ -812,7 +967,7 @@
       "type": "array"
     },
     "open_incidents": {
-      "$ref": "#/$defs/Section_list_str__"
+      "$ref": "#/$defs/Section_list_IncidentEntry__"
     },
     "period": {
       "pattern": "^\\d{4}-\\d{2}-\\d{2}$",

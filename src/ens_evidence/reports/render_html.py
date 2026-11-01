@@ -17,6 +17,7 @@ from ens_evidence.reports.model import (
     DailyReport,
     DocumentEntry,
     ExpiryItem,
+    IncidentEntry,
     InterruptedCycle,
     MonthlyReport,
     ReadinessValue,
@@ -116,6 +117,22 @@ def _interrupted_rows(items: list[InterruptedCycle]) -> list[Row]:
     return [
         (i.run_id, f"última etapa {i.last_stage}; inicio {_instant(i.started_at)}") for i in items
     ]
+
+
+def _incident_rows(items: list[IncidentEntry]) -> list[Row]:
+    def detail(item: IncidentEntry) -> str:
+        if item.problems:
+            return "NO VERIFICADO: " + "; ".join(item.problems)
+        last = item.last_record
+        assert item.detected_at and last  # un incidente verificado lleva todos sus valores
+        return (
+            f"{'simulacro' if item.simulated else 'incidente'} · {item.title}"
+            f" · severidad {item.severity or 'no declarada'}"
+            f" · detectado {_instant(item.detected_at)}"
+            f" · último registro {last.seq} ({last.kind.value}) {_instant(last.recorded_at)}"
+        )
+
+    return [(item.id, detail(item)) for item in items]
 
 
 def _aggregate_rows(value: Aggregate) -> list[Row]:
@@ -241,7 +258,7 @@ def render_daily_html(report: DailyReport) -> str:
             "Incidentes abiertos",
             "incidentes abiertos",
             report.open_incidents,
-            _list_rows("incidente"),
+            _incident_rows,
         ),
         _section("Cambios", "cambios", report.changes, _changes_rows),
         _section(

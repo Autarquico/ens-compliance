@@ -12,7 +12,7 @@ import threading
 from collections.abc import Callable, Collection, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import datetime, timedelta
+from datetime import date, datetime, timedelta
 from typing import Literal, Protocol
 
 from ens_evidence.reports.model import is_day, is_month
@@ -91,7 +91,7 @@ class Scheduler:
         self._attempts: dict[Key, int] = {}
         self._retry_at: dict[Key, datetime] = {}
         self._retrying: dict[Key, Job] = {}
-        self._exhausted: set[Key] = set()
+        self._exhausted: dict[Key, date] = {}
         self._ticking = False
 
     @property
@@ -124,6 +124,7 @@ class Scheduler:
         if cfg is None:
             return []
         now = self._clock.now()
+        self._reset_exhausted(now, cfg)
         if not any(self._ready(job, now) for job in self._pending(now, cfg)):
             return []
         try:
@@ -149,6 +150,14 @@ class Scheduler:
             if key not in self._finished:
                 found.setdefault(key, job)
         return sorted(found.values(), key=lambda job: (job.due_at, job.kind != "daily"))
+
+    def _reset_exhausted(self, now: datetime, cfg: ScheduleConfig) -> None:
+        """Un trabajo agotado recupera sus intentos al día siguiente (local) sin reiniciar el
+        proceso: así el mensual pendiente se reintenta cada día del mes hasta que se publica.
+        El diario de un día pasado no vuelve: su periodo ya no está vencido."""
+        today = local_date(now, cfg.zone)
+        for key in [key for key, day in self._exhausted.items() if day < today]:
+            self._forget(key)
 
     def _ready(self, job: Job, now: datetime) -> bool:
         key = (job.kind, job.period)
@@ -181,7 +190,7 @@ class Scheduler:
         self._attempts[key] = attempt
         fields = {"job": job.kind, "period": job.period, "attempt": attempt, "code": result.code}
         if attempt >= cfg.cycle.attempts:
-            self._exhausted.add(key)
+            self._exhausted[key] = local_date(self._clock.now(), cfg.zone)
             self._retrying.pop(key, None)
             self._event("job_exhausted", **fields)
             return
@@ -191,7 +200,7 @@ class Scheduler:
         self._event("job_failed", **fields, retry_at=retry_at.isoformat())
 
     def _forget(self, key: Key) -> None:
-        for table in (self._attempts, self._retry_at, self._retrying):
+        for table in (self._attempts, self._retry_at, self._retrying, self._exhausted):
             table.pop(key, None)
 
     def _reload(self) -> ScheduleConfig | None:

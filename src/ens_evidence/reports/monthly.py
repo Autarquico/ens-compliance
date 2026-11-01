@@ -22,6 +22,7 @@ from ens_evidence.categorization.approval import APPROVAL_KEY as CATEGORIZATION_
 from ens_evidence.checks.catalog import KNOWN_CHECKS
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.layout import manifest_key
+from ens_evidence.incidents.model import IncidentStatus
 from ens_evidence.matrix.messages import blocker_text
 from ens_evidence.matrix.store import MATRIX_KEY
 from ens_evidence.matrix.technical import CheckResultsSource, latest_run, load_checks, subject_of
@@ -29,8 +30,9 @@ from ens_evidence.models.enums import CheckStatus
 from ens_evidence.orgdocs.approval import DocumentState, all_statuses
 from ens_evidence.orgdocs.keys import document_key
 from ens_evidence.reports.daily import (
-    INCIDENTS_PENDING,
+    IncidentView,
     ordered_sources,
+    read_incidents,
     source_ref,
 )
 from ens_evidence.reports.expiries import scan_expiries
@@ -164,7 +166,7 @@ def build_monthly(
         changes=_changes(month, inventory_ids),
         deviations=_deviations(month),
         evidence=_evidence(month),
-        incidents=Unavailable(reason=INCIDENTS_PENDING),
+        incidents=_incidents(month),
         vulnerabilities=Unavailable(reason=VULNERABILITIES_PENDING),
         backups=_backups(month),
         restore_tests=_restore_tests(month),
@@ -332,6 +334,84 @@ def _evidence(month: _Month) -> Section[Aggregate]:
         "sin evidencia registrada en la ventana" + unreadable,
         counts={"total": len(found), "manifiestos ilegibles": len(listing.errors), **counts},
     )
+
+
+# --- incidentes ---------------------------------------------------------------------------------
+
+
+def _incidents(month: _Month) -> Section[Aggregate]:
+    """Estado de los incidentes al cierre de la ventana. Sólo título, severidad y fechas: el
+    resto de textos del incidente no se reproduce. Un incidente con problemas de verificación
+    no cuenta: se lista aparte con su error."""
+    reading = read_incidents(month.store, until=month.window.end, inclusive=False)
+    if isinstance(reading, Unavailable):
+        return reading
+    views, consulted = reading
+    sources: list[SourceRef | None] = [consulted]
+    items: list[Entry] = []
+    counts = Counter({"problemas de verificación": 0, "historiales generados": 0})
+    for view in views:
+        if view.broken:
+            counts["problemas de verificación"] += 1
+            items += _problem_entries(view)
+            continue
+        group = _group(month, view)
+        if group is None:
+            continue
+        counts[group] += 1
+        sources += view.record_sources()
+        items.append(_incident_entry(view, group))
+        if view.state.status is IncidentStatus.CLOSED:
+            counts["historiales generados"] += len(view.histories)
+            for history in view.histories:
+                key = manifest_key(history.id)
+                sources.append(month.ref("evidence", key, history.collected_at))
+                items.append(Entry(subject=view.incident_id, detail=f"historial {history.id}"))
+    return month.aggregate(
+        sources,
+        "registro de incidentes sin fuente",
+        counts={**{g: 0 for g in _INCIDENT_GROUPS}, **counts},
+        items=items,
+    )
+
+
+_INCIDENT_GROUPS = (
+    "abiertos",
+    "cerrados en la ventana",
+    "simulacros abiertos",
+    "simulacros cerrados en la ventana",
+)
+
+
+def _group(month: _Month, view: IncidentView) -> str | None:
+    state = view.state
+    if state.status is IncidentStatus.OPEN:
+        group = "abiertos"
+    elif state.closure is not None and month.in_window(state.closure.closed_at):
+        group = "cerrados en la ventana"
+    else:
+        return None
+    return f"simulacros {group}" if state.simulated else group
+
+
+def _incident_entry(view: IncidentView, group: str) -> Entry:
+    state = view.state
+    severity = state.severity or "no declarada"
+    return Entry(
+        subject=view.incident_id,
+        detail=(
+            f"{group} · severidad {severity} · detectado {state.detected_at.isoformat()}"
+            + (f" · cerrado {state.closure.closed_at.isoformat()}" if state.closure else "")
+            + f" · {state.title}"
+        ),
+    )
+
+
+def _problem_entries(view: IncidentView) -> list[Entry]:
+    problems = sorted(view.problems) or ["sin registros legibles"]
+    return [
+        Entry(subject=view.incident_id, detail=f"problema de verificación: {p}") for p in problems
+    ]
 
 
 # --- copias y pruebas de restauración -----------------------------------------------------------
