@@ -163,7 +163,6 @@ from ens_evidence.orgdocs import (
     skeleton,
 )
 from ens_evidence.reports.daily import build_daily
-from ens_evidence.reports.expiries import windows_from
 from ens_evidence.reports.model import DailyReport, Unavailable
 from ens_evidence.reports.model import render_json as render_report_json
 from ens_evidence.reports.monthly import build_monthly, previous_month
@@ -2484,7 +2483,7 @@ def write_report(
             tz=cfg.zone,
             cycle=None,
             checks=checks,
-            windows=windows_from(cfg.expiry_warnings),
+            windows=cfg.expiry_warnings.windows(),
         )
         model, html = daily_report, render_daily_html(daily_report)
     else:
@@ -2495,7 +2494,7 @@ def write_report(
             period=period,
             tz=cfg.zone,
             checks=checks,
-            expiry_windows=windows_from(cfg.expiry_warnings),
+            expiry_windows=cfg.expiry_warnings.windows(),
         )
         model, html = monthly_report, render_monthly_html(monthly_report, cfg.zone)
     daily_model = model if isinstance(model, DailyReport) else None

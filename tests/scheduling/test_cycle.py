@@ -1,7 +1,7 @@
 """`run_cycle`: etapas persistidas, reanudación, reloj real y copia que no rompe el ciclo."""
 
 import hashlib
-from datetime import UTC, datetime, timedelta
+from datetime import timedelta
 
 import pytest
 from backup.conftest import PASSWORD
@@ -20,35 +20,17 @@ from ens_evidence.reports.store import (
 )
 from ens_evidence.scheduling import cycle as cycle_module
 from ens_evidence.scheduling.config import ScheduleConfig
-from ens_evidence.scheduling.cycle import run_cycle
 from ens_evidence.workspace import LocalStore, WorkspaceError
-
-DEFAULT_CONFIG = ScheduleConfig()
-DUE_AT = datetime(2026, 11, 1, 5, 0, tzinfo=UTC)  # 06:00 en Madrid
-PERIOD = "2026-11-01"
-STARTS = DUE_AT + timedelta(minutes=2)
-STAGES = ["started", "collected", "checked", "reported", "backed_up"]
-
-
-class Crash(BaseException):
-    """Una caída del proceso: no la captura ningún `except Exception`."""
-
-
-class TickClock:
-    """Cada lectura avanza un segundo (las claves de los informes llevan microsegundos)."""
-
-    def __init__(self, start: datetime = STARTS) -> None:
-        self.current = start
-        self.issued: list[datetime] = []
-
-    def now(self) -> datetime:
-        instant = self.current
-        self.issued.append(instant)
-        self.current += timedelta(seconds=1)
-        return instant
-
-    def sleep(self, seconds: float) -> None:
-        self.current += timedelta(seconds=seconds)
+from scheduling.cycle_helpers import (  # noqa: F401 (test_status y test_scheduler los leen de aquí)
+    DEFAULT_CONFIG,
+    DUE_AT,
+    PERIOD,
+    STAGES,
+    STARTS,
+    Crash,
+    TickClock,
+    cycle,
+)
 
 
 class Hooks:
@@ -76,33 +58,6 @@ def hooks(monkeypatch):
 
         monkeypatch.setattr(cycle_module, name, wrapper)
     return hooks
-
-
-def cycle(
-    store,
-    settings,
-    env,
-    context,
-    plugins,
-    clock,
-    *,
-    cfg=DEFAULT_CONFIG,
-    job="daily",
-    period=PERIOD,
-):
-    return run_cycle(
-        context,
-        store,
-        settings,
-        env,
-        job,
-        period,
-        DUE_AT,
-        clock=clock,
-        cfg=cfg,
-        trigger="scheduled",
-        plugins=plugins,
-    )
 
 
 def stage_names(store, run_id):
@@ -493,7 +448,7 @@ def test_alcance_sin_aprobar_deja_los_checks_omitidos_y_el_ciclo_sigue(
 
     outcome = cycle(empty, settings, env, context, plugins, TickClock())
 
-    assert (outcome.completed, outcome.checks) == (True, "skipped")
+    assert (outcome.completed, outcome.checks) == (True, "skipped_scope")
     markers = {m.stage: m for m in stages_of(empty, outcome.run_id).stages}
     assert markers["checked"].checks == "skipped_scope"
     assert stage_names(empty, outcome.run_id) == STAGES

@@ -50,7 +50,6 @@ from ens_evidence.risk.models import (
     RiskApproval,
     TreatmentPlanFile,
 )
-from ens_evidence.scheduling.config import ExpiryWarnings
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 from ens_evidence.yaml_unique import safe_load_unique
 
@@ -65,22 +64,6 @@ WINDOW_DAYS = {
     "technical_evidence": 7,
     "treatment_action": 0,
 }
-
-
-def windows_from(warnings: ExpiryWarnings) -> dict[str, int]:
-    """Las ventanas de `schedule.yaml` por tipo de caducidad. Las acciones del plan siguen
-    avisando al vencer."""
-    return {
-        "measure_review": warnings.measure_reviews,
-        "applicability_review": warnings.measure_reviews,
-        "categorization_approval": warnings.approvals,
-        "risk_approval": warnings.approvals,
-        "restore_test": warnings.restore_tests,
-        "offsite_declaration": warnings.offsite_backup,
-        "manual_evidence": warnings.manual_evidence,
-        "technical_evidence": warnings.technical_evidence,
-        "treatment_action": WINDOW_DAYS["treatment_action"],
-    }
 
 
 OPEN_ACTIONS = frozenset({ActionStatus.PENDING, ActionStatus.IN_PROGRESS})

@@ -426,6 +426,37 @@ def test_la_copia_es_la_del_ciclo_anterior_con_su_codigo_tipado(store):
     )
 
 
+def _backed_up_yesterday(store, status):
+    key = "evidence/backups/runs/ayer.json"
+    finished = CUTOFF - timedelta(days=1)
+    record = {"run_id": "ayer", "status": status, "started_at": finished.isoformat(),
+              "finished_at": finished.isoformat(), "repository": "r"}  # fmt: skip
+    if status == "completed":
+        record |= {"snapshot_id": "abcd1234", "inventory": {}}
+    else:
+        record |= {"error": "boom"}
+    store.write_bytes(key, json.dumps(record).encode())
+    write_stage(store, "ayer", "started", at=finished, period="2026-10-31")
+    write_stage(store, "ayer", "backed_up", at=finished, period="2026-10-31", reference=key)
+
+
+def test_la_copia_hecha_se_contrasta_con_su_registro(store):
+    _backed_up_yesterday(store, "completed")
+
+    report = daily_at(store, source_of(), cycle=cycle_info("actual"))
+
+    assert report.backup.value.outcome == "backed_up"
+
+
+def test_marcador_de_copia_hecha_con_registro_fallido_es_unavailable(store):
+    _backed_up_yesterday(store, "failed")
+
+    report = daily_at(store, source_of(), cycle=cycle_info("actual"))
+
+    assert isinstance(report.backup, Unavailable)
+    assert "no coincide con su registro" in report.backup.reason
+
+
 def test_marcador_de_ciclo_ilegible_es_unavailable(store):
     write_stage(store, "roto", "started", at=CUTOFF, period=PERIOD)
     store.write_bytes("evidence/reports/cycles/roto.collected.json", b"{")

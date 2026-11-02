@@ -8,7 +8,7 @@ from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, tzinfo
 from html import escape
 
-from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_PRE_AUDIT
+from ens_evidence.assessment.render import NO_PRE_AUDIT
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.reports.labels import (
     ASSET_TYPE_LABELS,
@@ -20,7 +20,6 @@ from ens_evidence.reports.labels import (
     EXPIRY_KIND_LABELS,
     PHASE_LABELS,
     READINESS_LABELS,
-    REPORT_NOT_A_REVIEW,
     STAGE_LABELS,
     plain,
 )
@@ -135,14 +134,19 @@ def _expiry_rows(items: list[ExpiryItem]) -> list[Row]:
 
 
 def _changes_rows(value: Changes) -> list[Row]:
-    return [("base", value.base_period)] + [
-        (plain(CHANGE_LABELS, i.change), i.subject) for i in value.items
-    ]
+    changes = [(plain(CHANGE_LABELS, i.change), i.subject) for i in value.items]
+    return [("base", value.base_period)] + (
+        changes or [("cambios", "sin cambios respecto a la base")]
+    )
 
 
 def _interrupted_rows(items: list[InterruptedCycle]) -> list[Row]:
     return [
-        (i.run_id, f"última etapa {i.last_stage}; inicio {_instant(i.started_at)}") for i in items
+        (
+            i.run_id,
+            f"última etapa {plain(STAGE_LABELS, i.last_stage)}; inicio {_instant(i.started_at)}",
+        )
+        for i in items
     ]
 
 
@@ -233,10 +237,8 @@ def _collection(status: CollectionStatus | None) -> str:
 
 
 def _notices(notices: list[str]) -> str:
-    """Solo lo que dice el modelo, con un único aviso de revisión humana."""
+    """Solo lo que dice el modelo."""
     items = [n[:1].upper() + n[1:] if n == NO_PRE_AUDIT else n for n in notices]
-    if HUMAN_REVIEW_PENDING not in notices and REPORT_NOT_A_REVIEW not in notices:
-        items.insert(0, REPORT_NOT_A_REVIEW)
     return "".join(f'<p class="warn">{esc(n)}</p>' for n in items)
 
 

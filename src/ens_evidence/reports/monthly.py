@@ -26,7 +26,6 @@ from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.incidents.model import IncidentStatus
-from ens_evidence.matrix.messages import blocker_text
 from ens_evidence.matrix.store import MATRIX_KEY
 from ens_evidence.matrix.technical import CheckResultsSource, latest_run, load_checks, subject_of
 from ens_evidence.models.enums import CheckStatus
@@ -36,6 +35,7 @@ from ens_evidence.reports.daily import (
     IncidentView,
     ordered_sources,
     read_incidents,
+    readiness_blocker_lines,
     source_ref,
 )
 from ens_evidence.reports.expiries import WINDOW_DAYS, scan_expiries
@@ -45,6 +45,7 @@ from ens_evidence.reports.labels import (
     BACKUP_RUN_LABELS,
     CHANGE_LABELS,
     DOCUMENT_STATE_LABELS,
+    EXPIRY_KIND_LABELS,
     REPORT_NOT_A_REVIEW,
     plain,
 )
@@ -170,7 +171,8 @@ def build_monthly(
         expiry_windows,
     )
     inventory, inventory_ids = _inventory(month)
-    pending, pending_review = _pending(month)
+    restore = _read_restore_tests(month)
+    pending, pending_review = _pending(month, restore)
     return MonthlyReport(
         generated_at=generated_at,
         product_version=__version__,
@@ -185,7 +187,7 @@ def build_monthly(
         incidents=_incidents(month),
         vulnerabilities=Unavailable(reason=VULNERABILITIES_PENDING),
         backups=_backups(month),
-        restore_tests=_restore_tests(month),
+        restore_tests=_restore_tests(month, restore),
         access_reviews=Unavailable(reason=ACCESS_REVIEWS_PENDING),
         pending=pending,
         corrective_actions=_corrective_actions(month),
@@ -250,33 +252,32 @@ class _PreviousMonthly:
 
 
 def _previous_monthly(month: _Month) -> _PreviousMonthly | Unavailable:
-    """El último par publicado del mes inmediatamente anterior; sin él no hay base."""
+    """El último par *de ciclo* del mes inmediatamente anterior; sin él no hay base."""
     previous = previous_month(month.period)
     published = [p for p in pairs(month.store, "monthly", previous) if p.json_key]
     if not published:
         return Unavailable(reason=f"no hay informe mensual de {previous}")
-    last = published[-1]
-    if not last.published or last.html_key is None:
-        return Unavailable(reason=f"{last.json_key}: par incompleto, falta el HTML")
-    try:
-        data = month.store.read_bytes(last.json_key)
-        html = month.store.read_bytes(last.html_key)
-        report = MonthlyReport.model_validate(load_json_strict(data))
-    except (WorkspaceError, ValueError, ValidationError):
-        return Unavailable(reason=f"{last.json_key}: ilegible o no válido")
-    if report.period != previous:
-        return Unavailable(reason=f"{last.json_key}: no coincide con su periodo")
-    problem = (
-        "no lleva ciclo que lo publicara"
-        if report.cycle is None
-        else published_problem(month.store, report.cycle.run_id, last.json_key, data, html)
-    )
-    if problem is not None:
-        return Unavailable(reason=f"{last.json_key}: {problem}")
-    ref = source_ref(month.store, "report", last.json_key, report.generated_at)
-    if ref is None:
-        return Unavailable(reason=f"{last.json_key}: ilegible o no válido")
-    return _PreviousMonthly(report, last.json_key, ref)
+    for last in reversed(published):
+        if not last.published or last.html_key is None:
+            return Unavailable(reason=f"{last.json_key}: par incompleto, falta el HTML")
+        try:
+            data = month.store.read_bytes(last.json_key)
+            html = month.store.read_bytes(last.html_key)
+            report = MonthlyReport.model_validate(load_json_strict(data))
+        except (WorkspaceError, ValueError, ValidationError):
+            return Unavailable(reason=f"{last.json_key}: ilegible o no válido")
+        if report.period != previous:
+            return Unavailable(reason=f"{last.json_key}: no coincide con su periodo")
+        if report.cycle is None:  # manual: no es base, como en el diario
+            continue
+        problem = published_problem(month.store, report.cycle.run_id, last.json_key, data, html)
+        if problem is not None:
+            return Unavailable(reason=f"{last.json_key}: {problem}")
+        ref = source_ref(month.store, "report", last.json_key, report.generated_at)
+        if ref is None:
+            return Unavailable(reason=f"{last.json_key}: ilegible o no válido")
+        return _PreviousMonthly(report, last.json_key, ref)
+    return Unavailable(reason=f"{previous}: ningún informe mensual de ciclo verificado")
 
 
 def _inventory_changes(
@@ -529,9 +530,8 @@ def _read_restore_tests(month: _Month) -> _RestoreTests | Unavailable:
     return _RestoreTests(found, unreadable, consulted)
 
 
-def _restore_tests(month: _Month) -> Section[Aggregate]:
+def _restore_tests(month: _Month, reading: _RestoreTests | Unavailable) -> Section[Aggregate]:
     """Un 0 solo vale porque el listado se pudo hacer; la cita es lo consultado."""
-    reading = _read_restore_tests(month)
     if isinstance(reading, Unavailable):
         return reading
     found = reading.in_window
@@ -561,11 +561,13 @@ def _restore_tests(month: _Month) -> Section[Aggregate]:
 # --- pendientes y plan de tratamiento -----------------------------------------------------------
 
 
-def _pending(month: _Month) -> tuple[Section[Aggregate], bool]:
+def _pending(
+    month: _Month, restore: _RestoreTests | Unavailable
+) -> tuple[Section[Aggregate], bool]:
     """Estado al día de generación: bloqueos de preparación, documentos sin aprobar y caducidades
     ya vencidas. Devuelve además si queda revisión humana pendiente."""
     status = assessment_status(month.store, month.generated_at, month.checks)
-    blockers = [blocker_text(b) for b in status.result.readiness.blockers]
+    blockers = readiness_blocker_lines(status.result.readiness.blockers)
     blockers += [f"error: {e}" for e in status.result.errors]
     items = [Entry(subject="preparación", detail=b) for b in blockers]
     sources: list[SourceRef | None] = [
@@ -597,11 +599,14 @@ def _pending(month: _Month) -> tuple[Section[Aggregate], bool]:
     )
     expired = [i for i in expiry.items if i.days_left < 0]
     items += [
-        Entry(subject=f"{i.kind}: {i.subject}", detail=f"vencida hace {-i.days_left} días")
+        Entry(
+            subject=f"{plain(EXPIRY_KIND_LABELS, i.kind)}: {i.subject}",
+            detail=f"vencida hace {-i.days_left} días",
+        )
         for i in expired
     ]
     sources += [*expiry.consulted]
-    restore_pending = _restore_pending(month, items, sources)
+    restore_pending = _restore_pending(restore, items, sources)
     section = month.aggregate(
         sources,
         "sin registros del workspace de los que derivar los pendientes",
@@ -616,11 +621,12 @@ def _pending(month: _Month) -> tuple[Section[Aggregate], bool]:
     return section, status.pending_human_review
 
 
-def _restore_pending(month: _Month, items: list[Entry], sources: list[SourceRef | None]) -> int:
+def _restore_pending(
+    reading: _RestoreTests | Unavailable, items: list[Entry], sources: list[SourceRef | None]
+) -> int:
     """1 si el registro se pudo listar y no hay ninguna prueba en el mes; 0 si hay alguna o si el
     registro no se pudo leer (no se sabe: la sección de pruebas lo dice, aquí no se afirma).
     Con los pendientes sin ninguna otra fuente, el listado vacío no basta para sostenerlos."""
-    reading = _read_restore_tests(month)
     if isinstance(reading, Unavailable) or reading.in_window or not ordered_sources(sources):
         return 0
     sources.append(reading.consulted)

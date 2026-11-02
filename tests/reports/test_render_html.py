@@ -9,6 +9,7 @@ from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY, 
 from ens_evidence.incidents.model import RecordKind
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness
 from ens_evidence.orgdocs.approval import DocumentState
+from ens_evidence.reports.labels import REPORT_NOT_A_REVIEW
 from ens_evidence.reports.model import (
     Aggregate,
     AssetsSummary,
@@ -311,7 +312,12 @@ def test_unavailable_shows_reason_never_zero():
 
 
 def test_notices_and_no_compliance_claim():
-    for document in (render_daily_html(daily()), render_monthly_html(monthly())):
+    notices = [NO_CONFORMITY, REPORT_NOT_A_REVIEW]
+    reports = (
+        render_daily_html(daily(notices=notices)),
+        render_monthly_html(monthly(notices=notices)),
+    )
+    for document in reports:
         assert NO_CONFORMITY in document
         assert "no sustituye la revisión de una persona" in document
         assert "cumple" not in document.lower()
@@ -534,3 +540,24 @@ def test_a_single_human_review_notice_and_capitalised_pre_audit():
     assert document.count("Revisión humana pendiente") == 1
     assert "Pre-auditoría no ejecutada" in document
     assert document.count("no declara conformidad") == 1
+
+
+def test_changes_without_items_say_so_and_interrupted_cycles_use_plain_stage():
+    refs = [src("k")]
+    document = render_daily_html(
+        daily(
+            changes=Sourced[Changes](
+                value=Changes(base_period="2026-10-30", items=[]), sources=refs
+            ),
+            interrupted_cycles=Sourced[list[InterruptedCycle]](
+                value=[InterruptedCycle(run_id="r1", last_stage="collected", started_at=NOON)],
+                sources=refs,
+            ),
+        )
+    )
+
+    rows = probe(document).rows
+    assert ["base", "2026-10-30"] in rows
+    assert ["cambios", "sin cambios respecto a la base"] in rows
+    assert any(r[0] == "r1" and "recogida de datos" in r[1] for r in rows)
+    assert "collected" not in document

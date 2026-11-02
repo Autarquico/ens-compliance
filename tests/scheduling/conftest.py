@@ -6,7 +6,6 @@ import os
 import pytest
 import yaml
 from backup.conftest import PASSWORD, scripted_restic  # noqa: F401 (fixture reexportada)
-from checks.test_engine import store  # noqa: F401 (fixture reexportada)
 
 from ens_evidence.backup import PASSWORD_VAR
 from ens_evidence.connectors.registry import ConnectorRegistry
@@ -19,7 +18,7 @@ SNAPSHOT = '{"message_type": "summary", "snapshot_id": "abcd1234"}'
 
 
 @pytest.fixture
-def settings_path(store, tmp_path):  # noqa: F811
+def settings_path(store, tmp_path):
     path = tmp_path / "settings.yaml"
     path.write_text(
         yaml.safe_dump(

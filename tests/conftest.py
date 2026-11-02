@@ -3,6 +3,13 @@ import shutil
 from datetime import UTC, datetime, timedelta
 
 import pytest
+import yaml
+from scope.scope_helpers import APPROVED_AT, EXAMPLE_SCOPE, SCOPE_FILES
+
+from ens_evidence.connectors.config import connector_config_key
+from ens_evidence.models.enums import Role
+from ens_evidence.scope import approve_scope
+from ens_evidence.workspace import LocalStore
 
 NOW = datetime(2026, 6, 1, tzinfo=UTC)
 SHA = "a" * 64
@@ -41,3 +48,19 @@ def real_restic():
     if os.environ.get("CI") == "true":
         pytest.fail(message)
     pytest.skip(message)
+
+
+GITHUB_CONFIG = {"asset_id": "gh-taller", "organization": "taller-norte"}
+
+
+@pytest.fixture
+def store(tmp_path):
+    """Un workspace con el alcance de ejemplo aprobado y GitHub configurado."""
+    workspace = LocalStore(tmp_path / "ws")
+    for name in SCOPE_FILES:
+        workspace.write_text(
+            f"scope/{name}.yaml", (EXAMPLE_SCOPE / f"{name}.yaml").read_text(encoding="utf-8")
+        )
+    approve_scope(workspace, "Ana Ruiz", Role.SYSTEM_OWNER, APPROVED_AT)
+    workspace.write_text(connector_config_key("github"), yaml.safe_dump(GITHUB_CONFIG))
+    return workspace

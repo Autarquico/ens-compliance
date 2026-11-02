@@ -16,7 +16,7 @@ from ens_evidence.categorization.approval import CategorizationApproval
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.evidence.importer import import_manual
 from ens_evidence.models.enums import Category, Role
-from ens_evidence.reports.expiries import WINDOW_DAYS, scan_expiries, windows_from
+from ens_evidence.reports.expiries import WINDOW_DAYS, scan_expiries
 from ens_evidence.risk.models import APPROVAL_KEY as RISK_KEY
 from ens_evidence.risk.models import RISK_FILES, RiskApproval
 from ens_evidence.scheduling.config import ExpiryWarnings
@@ -112,8 +112,8 @@ def test_un_tipo_que_falta_en_las_ventanas_usa_la_ventana_por_defecto(store):
 
 
 def test_las_ventanas_de_schedule_yaml_se_traducen_a_cada_tipo_de_caducidad():
-    assert windows_from(ExpiryWarnings()) == WINDOW_DAYS
-    narrower = windows_from(ExpiryWarnings(approvals=5, measure_reviews=3))
+    assert ExpiryWarnings().windows() == WINDOW_DAYS
+    narrower = ExpiryWarnings(approvals=5, measure_reviews=3).windows()
     assert narrower["categorization_approval"] == narrower["risk_approval"] == 5
     assert narrower["measure_review"] == narrower["applicability_review"] == 3
 

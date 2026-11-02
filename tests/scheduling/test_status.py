@@ -13,6 +13,7 @@ from ens_evidence.cli import app
 from ens_evidence.reports.store import pairs, write_stage
 from ens_evidence.scheduling.config import LoadedSchedule, ScheduleConfig
 from ens_evidence.scheduling.scheduler import render_status, scheduler_status
+from ens_evidence.workspace import LocalStore
 from scheduling import test_cycle
 from scheduling.test_cycle import TickClock
 
@@ -121,3 +122,13 @@ def test_status_rotula_en_castellano_y_agrupa_los_dias_seguidos():
     ]
     assert _day_ranges(("2026-10-31", "2026-11-01")) == ["2026-10-31 a 2026-11-01"]
     assert _day_ranges(()) == []
+
+
+def test_status_del_mensual_pendiente_nombra_el_mes_del_informe_no_el_del_disparo(tmp_path):
+    first = datetime(2026, 11, 1, 7, 0, tzinfo=UTC)  # pasada la hora del mensual, sin informes
+
+    text = render_status(scheduler_status(LocalStore(tmp_path / "ws"), DEFAULT, first))
+
+    assert "mensual:" in text
+    assert "pendiente ahora: informe de 2026-10," in text
+    assert "pendiente ahora: 2026-11," not in text

@@ -3,6 +3,7 @@ from datetime import UTC, datetime, timedelta
 
 import pytest
 import yaml
+from checks.acceptance_helpers import make_world
 
 from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY
 from ens_evidence.backup.records import BackupRun, dump, run_key
@@ -10,20 +11,23 @@ from ens_evidence.backup.restore_test import RestoreTest, restore_test_key
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.evidence.importer import import_manual
 from ens_evidence.models.enums import CheckStatus
+from ens_evidence.reports.expiries import ExpiryScan
 from ens_evidence.reports.labels import REPORT_NOT_A_REVIEW
 from ens_evidence.reports.model import (
     ChangeItem,
     Changes,
+    ExpiryItem,
     Sourced,
     Unavailable,
     render_json,
 )
 from ens_evidence.reports.monthly import build_monthly, month_window, previous_month
+from ens_evidence.reports.store import save_pair
 from ens_evidence.scope import APPROVAL_KEY as SCOPE_APPROVAL_KEY
 from ens_evidence.workspace import LocalStore
 
 from .helpers import SHA, daily, put_daily, put_monthly, ref, source_sha256
-from .test_daily import walk
+from .test_daily import NOW, real_source, status_json, status_lines, walk
 from .world import MADRID, check_result, source_of, static_run
 
 GENERATED = datetime(2026, 11, 1, 5, 30, tzinfo=UTC)
@@ -605,3 +609,52 @@ def test_un_diario_editado_tras_publicarse_es_un_dia_ilegible_nunca_cubierto(sto
         e.subject == "informe diario ilegible" and pair.json_key in e.detail for e in value.items
     )
     assert any("ilegibles" in n for n in report.notices)
+
+
+def test_bloqueos_del_mensual_coinciden_con_el_diario_y_assessment_status(tmp_path, monkeypatch):
+    world = make_world(tmp_path, monkeypatch, "linked")
+    status_json(world)
+    shown = [line.strip() for line in status_lines(world) if line.startswith("  ")]
+
+    report = build_monthly(
+        world.store, generated_at=NOW, period="2026-10", tz=MADRID, checks=real_source()
+    )
+
+    rows = [e.detail for e in report.pending.value.items if e.subject == "preparación"]
+    assert sorted(rows) == sorted(shown)
+    assert report.pending.value.counts["bloqueos de preparación"] == len(shown)
+    assert shown  # el mundo "linked" no está preparado
+
+
+def test_un_mensual_manual_posterior_no_quita_la_base_del_ciclo(store):
+    publish_previous(store, "a1", "a2")
+    manual = monthly_at(store, period="2026-09", generated_at=GENERATED - timedelta(days=29))
+    save_pair(
+        store, "monthly", "2026-09", render_json(manual), b"<html>m</html>",
+        at=GENERATED - timedelta(days=29),
+    )  # fmt: skip
+    write_assets(store, "a2", "a3")
+
+    items = {(e.subject, e.detail.split(" ")[0]) for e in monthly_at(store).changes.value.items}
+
+    assert {("a3", "alta"), ("a1", "baja")} <= items
+
+
+def test_caducidad_vencida_se_muestra_en_castellano_llano(store, monkeypatch):
+    store.write_text(SCOPE_APPROVAL_KEY, "x: 1\n")
+    expired = ExpiryItem(
+        kind="measure_review",
+        subject="op.exp.1",
+        expires_at=GENERATED - timedelta(days=3),
+        days_left=-3,
+        sources=[ref()],
+    )
+    monkeypatch.setattr(
+        "ens_evidence.reports.monthly.scan_expiries",
+        lambda *a, **k: ExpiryScan((expired,), (), ()),
+    )
+
+    items = monthly_at(store).pending.value.items
+
+    assert any(e.subject == "revisión de la medida: op.exp.1" for e in items)
+    assert all("measure_review" not in e.subject for e in items)

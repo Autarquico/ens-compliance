@@ -67,9 +67,11 @@ Los informes están en `evidence/reports/daily/<fecha>/` y
 
 - Cada dato cita su fuente y su fecha. «No disponible» significa que no hay
   de dónde sacarlo; nunca es un cero.
-- Un conector que falla aparece en ERROR, con la fase en la que falló: en el
-  HTML, «ERROR · fase: recogida (excepción RuntimeError)». Nunca se usa una
-  recogida anterior en su lugar. Del error solo se guarda el tipo de
+- Un conector que falla aparece en ERROR. Si falla el orquestador (excepción,
+  timeout o carga), el HTML añade la fase: «ERROR · fase: recogida (excepción
+  RuntimeError)». Si el propio conector informa ERROR, no hay fase: el detalle
+  está en la recogida citada como fuente. Nunca se usa una recogida anterior
+  en su lugar. Del error solo se guarda el tipo de
   excepción, nunca su mensaje.
 - El HTML está en castellano llano («no preparada», «copia fallida: sin
   ajustes de copia», «revisión de la medida»). Los códigos internos

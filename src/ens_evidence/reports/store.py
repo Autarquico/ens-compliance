@@ -83,8 +83,15 @@ class StageReading:
 
 @dataclass(frozen=True)
 class CycleScan:
+    """`runs`: los ciclos leídos. `deferred`: los de `defer_finished` (con marcador terminal en
+    el listado), sin leer todavía; se leen con `read_deferred`."""
+
     runs: dict[str, StageReading]
     listing_sha256: str
+    deferred: dict[str, list[str]] = field(default_factory=dict)
+
+    def read_deferred(self, store: WorkspaceStore, run_id: str) -> StageReading:
+        return _read_run(store, run_id, self.deferred[run_id])
 
 
 def _period_prefix(kind: Kind, period: str) -> str:
@@ -327,6 +334,10 @@ def _group_by_run(keys: Iterable[str]) -> dict[str, list[str]]:
     return {run: found for run, found in grouped.items() if any(k.endswith(".json") for k in found)}
 
 
+def _stage_of(run_id: str, key: str) -> str:
+    return key.removeprefix(f"{CYCLES_PREFIX}/{run_id}.").removesuffix(".json")
+
+
 def _read_run(store: WorkspaceStore, run_id: str, keys: Iterable[str]) -> StageReading:
     stages: list[CycleStage] = []
     problems: list[str] = []
@@ -356,16 +367,25 @@ def stages_of(store: WorkspaceStore, run_id: str) -> StageReading:
     return _read_run(store, run_id, (k for k in store.list(CYCLES_PREFIX) if k.startswith(prefix)))
 
 
-def scan_cycles(store: WorkspaceStore, *, since: str | None = None) -> CycleScan:
+def scan_cycles(
+    store: WorkspaceStore, *, since: str | None = None, defer_finished: bool = False
+) -> CycleScan:
     """Todos los ciclos con un único listado del almacén. `since`: sello `YYYYmmddTHHMMSS`
-    mínimo del `run_id` (los anteriores no se leen). La huella cita lo listado."""
+    mínimo del `run_id` (los anteriores no se leen). `defer_finished`: los ciclos con marcador
+    terminal en el listado no se leen (más recientes primero en `deferred`); así el coste de leer
+    no crece con la historia. La huella cita lo listado."""
     keys = sorted(store.list(CYCLES_PREFIX))
-    runs = {
-        run_id: _read_run(store, run_id, found)
-        for run_id, found in sorted(_group_by_run(keys).items())
-        if since is None or run_id[: len(since)] >= since
-    }
-    return CycleScan(runs, _sha("\n".join(keys).encode("utf-8")))
+    runs: dict[str, StageReading] = {}
+    deferred: dict[str, list[str]] = {}
+    for run_id, found in sorted(_group_by_run(keys).items()):
+        if since is not None and run_id[: len(since)] < since:
+            continue
+        if defer_finished and any(_stage_of(run_id, k) in TERMINAL_STAGES for k in found):
+            deferred[run_id] = found
+        else:
+            runs[run_id] = _read_run(store, run_id, found)
+    newest_first = dict(reversed(deferred.items()))
+    return CycleScan(runs, _sha("\n".join(keys).encode("utf-8")), newest_first)
 
 
 def first_stage(reading: StageReading, stage: str) -> CycleStage | None:

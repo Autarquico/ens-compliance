@@ -11,6 +11,8 @@ from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, tzinfo
 
+from pydantic import ValidationError
+
 from ens_evidence import __version__
 from ens_evidence.assessment.render import (
     HUMAN_REVIEW_PENDING,
@@ -19,6 +21,7 @@ from ens_evidence.assessment.render import (
     blocker_lines_by_measure,
 )
 from ens_evidence.assessment.status import AssessmentStatus, assessment_status, count_statuses
+from ens_evidence.backup.records import BackupRun
 from ens_evidence.categorization.approval import APPROVAL_KEY as CATEGORIZATION_APPROVAL_KEY
 from ens_evidence.checks.catalog import KNOWN_CHECKS
 from ens_evidence.checks.inputs import load_endpoint_inputs
@@ -74,6 +77,7 @@ from ens_evidence.reports.store import (
     StageReading,
     first_stage,
     interrupted_in,
+    load_json_strict,
     scan_cycles,
 )
 from ens_evidence.risk.models import APPROVAL_KEY as RISK_APPROVAL_KEY
@@ -120,7 +124,7 @@ def build_daily(
     """El informe del día `period` (fecha local en `tz`) con los datos hasta el corte.
 
     Corte: `cycle.data_cutoff`, o `generated_at` sin ciclo. `windows`: días de aviso por tipo de
-    caducidad (`expiries.windows_from` los saca de schedule.yaml). Mismos argumentos y mismo
+    caducidad (`ExpiryWarnings.windows()` los saca de schedule.yaml). Mismos argumentos y mismo
     workspace dan los mismos bytes."""
     cutoff = cycle.data_cutoff if cycle else generated_at
     runs, problems = load_checks(checks, store, cutoff)
@@ -134,7 +138,7 @@ def build_daily(
         )
         for name in sorted(set(KNOWN_CHECKS.values()))
     ]
-    scan = scan_cycles(store)
+    scan = scan_cycles(store, defer_finished=True)
     totals, partial_notice = _totals(connectors)
     fields = dict(
         generated_at=generated_at,
@@ -508,7 +512,7 @@ def _interrupted_cycles(
 ) -> Section[list[InterruptedCycle]]:
     """Ciclos sin terminar. Cita los marcadores de los ciclos que informa, no los de toda la
     historia; sin ninguno, el `started` del ciclo actual o la huella del listado."""
-    if not scan.runs:
+    if not scan.runs and not scan.deferred:
         return Unavailable(reason="no hay marcadores de ciclo registrados")
     runs = _cycle_runs(scan, current, cutoff)
     interrupted, unreadable = interrupted_in(runs, now=cutoff if current else None)
@@ -538,35 +542,56 @@ def _backup(
 ) -> Section[BackupStageResult]:
     """La etapa de copia del último ciclo diario terminado (no el actual: su copia va después
     del informe, así que aquí se ve la del ciclo anterior). Con algún marcador ilegible no se
-    elige ninguno: podría ser el último."""
-    last: tuple[datetime, str, CycleStage] | None = None
-    unreadable: list[str] = []
-    for run_id, reading in _cycle_runs(scan, current, cutoff).items():
-        if reading.problems:
-            unreadable.append(run_id)
+    elige ninguno: podría ser el último. Los terminados se leen del más reciente al más antiguo
+    y se para en el primero que sirve."""
+    unreadable = [
+        r for r, reading in _cycle_runs(scan, current, cutoff).items() if reading.problems
+    ]
+    if unreadable:
+        return Unavailable(reason="marcadores de ciclo ilegibles: " + ", ".join(unreadable))
+    for run_id in scan.deferred:
+        if current is not None and run_id == current.run_id:
             continue
+        reading = scan.read_deferred(store, run_id)
+        if reading.problems:
+            return Unavailable(reason=f"marcadores de ciclo ilegibles: {run_id}")
         started = first_stage(reading, "started")
         final = next(
             (s for s in reading.stages if s.stage in TERMINAL_STAGES and s.at <= cutoff), None
         )
         if started is None or final is None or not is_day(started.period):
             continue
-        if last is None or final.at > last[0]:
-            last = (final.at, run_id, final)
-    if unreadable:
-        return Unavailable(reason="marcadores de ciclo ilegibles: " + ", ".join(unreadable))
-    if last is None:
-        return Unavailable(reason=NO_BACKUP_YET)
-    at, run_id, final = last
+        if current is None and started.at > cutoff:
+            continue
+        return _backup_result(store, run_id, final)
+    return Unavailable(reason=NO_BACKUP_YET)
+
+
+def _backup_result(
+    store: WorkspaceStore, run_id: str, final: CycleStage
+) -> Section[BackupStageResult]:
+    marker_key = f"{CYCLES_PREFIX}/{run_id}.{final.stage}.json"
+    if final.stage == "backed_up" and not _record_is_completed(store, final.reference):
+        return Unavailable(reason=f"{marker_key}: el marcador de copia no coincide con su registro")
     value = BackupStageResult(
         run_id=run_id,
         outcome=final.stage,
         code=final.backup_code,
         configuration_error=final.backup_code == "not_configured",
-        finished_at=at,
+        finished_at=final.at,
     )
-    marker_key = f"{CYCLES_PREFIX}/{run_id}.{final.stage}.json"
-    sources = [source_ref(store, "cycle", marker_key, at)]
+    sources = [source_ref(store, "cycle", marker_key, final.at)]
     if final.reference:
-        sources.append(source_ref(store, "backup_run", final.reference, at))
+        sources.append(source_ref(store, "backup_run", final.reference, final.at))
     return _sourced(value, sources, f"{marker_key}: no se puede leer")
+
+
+def _record_is_completed(store: WorkspaceStore, key: str | None) -> bool:
+    """El registro de la copia que cita el marcador existe y dice que terminó bien."""
+    if not key:
+        return False
+    try:
+        record = BackupRun.model_validate(load_json_strict(store.read_bytes(key)))
+    except (WorkspaceError, ValueError, ValidationError):
+        return False
+    return record.status == "completed"

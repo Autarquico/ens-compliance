@@ -17,7 +17,6 @@ from ens_evidence.backup import BackupOutcome, run_configured_backup
 from ens_evidence.checks.engine import run_all
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.reports.daily import build_daily
-from ens_evidence.reports.expiries import windows_from
 from ens_evidence.reports.model import (
     BackupCode,
     ChecksOutcome,
@@ -62,11 +61,9 @@ from ens_evidence.workspace import Settings, WorkspaceError, WorkspaceStore
 from ens_evidence.workspace.cycle_lock import Clock, CycleContext
 
 Trigger = Literal["scheduled", "manual", "recovery"]
-ChecksResult = Literal["ok", "skipped", "error"]
 RUN_WINDOW = timedelta(days=40)
 INHERITED = ("collected", "checked")
 _STAMP = "%Y%m%dT%H%M%S"
-InterruptedRun = InterruptedCycle
 
 
 @dataclass(frozen=True)
@@ -77,7 +74,7 @@ class CycleOutcome:
     period: str
     status: Literal["completed", "failed"]
     resumed: bool
-    checks: ChecksResult | None
+    checks: ChecksOutcome | None
     reports: tuple[str, ...]
     collected: tuple[CollectOutcome, ...] = ()
     backup_stage: str | None = None
@@ -137,8 +134,8 @@ def finished_periods(store: WorkspaceStore, now: datetime) -> set[tuple[JobKind,
 
 
 def interrupted_runs(
-    store: WorkspaceStore, now: datetime | None = None
-) -> tuple[list[InterruptedRun], list[str]]:
+    store: WorkspaceStore, now: datetime
+) -> tuple[list[InterruptedCycle], list[str]]:
     """Ciclos sin terminar y legibles, y los `run_id` de los que no se pueden leer."""
     return interrupted_in(scan_cycles(store).runs, now=now)
 
@@ -162,14 +159,14 @@ def _attempts(outcomes: list[CollectOutcome]) -> list[ConnectorAttempts]:
     return entries
 
 
-def _run_checks(store: WorkspaceStore, clock: Clock) -> tuple[ChecksResult, ChecksOutcome]:
+def _run_checks(store: WorkspaceStore, clock: Clock) -> ChecksOutcome:
     try:
         run_all(store, clock.now())
     except ScopeNotApproved:
-        return "skipped", "skipped_scope"
+        return "skipped_scope"
     except (WorkspaceError, OSError):
-        return "error", "error"
-    return "ok", "ok"
+        return "error"
+    return "ok"
 
 
 def _own_report[M: BaseModel](
@@ -294,7 +291,7 @@ def run_cycle(
     collected: list[CollectOutcome] = []
     collected_marker = markers.get("collected")
     attempts = (collected_marker.attempts or []) if collected_marker else []
-    checks: ChecksResult | None = None
+    checks: ChecksOutcome | None = None
     if job == "daily":
         if "collected" not in done:
             loaded = plugins if plugins is not None else load_plugins()
@@ -302,8 +299,8 @@ def run_cycle(
             attempts = _attempts(collected)
             mark("collected", attempts=attempts)
         if "checked" not in done:
-            checks, marker_checks = _run_checks(store, clock)
-            mark("checked", checks=marker_checks)
+            checks = _run_checks(store, clock)
+            mark("checked", checks=checks)
 
     reports: list[str] = []
     if "reported" in done:
@@ -381,7 +378,7 @@ def _publish_report(
                 tz=zone,
                 cycle=info,
                 checks=checks,
-                windows=windows_from(cfg.expiry_warnings),
+                windows=cfg.expiry_warnings.windows(),
             ),
             render_daily_html,
             clock,
@@ -401,7 +398,7 @@ def _publish_report(
             tz=zone,
             checks=checks,
             cycle=info,
-            expiry_windows=windows_from(cfg.expiry_warnings),
+            expiry_windows=cfg.expiry_warnings.windows(),
         ),
         lambda report: render_monthly_html(report, zone),
         clock,

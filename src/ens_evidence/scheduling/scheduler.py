@@ -16,6 +16,7 @@ from datetime import date, datetime, timedelta
 from typing import Literal, Protocol
 
 from ens_evidence.reports.model import is_day, is_month
+from ens_evidence.reports.monthly import previous_month
 from ens_evidence.reports.store import REPORTS_PREFIX, Kind, pairs, reports_in_period
 from ens_evidence.scheduling.calendar import (
     Job,
@@ -29,7 +30,7 @@ from ens_evidence.scheduling.calendar import (
 from ens_evidence.scheduling.collect import Plugins, load_plugins
 from ens_evidence.scheduling.config import LoadedSchedule, ScheduleConfig
 from ens_evidence.scheduling.cycle import (
-    InterruptedRun,
+    InterruptedCycle,
     Trigger,
     finished_periods,
     interrupted_runs,
@@ -369,7 +370,7 @@ class SchedulerStatus:
     is_default: bool
     jobs: tuple[JobSchedule, ...]
     last_reports: Mapping[JobKind, LastReport | None]
-    interrupted: tuple[InterruptedRun, ...]
+    interrupted: tuple[InterruptedCycle, ...]
     unreadable_cycles: tuple[str, ...]
     month: str
     days_without_report: tuple[str, ...]
@@ -410,7 +411,7 @@ def scheduler_status(
 ) -> SchedulerStatus:
     cfg = loaded.config
     pending = {(job.kind): job for job in due_jobs(now, cfg, finished_periods(store, now))}
-    interrupted, unreadable = interrupted_runs(store)
+    interrupted, unreadable = interrupted_runs(store, now)
     month, missing = _days_without_report(store, cfg, now)
     return SchedulerStatus(
         config=cfg,
@@ -429,6 +430,14 @@ def scheduler_status(
         month=month,
         days_without_report=missing,
     )
+
+
+def _pending_subject(job: JobSchedule) -> str:
+    """El mensual se dispara en el mes siguiente: lo pendiente es el informe del mes anterior."""
+    assert job.pending is not None
+    if job.kind == "monthly":
+        return f"informe de {previous_month(job.pending.period)}"
+    return job.pending.period
 
 
 JOB_LABELS: Mapping[JobKind, str] = {"daily": "diario", "monthly": "mensual"}
@@ -471,7 +480,7 @@ def render_status(status: SchedulerStatus) -> str:
         line = f"  {JOB_LABELS[job.kind]}: {job.next_at.astimezone(zone).isoformat()}"
         if job.pending is not None:
             since = job.pending.due_at.astimezone(zone).isoformat()
-            line += f" (pendiente ahora: {job.pending.period}, vencido desde {since})"
+            line += f" (pendiente ahora: {_pending_subject(job)}, vencido desde {since})"
         lines.append(line)
     lines += ["", "Último informe:"]
     for kind, last in status.last_reports.items():

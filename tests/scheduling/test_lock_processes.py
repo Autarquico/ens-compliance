@@ -18,6 +18,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 import yaml
+from backup.conftest import PASSWORD
 from typer.testing import CliRunner
 
 from ens_evidence.backup import PASSWORD_VAR, list_runs
@@ -30,8 +31,7 @@ from ens_evidence.scheduling.config import CollectConfig, ScheduleConfig
 from ens_evidence.scheduling.scheduler import CycleExecutor, JobResult
 from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 from ens_evidence.workspace.settings import load_settings
-from scheduling import test_cycle
-from scheduling.test_cycle import STAGES, TickClock
+from scheduling.cycle_helpers import PERIOD, STAGES, TickClock, cycle
 
 _SPAWN = multiprocessing.get_context("spawn")
 NOW = datetime(2026, 11, 2, 7, 0, tzinfo=UTC)
@@ -138,7 +138,7 @@ def test_un_collector_bloqueado_acaba_en_timeout_y_error_y_el_ciclo_sigue(
     fake("hang")
     patient = CollectConfig(retries=0).model_copy(update={"timeout_minutes": 0.03})
     cfg = ScheduleConfig(collect=patient)
-    outcome = test_cycle.cycle(store, settings, env, context, plugins, TickClock(), cfg=cfg)
+    outcome = cycle(store, settings, env, context, plugins, TickClock(), cfg=cfg)
 
     pid = int((fake.state / "pid").read_text())
     with pytest.raises(ProcessLookupError):
@@ -147,7 +147,7 @@ def test_un_collector_bloqueado_acaba_en_timeout_y_error_y_el_ciclo_sigue(
     assert collected.result.data["phase"] == "timeout"
     assert collected.result.collection_status is CollectionStatus.ERROR
     assert outcome.completed and stages_of_names(store, outcome.run_id) == STAGES
-    (pair,) = pairs(store, "daily", test_cycle.PERIOD)
+    (pair,) = pairs(store, "daily", PERIOD)
     report = DailyReport.model_validate(load_json_strict(store.read_bytes(pair.json_key)))
     (github,) = [entry for entry in report.connectors if entry.connector == "github"]
     assert github.collection.value is CollectionStatus.ERROR
@@ -180,7 +180,7 @@ def env(base_env, fake):
 def full_cli(settings_path, settings, plugins, fake, restic, monkeypatch):
     """`report daily --cycle` por la CLI con settings que incluyen la copia y un restic falso."""
     fake("ok")
-    monkeypatch.setenv(PASSWORD_VAR, test_cycle.PASSWORD)
+    monkeypatch.setenv(PASSWORD_VAR, PASSWORD)
     monkeypatch.setattr("ens_evidence.cli.clock", lambda: NOW)
     monkeypatch.setattr("ens_evidence.cli.load_plugins", lambda: plugins)
     monkeypatch.setattr("ens_evidence.cli.connector_registry", lambda: plugins.registry)

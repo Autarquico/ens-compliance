@@ -89,3 +89,6 @@ herramienta nunca declara conformidad (`CLAUDE.md`).
 - Las alertas críticas (perfil de detección, v0.3), las vulnerabilidades y
   las revisiones de acceso salen como «no disponible» hasta que existan sus
   fuentes.
+- Las huellas de los informes viven en el mismo almacén que los informes.
+  Una manipulación coordinada de informe y huella no se detecta: la copia
+  inmutable es la referencia.

@@ -92,6 +92,21 @@ class ExpiryWarnings(Strict):
     manual_evidence: Annotated[int, Field(ge=0)] = 14
     technical_evidence: Annotated[int, Field(ge=0)] = 7
 
+    def windows(self) -> dict[str, int]:
+        """Las ventanas por tipo de caducidad del informe. Las acciones del plan de tratamiento
+        avisan al vencer (0)."""
+        return {
+            "measure_review": self.measure_reviews,
+            "applicability_review": self.measure_reviews,
+            "categorization_approval": self.approvals,
+            "risk_approval": self.approvals,
+            "restore_test": self.restore_tests,
+            "offsite_declaration": self.offsite_backup,
+            "manual_evidence": self.manual_evidence,
+            "technical_evidence": self.technical_evidence,
+            "treatment_action": 0,
+        }
+
 
 class BackupStep(Strict):
     enabled: bool = True
