@@ -426,6 +426,25 @@ def test_la_copia_es_la_del_ciclo_anterior_con_su_codigo_tipado(store):
     )
 
 
+def test_con_varios_ciclos_terminados_la_copia_es_la_del_mas_reciente(store):
+    for days, run_id, code in (
+        (3, "20261029T050000-a", "restic_failed"),
+        (1, "20261031T050000-c", "not_configured"),
+        (2, "20261030T050000-b", "invalid_credentials"),
+    ):
+        at = CUTOFF - timedelta(days=days)
+        period = at.date().isoformat()
+        write_stage(store, run_id, "started", at=at, period=period)
+        write_stage(store, run_id, "backup_failed", at=at, period=period, backup_code=code)
+
+    report = daily_at(store, source_of(), cycle=cycle_info("actual"))
+
+    assert (report.backup.value.run_id, report.backup.value.code) == (
+        "20261031T050000-c",
+        "not_configured",
+    )
+
+
 def _backed_up_yesterday(store, status):
     key = "evidence/backups/runs/ayer.json"
     finished = CUTOFF - timedelta(days=1)

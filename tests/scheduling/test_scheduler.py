@@ -18,6 +18,7 @@ from typer.testing import CliRunner
 
 from ens_evidence.cli import app
 from ens_evidence.reports.store import cycle_finished, pairs, run_ids, stages_of, write_stage
+from ens_evidence.scheduling import cycle as cycle_module
 from ens_evidence.scheduling import scheduler as scheduler_module
 from ens_evidence.scheduling.calendar import Job
 from ens_evidence.scheduling.clock import SystemClock
@@ -41,7 +42,7 @@ from ens_evidence.scheduling.scheduler import (
     workspace_done_periods,
 )
 from ens_evidence.workspace.cycle_lock import CycleLock
-from scheduling import test_cycle
+from scheduling.cycle_helpers import STAGES
 from scheduling.fakes import FakeClock, FakeExecutor
 
 # El día mensual cae lejos de los días que se simulan, salvo en las pruebas del día mensual.
@@ -523,9 +524,9 @@ def test_los_logs_son_una_linea_por_evento_sin_saltos():
 @pytest.fixture
 def real(store, settings, env, plugins, fake, restic, tmp_path, monkeypatch):
     collects = []
-    original = test_cycle.cycle_module.collect_all
+    original = cycle_module.collect_all
     monkeypatch.setattr(
-        test_cycle.cycle_module,
+        cycle_module,
         "collect_all",
         lambda *a, **k: collects.append(a) or original(*a, **k),
     )
@@ -574,7 +575,7 @@ def test_en_el_dia_mensual_el_diario_y_luego_el_mensual_sin_repetir_la_recogida(
         next(r for r in run_ids(store) if stages_of(store, r).stages[0].period == period)
         for period in ("2026-12-01", "2026-12")
     )
-    assert [m.stage for m in stages_of(store, daily_run).stages] == test_cycle.STAGES
+    assert [m.stage for m in stages_of(store, daily_run).stages] == STAGES
     assert [m.stage for m in stages_of(store, monthly_run).stages] == ["started", "reported"]
     assert pairs(store, "daily", "2026-12-01")[0].published
     assert pairs(store, "monthly", "2026-11")[0].published

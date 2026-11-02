@@ -214,7 +214,7 @@ def _cycle(cycle: CycleInfo | None) -> str:
         return _table("Ciclo", row)
     rows = [
         ("ciclo", cycle.run_id),
-        ("periodo", cycle.period),
+        ("periodo del ciclo", cycle.period),
         ("hora prevista", _instant(cycle.due_at)),
         ("inicio", _instant(cycle.started_at)),
         ("corte de datos", _instant(cycle.data_cutoff)),

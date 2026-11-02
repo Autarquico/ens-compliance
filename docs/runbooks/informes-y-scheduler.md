@@ -52,6 +52,11 @@ ens-evidence report monthly --stdout --format html
 ens-evidence collect --all
 ```
 
+Los informes sin `--cycle` son consultas: no cierran el trabajo del scheduler, no
+cuentan como día cubierto en el mensual y no sirven de base para «Cambios», aunque
+`scheduler status` los liste como último informe. En el mensual, el «periodo del ciclo»
+es el mes en que se disparó, no el mes del informe.
+
 Códigos de salida:
 
 | Código | Significado |

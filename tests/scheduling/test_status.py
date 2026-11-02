@@ -14,8 +14,8 @@ from ens_evidence.reports.store import pairs, write_stage
 from ens_evidence.scheduling.config import LoadedSchedule, ScheduleConfig
 from ens_evidence.scheduling.scheduler import render_status, scheduler_status
 from ens_evidence.workspace import LocalStore
-from scheduling import test_cycle
-from scheduling.test_cycle import TickClock
+from scheduling import cycle_helpers
+from scheduling.cycle_helpers import TickClock
 
 NOW = datetime(2026, 11, 5, 7, 0, tzinfo=UTC)  # 08:00 en Madrid, pasada la hora del diario
 DEFAULT = LoadedSchedule(ScheduleConfig(), is_default=True)
@@ -26,7 +26,7 @@ UNREADABLE = "20261104T070000-cccccc"
 
 def publish_day(store, settings, env, context, plugins, day: int) -> None:
     start = datetime(2026, 11, day, 5, 2, tzinfo=UTC)
-    outcome = test_cycle.cycle(
+    outcome = cycle_helpers.cycle(
         store, settings, env, context, plugins, TickClock(start), period=f"2026-11-{day:02d}"
     )
     assert outcome.completed
