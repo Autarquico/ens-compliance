@@ -26,7 +26,6 @@ from ens_evidence.scheduling.calendar import (
     next_monthly,
     resolve_local,
 )
-from ens_evidence.scheduling.clock import Clock
 from ens_evidence.scheduling.collect import Plugins, load_plugins
 from ens_evidence.scheduling.config import LoadedSchedule, ScheduleConfig
 from ens_evidence.scheduling.cycle import (
@@ -36,8 +35,14 @@ from ens_evidence.scheduling.cycle import (
     interrupted_runs,
     run_cycle,
 )
-from ens_evidence.scheduling.lock import CycleBusy, CycleContext, CycleLock, acquire_or_wait
 from ens_evidence.workspace import Settings, WorkspaceError, WorkspaceStore
+from ens_evidence.workspace.cycle_lock import (
+    Clock,
+    CycleBusy,
+    CycleContext,
+    CycleLock,
+    acquire_or_wait,
+)
 
 MAX_SLEEP_SECONDS = 60.0
 LATE_AFTER = timedelta(minutes=5)
@@ -426,6 +431,23 @@ def scheduler_status(
     )
 
 
+JOB_LABELS: Mapping[JobKind, str] = {"daily": "diario", "monthly": "mensual"}
+
+
+def _day_ranges(days: tuple[str, ...]) -> list[str]:
+    """Los días en rangos de días seguidos: `2026-10-01 a 2026-10-29`."""
+    ranges: list[list[date]] = []
+    for day in map(date.fromisoformat, sorted(days)):
+        if ranges and day - ranges[-1][-1] == timedelta(days=1):
+            ranges[-1][-1] = day
+        else:
+            ranges.append([day, day])
+    return [
+        first.isoformat() if first == last else f"{first.isoformat()} a {last.isoformat()}"
+        for first, last in ranges
+    ]
+
+
 def render_status(status: SchedulerStatus) -> str:
     cfg = status.config
     source = (
@@ -446,18 +468,18 @@ def render_status(status: SchedulerStatus) -> str:
         "Próximo disparo:",
     ]
     for job in status.jobs:
-        line = f"  {job.kind}: {job.next_at.astimezone(zone).isoformat()}"
+        line = f"  {JOB_LABELS[job.kind]}: {job.next_at.astimezone(zone).isoformat()}"
         if job.pending is not None:
             since = job.pending.due_at.astimezone(zone).isoformat()
-            line += f" (pendiente ahora: vencido desde {since})"
+            line += f" (pendiente ahora: {job.pending.period}, vencido desde {since})"
         lines.append(line)
     lines += ["", "Último informe:"]
     for kind, last in status.last_reports.items():
         if last is None:
-            lines.append(f"  {kind}: ninguno")
+            lines.append(f"  {JOB_LABELS[kind]}: ninguno")
             continue
         incomplete = "" if last.published else " (incompleto: falta el HTML)"
-        lines.append(f"  {kind}: {last.period} ({last.stamp}){incomplete}")
+        lines.append(f"  {JOB_LABELS[kind]}: {last.period} ({last.stamp}){incomplete}")
     lines += [
         "",
         f"Ciclos interrumpidos: {len(status.interrupted) + len(status.unreadable_cycles)}",
@@ -468,5 +490,5 @@ def render_status(status: SchedulerStatus) -> str:
     ]
     lines += [f"  {run_id}: marcadores ilegibles" for run_id in status.unreadable_cycles]
     lines += ["", f"Días sin informe diario en {status.month}: {len(status.days_without_report)}"]
-    lines += [f"  {day}" for day in status.days_without_report]
+    lines += [f"  {days}" for days in _day_ranges(status.days_without_report)]
     return "\n".join(lines) + "\n"

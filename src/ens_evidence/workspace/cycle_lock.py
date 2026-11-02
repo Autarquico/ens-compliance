@@ -1,13 +1,14 @@
 """Lock del ciclo: un único propietario por workspace en esta máquina.
 
+Módulo hoja (solo depende de `workspace.settings`): lo usan `backup/`, la CLI y `scheduling/`.
 Solo lo adquieren las entradas externas; las etapas reciben un `CycleContext`.
-El fichero de lock nunca se borra ni se sustituye: lo libera el kernel al morir
-el propietario.
+El fichero de lock nunca se borra ni se sustituye: lo libera el kernel al morir el propietario.
 """
 
 import fcntl
 import hashlib
 import os
+import stat
 from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -20,16 +21,23 @@ from ens_evidence.workspace.settings import PRODUCT_NAME, Settings
 STATE_DIR_ENV = "ENS_STATE_DIR"
 DEFAULT_STATE_DIR = Path(f"~/.local/state/{PRODUCT_NAME}")
 POLL_SECONDS = 5.0
+_OTHERS_CAN_WRITE = 0o022
 
 
 class CycleBusy(Exception):
     """Otro proceso tiene el ciclo de este workspace."""
 
 
-class WaitClock(Protocol):
-    def now(self) -> datetime: ...
+class Clock(Protocol):
+    """El reloj del ciclo: la hora y una espera que quien orquesta puede interrumpir."""
 
-    def sleep(self, seconds: float) -> None: ...
+    def now(self) -> datetime:
+        """Instante actual con zona horaria."""
+        ...
+
+    def sleep(self, seconds: float) -> None:
+        """Espera hasta `seconds`; puede volver antes o lanzar si se pide parar."""
+        ...
 
 
 def workspace_identity(settings: Settings) -> str:
@@ -48,6 +56,28 @@ def resolve_state_dir(env: Mapping[str, str] | None = None) -> Path:
     env = os.environ if env is None else env
     configured = env.get(STATE_DIR_ENV)
     return Path(configured).expanduser() if configured else DEFAULT_STATE_DIR.expanduser()
+
+
+def _private_directory(path: Path) -> None:
+    """Crea el directorio de estado y exige que sea del usuario y que nadie más escriba en él."""
+    path.mkdir(parents=True, exist_ok=True, mode=0o700)
+    info = path.stat()
+    if info.st_uid != os.geteuid() or info.st_mode & _OTHERS_CAN_WRITE:
+        raise PermissionError("el directorio de estado debe ser del usuario y no escribible")
+
+
+def _open_lock_file(path: Path) -> int:
+    """Abre el fichero sin seguir enlaces y comprueba que es un fichero propio."""
+    flags = os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW
+    fd = os.open(path, flags, 0o600)
+    try:
+        info = os.fstat(fd)
+        if not stat.S_ISREG(info.st_mode) or info.st_uid != os.geteuid():
+            raise PermissionError("el fichero de lock no es un fichero propio")
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd
 
 
 class CycleLock:
@@ -71,8 +101,8 @@ class CycleLock:
     def acquire(self) -> Self:
         if self._fd is not None:
             raise RuntimeError("el lock ya está adquirido por este objeto")
-        self._path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        fd = os.open(self._path, os.O_RDWR | os.O_CREAT | os.O_CLOEXEC, 0o600)
+        _private_directory(self._path.parent)
+        fd = _open_lock_file(self._path)
         try:
             fcntl.flock(fd, fcntl.LOCK_EX | fcntl.LOCK_NB)
         except BlockingIOError:
@@ -112,7 +142,7 @@ class CycleContext:
             raise ValueError("CycleContext exige un lock adquirido")
 
 
-def acquire_or_wait(lock: CycleLock, clock: WaitClock, wait_minutes: float) -> CycleLock:
+def acquire_or_wait(lock: CycleLock, clock: Clock, wait_minutes: float) -> CycleLock:
     """Reintenta hasta `wait_minutes`; agotado el plazo relanza `CycleBusy`."""
     deadline = clock.now() + timedelta(minutes=wait_minutes)
     while True:

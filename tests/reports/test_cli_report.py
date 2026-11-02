@@ -5,26 +5,24 @@ from datetime import timedelta
 
 import pytest
 import yaml
-from checks import test_engine
 from checks.test_engine import NOW, collect
-from checks.test_no_network import offline as offline_fixture
-from scheduling import test_collect
 from typer.testing import CliRunner
 
 from ens_evidence.checks.engine import run_all
 from ens_evidence.cli import app
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.reports.model import DailyReport
-from ens_evidence.reports.store import cycle_finished, load_json_strict, pairs, run_ids, stages_of
+from ens_evidence.reports.store import (
+    cycle_finished,
+    load_json_strict,
+    pairs,
+    run_ids,
+    stages_of,
+    write_stage,
+)
 from ens_evidence.scheduling.config import SCHEDULE_KEY, ScheduleConfig, load_schedule_config
-from ens_evidence.scheduling.lock import CycleLock
+from ens_evidence.workspace.cycle_lock import CycleLock
 from ens_evidence.workspace.settings import load_settings
-
-store = test_engine.store
-settings_path = test_collect.settings_path
-fake = test_collect.fake
-plugins = test_collect.plugins
-offline = offline_fixture
 
 TODAY = NOW + timedelta(hours=18)  # 2026-10-31 06:00 UTC: 07:00 en Madrid
 PERIOD = "2026-10-31"
@@ -120,6 +118,14 @@ def test_at_renderiza_el_estado_en_ese_instante_y_no_escribe_checks(cli, store, 
     assert set(store.list("evidence/checks")) == before
 
 
+def test_at_sin_stdout_se_rechaza_para_no_rellenar_dias_pasados(cli, store, checked):
+    result = cli("report", "daily", "--at", "2026-10-30T20:00:00+00:00")
+
+    assert result.exit_code == 2
+    assert "--stdout" in result.output
+    assert report_keys(store) == []
+
+
 def test_at_invalido_se_rechaza(cli, store, checked):
     result = cli("report", "daily", "--at", "ayer")
 
@@ -183,6 +189,26 @@ def test_report_daily_con_cycle_evalua_informa_y_registra_la_copia_fallida(cli, 
         load_json_strict(store.read_bytes(pairs(store, "daily", PERIOD)[0].json_key))
     )
     assert (report.cycle.run_id, report.cycle.trigger) == (run_id, "manual")
+
+
+def test_reanudar_un_run_con_reported_y_sin_copia_imprime_el_informe_y_hace_la_copia(
+    cli, store, checked
+):
+    """La caída llegó durante la copia: `reported` está y falta la etapa final."""
+    only_stored_evidence(store)
+    assert cli("report", "daily", "--cycle").exit_code == 0
+    (published,) = pairs(store, "daily", PERIOD)
+    run_id = "20261031T060500-abcdef"
+    for stage in ("started", "collected", "checked"):
+        write_stage(store, run_id, stage, at=TODAY, period=PERIOD)
+    write_stage(store, run_id, "reported", at=TODAY, period=PERIOD, reference=published.json_key)
+
+    result = cli("report", "daily", "--cycle")
+
+    assert result.exit_code == 0, result.output
+    assert published.json_key in result.output
+    assert stages_of(store, run_id).stages[-1].stage == "backup_failed"
+    assert len(pairs(store, "daily", PERIOD)) == 1
 
 
 def test_con_cycle_una_recogida_que_deja_el_conector_en_error_sale_con_3(cli, store, fake):

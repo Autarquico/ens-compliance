@@ -13,28 +13,14 @@ from ens_evidence.cli import app
 from ens_evidence.reports.store import pairs, write_stage
 from ens_evidence.scheduling.config import LoadedSchedule, ScheduleConfig
 from ens_evidence.scheduling.scheduler import render_status, scheduler_status
-from scheduling import test_collect, test_cycle
+from scheduling import test_cycle
 from scheduling.test_cycle import TickClock
-
-store = test_collect.store
-fake = test_collect.fake
-plugins = test_collect.plugins
-settings = test_cycle.settings
-env = test_cycle.env
-restic = test_cycle.restic
-scripted_restic = test_cycle.scripted_restic
-context = test_cycle.context
 
 NOW = datetime(2026, 11, 5, 7, 0, tzinfo=UTC)  # 08:00 en Madrid, pasada la hora del diario
 DEFAULT = LoadedSchedule(ScheduleConfig(), is_default=True)
 ORPHAN_COLLECTED = "20261104T050000-aaaaaa"
 ORPHAN_STARTED = "20261104T060000-bbbbbb"
 UNREADABLE = "20261104T070000-cccccc"
-
-
-@pytest.fixture
-def settings_path(settings, tmp_path):
-    return tmp_path / "settings.yaml"
 
 
 def publish_day(store, settings, env, context, plugins, day: int) -> None:
@@ -121,5 +107,17 @@ def test_cli_scheduler_status_muestra_interrumpidos_y_dias_sin_informe(
     assert result.exit_code == 0, result.output
     assert "Ciclos interrumpidos: 3" in result.output
     assert f"{UNREADABLE}: marcadores ilegibles" in result.output
-    assert "  2026-11-02" in result.output and "  2026-11-05" in result.output
+    assert "  2026-11-02\n" in result.output and "  2026-11-04 a 2026-11-05\n" in result.output
     assert snapshot(messy_workspace) == before
+
+
+def test_status_rotula_en_castellano_y_agrupa_los_dias_seguidos():
+    from ens_evidence.scheduling.scheduler import _day_ranges
+
+    assert _day_ranges(("2026-10-01", "2026-10-02", "2026-10-03", "2026-10-07", "2026-10-09")) == [
+        "2026-10-01 a 2026-10-03",
+        "2026-10-07",
+        "2026-10-09",
+    ]
+    assert _day_ranges(("2026-10-31", "2026-11-01")) == ["2026-10-31 a 2026-11-01"]
+    assert _day_ranges(()) == []

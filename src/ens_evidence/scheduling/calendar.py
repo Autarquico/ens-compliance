@@ -26,8 +26,9 @@ class Job:
 def resolve_local(day: dt.date, at: dt.time, zone: ZoneInfo) -> dt.datetime:
     """Instante UTC de `day at` en `zone`.
 
-    Hora inexistente: se desplaza por el salto (02:30 -> 03:30). Hora ambigua: `fold=0`.
-    La ida y vuelta local -> UTC -> local es la que detecta el hueco.
+    Hora inexistente: se desplaza por el salto (02:30 -> 03:30). Hora ambigua: primera ocurrencia.
+    Con `fold=0`, zoneinfo usa el desplazamiento previo a la transición, que es lo que produce
+    las dos reglas.
     """
     naive = dt.datetime.combine(day, at)
     return naive.replace(tzinfo=zone, fold=0).astimezone(UTC)

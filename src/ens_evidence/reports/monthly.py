@@ -6,7 +6,9 @@ faltan días. Lo que el producto aún no registra (incidentes, vulnerabilidades,
 acceso) es `Unavailable` con su motivo: nunca 0.
 """
 
+import hashlib
 from collections import Counter
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, tzinfo
 
@@ -20,6 +22,7 @@ from ens_evidence.backup.records import list_runs, run_key
 from ens_evidence.backup.restore_test import RESTORE_TESTS_PREFIX, RestoreTest
 from ens_evidence.categorization.approval import APPROVAL_KEY as CATEGORIZATION_APPROVAL_KEY
 from ens_evidence.checks.catalog import KNOWN_CHECKS
+from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.incidents.model import IncidentStatus
@@ -35,7 +38,16 @@ from ens_evidence.reports.daily import (
     read_incidents,
     source_ref,
 )
-from ens_evidence.reports.expiries import scan_expiries
+from ens_evidence.reports.expiries import WINDOW_DAYS, scan_expiries
+from ens_evidence.reports.labels import (
+    ACTION_STATUS_LABELS,
+    ASSET_TYPE_LABELS,
+    BACKUP_RUN_LABELS,
+    CHANGE_LABELS,
+    DOCUMENT_STATE_LABELS,
+    REPORT_NOT_A_REVIEW,
+    plain,
+)
 from ens_evidence.reports.model import (
     Aggregate,
     Coverage,
@@ -54,6 +66,7 @@ from ens_evidence.reports.store import (
     PeriodScan,
     load_json_strict,
     pairs,
+    published_problem,
     reports_in_period,
 )
 from ens_evidence.risk.models import APPROVAL_KEY as RISK_APPROVAL_KEY
@@ -96,6 +109,7 @@ class _Month:
     window: Window
     scan: PeriodScan
     checks: CheckResultsSource
+    expiry_windows: Mapping[str, int]
 
     @property
     def coverage(self) -> Coverage:
@@ -141,9 +155,10 @@ def build_monthly(
     tz: tzinfo,
     checks: CheckResultsSource,
     cycle: CycleInfo | None = None,
+    expiry_windows: Mapping[str, int] = WINDOW_DAYS,
 ) -> MonthlyReport:
     """El informe del mes `period` (`YYYY-MM`, hora local de `tz`). Mismos argumentos y mismo
-    workspace dan los mismos bytes."""
+    workspace dan los mismos bytes. `expiry_windows`: antelación de los avisos de caducidad."""
     month = _Month(
         store,
         generated_at,
@@ -152,6 +167,7 @@ def build_monthly(
         month_window(period, tz),
         reports_in_period(store, period),
         checks,
+        expiry_windows,
     )
     inventory, inventory_ids = _inventory(month)
     pending, pending_review = _pending(month)
@@ -187,8 +203,7 @@ def _notices(month: _Month, pending_review: bool) -> list[str]:
         )
     if month.scan.problems:
         notices.append("Informes diarios ilegibles: " + "; ".join(month.scan.problems) + ".")
-    if pending_review:
-        notices += [HUMAN_REVIEW_PENDING, NO_PRE_AUDIT]
+    notices += [HUMAN_REVIEW_PENDING, NO_PRE_AUDIT] if pending_review else [REPORT_NOT_A_REVIEW]
     return [*notices, NO_CONFORMITY]
 
 
@@ -215,8 +230,14 @@ def _inventory(month: _Month) -> tuple[Section[Aggregate], dict[str, str] | None
     section = month.aggregate(
         [month.ref("inventory", ASSETS_KEY)],
         f"{ASSETS_KEY}: no se puede leer",
-        counts={"total": len(by_id), **{f"tipo {t}": n for t, n in counts.items()}},
-        items=[Entry(subject=asset_id, detail=kind) for asset_id, kind in by_id.items()],
+        counts={
+            "total": len(by_id),
+            **{f"tipo {plain(ASSET_TYPE_LABELS, t)}": n for t, n in counts.items()},
+        },
+        items=[
+            Entry(subject=asset_id, detail=plain(ASSET_TYPE_LABELS, kind))
+            for asset_id, kind in by_id.items()
+        ],
     )
     return section, by_id
 
@@ -239,11 +260,19 @@ def _previous_monthly(month: _Month) -> _PreviousMonthly | Unavailable:
         return Unavailable(reason=f"{last.json_key}: par incompleto, falta el HTML")
     try:
         data = month.store.read_bytes(last.json_key)
+        html = month.store.read_bytes(last.html_key)
         report = MonthlyReport.model_validate(load_json_strict(data))
     except (WorkspaceError, ValueError, ValidationError):
         return Unavailable(reason=f"{last.json_key}: ilegible o no válido")
     if report.period != previous:
         return Unavailable(reason=f"{last.json_key}: no coincide con su periodo")
+    problem = (
+        "no lleva ciclo que lo publicara"
+        if report.cycle is None
+        else published_problem(month.store, report.cycle.run_id, last.json_key, data, html)
+    )
+    if problem is not None:
+        return Unavailable(reason=f"{last.json_key}: {problem}")
     ref = source_ref(month.store, "report", last.json_key, report.generated_at)
     if ref is None:
         return Unavailable(reason=f"{last.json_key}: ilegible o no válido")
@@ -272,20 +301,37 @@ def _inventory_changes(
 def _changes(month: _Month, current: dict[str, str] | None) -> Section[Aggregate]:
     items, counts, sources = _inventory_changes(month, current)
     daily = 0
+    comparable_days = 0
     for day, canonical in sorted(month.scan.days.items()):
         changes = canonical.report.changes
         if isinstance(changes, Unavailable):
             continue
+        comparable_days += 1
         sources.append(_report_ref(canonical))
         for change in changes.value.items:
             daily += 1
-            items.append(Entry(subject=change.subject, detail=f"{change.change} · {day}"))
-    counts["cambios en informes diarios"] = daily
-    return month.aggregate(
-        list(sources),
-        "sin informes diarios ni mensual anterior en que basar los cambios",
-        counts=counts,
-        items=items,
+            detail = f"{plain(CHANGE_LABELS, change.change)} · {day}"
+            items.append(Entry(subject=change.subject, detail=detail))
+    if comparable_days:
+        counts["cambios en informes diarios"] = daily
+        counts["días con cambios calculables"] = comparable_days
+    else:
+        items.append(
+            Entry(
+                subject="informes diarios",
+                detail="cambios no calculables: ningún informe diario del mes tiene base de "
+                "comparación",
+            )
+        )
+    return month.aggregate(list(sources), _no_base_reason(month), counts=counts, items=items)
+
+
+def _no_base_reason(month: _Month) -> str:
+    if month.coverage.days_with_report == 0:
+        return "sin informes diarios ni mensual anterior en que basar los cambios"
+    return (
+        "hace falta al menos dos informes diarios o un mensual anterior para comparar: "
+        "no hay base de la que calcular los cambios"
     )
 
 
@@ -298,14 +344,22 @@ def _deviations(month: _Month) -> Section[Aggregate]:
     items: list[Entry] = []
     sources: list[SourceRef | None] = []
     totals = count_statuses(())
+    without_data = unconfigured = 0
     for connector in sorted(set(KNOWN_CHECKS.values())):
         if blocked := problems.get(connector):
             reason = "; ".join(sorted(set(blocked)))
             items.append(Entry(subject=connector, detail=f"checks no disponibles: {reason}"))
+            without_data += 1
             continue
         run = latest_run(list(runs), connector, month.window.end)
         source = month.ref("check_run", run.run_id, run.finished_at) if run else None
         if run is None or source is None:
+            if month.store.exists(connector_config_key(connector)):
+                why = "sin ejecución utilizable al cierre del mes"
+                items.append(Entry(subject=connector, detail=f"checks no disponibles: {why}"))
+                without_data += 1
+            else:
+                unconfigured += 1
             continue
         sources.append(source)
         for status, number in count_statuses(run.results).items():
@@ -316,6 +370,7 @@ def _deviations(month: _Month) -> Section[Aggregate]:
             if r.status in _DEVIATIONS
         ]
     counts = {status.value: number for status, number in totals.items()}
+    counts |= {"conectores sin datos": without_data, "conectores sin configurar": unconfigured}
     return month.aggregate(
         sources,
         "ningún conector tiene una ejecución de checks utilizable al cierre del mes",
@@ -424,22 +479,40 @@ def _none_in_window(what: str, unreadable: int) -> str:
 def _backups(month: _Month) -> Section[Aggregate]:
     runs, unreadable = list_runs(month.store)
     found = [r for r in runs if month.in_window(r.started_at)]
-    counts = Counter(f"estado {r.status}" for r in found)
+    counts = Counter(plain(BACKUP_RUN_LABELS, r.status) for r in found)
     return month.aggregate(
         [month.ref("backup_run", run_key(r.run_id), r.started_at) for r in found],
         _none_in_window("ejecuciones de copia", len(unreadable)),
         counts={"total": len(found), "registros ilegibles": len(unreadable), **counts},
         items=[
-            Entry(subject=r.run_id, detail=f"{r.status} · inicio {r.started_at.isoformat()}")
+            Entry(
+                subject=r.run_id,
+                detail=f"{plain(BACKUP_RUN_LABELS, r.status)} · inicio {r.started_at.isoformat()}",
+            )
             for r in found
         ],
     )
 
 
-def _restore_tests(month: _Month) -> Section[Aggregate]:
+@dataclass(frozen=True)
+class _RestoreTests:
+    in_window: list[tuple[str, RestoreTest]]
+    unreadable: int
+    consulted: SourceRef
+
+
+def _read_restore_tests(month: _Month) -> _RestoreTests | Unavailable:
+    """Las pruebas de la ventana y la fuente de lo consultado: el prefijo de pruebas, con la
+    huella de su listado de claves. Sin poder listarlo no hay dato."""
+    try:
+        keys = sorted(month.store.list(RESTORE_TESTS_PREFIX))
+    except WorkspaceError:
+        return Unavailable(
+            reason=f"registro de pruebas de restauración ilegible ({RESTORE_TESTS_PREFIX}/)"
+        )
     found: list[tuple[str, RestoreTest]] = []
     unreadable = 0
-    for key in month.store.list(RESTORE_TESTS_PREFIX):
+    for key in keys:
         try:
             test = RestoreTest.model_validate(safe_load_unique(month.store.read_text(key)))
         except (WorkspaceError, yaml.YAMLError, ValidationError):
@@ -447,15 +520,30 @@ def _restore_tests(month: _Month) -> Section[Aggregate]:
             continue
         if month.in_window(test.performed_at):
             found.append((key, test))
+    consulted = SourceRef(
+        kind="restore_test",
+        key=f"{RESTORE_TESTS_PREFIX}/",
+        sha256=hashlib.sha256("\n".join(keys).encode()).hexdigest(),
+        at=month.window.end,
+    )
+    return _RestoreTests(found, unreadable, consulted)
+
+
+def _restore_tests(month: _Month) -> Section[Aggregate]:
+    """Un 0 solo vale porque el listado se pudo hacer; la cita es lo consultado."""
+    reading = _read_restore_tests(month)
+    if isinstance(reading, Unavailable):
+        return reading
+    found = reading.in_window
     approved = sum(t.review.approved for _, t in found)
     return month.aggregate(
-        [month.ref("restore_test", key, t.performed_at) for key, t in found],
-        _none_in_window("pruebas de restauración", unreadable),
+        [reading.consulted] + [month.ref("restore_test", key, t.performed_at) for key, t in found],
+        "registro de pruebas de restauración sin fuente",
         counts={
             "total": len(found),
             "revisión aprobada": approved,
             "revisión no aprobada": len(found) - approved,
-            "registros ilegibles": unreadable,
+            "registros ilegibles": reading.unreadable,
         },
         items=[
             Entry(
@@ -496,16 +584,24 @@ def _pending(month: _Month) -> tuple[Section[Aggregate], bool]:
         if document.state is DocumentState.APPROVED:
             continue
         unapproved += 1
-        items.append(Entry(subject=f"documento {document.name}", detail=document.state.value))
+        detail = plain(DOCUMENT_STATE_LABELS, document.state.value)
+        items.append(Entry(subject=f"documento {document.name}", detail=detail))
         if document.state is not DocumentState.NOT_GENERATED:
             sources.append(month.ref("document", document_key(document.name)))
-    expiry = scan_expiries(month.store, cutoff=month.generated_at, today=month.today, tz=month.tz)
+    expiry = scan_expiries(
+        month.store,
+        cutoff=month.generated_at,
+        today=month.today,
+        tz=month.tz,
+        windows=month.expiry_windows,
+    )
     expired = [i for i in expiry.items if i.days_left < 0]
     items += [
         Entry(subject=f"{i.kind}: {i.subject}", detail=f"vencida hace {-i.days_left} días")
         for i in expired
     ]
     sources += [*expiry.consulted]
+    restore_pending = _restore_pending(month, items, sources)
     section = month.aggregate(
         sources,
         "sin registros del workspace de los que derivar los pendientes",
@@ -513,10 +609,26 @@ def _pending(month: _Month) -> tuple[Section[Aggregate], bool]:
             "bloqueos de preparación": len(blockers),
             "documentos sin aprobar": unapproved,
             "caducidades vencidas": len(expired),
+            "pruebas de restauración sin hacer en el mes": restore_pending,
         },
         items=items,
     )
     return section, status.pending_human_review
+
+
+def _restore_pending(month: _Month, items: list[Entry], sources: list[SourceRef | None]) -> int:
+    """1 si el registro se pudo listar y no hay ninguna prueba en el mes; 0 si hay alguna o si el
+    registro no se pudo leer (no se sabe: la sección de pruebas lo dice, aquí no se afirma).
+    Con los pendientes sin ninguna otra fuente, el listado vacío no basta para sostenerlos."""
+    reading = _read_restore_tests(month)
+    if isinstance(reading, Unavailable) or reading.in_window or not ordered_sources(sources):
+        return 0
+    sources.append(reading.consulted)
+    detail = "ninguna prueba de restauración registrada en el mes: pendiente"
+    if reading.unreadable:
+        detail += f" (hay {reading.unreadable} registros ilegibles)"
+    items.append(Entry(subject="pruebas de restauración", detail=detail))
+    return 1
 
 
 def _corrective_actions(month: _Month) -> Section[Aggregate]:
@@ -537,13 +649,13 @@ def _corrective_actions(month: _Month) -> Section[Aggregate]:
         counts={
             "total": len(plan.actions),
             "vencidas": len(overdue),
-            **{f"estado {s}": n for s, n in by_status.items()},
+            **{f"estado {plain(ACTION_STATUS_LABELS, s)}": n for s, n in by_status.items()},
         },
         items=[
             Entry(
                 subject=a.id,
                 detail=(
-                    f"{a.status.value} · vence {a.due.isoformat()}"
+                    f"{plain(ACTION_STATUS_LABELS, a.status.value)} · vence {a.due.isoformat()}"
                     + (" · VENCIDA" if a.id in overdue else "")
                 ),
             )
@@ -565,7 +677,7 @@ def _daily_reports(month: _Month) -> Section[Aggregate]:
         for d in every_day
         if d not in scan.days
     ]
-    items += [Entry(subject="ilegible", detail=problem) for problem in scan.problems]
+    items += [Entry(subject="informe diario ilegible", detail=problem) for problem in scan.problems]
     items += [
         Entry(
             subject=day,

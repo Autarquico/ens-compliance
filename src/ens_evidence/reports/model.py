@@ -92,9 +92,21 @@ class Coverage(Strict):
 
 
 class ConnectorAttempts(Strict):
+    """Intentos de recogida de un conector. `phase` y `error_type` solo si el último intento lo
+    generó el planificador (fase en que falló y tipo del error, sin mensajes ni valores)."""
+
     connector: str = Field(min_length=1)
     attempts: int = Field(ge=0)
     last_status: CollectionStatus | None = None
+    phase: str | None = None
+    error_type: str | None = None
+
+
+class InheritedStage(Strict):
+    """Etapa que este informe heredó de un intento anterior del mismo ciclo."""
+
+    stage: str
+    at: AwareDatetime
 
 
 class CycleInfo(Strict):
@@ -105,6 +117,8 @@ class CycleInfo(Strict):
     started_at: AwareDatetime
     data_cutoff: AwareDatetime
     connector_attempts: list[ConnectorAttempts] = Field(default_factory=list)
+    resumed: bool = False
+    inherited_stages: list[InheritedStage] = Field(default_factory=list)
 
 
 class CheckCounts(Strict):
@@ -116,6 +130,8 @@ class ConnectorEntry(Strict):
     collection: Section[CollectionStatus]
     checks: Section[CheckCounts]
     attempts: int | None = Field(default=None, ge=0)
+    phase: str | None = Field(default=None, description="Fase en que falló la recogida.")
+    error_type: str | None = Field(default=None, description="Tipo del error de la recogida.")
 
 
 class AssetsSummary(Strict):
@@ -286,7 +302,25 @@ class MonthlyReport(_Report):
         return self
 
 
+ChecksOutcome = Literal["ok", "skipped_scope", "error"]
+BackupCode = Literal[
+    "disabled",
+    "not_configured",
+    "invalid_credentials",
+    "previous_run_unfinished",
+    "workspace_unreadable",
+    "restic_failed",
+    "record_not_persisted",
+    "crashed",
+]
+BACKUP_STAGES = ("backed_up", "backup_failed", "backup_skipped")
+STAGE_FIELDS = ("attempts", "checks", "json_sha256", "html_sha256", "backup_code")
+
+
 class CycleStage(Strict):
+    """Marcador de una etapa del ciclo. `reference` solo lleva claves del almacén; el resto de
+    datos van en campos tipados que solo admite su etapa."""
+
     run_id: str = Field(pattern=RUN_ID_PATTERN)
     stage: Literal[
         "started",
@@ -300,6 +334,24 @@ class CycleStage(Strict):
     at: AwareDatetime
     period: str
     reference: str | None = Field(default=None, description="Clave del registro asociado.")
+    attempts: list[ConnectorAttempts] | None = Field(default=None, description="Etapa collected.")
+    checks: ChecksOutcome | None = Field(default=None, description="Etapa checked.")
+    json_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    html_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    backup_code: BackupCode | None = Field(default=None, description="Etapas de copia.")
+
+    @model_validator(mode="after")
+    def _fields_belong_to_their_stage(self) -> "CycleStage":
+        allowed = {
+            "collected": {"attempts"},
+            "checked": {"checks"},
+            "reported": {"json_sha256", "html_sha256"},
+            **dict.fromkeys(BACKUP_STAGES, {"backup_code"}),
+        }.get(self.stage, set())
+        given = {name for name in STAGE_FIELDS if getattr(self, name) is not None}
+        if given - allowed:
+            raise ValueError("un campo del marcador no corresponde a su etapa")
+        return self
 
 
 def is_day(text: str) -> bool:

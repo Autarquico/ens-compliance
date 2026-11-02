@@ -1,7 +1,8 @@
 """Caducidades próximas del informe diario (D4 de reports-scheduling).
 
 Solo lee. Cada elemento lleva la fuente de la que sale; lo que no se pudo leer va a `problems`
-(nunca se omite en silencio). Ventanas, en días antes de caducar:
+(nunca se omite en silencio). Ventanas por defecto (`WINDOW_DAYS`), en días antes de caducar;
+quien llama pasa las suyas (`expiry_warnings` de schedule.yaml) en `windows`:
 
 - revisiones de medida (implantación y aplicabilidad), aprobaciones de categorización y de riesgos,
   restore tests y declaración offsite: 30;
@@ -13,6 +14,7 @@ sistema: una anterior sustituida ya no es la vigente. La evidencia sin `valid_un
 """
 
 import hashlib
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime, time, tzinfo
 
@@ -48,6 +50,7 @@ from ens_evidence.risk.models import (
     RiskApproval,
     TreatmentPlanFile,
 )
+from ens_evidence.scheduling.config import ExpiryWarnings
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 from ens_evidence.yaml_unique import safe_load_unique
 
@@ -62,6 +65,24 @@ WINDOW_DAYS = {
     "technical_evidence": 7,
     "treatment_action": 0,
 }
+
+
+def windows_from(warnings: ExpiryWarnings) -> dict[str, int]:
+    """Las ventanas de `schedule.yaml` por tipo de caducidad. Las acciones del plan siguen
+    avisando al vencer."""
+    return {
+        "measure_review": warnings.measure_reviews,
+        "applicability_review": warnings.measure_reviews,
+        "categorization_approval": warnings.approvals,
+        "risk_approval": warnings.approvals,
+        "restore_test": warnings.restore_tests,
+        "offsite_declaration": warnings.offsite_backup,
+        "manual_evidence": warnings.manual_evidence,
+        "technical_evidence": warnings.technical_evidence,
+        "treatment_action": WINDOW_DAYS["treatment_action"],
+    }
+
+
 OPEN_ACTIONS = frozenset({ActionStatus.PENDING, ActionStatus.IN_PROGRESS})
 
 
@@ -80,6 +101,7 @@ class _Scan:
     cutoff: datetime
     today: date
     tz: tzinfo
+    windows: Mapping[str, int]
     items: list[ExpiryItem] = field(default_factory=list)
     consulted: list[SourceRef] = field(default_factory=list)
     problems: list[str] = field(default_factory=list)
@@ -101,7 +123,7 @@ class _Scan:
         if source is None:
             return
         days_left = (expires_at.astimezone(self.tz).date() - self.today).days
-        if days_left <= WINDOW_DAYS[kind]:
+        if days_left <= self.windows.get(kind, WINDOW_DAYS[kind]):
             self.items.append(
                 ExpiryItem(
                     kind=kind,
@@ -114,10 +136,16 @@ class _Scan:
 
 
 def scan_expiries(
-    store: WorkspaceStore, *, cutoff: datetime, today: date, tz: tzinfo
+    store: WorkspaceStore,
+    *,
+    cutoff: datetime,
+    today: date,
+    tz: tzinfo,
+    windows: Mapping[str, int] = WINDOW_DAYS,
 ) -> ExpiryScan:
-    """`today`: el día del informe; `days_left` se cuenta en fechas locales de `tz`."""
-    scan = _Scan(store, cutoff, today, tz)
+    """`today`: el día del informe; `days_left` se cuenta en fechas locales de `tz`. `windows`:
+    días de antelación por tipo de caducidad; un tipo que falte usa su valor de `WINDOW_DAYS`."""
+    scan = _Scan(store, cutoff, today, tz, windows)
     _measure_reviews(scan)
     _approvals(scan)
     restore_tests = _read_restore_tests(scan)

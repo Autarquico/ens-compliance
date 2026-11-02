@@ -30,7 +30,6 @@ from ens_evidence.scheduling.config import (
     ScheduleConfig,
     ScheduleConfigError,
 )
-from ens_evidence.scheduling.lock import CycleLock
 from ens_evidence.scheduling.scheduler import (
     CycleExecutor,
     JobResult,
@@ -41,17 +40,9 @@ from ens_evidence.scheduling.scheduler import (
     stop_on_signals,
     workspace_done_periods,
 )
-from scheduling import test_collect, test_cycle
+from ens_evidence.workspace.cycle_lock import CycleLock
+from scheduling import test_cycle
 from scheduling.fakes import FakeClock, FakeExecutor
-
-store = test_collect.store
-settings_path = test_collect.settings_path
-fake = test_collect.fake
-plugins = test_collect.plugins
-settings = test_cycle.settings
-env = test_cycle.env
-restic = test_cycle.restic
-scripted_restic = test_cycle.scripted_restic
 
 # El día mensual cae lejos de los días que se simulan, salvo en las pruebas del día mensual.
 CFG = ScheduleConfig(monthly=MonthlyConfig(day=28))
@@ -618,18 +609,19 @@ def test_status_muestra_config_proximos_disparos_ultimos_informes_interrumpidos_
 
     assert status.sha256 == config_sha256(ScheduleConfig()) and f"sha256: {status.sha256}" in text
     assert "valores por defecto" in text and "zona horaria: Europe/Madrid" in text
-    assert "daily: 2026-12-06T06:00:00+01:00" in text
-    assert "(pendiente ahora: vencido desde 2026-12-05T06:00:00+01:00)" in text
+    assert "diario: 2026-12-06T06:00:00+01:00" in text
+    assert "(pendiente ahora: 2026-12-05, vencido desde 2026-12-05T06:00:00+01:00)" in text
     assert (
-        "monthly: 2027-01-01T06:00:00+01:00" in text
-        and "monthly: 2027-01-01T06:00:00+01:00 (" not in text
+        "mensual: 2027-01-01T06:00:00+01:00" in text
+        and "mensual: 2027-01-01T06:00:00+01:00 (" not in text
     )
-    assert "daily: 2026-12-01" in text and "monthly: 2026-11" in text
+    assert "diario: 2026-12-01" in text and "mensual: 2026-11" in text
     assert (
         "Ciclos interrumpidos: 1" in text and "20261203T050000-abcdef: última etapa started" in text
     )
     assert status.days_without_report == ("2026-12-02", "2026-12-03", "2026-12-04", "2026-12-05")
     assert "Días sin informe diario en 2026-12: 4" in text
+    assert "  2026-12-02 a 2026-12-05\n" in text
     assert snapshot(store) == before and sorted(os.listdir(tmp_path / "lock-state")) == state_before
 
 
@@ -640,7 +632,7 @@ def test_status_antes_de_la_hora_de_hoy_no_cuenta_hoy_como_dia_sin_informe(store
 
     assert status.days_without_report == ("2026-12-01",)
     assert all(last is None for last in status.last_reports.values())
-    assert "daily: ninguno" in render_status(status)
+    assert "diario: ninguno" in render_status(status)
 
 
 def test_status_el_primer_dia_del_mes_antes_de_la_hora_no_lista_dias(store):

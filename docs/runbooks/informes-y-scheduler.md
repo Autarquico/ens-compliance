@@ -16,7 +16,9 @@ Valores por defecto:
 - copia a R2 al final de cada ciclo diario;
 - avisos de caducidad: 30 días para revisiones, aprobaciones, pruebas de
   restauración y copia externa; 14 días para evidencia manual; 7 días para
-  evidencia técnica.
+  evidencia técnica. Se cambian en `expiry_warnings` de `reports/schedule.yaml`
+  y rigen los informes diario y mensual; las acciones del plan de tratamiento
+  avisan siempre al vencer.
 
 El fichero no admite credenciales. Las de los conectores y las de la copia van
 en variables de entorno del contenedor.
@@ -65,9 +67,20 @@ Los informes están en `evidence/reports/daily/<fecha>/` y
 
 - Cada dato cita su fuente y su fecha. «No disponible» significa que no hay
   de dónde sacarlo; nunca es un cero.
-- Un conector que falla aparece en ERROR, con la fase en la que falló. Nunca
-  se usa una recogida anterior en su lugar. Del error solo se guarda el tipo
-  de excepción, nunca su mensaje.
+- Un conector que falla aparece en ERROR, con la fase en la que falló: en el
+  HTML, «ERROR · fase: recogida (excepción RuntimeError)». Nunca se usa una
+  recogida anterior en su lugar. Del error solo se guarda el tipo de
+  excepción, nunca su mensaje.
+- El HTML está en castellano llano («no preparada», «copia fallida: sin
+  ajustes de copia», «revisión de la medida»). Los códigos internos
+  (`NOT_READY`, `backup_failed`, `measure_review`) quedan en el JSON. Los
+  estados oficiales PASS, FAIL, ERROR y UNKNOWN se muestran tal cual.
+- En el HTML las fuentes van una vez por sección, al pie de su tabla.
+- En el mensual, un recuento de 0 solo aparece si el registro se pudo
+  listar, y cita lo consultado. Si en el mes no hay ninguna prueba de
+  restauración, sale en Pendientes: no es un dato que falte, es trabajo por
+  hacer. Un conector configurado sin ejecución al cierre del mes se lista
+  como «checks no disponibles»; nunca se omite.
 - Si un collector devuelve algo que parece un secreto, el resultado no se
   guarda y queda un ERROR que indica dónde apareció.
 - El informe no declara conformidad. La preparación es la de
@@ -78,7 +91,7 @@ Los informes están en `evidence/reports/daily/<fecha>/` y
 - **Ciclo interrumpido** (caída, reinicio): el siguiente arranque lo
   reanuda en las etapas pendientes, y los informes lo listan. Los días
   perdidos no se rellenan.
-- **Copia en ERROR:** revisa las credenciales de R2 en el entorno y lanza
+- **Copia fallida (ERROR):** revisa las credenciales de R2 en el entorno y lanza
   `ens-evidence backup run`.
 - **Reloj desajustado:** ver el [runbook del motor de checks](motor-de-checks.md).
 - **Borrar informes:** la herramienta no los borra nunca. Si una política

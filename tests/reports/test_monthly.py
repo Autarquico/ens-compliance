@@ -4,11 +4,13 @@ from datetime import UTC, datetime, timedelta
 import pytest
 import yaml
 
-from ens_evidence.assessment.render import NO_CONFORMITY
+from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY
 from ens_evidence.backup.records import BackupRun, dump, run_key
 from ens_evidence.backup.restore_test import RestoreTest, restore_test_key
+from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.evidence.importer import import_manual
 from ens_evidence.models.enums import CheckStatus
+from ens_evidence.reports.labels import REPORT_NOT_A_REVIEW
 from ens_evidence.reports.model import (
     ChangeItem,
     Changes,
@@ -17,10 +19,10 @@ from ens_evidence.reports.model import (
     render_json,
 )
 from ens_evidence.reports.monthly import build_monthly, month_window, previous_month
-from ens_evidence.reports.store import save_pair
+from ens_evidence.scope import APPROVAL_KEY as SCOPE_APPROVAL_KEY
 from ens_evidence.workspace import LocalStore
 
-from .helpers import SHA, daily, put_daily, ref, source_sha256
+from .helpers import SHA, daily, put_daily, put_monthly, ref, source_sha256
 from .test_daily import walk
 from .world import MADRID, check_result, source_of, static_run
 
@@ -194,10 +196,7 @@ def test_inventario_ausente_es_unavailable(store):
 def publish_previous(store, *ids):
     write_assets(store, *ids)
     previous = monthly_at(store, period="2026-09", generated_at=GENERATED - timedelta(days=31))
-    save_pair(
-        store, "monthly", "2026-09", render_json(previous), b"<html>x</html>",
-        at=GENERATED - timedelta(days=30),
-    )  # fmt: skip
+    put_monthly(store, previous, GENERATED - timedelta(days=30), b"<html>x</html>")
 
 
 def test_altas_y_bajas_frente_al_mensual_anterior(store):
@@ -223,6 +222,17 @@ def test_sin_mensual_anterior_las_altas_y_bajas_no_se_calculan_ni_se_dan_por_cer
     assert "altas" not in changes.value.counts
     (entry,) = [e for e in changes.value.items if e.subject == "inventario"]
     assert "no calculables" in entry.detail
+
+
+def test_mensual_anterior_editado_tras_publicarse_no_es_base(store):
+    publish_previous(store, "a1")
+    (key,) = [k for k in store.list("evidence/reports/monthly/2026-09") if k.endswith(".json")]
+    (store._root / key).write_bytes((store._root / key).read_bytes() + b" ")
+    write_assets(store, "a1", "a2")
+
+    changes = monthly_at(store).changes
+
+    assert isinstance(changes, Unavailable)  # ni informes diarios ni base
 
 
 def test_mensual_anterior_corrupto_no_es_base(store):
@@ -457,10 +467,11 @@ def test_cada_dato_tiene_fuentes_reales_o_es_unavailable(store):
 def test_workspace_vacio_no_presenta_nada_como_cero(store):
     report = monthly_at(store)
 
-    for name in set(AGGREGATES) - {"incidents"}:
+    for name in set(AGGREGATES) - {"incidents", "restore_tests"}:
         section = getattr(report, name)
         assert isinstance(section, Unavailable), name
     assert [s.key for s in report.incidents.sources] == ["incidents/"]
+    assert [s.kind for s in report.restore_tests.sources] == ["restore_test"]
 
 
 def test_el_informe_no_declara_cumplimiento(store):
@@ -470,3 +481,127 @@ def test_el_informe_no_declara_cumplimiento(store):
     assert NO_CONFORMITY in monthly_at(store).notices
     assert "cumple" not in text.replace("no declara conformidad", "")
     assert "compliant" not in text
+
+
+# --- ronda de arreglos: rótulos llanos, huecos y ausencias ---------------------------------------
+
+
+def test_copias_con_rotulos_llanos_y_sin_codigos(store):
+    backup_run(store, "b1", datetime(2026, 10, 5, tzinfo=UTC))
+
+    value = monthly_at(store).backups.value
+
+    assert value.counts["copia completada"] == 1
+    assert value.items[0].detail.startswith("copia completada · inicio")
+    assert not any("estado " in k for k in value.counts)
+
+
+def test_inventario_con_el_tipo_de_activo_en_castellano(store):
+    write_assets(store, "a1")
+
+    value = monthly_at(store).inventory.value
+
+    assert value.counts["tipo portátil"] == 1
+    assert value.items[0].detail == "portátil"
+
+
+def test_el_mensual_lleva_un_unico_aviso_de_revision_humana(store):
+    notices = monthly_at(store).notices
+
+    assert HUMAN_REVIEW_PENDING in notices
+    assert REPORT_NOT_A_REVIEW not in notices
+    assert sum("revisión" in n.lower() for n in notices) == 1
+
+
+def test_cero_pruebas_de_restauracion_es_un_cero_citando_lo_consultado(store):
+    write_restore_test(store, "RT-old", datetime(2026, 9, 12, 9, tzinfo=UTC))
+
+    section = monthly_at(store).restore_tests
+
+    assert section.value.counts["total"] == 0
+    assert [(s.kind, s.key) for s in section.sources] == [
+        ("restore_test", "evidence/restore-tests/")
+    ]
+    assert section.sources[0].sha256 == source_sha256(store, "evidence/restore-tests/")
+
+
+def test_sin_pruebas_en_el_mes_va_a_pendientes_como_pendiente(store):
+    store.write_text(SCOPE_APPROVAL_KEY, "x: 1\n")
+
+    pending = monthly_at(store).pending.value
+
+    assert pending.counts["pruebas de restauración sin hacer en el mes"] == 1
+    entry = next(e for e in pending.items if e.subject == "pruebas de restauración")
+    assert "pendiente" in entry.detail
+
+
+def test_con_una_prueba_en_el_mes_no_hay_pendiente_de_restauracion(store):
+    store.write_text(SCOPE_APPROVAL_KEY, "x: 1\n")
+    write_restore_test(store, "RT-in", datetime(2026, 10, 12, 9, tzinfo=UTC))
+
+    pending = monthly_at(store).pending.value
+
+    assert pending.counts["pruebas de restauración sin hacer en el mes"] == 0
+    assert all(e.subject != "pruebas de restauración" for e in pending.items)
+
+
+def test_conector_configurado_sin_ejecucion_se_lista_y_no_se_omite(store):
+    end = month_window(PERIOD, MADRID).end
+    run = static_run(store, "github", 1, end - timedelta(days=2), check_result(CheckStatus.PASS))
+    store.write_text(connector_config_key("cloudflare"), "x: 1\n")
+
+    value = monthly_at(store, checks=source_of(run)).deviations.value
+
+    assert value.counts["conectores sin datos"] == 1
+    assert any(
+        e.subject == "cloudflare" and "sin ejecución utilizable" in e.detail for e in value.items
+    )
+
+
+def test_conector_sin_configurar_se_cuenta_aparte(store):
+    end = month_window(PERIOD, MADRID).end
+    run = static_run(store, "github", 1, end - timedelta(days=2), check_result(CheckStatus.PASS))
+
+    value = monthly_at(store, checks=source_of(run)).deviations.value
+
+    assert value.counts["conectores sin datos"] == 0
+    assert value.counts["conectores sin configurar"] >= 1
+
+
+def test_dias_sin_cambios_calculables_no_publican_cero_cambios(store):
+    write_assets(store, "a1")
+    publish_previous(store, "a1")
+    day_report(store, 2)  # el diario no pudo calcular sus cambios (Unavailable)
+
+    value = monthly_at(store).changes.value
+
+    assert "cambios en informes diarios" not in value.counts
+    assert any(
+        e.subject == "informes diarios" and "no calculables" in e.detail for e in value.items
+    )
+
+
+def test_cambios_con_un_solo_diario_explica_que_hace_falta_otro(store):
+    day_report(store, 2)
+
+    reason = monthly_at(store).changes.reason
+
+    assert "al menos dos" in reason
+    assert "sin informes diarios" not in reason
+
+
+def test_un_diario_editado_tras_publicarse_es_un_dia_ilegible_nunca_cubierto(store):
+    fill_month(store, skip={7})
+    pair = day_report(store, 7)
+    path = store._root / pair.json_key
+    path.write_bytes(path.read_bytes() + b" ")
+
+    report = monthly_at(store)
+
+    value = report.daily_reports.value
+    assert value.coverage.days_with_report == 30
+    assert {"días sin informe": 1, "informes ilegibles": 1}.items() <= value.counts.items()
+    assert any(
+        e.subject == "informe diario ilegible" and pair.json_key in e.detail for e in value.items
+    )
+    assert any("ilegibles" in n for n in report.notices)

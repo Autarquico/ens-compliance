@@ -40,7 +40,7 @@ def _connector_line(summary: ConnectorSummary) -> str:
     )
 
 
-def _blocker_lines_by_measure(blockers: Iterable[Blocker]) -> dict[str, list[str]]:
+def blocker_lines_by_measure(blockers: Iterable[Blocker]) -> dict[str, list[str]]:
     """Los textos de bloqueo de cada medida, sin repetir, en orden de aparición."""
     grouped: dict[str, list[Blocker]] = {}
     for blocker in blockers:
@@ -55,7 +55,7 @@ def _in_measures(measures: int) -> str:
 def render_status_text(status: AssessmentStatus) -> str:
     result = status.result
     readiness = result.readiness
-    by_measure = _blocker_lines_by_measure(readiness.blockers)
+    by_measure = blocker_lines_by_measure(readiness.blockers)
     count = sum(len(texts) for texts in by_measure.values())
     lines = [
         f"Declaración de Aplicabilidad: {DECLARATION_LABELS[result.declaration_state]}.",

@@ -7,7 +7,7 @@ from typing import Annotated, Any
 from zoneinfo import ZoneInfo
 
 import yaml
-from pydantic import AfterValidator, Field, ValidationError, field_validator
+from pydantic import AfterValidator, Field, ValidationError, field_validator, model_validator
 
 from ens_evidence.models.contracts import Strict
 from ens_evidence.scope.secrets import find_secrets
@@ -18,6 +18,8 @@ from ens_evidence.yaml_unique import safe_load_unique
 SCHEDULE_KEY = "reports/schedule.yaml"
 _HHMM = re.compile(r"^([01]\d|2[0-3]):([0-5]\d)$")
 _CONNECTOR_NAME = re.compile(r"^[a-z0-9][a-z0-9-]*$")
+MAX_SCHEDULE_BYTES = 64 * 1024
+MAX_COLLECT_MINUTES = 6 * 60  # peor caso de recogida de un conector con el lock tomado
 
 
 class ScheduleConfigError(WorkspaceError):
@@ -59,6 +61,21 @@ class CollectConfig(Strict):
         """Minutos de espera antes del reintento `retry` (1 = primero); el último se repite."""
         return self.retry_delay_minutes[min(retry, len(self.retry_delay_minutes)) - 1]
 
+    @property
+    def worst_case_minutes(self) -> int:
+        """Lo más que puede tardar un conector: todos los intentos agotan el tiempo límite."""
+        waits = sum(self.delay_for(retry) for retry in range(1, self.retries + 1))
+        return (self.retries + 1) * self.timeout_minutes + waits
+
+    @model_validator(mode="after")
+    def _bounded_worst_case(self) -> "CollectConfig":
+        if self.worst_case_minutes > MAX_COLLECT_MINUTES:
+            raise ValueError(
+                f"intentos, esperas y tiempo límite suman {self.worst_case_minutes} min en el "
+                f"peor caso; el máximo es {MAX_COLLECT_MINUTES}"
+            )
+        return self
+
 
 class CycleConfig(Strict):
     attempts: Annotated[int, Field(ge=1, le=10)] = 3
@@ -78,6 +95,7 @@ class ExpiryWarnings(Strict):
 
 class BackupStep(Strict):
     enabled: bool = True
+    timeout_minutes: Annotated[int, Field(ge=1, le=720)] = 120
 
 
 class ScheduleConfig(Strict):
@@ -106,7 +124,9 @@ class LoadedSchedule:
 def load_schedule_config(store: WorkspaceStore) -> LoadedSchedule:
     """Sin fichero: valores por defecto marcados como tales. Inválido: `ScheduleConfigError`."""
     try:
-        raw = safe_load_unique(store.read_text(SCHEDULE_KEY))
+        text = store.read_text(SCHEDULE_KEY)
+        _reject_unbounded(text)
+        raw = safe_load_unique(text)
     except NotFound:
         return LoadedSchedule(ScheduleConfig(), is_default=True)
     except (NotText, yaml.YAMLError):
@@ -124,6 +144,19 @@ def load_schedule_config(store: WorkspaceStore) -> LoadedSchedule:
             for item in exc.errors(include_input=False, include_url=False)
         )
         raise ScheduleConfigError(f"{SCHEDULE_KEY}: {details}") from None
+
+
+def _reject_unbounded(text: str) -> None:
+    """Sin alias YAML ni ficheros enormes: la configuración se recarga en cada vuelta del
+    planificador y unos alias anidados la harían crecer de forma exponencial."""
+    if len(text.encode("utf-8")) > MAX_SCHEDULE_BYTES:
+        raise ScheduleConfigError(f"{SCHEDULE_KEY}: supera {MAX_SCHEDULE_BYTES // 1024} KiB")
+    try:
+        aliased = any(isinstance(event, yaml.AliasEvent) for event in yaml.parse(text))
+    except yaml.YAMLError:
+        return  # la carga normal informa del error de sintaxis
+    if aliased:
+        raise ScheduleConfigError(f"{SCHEDULE_KEY}: no se admiten alias YAML")
 
 
 def _reject_credentials(raw: dict[str, Any]) -> None:
@@ -158,6 +191,7 @@ collect:
   retries: 2             # reintentos por conector (solo ante ERROR)
   retry_delay_minutes: [5, 15]
   timeout_minutes: 15    # una recogida que lo supera se termina y queda en ERROR
+  # intentos, esperas y tiempo límite de un conector no pueden sumar más de 360 min
 
 cycle:
   attempts: 3            # intentos del ciclo completo
@@ -173,4 +207,5 @@ expiry_warnings:         # días de antelación del aviso
 
 backup:
   enabled: true          # copia al final del ciclo diario; si falla, queda en ERROR
+  timeout_minutes: 120   # una copia que lo supera se corta y queda como fallida
 """

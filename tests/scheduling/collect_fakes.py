@@ -70,6 +70,8 @@ class FakeConnector(Connector):
             raise RuntimeError(CANARY)
         if os.environ.get("ENS_FAKE_MODE") == "prepare_invalid":
             raise WorkspaceError("asset_id: debe ser un activo del inventario")
+        if os.environ.get("ENS_FAKE_MODE") == "prepare_secret":
+            raise WorkspaceError(f"asset_id inválido: {LEAK}")
         return config
 
     def collect(self, config: BaseModel) -> CollectionResult:
@@ -88,6 +90,12 @@ class FakeConnector(Connector):
                 return _result(CollectionStatus.NOT_SUPPORTED, {"error": "not_supported"})
             case "secret":
                 return _result(CollectionStatus.SUCCESS, {"leak": {"detail": LEAK}})
+            case "secret_key":
+                return _result(CollectionStatus.SUCCESS, {"organization": "x", LEAK: "dato"})
+            case "secret_schema_version":
+                return _result(CollectionStatus.SUCCESS, {"organization": "x"}, schema_version=LEAK)
+            case "secret_tuple":
+                return _result(CollectionStatus.SUCCESS, {"items": (LEAK,)})
             case "secret_error":
                 return _result(CollectionStatus.ERROR, {"error": f"fallo con {LEAK}"})
             case "foreign_source" | "foreign_collector" | "foreign_asset_id":

@@ -28,6 +28,9 @@ herramienta nunca declara conformidad (`CLAUDE.md`).
   - JSON y HTML deterministas.
   - El HTML se genera solo a partir del modelo: escapado único, sin JS, sin
     enlaces y con CSP.
+  - El HTML está en castellano llano para la pyme; los códigos internos
+    quedan en el JSON. Las fuentes van una vez por sección, al pie de su
+    tabla.
   - Se guardan como solo adición en `evidence/reports/{daily,monthly}/`.
   - Nunca se borran solos.
 
@@ -73,7 +76,8 @@ herramienta nunca declara conformidad (`CLAUDE.md`).
   - mensual el día 1;
   - avisos de caducidad: 30 días para revisiones, aprobaciones, pruebas de
     restauración y copia externa; 14 días para evidencia manual; 7 días para
-    evidencia técnica;
+    evidencia técnica; se cambian en `expiry_warnings` y rigen ambos
+    informes;
   - conservar todos los informes.
 
 ## Consecuencias

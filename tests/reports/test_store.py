@@ -3,21 +3,23 @@ from datetime import UTC, datetime
 import pytest
 
 from ens_evidence.reports import store as reports
-from ens_evidence.reports.model import Unavailable, render_json
+from ens_evidence.reports.model import CycleStage, Unavailable, render_json
 from ens_evidence.reports.store import (
     canonical_previous_daily,
     cycle_finished,
+    interrupted_in,
     published,
     reports_in_period,
     run_ids,
     save_html,
     save_pair,
+    scan_cycles,
     stages_of,
     write_stage,
 )
 from ens_evidence.workspace import AlreadyExists, LocalStore
 
-from .helpers import NOON, daily, monthly, put_daily
+from .helpers import NOON, cycle_info, daily, monthly, put_daily, put_manual_daily
 
 
 @pytest.fixture
@@ -141,6 +143,93 @@ def test_several_reports_in_a_day_the_last_stamp_is_canonical(store):
     assert result.pair.json_key == second.json_key
 
 
+# --- informes sin ciclo y ediciones: nunca favorecen a la organización -----------------------
+
+
+def test_a_manual_report_does_not_fill_a_day_without_a_cycle(store):
+    put_manual_daily(store, daily("2026-11-01"), at(1))
+    scan = reports_in_period(store, "2026-11")
+    assert scan.coverage.days_with_report == 0 and not scan.days
+    assert scan.problems and "2026-11-01" in scan.problems[0]
+
+
+def test_filling_a_whole_month_by_hand_leaves_coverage_at_zero(store):
+    for day in range(1, 31):
+        put_manual_daily(store, daily(f"2026-11-{day:02d}"), at(day))
+    scan = reports_in_period(store, "2026-11")
+    assert scan.coverage.days_with_report == 0 and scan.coverage.partial
+
+
+def test_a_manual_report_is_not_a_base_for_changes(store):
+    put_manual_daily(store, daily("2026-10-31"), at(1))
+    assert isinstance(canonical_previous_daily(store, "2026-11-01"), Unavailable)
+
+
+def test_a_later_manual_report_does_not_displace_the_cycle_one(store):
+    cycle = put_daily(store, daily("2026-10-31"), at(1, 6))
+    manual = put_manual_daily(store, daily("2026-10-31", product_version="manual"), at(1, 9))
+    result = canonical_previous_daily(store, "2026-11-01")
+    assert result.pair.json_key == cycle.json_key
+    assert result.others == (manual.json_key,)
+
+
+def test_a_json_edited_in_place_is_unavailable_with_the_reason(store):
+    pair = put_daily(store, daily("2026-10-31"), at(1))
+    original = store.read_text(pair.json_key)
+    edited = original.replace('"x"', '"y"')
+    assert edited != original
+    store.write_bytes(pair.json_key, edited.encode())
+    result = canonical_previous_daily(store, "2026-11-01")
+    assert isinstance(result, Unavailable) and "se editó" in result.reason
+    scan = reports_in_period(store, "2026-10")
+    assert scan.coverage.days_with_report == 0 and "se editó" in scan.problems[0]
+
+
+def test_an_html_edited_in_place_is_unavailable(store):
+    pair = put_daily(store, daily("2026-10-31"), at(1))
+    store.write_bytes(pair.html_key, b"<html>todo bien</html>")
+    result = canonical_previous_daily(store, "2026-11-01")
+    assert isinstance(result, Unavailable) and "se editó" in result.reason
+
+
+def test_a_report_whose_reported_marker_is_missing_is_unavailable(store):
+    report = daily("2026-10-31")
+    pair = put_manual_daily(
+        store, report.model_copy(update={"cycle": cycle_info("2026-10-31", at(1))}), at(1)
+    )
+    result = canonical_previous_daily(store, "2026-11-01")
+    assert isinstance(result, Unavailable) and "reported" in result.reason
+    assert pair.json_key in result.reason
+
+
+# --- listado único de ciclos ------------------------------------------------------------------
+
+
+def test_scan_cycles_lists_the_store_once_however_many_runs(store, monkeypatch):
+    for run in ("r1", "r2", "r3"):
+        write_stage(store, run, "started", at=NOON, period="2026-11-01")
+    listings = []
+    original = store.list
+    monkeypatch.setattr(store, "list", lambda prefix: listings.append(prefix) or original(prefix))
+    scan = scan_cycles(store)
+    assert sorted(scan.runs) == ["r1", "r2", "r3"] and len(listings) == 1
+
+
+def test_scan_cycles_since_skips_older_runs(store):
+    write_stage(store, "20261001T060000-aaaaaa", "started", at=NOON, period="2026-10-01")
+    write_stage(store, "20261101T060000-bbbbbb", "started", at=NOON, period="2026-11-01")
+    assert list(scan_cycles(store, since="20261015T000000").runs) == ["20261101T060000-bbbbbb"]
+
+
+def test_interrupted_in_flags_future_and_unreadable_runs_as_unreadable(store):
+    write_stage(store, "ok", "started", at=NOON, period="2026-11-01")
+    write_stage(store, "future", "started", at=at(5), period="2026-11-01")
+    store.create_bytes("evidence/reports/cycles/broken.started.json", b"{")
+    interrupted, unreadable = interrupted_in(scan_cycles(store).runs, now=NOON)
+    assert [c.run_id for c in interrupted] == ["ok"]
+    assert sorted(unreadable) == ["broken", "future"]
+
+
 # --- periodo -----------------------------------------------------------------------------------
 
 
@@ -233,11 +322,7 @@ def test_unreadable_marker_is_reported_and_blocks_finished(store):
 
 
 def test_marker_that_disagrees_with_its_name_is_a_problem(store):
-    marker = render_json(
-        __import__("ens_evidence.reports.model", fromlist=["CycleStage"]).CycleStage(
-            run_id="r2", stage="started", at=NOON, period="2026-11-01"
-        )
-    )
+    marker = render_json(CycleStage(run_id="r2", stage="started", at=NOON, period="2026-11-01"))
     store.create_bytes("evidence/reports/cycles/r1.started.json", marker)
     assert stages_of(store, "r1").problems
 

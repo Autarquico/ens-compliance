@@ -162,6 +162,7 @@
     },
     "ConnectorAttempts": {
       "additionalProperties": false,
+      "description": "Intentos de recogida de un conector. `phase` y `error_type` solo si el \u00faltimo intento lo\ngener\u00f3 el planificador (fase en que fall\u00f3 y tipo del error, sin mensajes ni valores).",
       "properties": {
         "attempts": {
           "minimum": 0,
@@ -173,6 +174,18 @@
           "title": "Connector",
           "type": "string"
         },
+        "error_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Type"
+        },
         "last_status": {
           "anyOf": [
             {
@@ -183,6 +196,18 @@
             }
           ],
           "default": null
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase"
         }
       },
       "required": [
@@ -218,6 +243,32 @@
           "minLength": 1,
           "title": "Connector",
           "type": "string"
+        },
+        "error_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tipo del error de la recogida.",
+          "title": "Error Type"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fase en que fall\u00f3 la recogida.",
+          "title": "Phase"
         }
       },
       "required": [
@@ -248,9 +299,21 @@
           "title": "Due At",
           "type": "string"
         },
+        "inherited_stages": {
+          "items": {
+            "$ref": "#/$defs/InheritedStage"
+          },
+          "title": "Inherited Stages",
+          "type": "array"
+        },
         "period": {
           "title": "Period",
           "type": "string"
+        },
+        "resumed": {
+          "default": false,
+          "title": "Resumed",
+          "type": "boolean"
         },
         "run_id": {
           "pattern": "^[A-Za-z0-9_-]{1,64}$",
@@ -482,6 +545,27 @@
         "recorded_at"
       ],
       "title": "IncidentRecordRef",
+      "type": "object"
+    },
+    "InheritedStage": {
+      "additionalProperties": false,
+      "description": "Etapa que este informe hered\u00f3 de un intento anterior del mismo ciclo.",
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "at"
+      ],
+      "title": "InheritedStage",
       "type": "object"
     },
     "InterruptedCycle": {

@@ -7,6 +7,7 @@ from ens_evidence.reports.model import (
     Aggregate,
     CheckCounts,
     Coverage,
+    CycleInfo,
     DailyReport,
     MonthlyReport,
     ReadinessValue,
@@ -16,7 +17,7 @@ from ens_evidence.reports.model import (
     Window,
 )
 from ens_evidence.reports.model import render_json as render_model
-from ens_evidence.reports.store import save_pair
+from ens_evidence.reports.store import published_hashes, save_pair, write_stage
 
 SHA = "a" * 64
 NOON = datetime(2026, 11, 1, 12, tzinfo=UTC)
@@ -77,8 +78,48 @@ def monthly(period: str = "2026-10", **overrides) -> MonthlyReport:
     return MonthlyReport(**{**fields, **overrides})
 
 
-def put_daily(store, report: DailyReport, at: datetime, html: bytes = b"<html></html>"):
+def cycle_info(period: str, at: datetime) -> CycleInfo:
+    return CycleInfo(
+        run_id=f"run-{period}-{at:%Y%m%dT%H%M%S%f}",
+        trigger="scheduled",
+        period=period,
+        due_at=at,
+        started_at=at,
+        data_cutoff=at,
+    )
+
+
+def put_manual_daily(store, report: DailyReport, at: datetime, html: bytes = b"<html></html>"):
+    """Un par sin ciclo ni marcador: lo que deja `report daily` a mano."""
     return save_pair(store, "daily", report.period, render_model(report), html, at=at)
+
+
+def put_daily(store, report: DailyReport, at: datetime, html: bytes = b"<html></html>"):
+    """Un par publicado por un ciclo: con su `cycle` y su marcador `reported` con las huellas."""
+    return _put_published(store, "daily", report, at, html)
+
+
+def put_monthly(store, report: MonthlyReport, at: datetime, html: bytes = b"<html></html>"):
+    """Lo mismo para un mensual: sin marcador de ciclo no sirve de base del siguiente."""
+    return _put_published(store, "monthly", report, at, html)
+
+
+def _put_published(store, kind, report, at, html):
+    if report.cycle is None:
+        report = report.model_copy(update={"cycle": cycle_info(report.period, at)})
+    pair = save_pair(store, kind, report.period, render_model(report), html, at=at)
+    json_sha256, html_sha256 = published_hashes(store, pair.json_key)
+    write_stage(
+        store,
+        report.cycle.run_id,
+        "reported",
+        at=at,
+        period=report.period,
+        reference=pair.json_key,
+        json_sha256=json_sha256,
+        html_sha256=html_sha256,
+    )
+    return pair
 
 
 def source_sha256(store, key: str) -> str:

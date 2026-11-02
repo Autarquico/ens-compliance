@@ -1,10 +1,163 @@
 {
+  "$defs": {
+    "CollectionStatus": {
+      "enum": [
+        "SUCCESS",
+        "ERROR",
+        "PERMISSION_DENIED",
+        "NOT_SUPPORTED"
+      ],
+      "title": "CollectionStatus",
+      "type": "string"
+    },
+    "ConnectorAttempts": {
+      "additionalProperties": false,
+      "description": "Intentos de recogida de un conector. `phase` y `error_type` solo si el \u00faltimo intento lo\ngener\u00f3 el planificador (fase en que fall\u00f3 y tipo del error, sin mensajes ni valores).",
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "connector": {
+          "minLength": 1,
+          "title": "Connector",
+          "type": "string"
+        },
+        "error_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Type"
+        },
+        "last_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CollectionStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase"
+        }
+      },
+      "required": [
+        "connector",
+        "attempts"
+      ],
+      "title": "ConnectorAttempts",
+      "type": "object"
+    }
+  },
   "additionalProperties": false,
+  "description": "Marcador de una etapa del ciclo. `reference` solo lleva claves del almac\u00e9n; el resto de\ndatos van en campos tipados que solo admite su etapa.",
   "properties": {
     "at": {
       "format": "date-time",
       "title": "At",
       "type": "string"
+    },
+    "attempts": {
+      "anyOf": [
+        {
+          "items": {
+            "$ref": "#/$defs/ConnectorAttempts"
+          },
+          "type": "array"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Etapa collected.",
+      "title": "Attempts"
+    },
+    "backup_code": {
+      "anyOf": [
+        {
+          "enum": [
+            "disabled",
+            "not_configured",
+            "invalid_credentials",
+            "previous_run_unfinished",
+            "workspace_unreadable",
+            "restic_failed",
+            "record_not_persisted",
+            "crashed"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Etapas de copia.",
+      "title": "Backup Code"
+    },
+    "checks": {
+      "anyOf": [
+        {
+          "enum": [
+            "ok",
+            "skipped_scope",
+            "error"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Etapa checked.",
+      "title": "Checks"
+    },
+    "html_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Html Sha256"
+    },
+    "json_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Json Sha256"
     },
     "period": {
       "title": "Period",

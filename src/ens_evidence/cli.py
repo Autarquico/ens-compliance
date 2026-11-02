@@ -4,14 +4,13 @@ import os
 import re
 import shutil
 import threading
-import time
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime, tzinfo
 from enum import StrEnum
 from importlib.resources import files
 from pathlib import Path
-from typing import Annotated, Any
+from typing import Annotated, Any, Literal
 
 import typer
 import yaml
@@ -37,6 +36,7 @@ from ens_evidence.assessment import (
 from ens_evidence.backup import (
     IMMUTABILITY_PREFIX,
     BackupError,
+    BackupFailure,
     BackupRun,
     BackupSecrets,
     Restic,
@@ -48,7 +48,9 @@ from ens_evidence.backup import (
     failed_restore_recorder,
     list_runs,
     load_secrets,
+    optional_repository_id,
     parse_s3_repository,
+    prepare_restic,
     record_restore_test,
     restore_recorded,
     run_check,
@@ -161,6 +163,7 @@ from ens_evidence.orgdocs import (
     skeleton,
 )
 from ens_evidence.reports.daily import build_daily
+from ens_evidence.reports.expiries import windows_from
 from ens_evidence.reports.model import DailyReport, Unavailable
 from ens_evidence.reports.model import render_json as render_report_json
 from ens_evidence.reports.monthly import build_monthly, previous_month
@@ -191,7 +194,6 @@ from ens_evidence.scheduling.config import (
     load_schedule_config,
 )
 from ens_evidence.scheduling.cycle import run_cycle
-from ens_evidence.scheduling.lock import CycleBusy, CycleContext, CycleLock
 from ens_evidence.scheduling.scheduler import (
     CycleExecutor,
     Scheduler,
@@ -231,6 +233,7 @@ from ens_evidence.workspace import (
     open_store,
     resolve_settings_path,
 )
+from ens_evidence.workspace.cycle_lock import CycleBusy, CycleContext, CycleLock
 
 app = typer.Typer(help="Prepara evidencias para el ENS. No certifica.", no_args_is_help=True)
 report_app = typer.Typer(help="Informes.", no_args_is_help=True)
@@ -1002,20 +1005,11 @@ def backup_restic(
         record_setup_failure(ctx, recorder, "", "invalid_settings")
         raise
     try:
-        secrets = load_secrets(configured.restic_repository)
+        restic, secrets = prepare_restic(configured)
     except BackupError:
         record_setup_failure(ctx, recorder, configured.restic_repository, "invalid_credentials")
         raise
-    restic = Restic(configured.restic_repository, secrets, region=configured.region)
     return restic, configured, secrets
-
-
-def optional_repository_id(restic: Restic) -> str | None:
-    """Id del repositorio, o None si no se puede leer (el registro lo dejará sin id)."""
-    try:
-        return restic.repository_id()
-    except BackupError:
-        return None
 
 
 @backup_app.command("init")
@@ -1040,7 +1034,7 @@ def backup_run(ctx: typer.Context) -> None:
     store = open_store(settings)
     with exclusive_cycle(settings) as context:
         outcome = run_configured_backup(
-            store, settings.backup, os.environ, clock(), clock=clock, context=context
+            store, settings.backup, os.environ, clock=clock, context=context
         )
     run = outcome.run
     if outcome.status == "ok":
@@ -1053,24 +1047,26 @@ def backup_run(ctx: typer.Context) -> None:
     if run is not None:
         typer.echo(f"La copia {run.run_id} ha fallado: {run.error}", err=True)
         raise typer.Exit(1)
-    raise fail(BACKUP_RUN_MESSAGES[outcome.code])
+    raise fail(BACKUP_RUN_MESSAGES[outcome.reason])
 
 
-BACKUP_RUN_MESSAGES = {
-    "skipped_not_configured": (
+BACKUP_RUN_MESSAGES: dict[BackupFailure | Literal["not_configured"] | None, str] = {
+    "not_configured": (
         "Faltan los ajustes de la copia: añade backup.restic_repository al fichero de ajustes."
     ),
-    "failed:invalid_credentials": (
+    "invalid_credentials": (
         "Credenciales de la copia no válidas: deben estar completas y ser distintas de las del "
         "workspace; revisa las variables ENS_BACKUP_*."
     ),
-    "failed:previous_run_unfinished": (
+    "previous_run_unfinished": (
         "Hay una copia anterior sin finalizar; revísala con `backup status` antes de repetir."
     ),
-    "failed:workspace_unreadable": "No se pueden leer los registros de la copia del workspace.",
-    "failed:record_not_persisted": (
+    "workspace_unreadable": "No se pueden leer los registros de la copia del workspace.",
+    "record_not_persisted": (
         "No se pudo escribir el registro de la copia; la ejecución queda como interrumpida."
     ),
+    "restic_failed": "La copia ha fallado; revisa `backup status`.",
+    None: "La copia no se ha podido completar.",
 }
 
 
@@ -2212,14 +2208,14 @@ def connector_registry() -> ConnectorRegistry:
     return registry
 
 
-class SystemWaitClock:
+class SystemWaitClock(SystemClock):
     """El reloj de la CLI: `clock()` (sustituible en tests) y una espera real."""
+
+    def __init__(self) -> None:
+        super().__init__(threading.Event())
 
     def now(self) -> datetime:
         return clock()
-
-    def sleep(self, seconds: float) -> None:
-        time.sleep(seconds)
 
 
 @contextmanager
@@ -2232,7 +2228,7 @@ def exclusive_cycle(settings: Settings) -> Iterator[CycleContext]:
         raise fail("Hay un ciclo en curso para este workspace; espera a que termine.") from None
     except OSError:
         raise fail(
-            "No se puede tomar el lock del ciclo (directorio de estado no escribible)."
+            "No se puede tomar el lock del ciclo (directorio de estado no privado o no escribible)."
         ) from None
     try:
         yield CycleContext(lock)
@@ -2482,13 +2478,24 @@ def write_report(
     if kind == "daily":
         period = local_period("daily", instant, cfg.zone)
         daily_report = build_daily(
-            store, generated_at=instant, period=period, tz=cfg.zone, cycle=None, checks=checks
+            store,
+            generated_at=instant,
+            period=period,
+            tz=cfg.zone,
+            cycle=None,
+            checks=checks,
+            windows=windows_from(cfg.expiry_warnings),
         )
         model, html = daily_report, render_daily_html(daily_report)
     else:
         period = previous_month(local_period("monthly", instant, cfg.zone))
         monthly_report = build_monthly(
-            store, generated_at=instant, period=period, tz=cfg.zone, checks=checks
+            store,
+            generated_at=instant,
+            period=period,
+            tz=cfg.zone,
+            checks=checks,
+            expiry_windows=windows_from(cfg.expiry_warnings),
         )
         model, html = monthly_report, render_monthly_html(monthly_report, cfg.zone)
     daily_model = model if isinstance(model, DailyReport) else None
@@ -2507,6 +2514,11 @@ def report_command(
 ) -> None:  # fmt: skip
     if cycle and at is not None:
         raise fail("--at solo se admite sin --cycle: el ciclo usa siempre el reloj real.")
+    if at is not None and not stdout:
+        raise fail(
+            "--at exige --stdout: un informe de un instante pasado no se guarda, porque "
+            "rellenaría días sin ciclo."
+        )
     if fmt is not None and not stdout:
         raise fail("--format solo se admite con --stdout.")
     chosen = fmt or ReportFormat.JSON
@@ -2541,7 +2553,9 @@ def report_command(
     raise typer.Exit(report_exit_code(store, daily_model))
 
 
-ReportAt = Annotated[str | None, typer.Option("--at", help="Instante del informe (sin --cycle).")]
+ReportAt = Annotated[
+    str | None, typer.Option("--at", help="Instante del informe (sin --cycle; exige --stdout).")
+]
 ReportCycle = Annotated[
     bool, typer.Option("--cycle", help="Recoge, evalúa, informa y copia (toma el lock).")
 ]

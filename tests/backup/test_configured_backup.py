@@ -17,8 +17,8 @@ from ens_evidence.backup import (
     run_configured_backup,
 )
 from ens_evidence.backup.records import BackupRun, dump, run_key
-from ens_evidence.scheduling.lock import CycleContext, CycleLock
 from ens_evidence.workspace import LocalStore
+from ens_evidence.workspace.cycle_lock import CycleContext, CycleLock
 from ens_evidence.workspace.settings import BackupSettings
 
 from .conftest import BACKUP_KEY, BACKUP_SECRET, PASSWORD, WORKSPACE_KEY, WORKSPACE_SECRET
@@ -47,7 +47,7 @@ def configured(repository) -> BackupSettings:
 
 def run(store, configured, env, context) -> BackupOutcome:
     env = {**env, "PATH": os.environ["PATH"]}
-    return run_configured_backup(store, configured, env, NOW, clock=lambda: NOW, context=context)
+    return run_configured_backup(store, configured, env, clock=lambda: NOW, context=context)
 
 
 def assert_no_secrets(outcome: BackupOutcome, store: LocalStore, caplog) -> None:
@@ -61,7 +61,7 @@ def assert_no_secrets(outcome: BackupOutcome, store: LocalStore, caplog) -> None
 def test_sin_ajustes_de_copia_se_omite_y_deja_un_intento_failed(workspace, env, context, caplog):
     outcome = run(workspace, None, env, context)
 
-    assert (outcome.code, outcome.run_key) == ("skipped_not_configured", None)
+    assert (outcome.reason, outcome.run_key) == ("not_configured", None)
     (latest,) = list_runs(workspace)[0]
     assert (latest.status, latest.error) == ("failed", "invalid_settings")
     assert_no_secrets(outcome, workspace, caplog)
@@ -74,7 +74,7 @@ def test_sin_credenciales_falla_y_registra_credenciales_invalidas(
 
     outcome = run(workspace, configured, env, context)
 
-    assert outcome.code == "failed:invalid_credentials"
+    assert outcome.reason == "invalid_credentials"
     (latest,) = list_runs(workspace)[0]
     assert (latest.status, latest.error) == ("failed", "invalid_credentials")
     assert_no_secrets(outcome, workspace, caplog)
@@ -92,7 +92,7 @@ def test_credenciales_compartidas_con_el_workspace_se_rechazan(
 
     outcome = run(workspace, configured, env, context)
 
-    assert outcome.code == "failed:invalid_credentials"
+    assert outcome.reason == "invalid_credentials"
     assert list_runs(workspace)[0][0].error == "invalid_credentials"
     assert_no_secrets(outcome, workspace, caplog)
 
@@ -104,7 +104,7 @@ def test_fallo_de_restic_es_un_resultado_con_su_registro_failed(
 
     outcome = run(workspace, configured, env, context)
 
-    assert outcome.code == "failed:restic_failed"
+    assert outcome.reason == "restic_failed"
     (record,) = list_runs(workspace)[0]
     assert (record.status, outcome.run_key) == ("failed", run_key(record.run_id))
     assert_no_secrets(outcome, workspace, caplog)
@@ -117,7 +117,7 @@ def test_copia_correcta_devuelve_ok_con_la_clave_del_registro(
 
     outcome = run(workspace, configured, env, context)
 
-    assert outcome.code == "ok"
+    assert outcome.reason is None
     (record,) = list_runs(workspace)[0]
     assert (record.status, outcome.run_key) == ("completed", run_key(record.run_id))
 
@@ -139,7 +139,7 @@ def test_fallo_al_persistir_el_registro_es_un_resultado_y_no_una_excepcion(
 
     outcome = run(store, configured, env, context)
 
-    assert outcome.code == "failed:record_not_persisted"
+    assert outcome.reason == "record_not_persisted"
     (record,) = list_runs(store)[0]
     assert record.status == "started"
     assert_no_secrets(outcome, store, caplog)
@@ -158,7 +158,7 @@ def test_una_ejecucion_previa_sin_finalizar_impide_lanzar_otra(
 
     outcome = run(workspace, configured, env, context)
 
-    assert outcome.code == "failed:previous_run_unfinished"
+    assert outcome.reason == "previous_run_unfinished"
     assert [r.run_id for r in list_runs(workspace)[0]] == [started.run_id]
     assert scripted_restic.calls() == []
     assert_no_secrets(outcome, workspace, caplog)

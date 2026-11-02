@@ -1,6 +1,4 @@
-"""Planificación del ciclo diario: lock, calendario, recogida y ejecución.
+"""Planificación del ciclo diario: calendario, recogida, ciclo y ejecución.
 
-Sin reexportaciones: `scheduling.lock` lo importan `backup/` y la CLI, y cargar aquí
-`scheduling.collect` (que depende de los conectores, y estos de `backup/`) cerraría un ciclo.
-Cada módulo se importa por su ruta completa.
+Sin reexportaciones: cada módulo se importa por su ruta completa.
 """

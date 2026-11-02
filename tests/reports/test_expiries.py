@@ -16,9 +16,10 @@ from ens_evidence.categorization.approval import CategorizationApproval
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.evidence.importer import import_manual
 from ens_evidence.models.enums import Category, Role
-from ens_evidence.reports.expiries import WINDOW_DAYS, scan_expiries
+from ens_evidence.reports.expiries import WINDOW_DAYS, scan_expiries, windows_from
 from ens_evidence.risk.models import APPROVAL_KEY as RISK_KEY
 from ens_evidence.risk.models import RISK_FILES, RiskApproval
+from ens_evidence.scheduling.config import ExpiryWarnings
 from ens_evidence.workspace import LocalStore
 
 from .world import MADRID
@@ -70,6 +71,51 @@ def test_las_ventanas_son_las_de_d4():
         "technical_evidence": 7,
         "treatment_action": 0,
     }
+
+
+def write_categorization(store, days_left: int) -> None:
+    approved_at, valid_until = approved(days_left)
+    approval = CategorizationApproval(
+        file_sha256=SHA,
+        scope_fingerprint=SHA,
+        category=Category.MEDIA,
+        approved_by="Ana",
+        role=Role.SECURITY_OFFICER,
+        approved_at=approved_at,
+        valid_until=valid_until,
+    )
+    store.write_text(CATEGORIZATION_KEY, dump(approval))
+
+
+def test_las_ventanas_pasadas_cambian_el_resultado(store):
+    write_categorization(store, 45)
+
+    default = scan(store)
+    wider = scan_expiries(
+        store,
+        cutoff=CUTOFF,
+        today=TODAY,
+        tz=MADRID,
+        windows={**WINDOW_DAYS, "categorization_approval": 60},
+    )
+
+    assert default.items == ()
+    assert [i.kind for i in wider.items] == ["categorization_approval"]
+
+
+def test_un_tipo_que_falta_en_las_ventanas_usa_la_ventana_por_defecto(store):
+    write_categorization(store, 20)
+
+    result = scan_expiries(store, cutoff=CUTOFF, today=TODAY, tz=MADRID, windows={})
+
+    assert [i.kind for i in result.items] == ["categorization_approval"]
+
+
+def test_las_ventanas_de_schedule_yaml_se_traducen_a_cada_tipo_de_caducidad():
+    assert windows_from(ExpiryWarnings()) == WINDOW_DAYS
+    narrower = windows_from(ExpiryWarnings(approvals=5, measure_reviews=3))
+    assert narrower["categorization_approval"] == narrower["risk_approval"] == 5
+    assert narrower["measure_review"] == narrower["applicability_review"] == 3
 
 
 # --- aprobaciones -------------------------------------------------------------------------------

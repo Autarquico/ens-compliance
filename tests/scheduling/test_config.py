@@ -150,3 +150,43 @@ def test_default_yaml_is_valid_yaml_with_documented_keys():
 
 def test_zone_property_resolves_tzdata():
     assert ScheduleConfig().zone.key == "Europe/Madrid"
+
+
+# --- límites de recarga y de duración ----------------------------------------------------------
+
+
+def test_yaml_aliases_are_rejected_before_any_expansion(store):
+    bomb = "a: &a [x, x, x, x, x, x, x, x, x, x]\n" + "".join(
+        f"b{i}: &b{i} [{', '.join([f'*{p}' for p in ('a' if i == 0 else f'b{i - 1}',)] * 10)}]\n"
+        for i in range(8)
+    )
+    write(store, bomb)
+    with pytest.raises(ScheduleConfigError, match="alias"):
+        load_schedule_config(store)
+
+
+def test_an_oversized_file_is_rejected(store):
+    write(store, "# " + "x" * 70_000 + "\ntimezone: Europe/Madrid\n")
+    with pytest.raises(ScheduleConfigError, match="KiB"):
+        load_schedule_config(store)
+
+
+def test_worst_case_of_a_collection_is_bounded(store):
+    write(
+        store,
+        "collect:\n  retries: 5\n  timeout_minutes: 240\n  retry_delay_minutes: [240]\n",
+    )
+    with pytest.raises(ScheduleConfigError, match="peor caso"):
+        load_schedule_config(store)
+
+
+def test_default_worst_case_is_far_below_the_bound():
+    assert ScheduleConfig().collect.worst_case_minutes == 65
+
+
+def test_backup_timeout_is_configurable_and_bounded(store):
+    write(store, "backup:\n  timeout_minutes: 30\n")
+    assert load_schedule_config(store).config.backup.timeout_minutes == 30
+    write(store, "backup:\n  timeout_minutes: 100000\n")
+    with pytest.raises(ScheduleConfigError):
+        load_schedule_config(store)

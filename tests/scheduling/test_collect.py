@@ -3,15 +3,13 @@ from datetime import datetime, timedelta
 from importlib.metadata import EntryPoint
 
 import pytest
-import yaml
-from checks import test_engine
 from checks.test_engine import NOW, collect, write_config
 from checks.test_expected import COLLECTED
 from typer.testing import CliRunner
 
 from ens_evidence.checks.engine import run_all
 from ens_evidence.cli import app
-from ens_evidence.connectors.registry import ENTRY_POINT_GROUP, ConnectorRegistry
+from ens_evidence.connectors.registry import ENTRY_POINT_GROUP
 from ens_evidence.evidence.manifests import list_manifests
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 from ens_evidence.scheduling import collect as collect_module
@@ -24,9 +22,8 @@ from ens_evidence.scheduling.collect import (
     load_plugins,
 )
 from ens_evidence.scheduling.config import CollectConfig
-from ens_evidence.scheduling.lock import CycleLock
-from ens_evidence.workspace.settings import load_settings
-from scheduling.collect_fakes import CANARY, LEAK, LOCK_INODE_ENV, FakeConnector
+from ens_evidence.workspace.cycle_lock import CycleLock
+from scheduling.collect_fakes import CANARY, LEAK, LOCK_INODE_ENV
 
 ATTEMPT_AT = COLLECTED + timedelta(days=1)
 NO_RETRIES = CollectConfig(retries=0)
@@ -44,46 +41,6 @@ class FakeClock:
     def sleep(self, seconds: float) -> None:
         self.sleeps.append(seconds)
         self.current += timedelta(seconds=seconds)
-
-
-store = test_engine.store
-
-
-@pytest.fixture
-def settings_path(store, tmp_path):
-    path = tmp_path / "settings.yaml"
-    path.write_text(
-        yaml.safe_dump({"workspace": {"backend": "local", "local": {"path": str(store._root)}}})
-    )
-    return path
-
-
-@pytest.fixture
-def settings(settings_path):
-    return load_settings(settings_path, allow_inside_product=True)
-
-
-@pytest.fixture
-def fake(monkeypatch, tmp_path):
-    state = tmp_path / "fake-state"
-    state.mkdir()
-    monkeypatch.setenv("ENS_FAKE_STATE", str(state))
-    monkeypatch.setenv("ENS_STATE_DIR", str(tmp_path / "state"))
-
-    def mode(name: str, fail_first: int | None = None) -> None:
-        monkeypatch.setenv("ENS_FAKE_MODE", name)
-        if fail_first is not None:
-            monkeypatch.setenv("ENS_FAKE_FAIL_FIRST", str(fail_first))
-
-    mode.state = state
-    return mode
-
-
-@pytest.fixture
-def plugins():
-    registry = ConnectorRegistry()
-    registry.register(FakeConnector)
-    return Plugins(registry)
 
 
 def run_one(store, settings, plugins, **options):
@@ -182,6 +139,48 @@ def test_un_collector_que_ignora_sigterm_se_mata_con_kill(
     assert_dead(fake.state)
 
 
+class Stopped(BaseException):
+    """Se pidió parar (lo que lanza el reloj del scheduler al recibir SIGTERM)."""
+
+
+class StoppingClock(FakeClock):
+    """Pide parar en cuanto el collector ya está colgado (ha escrito su pid)."""
+
+    def __init__(self, hung_marker) -> None:
+        super().__init__()
+        self._marker = hung_marker
+
+    def sleep(self, seconds: float) -> None:
+        if self._marker.exists():
+            raise Stopped
+
+
+def test_parar_corta_una_recogida_aislada_en_curso_y_mata_al_hijo(
+    store, settings, plugins, fake, monkeypatch
+):
+    monkeypatch.setattr(collect_module, "STOP_POLL_SECONDS", 0.2)
+    fake("hang")
+
+    with pytest.raises(Stopped):
+        run_one(
+            store,
+            settings,
+            plugins,
+            clock=StoppingClock(fake.state / "pid"),
+            timeout_minutes=5,
+        )
+
+    assert_dead(fake.state)
+    assert evidence_count(store) == 0
+
+
+def test_error_type_no_deja_pasar_rutas_ni_valores():
+    assert collect_module.error_type("collect_crashed:KeyError") == "KeyError"
+    assert collect_module.error_type("identity_mismatch:asset_id") == "identity_mismatch"
+    assert collect_module.error_type("secret_detected:leak.detail") == "secret_detected"
+    assert collect_module.error_type("timeout") == "timeout"
+
+
 def assert_dead(state):
     pid = int((state / "pid").read_text())
     with pytest.raises(ProcessLookupError):
@@ -269,7 +268,41 @@ def test_un_nombre_de_clave_con_secret_no_basta_para_rechazar_el_resultado(
         collection_status=CollectionStatus.SUCCESS,
     )
 
-    assert collect_module._leaked_paths(result.data) == []
+    assert collect_module._leaked_paths(result) == []
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+@pytest.mark.parametrize(
+    ("mode", "path"),
+    [
+        ("secret_key", "<redacted>"),
+        ("secret_schema_version", "schema_version"),
+        ("secret_tuple", "items[0]"),
+    ],
+)
+def test_la_frontera_cubre_claves_schema_version_y_tuplas(
+    store, settings, plugins, fake, mode, path, isolated
+):
+    fake(mode)
+
+    outcome = run_one(store, settings, plugins, isolated=isolated)
+
+    assert outcome.result.data["phase"] == "result_rejected"
+    assert outcome.result.data["error"] == f"secret_detected:{path}"
+    assert LEAK not in everything_stored(store)
+
+
+@pytest.mark.parametrize("isolated", [False, True])
+def test_el_rechazo_de_prepare_con_un_secreto_no_se_reproduce(
+    store, settings, plugins, fake, isolated
+):
+    fake("prepare_secret")
+
+    outcome = run_one(store, settings, plugins, isolated=isolated)
+
+    assert outcome.result is None
+    assert outcome.problem == collect_module.PREPARE_REDACTED
+    assert LEAK not in repr(outcome) and evidence_count(store) == 0
 
 
 def test_de_las_excepciones_solo_se_guarda_el_tipo(store, settings, plugins, fake):

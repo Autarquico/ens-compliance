@@ -20,7 +20,13 @@ from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness, Role
 from ens_evidence.orgdocs import DocumentState, approve_document, build_documents
-from ens_evidence.reports.model import CycleInfo, Sourced, Unavailable, render_json
+from ens_evidence.reports.model import (
+    ConnectorAttempts,
+    CycleInfo,
+    Sourced,
+    Unavailable,
+    render_json,
+)
 from ens_evidence.reports.store import write_stage
 from ens_evidence.scope import approve_scope
 from ens_evidence.workspace import LocalStore
@@ -195,6 +201,14 @@ def status_json(world, instant=NOW):
     return json.loads(world.status(instant, "--format", "json").output)
 
 
+def status_lines(world, instant=NOW):
+    """Del texto de `assessment status`, lo que va entre «Preparación» y las fuentes técnicas."""
+    lines = world.status(instant).output.splitlines()
+    start = next(i for i, line in enumerate(lines) if line.startswith("Preparación:"))
+    end = next(i for i, line in enumerate(lines) if line.startswith("Fuentes técnicas"))
+    return lines[start:end]
+
+
 @pytest.mark.parametrize("kind", ["linked", "ready"])
 def test_readiness_coincide_con_assessment_status_en_el_mismo_instante(kind, tmp_path, monkeypatch):
     world = make_world(tmp_path, monkeypatch, kind)
@@ -205,9 +219,12 @@ def test_readiness_coincide_con_assessment_status_en_el_mismo_instante(kind, tmp
     assert isinstance(report.readiness, Sourced)
     assert report.readiness.value.readiness.value == expected["readiness"]
     assert (report.readiness.value.readiness is Readiness.NOT_READY) == (kind == "linked")
-    assert report.readiness.value.blockers == [b["text"] for b in expected["blockers"]] + [
-        f"error: {e}" for e in expected["errors"]
-    ]
+    shown = [line.strip() for line in status_lines(world) if line.startswith("  ")]
+    assert report.readiness.value.blockers == shown
+    blockers = [line for line in shown if not line.startswith("error: ")]
+    assert f"{len(blockers)} bloqueo" in next(
+        line for line in status_lines(world) if line.startswith("Preparación:")
+    )
     github = next(c for c in expected["checks"] if c["connector"] == "github")
     ours = (
         {k.value: n for k, n in entry(report, "github").checks.value.counts.items()}
@@ -300,6 +317,113 @@ def test_ciclo_terminado_y_ciclo_en_curso_no_son_interrumpidos(store):
     assert report.interrupted_cycles.value == []
     assert {s.kind for s in report.interrupted_cycles.sources} == {"cycle"}
     assert report.cycle.run_id == "actual"
+
+
+def test_un_informe_manual_ignora_los_ciclos_posteriores_a_su_corte(store):
+    write_stage(store, "futuro", "started", at=CUTOFF + timedelta(days=1), period=PERIOD)
+
+    report = daily_at(store, source_of())
+
+    assert isinstance(report.interrupted_cycles, Sourced)
+    assert report.interrupted_cycles.value == []
+
+
+def test_con_ciclo_real_un_marcador_del_futuro_es_ilegible_no_ignorado(store):
+    write_stage(store, "falso", "started", at=CUTOFF + timedelta(days=1), period=PERIOD)
+    write_stage(store, "actual", "started", at=CUTOFF, period=PERIOD)
+
+    report = daily_at(store, source_of(), cycle=cycle_info("actual"))
+
+    assert isinstance(report.interrupted_cycles, Unavailable)
+    assert "falso" in report.interrupted_cycles.reason
+
+
+def test_los_ciclos_interrumpidos_citan_solo_sus_propios_marcadores(store):
+    write_stage(store, "hecho", "started", at=CUTOFF - timedelta(days=2), period="2026-10-30")
+    write_stage(
+        store, "hecho", "backup_skipped", at=CUTOFF - timedelta(days=2), period="2026-10-30"
+    )
+    write_stage(store, "viejo", "started", at=CUTOFF - timedelta(days=1), period="2026-10-31")
+    write_stage(store, "viejo", "collected", at=CUTOFF - timedelta(days=1), period="2026-10-31")
+
+    report = daily_at(store, source_of())
+
+    keys = {s.key for s in report.interrupted_cycles.sources}
+    assert keys == {
+        "evidence/reports/cycles/viejo.started.json",
+        "evidence/reports/cycles/viejo.collected.json",
+    }
+
+
+def test_sin_interrumpidos_cita_el_started_del_ciclo_actual_que_no_cambia(store):
+    write_stage(store, "actual", "started", at=CUTOFF, period=PERIOD)
+
+    report = daily_at(store, source_of(), cycle=cycle_info("actual"))
+
+    assert [s.key for s in report.interrupted_cycles.sources] == [
+        "evidence/reports/cycles/actual.started.json"
+    ]
+
+
+def test_sin_ciclo_actual_ni_interrumpidos_cita_la_huella_del_listado(store):
+    write_stage(store, "hecho", "started", at=CUTOFF - timedelta(days=2), period="2026-10-30")
+    write_stage(
+        store, "hecho", "backup_skipped", at=CUTOFF - timedelta(days=2), period="2026-10-30"
+    )
+
+    report = daily_at(store, source_of())
+
+    (listing,) = report.interrupted_cycles.sources
+    assert listing.sha256 == source_sha256(store, "evidence/reports/cycles/")
+
+
+def test_un_conector_con_fallo_generado_por_el_planificador_lleva_fase_y_tipo(store):
+    failed = ConnectorAttempts(
+        connector="github",
+        attempts=3,
+        last_status=CollectionStatus.ERROR,
+        phase="collect",
+        error_type="RuntimeError",
+    )
+    info = cycle_info("actual").model_copy(update={"connector_attempts": [failed]})
+
+    report = daily_at(store, source_of(), cycle=info)
+
+    github = entry(report, "github")
+    assert (github.attempts, github.phase, github.error_type) == (3, "collect", "RuntimeError")
+    assert all(
+        (c.attempts, c.phase, c.error_type) == (None, None, None)
+        for c in report.connectors
+        if c.connector != "github"
+    )
+    assert "RuntimeError" in render_json(report).decode()
+
+
+def test_sin_ningun_ciclo_terminado_la_copia_dice_que_se_vera_en_el_siguiente_informe(store):
+    report = daily_at(store, source_of(), cycle=cycle_info("actual"))
+
+    assert isinstance(report.backup, Unavailable)
+    assert "informe del siguiente" in report.backup.reason
+
+
+def test_la_copia_es_la_del_ciclo_anterior_con_su_codigo_tipado(store):
+    write_stage(store, "ayer", "started", at=CUTOFF - timedelta(days=1), period="2026-10-31")
+    write_stage(
+        store,
+        "ayer",
+        "backup_failed",
+        at=CUTOFF - timedelta(days=1),
+        period="2026-10-31",
+        backup_code="not_configured",
+    )
+
+    report = daily_at(store, source_of(), cycle=cycle_info("actual"))
+
+    assert report.backup.value.run_id == "ayer"
+    assert (report.backup.value.code, report.backup.value.configuration_error) == (
+        "not_configured",
+        True,
+    )
 
 
 def test_marcador_de_ciclo_ilegible_es_unavailable(store):

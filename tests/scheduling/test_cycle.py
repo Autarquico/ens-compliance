@@ -1,36 +1,32 @@
 """`run_cycle`: etapas persistidas, reanudación, reloj real y copia que no rompe el ciclo."""
 
-import os
+import hashlib
 from datetime import UTC, datetime, timedelta
 
 import pytest
-import yaml
-from backup import conftest as backup_conftest
+from backup.conftest import PASSWORD
 
 from ens_evidence.backup import PASSWORD_VAR, list_runs
 from ens_evidence.backup.records import BackupRun, dump, run_key
 from ens_evidence.checks.source import StoredCheckResults
-from ens_evidence.reports.model import DailyReport, MonthlyReport
-from ens_evidence.reports.store import cycle_finished, load_json_strict, pairs, run_ids, stages_of
+from ens_evidence.reports.model import ConnectorAttempts, DailyReport, MonthlyReport, Unavailable
+from ens_evidence.reports.store import (
+    cycle_finished,
+    load_json_strict,
+    pairs,
+    run_ids,
+    stages_of,
+    write_stage,
+)
 from ens_evidence.scheduling import cycle as cycle_module
 from ens_evidence.scheduling.config import ScheduleConfig
 from ens_evidence.scheduling.cycle import run_cycle
-from ens_evidence.scheduling.lock import CycleContext, CycleLock
 from ens_evidence.workspace import LocalStore, WorkspaceError
-from ens_evidence.workspace.settings import load_settings
-from scheduling import test_collect
-
-PASSWORD = backup_conftest.PASSWORD
-scripted_restic = backup_conftest.scripted_restic
-store = test_collect.store
-fake = test_collect.fake
-plugins = test_collect.plugins
 
 DEFAULT_CONFIG = ScheduleConfig()
 DUE_AT = datetime(2026, 11, 1, 5, 0, tzinfo=UTC)  # 06:00 en Madrid
 PERIOD = "2026-11-01"
 STARTS = DUE_AT + timedelta(minutes=2)
-SNAPSHOT = '{"message_type": "summary", "snapshot_id": "abcd1234"}'
 STAGES = ["started", "collected", "checked", "reported", "backed_up"]
 
 
@@ -53,38 +49,6 @@ class TickClock:
 
     def sleep(self, seconds: float) -> None:
         self.current += timedelta(seconds=seconds)
-
-
-@pytest.fixture
-def settings(store, tmp_path):
-    path = tmp_path / "settings.yaml"
-    path.write_text(
-        yaml.safe_dump(
-            {
-                "workspace": {"backend": "local", "local": {"path": str(store._root)}},
-                "backup": {"restic_repository": str(tmp_path / "repo")},
-            }
-        )
-    )
-    return load_settings(path, allow_inside_product=True)
-
-
-@pytest.fixture
-def env(scripted_restic):
-    return {PASSWORD_VAR: PASSWORD, "PATH": os.environ["PATH"]}
-
-
-@pytest.fixture
-def context(tmp_path):
-    lock = CycleLock("identidad-de-prueba", tmp_path / "state").acquire()
-    yield CycleContext(lock)
-    lock.release()
-
-
-@pytest.fixture
-def restic(scripted_restic):
-    scripted_restic.reply("backup", out=SNAPSHOT)
-    return scripted_restic
 
 
 class Hooks:
@@ -251,7 +215,14 @@ def test_un_ciclo_mensual_a_medias_se_reanuda_y_no_cuenta_como_terminado_hasta_r
     monkeypatch.undo()
 
     outcome = cycle(
-        store, settings, env, context, plugins, TickClock(), job="monthly", period="2026-11"
+        store,
+        settings,
+        env,
+        context,
+        plugins,
+        TickClock(STARTS + timedelta(minutes=5)),
+        job="monthly",
+        period="2026-11",
     )
 
     assert (outcome.run_id, outcome.resumed) == (run_id, True)
@@ -267,13 +238,128 @@ def test_el_marcador_collected_guarda_los_intentos_y_la_reanudacion_los_conserva
         cycle(store, settings, env, context, plugins, TickClock())
     (run_id,) = run_ids(store)
     collected = next(m for m in stages_of(store, run_id).stages if m.stage == "collected")
-    assert "github" in collected.reference
+    assert [a.connector for a in collected.attempts] == ["github"]
     hooks.crash_at = None
 
     cycle(store, settings, env, context, plugins, TickClock(STARTS + timedelta(minutes=5)))
 
     (report,) = daily_reports(store)
     assert [(a.connector, a.attempts) for a in report.cycle.connector_attempts] == [("github", 1)]
+
+
+def test_el_informe_reanudado_dice_que_se_reanudo_y_que_etapas_heredo(
+    store, settings, env, context, plugins, fake, restic, hooks
+):
+    fake("ok")
+    hooks.crash_at = "run_all"
+    with pytest.raises(Crash):
+        cycle(store, settings, env, context, plugins, TickClock())
+    hooks.crash_at = None
+
+    cycle(store, settings, env, context, plugins, TickClock(STARTS + timedelta(minutes=5)))
+
+    (report,) = daily_reports(store)
+    assert report.cycle.resumed is True
+    assert [i.stage for i in report.cycle.inherited_stages] == ["collected"]
+
+
+def test_un_ciclo_sin_caida_no_se_marca_como_reanudado(
+    store, settings, env, context, plugins, fake, restic
+):
+    fake("ok")
+    cycle(store, settings, env, context, plugins, TickClock())
+
+    (report,) = daily_reports(store)
+    assert (report.cycle.resumed, report.cycle.inherited_stages) == (False, [])
+
+
+def forge_cycle(store, at, period=PERIOD, run_id="20261101T050000-forged"):
+    """Marcadores de un ciclo que nunca corrió: intentos inventados y checks «hechos»."""
+    forged = [ConnectorAttempts(connector="github", attempts=1, last_status="SUCCESS")]
+    write_stage(store, run_id, "started", at=at, period=period)
+    write_stage(store, run_id, "collected", at=at, period=period, attempts=forged)
+    write_stage(store, run_id, "checked", at=at, period=period, checks="ok")
+    return run_id
+
+
+def test_unos_marcadores_del_futuro_no_se_reanudan_ni_se_saltan_etapas(
+    store, settings, env, context, plugins, fake, restic, hooks
+):
+    fake("ok")
+    forged = forge_cycle(store, STARTS + timedelta(days=3))
+
+    outcome = cycle(store, settings, env, context, plugins, TickClock())
+
+    assert (outcome.resumed, outcome.run_id != forged) == (False, True)
+    assert (hooks.count("collect_all"), hooks.count("run_all")) == (1, 1)
+    (report,) = daily_reports(store)
+    assert [a.last_status.value for a in report.cycle.connector_attempts] == ["SUCCESS"]
+    assert report.cycle.resumed is False
+    assert isinstance(report.interrupted_cycles, Unavailable)
+    assert forged in report.interrupted_cycles.reason
+
+
+def test_unos_marcadores_de_un_periodo_futuro_no_se_reanudan(
+    store, settings, env, context, plugins, fake, restic, hooks
+):
+    """Un ciclo del 1 de noviembre «empezado» el 31 de octubre no puede ser real."""
+    fake("ok")
+    forge_cycle(store, STARTS - timedelta(days=2))
+
+    outcome = cycle(store, settings, env, context, plugins, TickClock())
+
+    assert outcome.resumed is False and hooks.count("collect_all") == 1
+
+
+def test_el_marcador_reported_lleva_la_huella_de_lo_publicado(
+    store, settings, env, context, plugins, fake, restic
+):
+    fake("ok")
+    outcome = cycle(store, settings, env, context, plugins, TickClock())
+
+    (pair,) = pairs(store, "daily", PERIOD)
+    marker = {m.stage: m for m in stages_of(store, outcome.run_id).stages}["reported"]
+    assert marker.reference == pair.json_key
+    assert marker.json_sha256 == hashlib.sha256(store.read_bytes(pair.json_key)).hexdigest()
+    assert marker.html_sha256 == hashlib.sha256(store.read_bytes(pair.html_key)).hexdigest()
+
+
+def test_las_ventanas_de_schedule_yaml_llegan_al_informe_diario(
+    store, settings, env, context, plugins, fake, restic, monkeypatch
+):
+    fake("ok")
+    seen = {}
+    original = cycle_module.build_daily
+
+    def spy(*args, **kwargs):
+        seen.update(kwargs)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(cycle_module, "build_daily", spy)
+    cfg = ScheduleConfig.model_validate({"expiry_warnings": {"technical_evidence": 3}})
+
+    cycle(store, settings, env, context, plugins, TickClock(), cfg=cfg)
+
+    assert seen["windows"]["technical_evidence"] == 3
+
+
+def test_el_limite_de_tiempo_de_la_copia_llega_a_restic(
+    store, settings, env, context, plugins, fake, restic, monkeypatch
+):
+    fake("ok")
+    seen = {}
+    original = cycle_module.run_configured_backup
+
+    def spy(*args, **kwargs):
+        seen.update(kwargs)
+        return original(*args, **kwargs)
+
+    monkeypatch.setattr(cycle_module, "run_configured_backup", spy)
+    cfg = ScheduleConfig.model_validate({"backup": {"timeout_minutes": 7}})
+
+    cycle(store, settings, env, context, plugins, TickClock(), cfg=cfg)
+
+    assert seen["timeout_seconds"] == 420
 
 
 def test_finished_periods_deriva_lo_hecho_de_los_marcadores(
@@ -409,7 +495,7 @@ def test_alcance_sin_aprobar_deja_los_checks_omitidos_y_el_ciclo_sigue(
 
     assert (outcome.completed, outcome.checks) == (True, "skipped")
     markers = {m.stage: m for m in stages_of(empty, outcome.run_id).stages}
-    assert markers["checked"].reference == "skipped:scope_not_approved"
+    assert markers["checked"].checks == "skipped_scope"
     assert stage_names(empty, outcome.run_id) == STAGES
 
 
@@ -427,7 +513,7 @@ def test_un_error_del_workspace_en_los_checks_es_un_error_de_etapa_y_el_ciclo_si
 
     assert (outcome.completed, outcome.checks) == (True, "error")
     markers = {m.stage: m for m in stages_of(store, outcome.run_id).stages}
-    assert markers["checked"].reference == "error:WorkspaceError"
+    assert markers["checked"].checks == "error"
     assert "detalle interno" not in repr(markers)
 
 
@@ -463,7 +549,7 @@ def test_copia_sin_credenciales_queda_en_backup_failed_y_el_ciclo_termina(
     assert (outcome.completed, outcome.backup_stage) == (True, "backup_failed")
     assert cycle_finished(store, outcome.run_id)
     markers = {m.stage: m for m in stages_of(store, outcome.run_id).stages}
-    assert markers["backup_failed"].reference == "failed:invalid_credentials"
+    assert markers["backup_failed"].backup_code == "invalid_credentials"
     (record,) = list_runs(store)[0]
     assert (record.status, record.error) == ("failed", "invalid_credentials")
     assert PASSWORD not in repr(markers)
@@ -481,6 +567,7 @@ def test_un_fallo_de_restic_no_rompe_el_ciclo_y_el_informe_ya_escrito_no_cambia(
     markers = {m.stage: m for m in stages_of(store, outcome.run_id).stages}
     (record,) = list_runs(store)[0]
     assert markers["backup_failed"].reference == run_key(record.run_id)
+    assert markers["backup_failed"].backup_code == "restic_failed"
     pair, json_bytes, _ = only_report(store)
     assert PASSWORD not in json_bytes.decode()
 
@@ -496,7 +583,7 @@ def test_copia_desactivada_queda_como_backup_skipped_y_no_llama_a_restic(
     assert (outcome.completed, outcome.backup_stage) == (True, "backup_skipped")
     assert restic.calls() == [] and list_runs(store)[0] == []
     markers = {m.stage: m for m in stages_of(store, outcome.run_id).stages}
-    assert markers["backup_skipped"].reference == "disabled"
+    assert markers["backup_skipped"].backup_code == "disabled"
 
 
 def test_un_backup_started_sin_finalizar_se_informa_y_no_se_lanza_otro(
@@ -510,4 +597,4 @@ def test_un_backup_started_sin_finalizar_se_informa_y_no_se_lanza_otro(
 
     assert second.backup_stage == "backup_failed"
     markers = {m.stage: m for m in stages_of(store, second.run_id).stages}
-    assert markers["backup_failed"].reference == "failed:previous_run_unfinished"
+    assert markers["backup_failed"].backup_code == "previous_run_unfinished"

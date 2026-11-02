@@ -14,6 +14,7 @@ import threading
 import time
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
+from zoneinfo import ZoneInfo
 
 import pytest
 import yaml
@@ -26,25 +27,21 @@ from ens_evidence.reports.model import DailyReport
 from ens_evidence.reports.store import cycle_finished, load_json_strict, pairs, run_ids, stages_of
 from ens_evidence.scheduling.calendar import Job
 from ens_evidence.scheduling.config import CollectConfig, ScheduleConfig
-from ens_evidence.scheduling.lock import CycleBusy, CycleLock
 from ens_evidence.scheduling.scheduler import CycleExecutor, JobResult
+from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 from ens_evidence.workspace.settings import load_settings
-from scheduling import test_collect, test_cycle
+from scheduling import test_cycle
 from scheduling.test_cycle import STAGES, TickClock
-
-store = test_collect.store
-fake = test_collect.fake
-plugins = test_collect.plugins
-settings = test_cycle.settings
-base_env = test_cycle.env
-restic = test_cycle.restic
-context = test_cycle.context
-scripted_restic = test_cycle.scripted_restic
 
 _SPAWN = multiprocessing.get_context("spawn")
 NOW = datetime(2026, 11, 2, 7, 0, tzinfo=UTC)
 JOB = Job("daily", "2026-11-02", datetime(2026, 11, 2, 5, 0, tzinfo=UTC))
 DAILY_CYCLE = ("report", "daily", "--cycle")
+
+
+def _today() -> str:
+    """El periodo diario de `report daily --cycle`, que corre con el reloj real."""
+    return datetime.now(ZoneInfo("Europe/Madrid")).date().isoformat()
 
 
 def _report_cycle(settings_file: str, queue) -> None:
@@ -92,12 +89,6 @@ def owner(settings_path, fake):
     process.join(30)
 
 
-@pytest.fixture
-def settings_path(settings, tmp_path):
-    """El fichero que escribe `settings`: con la copia configurada."""
-    return tmp_path / "settings.yaml"
-
-
 def snapshot(store) -> dict[str, bytes]:
     return {key: store.read_bytes(key) for key in store.list("") if key}
 
@@ -138,7 +129,7 @@ def test_tras_un_sigkill_del_propietario_el_lock_queda_libre_y_el_siguiente_cicl
     result = CliRunner().invoke(app, ["--settings", str(settings_path), *DAILY_CYCLE])
     assert result.exit_code != 2, result.output  # 2 sería «hay un ciclo en curso»
     finished = [run for run in run_ids(store) if cycle_finished(store, run)]
-    assert len(finished) == 1 and pairs(store, "daily", "2026-11-01")[0].published
+    assert len(finished) == 1 and pairs(store, "daily", _today())[0].published
 
 
 def test_un_collector_bloqueado_acaba_en_timeout_y_error_y_el_ciclo_sigue(
@@ -156,7 +147,7 @@ def test_un_collector_bloqueado_acaba_en_timeout_y_error_y_el_ciclo_sigue(
     assert collected.result.data["phase"] == "timeout"
     assert collected.result.collection_status is CollectionStatus.ERROR
     assert outcome.completed and stages_of_names(store, outcome.run_id) == STAGES
-    (pair,) = pairs(store, "daily", "2026-11-01")
+    (pair,) = pairs(store, "daily", test_cycle.PERIOD)
     report = DailyReport.model_validate(load_json_strict(store.read_bytes(pair.json_key)))
     (github,) = [entry for entry in report.connectors if entry.connector == "github"]
     assert github.collection.value is CollectionStatus.ERROR

@@ -7,7 +7,7 @@ from pathlib import Path
 
 import pytest
 
-from ens_evidence.scheduling.lock import (
+from ens_evidence.workspace.cycle_lock import (
     CycleBusy,
     CycleContext,
     CycleLock,
@@ -233,3 +233,31 @@ def test_zero_wait_fails_immediately(tmp_path: Path) -> None:
         with pytest.raises(CycleBusy):
             acquire_or_wait(CycleLock("ws", tmp_path), clock, 0)
     assert clock.sleeps == []
+
+
+# --- directorio y fichero de estado ------------------------------------------------------------
+
+
+def test_a_state_dir_writable_by_others_is_refused(tmp_path):
+    state = tmp_path / "state"
+    state.mkdir()
+    state.chmod(0o777)
+    with pytest.raises(PermissionError):
+        CycleLock("x", state).acquire()
+
+
+def test_a_symlinked_lock_file_is_not_followed(tmp_path):
+    state = tmp_path / "state"
+    state.mkdir(mode=0o700)
+    victim = tmp_path / "ajeno"
+    victim.write_text("intacto")
+    lock = CycleLock("x", state)
+    lock.path.symlink_to(victim)
+    with pytest.raises(OSError):
+        lock.acquire()
+    assert victim.read_text() == "intacto"
+
+
+def test_a_private_state_dir_is_accepted(tmp_path):
+    with CycleLock("x", tmp_path / "state") as lock:
+        assert lock.held

@@ -2,17 +2,6 @@
 
 import threading
 from datetime import UTC, datetime
-from typing import Protocol
-
-
-class Clock(Protocol):
-    def now(self) -> datetime:
-        """Instante actual con zona horaria."""
-        ...
-
-    def sleep(self, seconds: float) -> None:
-        """Espera hasta `seconds`; puede volver antes si se pide parar."""
-        ...
 
 
 class SystemClock:

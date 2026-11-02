@@ -7,8 +7,10 @@ tipo, nunca el mensaje; un resultado con secretos no se importa.
 """
 
 import importlib
+import json
 import multiprocessing
 import re
+import time
 from collections.abc import Iterable
 from dataclasses import dataclass
 from datetime import datetime
@@ -33,15 +35,17 @@ from ens_evidence.evidence.importer import import_collected
 from ens_evidence.models.contracts import CollectionResult
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.scheduling.config import CollectConfig
-from ens_evidence.scheduling.lock import WaitClock
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
+from ens_evidence.workspace.cycle_lock import Clock
 from ens_evidence.workspace.factory import open_store
 from ens_evidence.workspace.settings import Settings
 
 GENERATED_BY = "scheduler"
+PREPARE_REDACTED = "prepare_rejected:<redacted>"
 STARTUP_SECONDS = 60.0
 TERMINATE_GRACE_SECONDS = 5.0
+STOP_POLL_SECONDS = 1.0
 _MAX_PATH = 200
 _MAX_PROBLEM = 300
 _SAFE_NAME = re.compile(r"[^A-Za-z0-9_]")
@@ -142,6 +146,15 @@ class _Reply:
             return cls(phase=Phase.RESULT_REJECTED, error="result_invalid")
 
 
+def error_type(code: str) -> str:
+    """El tipo del error de un intento generado por el planificador, sin rutas ni valores.
+
+    `collect_crashed:KeyError` -> `KeyError`; `identity_mismatch:asset_id` -> `identity_mismatch`.
+    """
+    head, _, tail = code.partition(":")
+    return tail if head.endswith("_crashed") else head
+
+
 def _type_name(error: BaseException) -> str:
     return _SAFE_NAME.sub("", type(error).__name__)[:80] or "Exception"
 
@@ -200,10 +213,15 @@ def _child_main(
     conn.close()
 
 
-def _receive(receiver: Connection, seconds: float) -> Any:
-    if not receiver.poll(seconds):
-        raise TimeoutError
-    return receiver.recv()
+def _receive(receiver: Connection, seconds: float, clock: Clock) -> Any:
+    """Espera el mensaje del hijo en tramos cortos: entre tramos `clock.sleep(0)` deja que el
+    orquestador interrumpa (lanza) si se pidió parar, en vez de esperar hasta el tiempo límite."""
+    deadline = time.monotonic() + seconds
+    while (remaining := deadline - time.monotonic()) > 0:
+        if receiver.poll(min(STOP_POLL_SECONDS, remaining)):
+            return receiver.recv()
+        clock.sleep(0)
+    raise TimeoutError
 
 
 def _stop(process: Any) -> None:
@@ -216,7 +234,11 @@ def _stop(process: Any) -> None:
 
 
 def _run_isolated(
-    settings: Settings, name: str, connector_class: type[Connector], timeout_seconds: float
+    settings: Settings,
+    name: str,
+    connector_class: type[Connector],
+    timeout_seconds: float,
+    clock: Clock,
 ) -> _Reply:
     context = multiprocessing.get_context("spawn")
     receiver, sender = context.Pipe(duplex=False)
@@ -229,9 +251,9 @@ def _run_isolated(
     sender.close()
     started = False
     try:
-        _receive(receiver, STARTUP_SECONDS)
+        _receive(receiver, STARTUP_SECONDS, clock)
         started = True
-        return _Reply.from_message(_receive(receiver, timeout_seconds))
+        return _Reply.from_message(_receive(receiver, timeout_seconds, clock))
     except TimeoutError:
         return _Reply(phase=Phase.TIMEOUT, error="timeout")
     except EOFError:
@@ -242,17 +264,18 @@ def _run_isolated(
         _stop(process)
 
 
-def _leaked_paths(data: Any, path: str = "") -> list[str]:
-    """Rutas de los valores con forma de secreto (claves privadas, tokens, URLs con clave).
+def _leaked_paths(result: CollectionResult) -> list[str]:
+    """Rutas con forma de secreto (claves privadas, tokens, URLs con clave) en todo lo que se
+    persistiría: la forma canónica del resultado, valores y claves.
 
-    No usa la heurística por nombre de clave de `find_secrets`: marcaría `secret_scanning:
-    enabled` de GitHub y rechazaría resultados legítimos.
-    """
-    if isinstance(data, dict):
-        return [p for k, v in data.items() for p in _leaked_paths(v, f"{path}.{k}" if path else k)]
-    if isinstance(data, list):
-        return [p for i, v in enumerate(data) for p in _leaked_paths(v, f"{path}[{i}]")]
-    return find_secrets(data, path) if isinstance(data, str) else []
+    Sin la heurística por nombre de clave: marcaría `secret_scanning: enabled` de GitHub y
+    rechazaría resultados legítimos."""
+    persisted = json.loads(result.model_dump_json())
+    data = persisted.pop("data")  # sus rutas se citan relativas a `data`
+    return [
+        *find_secrets(data, by_key_name=False, in_keys=True),
+        *find_secrets(persisted, by_key_name=False, in_keys=True),
+    ]
 
 
 def _safe_secret_path(path: str) -> str:
@@ -291,7 +314,7 @@ def _rejection(result: CollectionResult, name: str, asset_id: str) -> str | None
     """Por qué no se importa el resultado: identidad ajena o secreto (nunca los valores)."""
     if field := _identity_mismatch(result, name, asset_id):
         return f"identity_mismatch:{field}"
-    if leaked := _leaked_paths(result.data):
+    if leaked := _leaked_paths(result):
         return f"secret_detected:{_safe_secret_path(leaked[0])}"
     return None
 
@@ -306,16 +329,17 @@ def _attempt(
     number: int,
     timeout_seconds: float,
     isolated: bool,
+    clock: Clock,
 ) -> tuple[CollectionResult | str, Attempt | None, bool]:
     """(resultado a importar o motivo de configuración inválida, intento, si reintentar)."""
     if connector_class is None:
         reply = _Reply(phase=Phase.PLUGIN_LOAD, error=_crash(Phase.PLUGIN_LOAD, "LoadError"))
     elif isolated:
-        reply = _run_isolated(settings, name, connector_class, timeout_seconds)
+        reply = _run_isolated(settings, name, connector_class, timeout_seconds, clock)
     else:
         reply = _run_sequence(store, settings, name, connector_class)
     if reply.problem is not None:
-        return reply.problem, None, False
+        return _safe_problem(reply.problem), None, False
     if reply.result is not None:
         if (rejection := _rejection(reply.result, name, asset_id)) is None:
             status = reply.result.collection_status
@@ -325,6 +349,12 @@ def _attempt(
     result = _synthetic(name, asset_id, at, reply.phase, reply.error)
     attempt = Attempt(number, at, CollectionStatus.ERROR, reply.phase, reply.error)
     return result, attempt, reply.phase in _RETRYABLE_PHASES
+
+
+def _safe_problem(problem: str) -> str:
+    """El rechazo de `prepare` viene del conector (puede ser de un tercero): si cita un secreto,
+    no se reproduce."""
+    return PREPARE_REDACTED if find_secrets({"problem": problem}, by_key_name=False) else problem
 
 
 def _asset_id(store: WorkspaceStore, name: str, model: type[BaseModel]) -> str:
@@ -338,7 +368,7 @@ def collect_one(
     name: str,
     now: datetime,
     *,
-    clock: WaitClock,
+    clock: Clock,
     cfg: CollectConfig | None = None,
     timeout_minutes: float | None = None,
     isolated: bool = True,
@@ -364,8 +394,9 @@ def collect_one(
     for number in range(1, cfg.retries + 2):
         at = now if number == 1 else clock.now()
         result, attempt, retry = _attempt(
-            store, settings, name, connector_class, asset_id, at, number, timeout_seconds, isolated
-        )
+            store, settings, name, connector_class, asset_id, at, number, timeout_seconds, isolated,
+            clock,
+        )  # fmt: skip
         if isinstance(result, str):
             return CollectOutcome(name, tuple(attempts), problem=result)
         assert attempt is not None
@@ -383,7 +414,7 @@ def collect_all(
     plugins: Plugins,
     now: datetime,
     cfg: CollectConfig,
-    clock: WaitClock,
+    clock: Clock,
 ) -> list[CollectOutcome]:
     """Los conectores instalados con configuración, en orden; uno que falla no para a los demás."""
     outcomes: list[CollectOutcome] = []

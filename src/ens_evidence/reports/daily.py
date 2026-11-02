@@ -7,23 +7,27 @@ del último intento utilizable al corte (`StoredCheckResults`), no de los resúm
 """
 
 import hashlib
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, tzinfo
 
 from ens_evidence import __version__
-from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY, NO_PRE_AUDIT
+from ens_evidence.assessment.render import (
+    HUMAN_REVIEW_PENDING,
+    NO_CONFORMITY,
+    NO_PRE_AUDIT,
+    blocker_lines_by_measure,
+)
 from ens_evidence.assessment.status import AssessmentStatus, assessment_status, count_statuses
 from ens_evidence.categorization.approval import APPROVAL_KEY as CATEGORIZATION_APPROVAL_KEY
 from ens_evidence.checks.catalog import KNOWN_CHECKS
 from ens_evidence.checks.inputs import load_endpoint_inputs
 from ens_evidence.endpoint.evidence import latest_by_host
 from ens_evidence.endpoint.importer import ENDPOINT_ASSET_TYPES
-from ens_evidence.evidence.layout import BACKUPS_PREFIX, manifest_key
+from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.incidents.layout import INCIDENTS_PREFIX, StoredRecord
 from ens_evidence.incidents.model import IncidentState, IncidentStatus
 from ens_evidence.incidents.verify import check_all_incidents
-from ens_evidence.matrix.messages import blocker_text
 from ens_evidence.matrix.store import MATRIX_KEY
 from ens_evidence.matrix.technical import (
     CheckResultsSource,
@@ -35,14 +39,17 @@ from ens_evidence.matrix.technical import (
 )
 from ens_evidence.models.contracts import EvidenceManifest
 from ens_evidence.models.enums import CollectionStatus
+from ens_evidence.models.readiness import Blocker
 from ens_evidence.orgdocs.approval import APPROVALS_PREFIX, STAMP, DocumentState, all_statuses
 from ens_evidence.orgdocs.keys import document_key
 from ens_evidence.reports.changes import changes_since_base
-from ens_evidence.reports.expiries import scan_expiries
+from ens_evidence.reports.expiries import WINDOW_DAYS, scan_expiries
+from ens_evidence.reports.labels import REPORT_NOT_A_REVIEW
 from ens_evidence.reports.model import (
     AssetsSummary,
     BackupStageResult,
     CheckCounts,
+    ConnectorAttempts,
     ConnectorEntry,
     CycleInfo,
     CycleStage,
@@ -63,15 +70,21 @@ from ens_evidence.reports.model import (
 from ens_evidence.reports.store import (
     CYCLES_PREFIX,
     TERMINAL_STAGES,
-    cycle_finished,
-    run_ids,
-    stages_of,
+    CycleScan,
+    StageReading,
+    first_stage,
+    interrupted_in,
+    scan_cycles,
 )
 from ens_evidence.risk.models import APPROVAL_KEY as RISK_APPROVAL_KEY
 from ens_evidence.scope import APPROVAL_KEY as SCOPE_APPROVAL_KEY
 from ens_evidence.scope.inventory import ASSETS_KEY, load_assets
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 
+NO_BACKUP_YET = (
+    "aún no hay ningún ciclo con copia terminada; la copia de este ciclo se verá en el informe "
+    "del siguiente"
+)
 CRITICAL_ALERTS_PENDING = "alertas críticas: no implementadas todavía (v0.3)"
 INCIDENTS_UNREADABLE = "registro de incidentes ilegible"
 PROBLEM_TEXT = {
@@ -102,19 +115,26 @@ def build_daily(
     tz: tzinfo,
     cycle: CycleInfo | None,
     checks: CheckResultsSource,
+    windows: Mapping[str, int] = WINDOW_DAYS,
 ) -> DailyReport:
     """El informe del día `period` (fecha local en `tz`) con los datos hasta el corte.
 
-    Corte: `cycle.data_cutoff`, o `generated_at` sin ciclo. Mismos argumentos y mismo workspace
-    dan los mismos bytes."""
+    Corte: `cycle.data_cutoff`, o `generated_at` sin ciclo. `windows`: días de aviso por tipo de
+    caducidad (`expiries.windows_from` los saca de schedule.yaml). Mismos argumentos y mismo
+    workspace dan los mismos bytes."""
     cutoff = cycle.data_cutoff if cycle else generated_at
     runs, problems = load_checks(checks, store, cutoff)
     status = assessment_status(store, cutoff, StaticCheckResults(runs, problems=problems))
     configured = {s.connector: s.configured for s in status.connectors}
+    attempts = {a.connector: a for a in cycle.connector_attempts} if cycle else {}
     connectors = [
-        _connector_entry(store, name, configured[name], runs, problems, cutoff)
+        _with_attempts(
+            _connector_entry(store, name, configured[name], runs, problems, cutoff),
+            attempts.get(name),
+        )
         for name in sorted(set(KNOWN_CHECKS.values()))
     ]
+    scan = scan_cycles(store)
     totals, partial_notice = _totals(connectors)
     fields = dict(
         generated_at=generated_at,
@@ -132,10 +152,10 @@ def build_daily(
         critical_alerts=Unavailable(reason=CRITICAL_ALERTS_PENDING),
         open_incidents=_open_incidents(store, cutoff),
         changes=Unavailable(reason="pendiente"),
-        interrupted_cycles=_interrupted_cycles(store, cycle, cutoff),
-        backup=_backup(store, cycle, cutoff),
+        interrupted_cycles=_interrupted_cycles(store, scan, cycle, cutoff),
+        backup=_backup(store, scan, cycle, cutoff),
     )
-    expiring, expiry_notice = _expiring(store, cutoff, date.fromisoformat(period), tz)
+    expiring, expiry_notice = _expiring(store, cutoff, date.fromisoformat(period), tz, windows)
     fields["expiring"] = expiring
     fields["notices"] = _notices(status, partial_notice, expiry_notice)
     draft = DailyReport(**fields)
@@ -203,6 +223,19 @@ def _connector_entry(
         value=CheckCounts(counts=count_statuses(run.results)), sources=[source]
     )
     return ConnectorEntry(connector=connector, collection=_collection(run, source), checks=counts)
+
+
+def _with_attempts(entry: ConnectorEntry, tried: ConnectorAttempts | None) -> ConnectorEntry:
+    """Los intentos del ciclo y, si el fallo lo generó el planificador, su fase y tipo."""
+    if tried is None:
+        return entry
+    return entry.model_copy(
+        update={
+            "attempts": tried.attempts,
+            "phase": tried.phase,
+            "error_type": tried.error_type,
+        }
+    )
 
 
 def _collection(run: CheckRun, source: SourceRef) -> Section[CollectionStatus]:
@@ -273,11 +306,21 @@ def _assets_without_agent(store: WorkspaceStore, cutoff: datetime) -> Section[li
 # --- preparación --------------------------------------------------------------------------------
 
 
+def readiness_blocker_lines(blockers: Iterable[Blocker]) -> list[str]:
+    """Los bloqueos como los cuenta `assessment status`: por medida y sin repetir, cada uno
+    prefijado con su medida. Un solo criterio para el informe y para la CLI."""
+    return [
+        f"{measure}: {text}"
+        for measure, texts in blocker_lines_by_measure(blockers).items()
+        for text in texts
+    ]
+
+
 def _readiness(
     store: WorkspaceStore, status: AssessmentStatus, runs: Iterable[CheckRun], cutoff: datetime
 ) -> Section[ReadinessValue]:
     result = status.result
-    blockers = [blocker_text(b) for b in result.readiness.blockers]
+    blockers = readiness_blocker_lines(result.readiness.blockers)
     blockers += [f"error: {e}" for e in result.errors]
     value = ReadinessValue(readiness=result.readiness.readiness, blockers=blockers)
     records: list[tuple[SourceKind, str]] = [
@@ -327,6 +370,8 @@ def _notices(status: AssessmentStatus, *extra: str | None) -> list[str]:
     notices = [n for n in extra if n]
     if status.pending_human_review:
         notices += [HUMAN_REVIEW_PENDING, NO_PRE_AUDIT]
+    else:
+        notices.append(REPORT_NOT_A_REVIEW)
     return [*notices, NO_CONFORMITY]
 
 
@@ -423,9 +468,13 @@ def _open_entry(view: IncidentView) -> IncidentEntry:
 
 
 def _expiring(
-    store: WorkspaceStore, cutoff: datetime, today: date, tz: tzinfo
+    store: WorkspaceStore,
+    cutoff: datetime,
+    today: date,
+    tz: tzinfo,
+    windows: Mapping[str, int],
 ) -> tuple[Section[list[ExpiryItem]], str | None]:
-    scan = scan_expiries(store, cutoff=cutoff, today=today, tz=tz)
+    scan = scan_expiries(store, cutoff=cutoff, today=today, tz=tz, windows=windows)
     notice = "Caducidades incompletas: " + "; ".join(scan.problems) + "." if scan.problems else None
     return (
         _sourced(
@@ -437,50 +486,66 @@ def _expiring(
     )
 
 
+def _cycle_runs(
+    scan: CycleScan, current: CycleInfo | None, cutoff: datetime
+) -> dict[str, StageReading]:
+    """Los ciclos ajenos al actual. Sin ciclo (informe manual a un instante), los posteriores al
+    corte no existían todavía."""
+    runs = {
+        r: reading for r, reading in scan.runs.items() if current is None or r != current.run_id
+    }
+    if current is None:
+        runs = {
+            r: reading
+            for r, reading in runs.items()
+            if (started := first_stage(reading, "started")) is None or started.at <= cutoff
+        }
+    return runs
+
+
 def _interrupted_cycles(
-    store: WorkspaceStore, current: CycleInfo | None, cutoff: datetime
+    store: WorkspaceStore, scan: CycleScan, current: CycleInfo | None, cutoff: datetime
 ) -> Section[list[InterruptedCycle]]:
-    consulted: list[SourceRef | None] = []
-    interrupted: list[InterruptedCycle] = []
-    unreadable: list[str] = []
-    for run_id in run_ids(store):
-        reading = stages_of(store, run_id)
-        for stage in reading.stages:
-            key = f"{CYCLES_PREFIX}/{run_id}.{stage.stage}.json"
-            consulted.append(source_ref(store, "cycle", key, stage.at))
-        if current is not None and run_id == current.run_id:
-            continue
-        started = next((s for s in reading.stages if s.stage == "started"), None)
-        if cycle_finished(store, run_id):
-            continue
-        if started is None or reading.problems:
-            unreadable.append(run_id)
-            continue
-        interrupted.append(
-            InterruptedCycle(
-                run_id=run_id, last_stage=reading.stages[-1].stage, started_at=started.at
-            )
-        )
+    """Ciclos sin terminar. Cita los marcadores de los ciclos que informa, no los de toda la
+    historia; sin ninguno, el `started` del ciclo actual o la huella del listado."""
+    if not scan.runs:
+        return Unavailable(reason="no hay marcadores de ciclo registrados")
+    runs = _cycle_runs(scan, current, cutoff)
+    interrupted, unreadable = interrupted_in(runs, now=cutoff if current else None)
     if unreadable:
         return Unavailable(reason="marcadores de ciclo ilegibles: " + ", ".join(unreadable))
-    return _sourced(interrupted, consulted, "no hay marcadores de ciclo registrados")
+    reported = [
+        source_ref(store, "cycle", f"{CYCLES_PREFIX}/{c.run_id}.{m.stage}.json", m.at)
+        for c in interrupted
+        for m in runs[c.run_id].stages
+    ]
+    if not reported and current is not None:
+        # Los marcadores ya escritos no cambian; el listado sí (crece con este mismo ciclo).
+        reported = [
+            source_ref(
+                store, "cycle", f"{CYCLES_PREFIX}/{current.run_id}.started.json", current.started_at
+            )
+        ]
+    if not reported:
+        reported = [
+            SourceRef(kind="cycle", key=f"{CYCLES_PREFIX}/", sha256=scan.listing_sha256, at=cutoff)
+        ]
+    return _sourced(interrupted, reported, "no se puede leer ningún marcador de ciclo")
 
 
 def _backup(
-    store: WorkspaceStore, current: CycleInfo | None, cutoff: datetime
+    store: WorkspaceStore, scan: CycleScan, current: CycleInfo | None, cutoff: datetime
 ) -> Section[BackupStageResult]:
     """La etapa de copia del último ciclo diario terminado (no el actual: su copia va después
-    del informe). Con algún marcador ilegible no se elige ninguno: podría ser el último."""
+    del informe, así que aquí se ve la del ciclo anterior). Con algún marcador ilegible no se
+    elige ninguno: podría ser el último."""
     last: tuple[datetime, str, CycleStage] | None = None
     unreadable: list[str] = []
-    for run_id in run_ids(store):
-        if current is not None and run_id == current.run_id:
-            continue
-        reading = stages_of(store, run_id)
+    for run_id, reading in _cycle_runs(scan, current, cutoff).items():
         if reading.problems:
             unreadable.append(run_id)
             continue
-        started = next((s for s in reading.stages if s.stage == "started"), None)
+        started = first_stage(reading, "started")
         final = next(
             (s for s in reading.stages if s.stage in TERMINAL_STAGES and s.at <= cutoff), None
         )
@@ -491,22 +556,17 @@ def _backup(
     if unreadable:
         return Unavailable(reason="marcadores de ciclo ilegibles: " + ", ".join(unreadable))
     if last is None:
-        return Unavailable(reason="ningún ciclo diario terminado con etapa de copia")
+        return Unavailable(reason=NO_BACKUP_YET)
     at, run_id, final = last
-    reference = final.reference
-    code = reference.removeprefix("failed:") if reference else None
-    run_source = reference is not None and reference.startswith(f"{BACKUPS_PREFIX}/")
-    if run_source:
-        code = "restic_failed" if final.stage == "backup_failed" else None
     value = BackupStageResult(
         run_id=run_id,
         outcome=final.stage,
-        code=None if code == "ok" else code,
-        configuration_error=final.stage == "backup_failed" and reference == "not_configured",
+        code=final.backup_code,
+        configuration_error=final.backup_code == "not_configured",
         finished_at=at,
     )
     marker_key = f"{CYCLES_PREFIX}/{run_id}.{final.stage}.json"
     sources = [source_ref(store, "cycle", marker_key, at)]
-    if run_source:
-        sources.append(source_ref(store, "backup_run", str(reference), at))
+    if final.reference:
+        sources.append(source_ref(store, "backup_run", final.reference, at))
     return _sourced(value, sources, f"{marker_key}: no se puede leer")

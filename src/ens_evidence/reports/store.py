@@ -8,6 +8,7 @@ import hashlib
 import json
 import re
 from calendar import monthrange
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import date, datetime
 from typing import Any, Literal
@@ -20,6 +21,7 @@ from ens_evidence.reports.model import (
     Coverage,
     CycleStage,
     DailyReport,
+    InterruptedCycle,
     Unavailable,
     is_day,
     is_month,
@@ -77,6 +79,12 @@ class PeriodScan:
 class StageReading:
     stages: list[CycleStage]
     problems: list[str]
+
+
+@dataclass(frozen=True)
+class CycleScan:
+    runs: dict[str, StageReading]
+    listing_sha256: str
 
 
 def _period_prefix(kind: Kind, period: str) -> str:
@@ -164,7 +172,33 @@ def published(store: WorkspaceStore, kind: Kind, period: str) -> bool:
 # --- lectura verificada -----------------------------------------------------------------------
 
 
-def _verify_daily(store: WorkspaceStore, pair: Pair) -> Canonical | Unavailable:
+def published_hashes(store: WorkspaceStore, json_key: str) -> tuple[str, str]:
+    """Huellas (JSON, HTML) del par publicado; las anota la etapa `reported`."""
+    html_key = json_key.removesuffix(".json") + ".html"
+    return _sha(store.read_bytes(json_key)), _sha(store.read_bytes(html_key))
+
+
+def published_problem(
+    store: WorkspaceStore, run_id: str, json_key: str, json_bytes: bytes, html_bytes: bytes
+) -> str | None:
+    """Por qué el par no es el que publicó el ciclo `run_id`, o None si coincide con su marcador
+    `reported`. Un informe editado después de publicarse nunca cuenta como bueno."""
+    try:
+        marker = CycleStage.model_validate(
+            load_json_strict(store.read_bytes(_stage_key(run_id, "reported")))
+        )
+    except (WorkspaceError, ValueError, ValidationError):
+        return "falta su marcador de ciclo `reported` o es ilegible"
+    if marker.reference != json_key:
+        return "su marcador de ciclo cita otro informe"
+    if (marker.json_sha256, marker.html_sha256) != (_sha(json_bytes), _sha(html_bytes)):
+        return "no coincide con la huella de su publicación: se editó después de publicarse"
+    return None
+
+
+def _read_daily(
+    store: WorkspaceStore, pair: Pair
+) -> tuple[DailyReport, bytes, bytes] | Unavailable:
     if not pair.json_key:
         return Unavailable(reason=f"{pair.period}/{pair.stamp}: falta el JSON del par")
     if pair.html_key is None:
@@ -177,16 +211,29 @@ def _verify_daily(store: WorkspaceStore, pair: Pair) -> Canonical | Unavailable:
         return Unavailable(reason=f"{pair.json_key}: ilegible o no válido")
     if report.period != pair.period or not html_bytes.strip():
         return Unavailable(reason=f"{pair.json_key}: no coincide con su periodo o HTML vacío")
-    return Canonical(pair, report, _sha(json_bytes), _sha(html_bytes), ())
+    return report, json_bytes, html_bytes
 
 
 def _canonical_of_day(store: WorkspaceStore, day_pairs: list[Pair]) -> Canonical | Unavailable:
-    """El último por sello; los demás se listan. Un último ilegible no se sustituye en silencio."""
-    last = _verify_daily(store, day_pairs[-1])
-    if isinstance(last, Unavailable):
-        return last
-    others = tuple(p.json_key for p in day_pairs[:-1] if p.json_key)
-    return Canonical(last.pair, last.report, last.json_sha256, last.html_sha256, others)
+    """El último informe *de ciclo* por sello, verificado contra su marcador `reported`.
+
+    Los informes sin ciclo (manuales) no cuentan: rellenarían días sin ciclo. Un último ilegible
+    o editado no se sustituye en silencio por uno anterior; los demás se listan."""
+    for pair in reversed(day_pairs):
+        loaded = _read_daily(store, pair)
+        if isinstance(loaded, Unavailable):
+            return loaded
+        report, json_bytes, html_bytes = loaded
+        if report.cycle is None:
+            continue
+        problem = published_problem(
+            store, report.cycle.run_id, pair.json_key, json_bytes, html_bytes
+        )
+        if problem is not None:
+            return Unavailable(reason=f"{pair.json_key}: {problem}")
+        others = tuple(p.json_key for p in day_pairs if p is not pair and p.json_key)
+        return Canonical(pair, report, _sha(json_bytes), _sha(html_bytes), others)
+    return Unavailable(reason=f"{day_pairs[0].period}: ningún informe de ciclo verificado")
 
 
 def _daily_periods(store: WorkspaceStore) -> list[str]:
@@ -235,9 +282,13 @@ def reports_in_period(
 # --- etapas ------------------------------------------------------------------------------------
 
 
-def _stage_key(run_id: str, stage: str) -> str:
+def _require_run_id(run_id: str) -> None:
     if not _RUN_ID.match(run_id):
         raise ValueError("run_id no válido")
+
+
+def _stage_key(run_id: str, stage: str) -> str:
+    _require_run_id(run_id)
     return f"{CYCLES_PREFIX}/{run_id}.{stage}.json"
 
 
@@ -249,30 +300,38 @@ def write_stage(
     at: datetime,
     period: str,
     reference: str | None = None,
+    **details: Any,
 ) -> str:
-    """Marcador solo de adición: repetir la etapa del mismo `run_id` lanza `AlreadyExists`."""
-    marker = CycleStage(run_id=run_id, stage=stage, at=at, period=period, reference=reference)
+    """Marcador solo de adición: repetir la etapa del mismo `run_id` lanza `AlreadyExists`.
+
+    `details`: los campos tipados de la etapa (`attempts`, `checks`, `backup_code`, huellas)."""
+    marker = CycleStage(
+        run_id=run_id, stage=stage, at=at, period=period, reference=reference, **details
+    )
     key = _stage_key(run_id, stage)
     store.create_bytes(key, render_json(marker))
     return key
 
 
 def run_ids(store: WorkspaceStore) -> list[str]:
-    names = (key.rsplit("/", 1)[1] for key in store.list(CYCLES_PREFIX))
-    return sorted(
-        {n.split(".")[0] for n in names if n.endswith(".json") and _RUN_ID.match(n.split(".")[0])}
-    )
+    return sorted(_group_by_run(store.list(CYCLES_PREFIX)))
 
 
-def stages_of(store: WorkspaceStore, run_id: str) -> StageReading:
-    """Etapas registradas en orden del ciclo; marcadores ilegibles o incoherentes -> `problems`."""
+def _group_by_run(keys: Iterable[str]) -> dict[str, list[str]]:
+    """Las claves de marcadores por `run_id`; sin ningún `.json` no hay ciclo."""
+    grouped: dict[str, list[str]] = {}
+    for key in keys:
+        run_id = key.rsplit("/", 1)[1].split(".")[0]
+        if _RUN_ID.match(run_id) and key.startswith(f"{CYCLES_PREFIX}/{run_id}."):
+            grouped.setdefault(run_id, []).append(key)
+    return {run: found for run, found in grouped.items() if any(k.endswith(".json") for k in found)}
+
+
+def _read_run(store: WorkspaceStore, run_id: str, keys: Iterable[str]) -> StageReading:
     stages: list[CycleStage] = []
     problems: list[str] = []
     prefix = f"{CYCLES_PREFIX}/{run_id}."
-    _stage_key(run_id, "started")
-    for key in store.list(CYCLES_PREFIX):
-        if not key.startswith(prefix):
-            continue
+    for key in keys:
         name = key.removeprefix(prefix).removesuffix(".json")
         if not key.endswith(".json") or name not in STAGES:
             problems.append(f"{key}: marcador desconocido")
@@ -290,12 +349,35 @@ def stages_of(store: WorkspaceStore, run_id: str) -> StageReading:
     return StageReading(stages, problems)
 
 
+def stages_of(store: WorkspaceStore, run_id: str) -> StageReading:
+    """Etapas registradas en orden del ciclo; marcadores ilegibles o incoherentes -> `problems`."""
+    _require_run_id(run_id)
+    prefix = f"{CYCLES_PREFIX}/{run_id}."
+    return _read_run(store, run_id, (k for k in store.list(CYCLES_PREFIX) if k.startswith(prefix)))
+
+
+def scan_cycles(store: WorkspaceStore, *, since: str | None = None) -> CycleScan:
+    """Todos los ciclos con un único listado del almacén. `since`: sello `YYYYmmddTHHMMSS`
+    mínimo del `run_id` (los anteriores no se leen). La huella cita lo listado."""
+    keys = sorted(store.list(CYCLES_PREFIX))
+    runs = {
+        run_id: _read_run(store, run_id, found)
+        for run_id, found in sorted(_group_by_run(keys).items())
+        if since is None or run_id[: len(since)] >= since
+    }
+    return CycleScan(runs, _sha("\n".join(keys).encode("utf-8")))
+
+
+def first_stage(reading: StageReading, stage: str) -> CycleStage | None:
+    return next((m for m in reading.stages if m.stage == stage), None)
+
+
 def reading_finished(reading: StageReading) -> bool:
     """Un ciclo diario termina con su etapa final (hecha, fallida u omitida); el mensual, que
     solo informa, con `reported`. Con algún marcador ilegible nunca está terminado."""
     if reading.problems:
         return False
-    started = next((m for m in reading.stages if m.stage == "started"), None)
+    started = first_stage(reading, "started")
     monthly = started is not None and is_month(started.period)
     final = TERMINAL_STAGES | {"reported"} if monthly else TERMINAL_STAGES
     return any(m.stage in final for m in reading.stages)
@@ -303,3 +385,27 @@ def reading_finished(reading: StageReading) -> bool:
 
 def cycle_finished(store: WorkspaceStore, run_id: str) -> bool:
     return reading_finished(stages_of(store, run_id))
+
+
+def interrupted_in(
+    runs: Mapping[str, StageReading], *, now: datetime | None
+) -> tuple[list[InterruptedCycle], list[str]]:
+    """Ciclos sin terminar y legibles, y los `run_id` que no se pueden leer: con algún marcador
+    ilegible, sin `started` o (con `now`) con marcadores fechados en el futuro, que no pueden
+    ser de un ciclo real."""
+    interrupted: list[InterruptedCycle] = []
+    unreadable: list[str] = []
+    for run_id, reading in runs.items():
+        if reading_finished(reading):
+            continue
+        started = first_stage(reading, "started")
+        future = now is not None and any(m.at > now for m in reading.stages)
+        if started is None or reading.problems or future:
+            unreadable.append(run_id)
+        else:
+            interrupted.append(
+                InterruptedCycle(
+                    run_id=run_id, last_stage=reading.stages[-1].stage, started_at=started.at
+                )
+            )
+    return interrupted, unreadable

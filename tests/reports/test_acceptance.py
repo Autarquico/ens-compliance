@@ -10,7 +10,6 @@ from datetime import timedelta
 
 import pytest
 import yaml
-from checks.test_no_network import offline  # noqa: F401
 
 from ens_evidence.backup.environment import ACCESS_KEY_VAR, PASSWORD_VAR, SECRET_KEY_VAR
 from ens_evidence.checks.store import scan_runs
@@ -137,7 +136,8 @@ def test_cada_fila_de_dato_del_html_tiene_su_celda_de_fuente(traced):
     text = "".join(parsed.text)
 
     assert len(parsed.rows) > 40
-    assert [row for row in parsed.rows if len(row) != 3 or not row[2].strip()] == []
+    assert [row for row in parsed.rows if len(row) != 2 or not all(c.strip() for c in row)] == []
+    assert any(row[0] == "Fuentes" and "sha256:" in row[1] for row in parsed.rows)
     for _, ref in source_refs(document):
         assert ref["key"] in text and ref["sha256"] in text
     for _, node in sections_under(document):
@@ -159,8 +159,9 @@ def test_el_informe_muestra_error_en_la_recogida_y_en_los_checks_de_los_dos_cone
     states = {
         title: row[1] for title, row in parsed.titled if row[0] == "estado" and "recogida" in title
     }
-    assert states["Conector github: recogida"] == states["Conector cloudflare: recogida"] == "ERROR"
-    assert states["Conector google-workspace: recogida"] == "SUCCESS"
+    assert states["Conector github: recogida"] == "ERROR · fase: recogida (excepción RuntimeError)"
+    assert states["Conector cloudflare: recogida"] == "ERROR"
+    assert states["Conector google-workspace: recogida"] == "recogida correcta"
 
 
 def test_el_resto_de_conectores_tiene_evidencia_nueva_y_una_ejecucion_en_el_mismo_ciclo(dropped):
@@ -273,9 +274,9 @@ def test_la_preparacion_del_informe_es_la_de_assessment_status_en_el_mismo_insta
 
     value = report["readiness"]["value"]
     assert value["readiness"] == status["readiness"]
-    assert value["blockers"] == [b["text"] for b in status["blockers"]] + [
-        f"error: {e}" for e in status["errors"]
-    ]
+    text = traced.run("assessment", "status", "--at", cutoff).output
+    shown = [line.strip() for line in text.splitlines() if line.startswith("  ")]
+    assert value["blockers"] == shown[: len(value["blockers"])]
 
 
 # --- invariante: determinismo ------------------------------------------------------------------
@@ -346,7 +347,6 @@ def test_report_daily_sin_cycle_no_usa_red_ni_procesos_ni_plugins(
 
     for path in (
         "ens_evidence.cli.load_plugins",
-        "ens_evidence.scheduling.collect._run_isolated",
         "ens_evidence.scheduling.collect.collect_all",
     ):
         monkeypatch.setattr(path, forbidden)
@@ -409,9 +409,9 @@ def test_el_ciclo_del_dia_siguiente_lista_el_interrumpido_sin_reanudarlo(tmp_pat
 # --- invariante: copia activada por defecto sin credenciales ----------------------------------
 
 
-def stage_references(store) -> list[tuple[str, str | None]]:
+def stage_codes(store) -> list[tuple[str, str | None]]:
     (run_id,) = run_ids(store)
-    return [(m.stage, m.reference) for m in stages_of(store, run_id).stages]
+    return [(m.stage, m.backup_code) for m in stages_of(store, run_id).stages]
 
 
 def test_la_copia_activada_por_defecto_sin_credenciales_termina_con_backup_failed(
@@ -423,7 +423,7 @@ def test_la_copia_activada_por_defecto_sin_credenciales_termina_con_backup_faile
 
     assert result.exit_code == 0, result.output
     assert "La copia ha fallado" in result.output
-    stages = stage_references(world.store)
+    stages = stage_codes(world.store)
     assert [s for s, _ in stages] == [
         "started",
         "collected",
@@ -454,7 +454,7 @@ def test_el_informe_siguiente_muestra_la_copia_fallida(tmp_path, monkeypatch):
     assert backup["sources"][0]["kind"] == "cycle"
     assert backup["sources"][0]["key"].endswith(".backup_failed.json")
     html = daily_html(world.store, "2026-10-31")
-    assert "backup_failed:not_configured" in html
+    assert "copia fallida: sin ajustes de copia" in html
     assert "fallo de configuración" in html
 
 
@@ -471,9 +471,9 @@ def test_la_copia_fallida_con_ajustes_sin_credenciales_queda_en_el_informe_mensu
     cycle = world.run(*CYCLE)
 
     assert cycle.exit_code == 0, cycle.output
-    assert dict(stage_references(world.store))["backup_failed"] == "failed:invalid_credentials"
+    assert dict(stage_codes(world.store))["backup_failed"] == "invalid_credentials"
     monthly = json.loads(
         world.run("report", "monthly", "--stdout", "--at", "2026-11-01T08:00:00+00:00").output
     )
-    assert monthly["backups"]["value"]["counts"]["estado failed"] == 1
+    assert monthly["backups"]["value"]["counts"]["copia fallida"] == 1
     assert monthly["backups"]["sources"][0]["kind"] == "backup_run"

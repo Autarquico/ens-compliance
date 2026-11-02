@@ -5,7 +5,7 @@ from zoneinfo import ZoneInfo
 
 import pytest
 
-from ens_evidence.assessment.render import NO_CONFORMITY
+from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY, NO_PRE_AUDIT
 from ens_evidence.incidents.model import RecordKind
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness
 from ens_evidence.orgdocs.approval import DocumentState
@@ -51,7 +51,7 @@ HOSTILE = [
 ]
 ALLOWED_TAGS = {
     "html", "head", "meta", "title", "style", "body", "h1", "h2", "p", "table", "thead",
-    "tbody", "tr", "th", "td", "section", "span", "br",
+    "tbody", "tfoot", "tr", "th", "td", "section", "span", "br",
 }  # fmt: skip
 ALLOWED_ATTRS = {
     ("html", "lang"),
@@ -269,16 +269,30 @@ def test_clean_reports_pass_the_same_inertness_checks():
 
 
 @pytest.mark.parametrize(("build", "render"), RENDERERS)
-def test_every_data_row_has_a_source_cell(build, render):
-    p = assert_inert(render(build()))
-    data_rows = [r for r in p.rows if r != ["Dato", "Valor", "Fuente"]]
-    assert data_rows
-    for row in data_rows:
-        assert len(row) == 3
-        assert row[2].strip()
-        assert "sha256:" in row[2] or "no disponible" in row[2] or row[2] in {
-            "calendario", "reloj del ciclo", "ciclo", "scheduled", "manual", "recovery",
-        }  # fmt: skip
+def test_every_table_cites_its_sources_once_or_states_it_is_unavailable(build, render):
+    document = render(build())
+    p = assert_inert(document)
+    assert all(len(r) == 2 for r in p.rows)
+    for section in document.split("<section>")[1:]:
+        assert (
+            "<tfoot>" in section
+            and "sha256:" in section
+            or "no disponible" in section
+            or "calendario" in section
+        ), section[:80]
+
+
+def test_sources_go_once_per_section_not_once_per_row():
+    refs = [src("evidence/a"), src("evidence/b")]
+    counts = Sourced[CheckCounts](
+        value=CheckCounts(counts={CheckStatus.PASS: 2, CheckStatus.FAIL: 1}), sources=refs
+    )
+
+    document = render_daily_html(daily(checks=counts))
+
+    section = document.split("<h2>Checks</h2>")[1].split("</section>")[0]
+    assert section.count("sha256:") == 2
+    assert section.count("<tfoot>") == 1
 
 
 def test_sourced_rows_show_source_key_hash_and_instant():
@@ -292,14 +306,14 @@ def test_unavailable_shows_reason_never_zero():
     document = render_daily_html(daily())
     p = probe(document)
     cells = ["".join(r) for r in p.rows if r and r[0] == "activos"]
-    assert cells == ["activosno disponible: no disponibleno disponible: no disponible"]
+    assert cells == ["activosno disponible: no disponible"]
     assert "no disponible: no disponible" in document
 
 
 def test_notices_and_no_compliance_claim():
     for document in (render_daily_html(daily()), render_monthly_html(monthly())):
         assert NO_CONFORMITY in document
-        assert "Revisión humana pendiente" in document
+        assert "no sustituye la revisión de una persona" in document
         assert "cumple" not in document.lower()
 
 
@@ -330,8 +344,9 @@ def test_daily_documents_section_shows_state_sources_and_reasons():
         daily(documents=Sourced[list[DocumentEntry]](value=[doc], sources=[src("docs/politica")]))
     )
     row = next(r for r in probe(document).rows if r[0] == "politica")
-    assert "APPROVED" in row[1] and "revisar" in row[1]
-    assert "docs/politica" in row[2] and f"sha256:{SHA}" in row[2]
+    assert "aprobado y vigente" in row[1] and "revisar" in row[1]
+    assert "APPROVED" not in document
+    assert "docs/politica" in document and f"sha256:{SHA}" in document
 
 
 def test_daily_backup_shows_outcome_code_and_flags_a_configuration_failure():
@@ -346,7 +361,8 @@ def test_daily_backup_shows_outcome_code_and_flags_a_configuration_failure():
         daily(backup=Sourced[BackupStageResult](value=value, sources=[src("cycles/r1")]))
     )
     rows = probe(document).rows
-    assert any("backup_failed:not_configured" in r[1] for r in rows)
+    assert any("copia fallida: sin ajustes de copia" in r[1] for r in rows)
+    assert "backup_failed" not in document
     assert any(r[0] == "fallo de configuración" for r in rows)
 
 
@@ -415,4 +431,106 @@ def test_open_incidents_empty_list_still_cites_its_source():
 
     row = next(r for r in probe(document).rows if r[0] == "incidentes abiertos")
     assert "(sin elementos)" in row[1]
-    assert "incidents/" in row[2] and f"sha256:{SHA}" in row[2]
+    assert "incidents/" in document and f"sha256:{SHA}" in document
+
+
+def test_readiness_uses_the_plain_label_and_keeps_the_code_out():
+    document = render_daily_html(daily())
+
+    assert any(r == ["preparación", "no preparada"] for r in probe(document).rows)
+    assert "NOT_READY" not in document
+
+
+def test_internal_codes_are_shown_in_plain_spanish():
+    refs = [src("k")]
+    document = render_daily_html(
+        daily(
+            assets=Sourced[AssetsSummary](
+                value=AssetsSummary(total=2, by_type={"code_hosting": 1, "password_manager": 1}),
+                sources=refs,
+            ),
+            expiring=Sourced[list[ExpiryItem]](
+                value=[
+                    ExpiryItem(
+                        kind="measure_review",
+                        subject="op.exp.1",
+                        expires_at=NOON,
+                        days_left=3,
+                        sources=refs,
+                    )  # fmt: skip
+                ],
+                sources=refs,
+            ),
+            changes=Sourced[Changes](
+                value=Changes(
+                    base_period="2026-10-31", items=[ChangeItem(subject="x", change="added")]
+                ),
+                sources=refs,
+            ),
+        )
+    )
+
+    rows = probe(document).rows
+    assert ["tipo alojamiento de código", "1"] in rows
+    assert ["tipo gestor de contraseñas", "1"] in rows
+    assert any(r[0] == "revisión de la medida: op.exp.1" for r in rows)
+    assert ["alta", "x"] in rows
+    for code in ("code_hosting", "measure_review", "password_manager"):
+        assert code not in document
+
+
+def failed_connector(**fields):
+    refs = [src("k")]
+    return ConnectorEntry(
+        connector="github",
+        collection=Sourced[CollectionStatus](value=CollectionStatus.ERROR, sources=refs),
+        checks=Unavailable(reason="sin checks"),
+        **fields,
+    )
+
+
+def collection_state(document: str) -> str:
+    p = probe(document)
+    return next(r[1] for r in p.rows if r[0] == "estado")
+
+
+def test_a_failed_connector_shows_phase_and_error_type_in_plain_words():
+    entry = failed_connector(phase="collect", error_type="RuntimeError")
+
+    state = collection_state(render_daily_html(daily(connectors=[entry])))
+
+    assert state == "ERROR · fase: recogida (excepción RuntimeError)"
+
+
+def test_a_failed_connector_without_phase_shows_only_the_status():
+    state = collection_state(render_daily_html(daily(connectors=[failed_connector()])))
+
+    assert state == "ERROR"
+
+
+def test_an_unknown_phase_is_shown_as_it_comes():
+    entry = failed_connector(phase="nueva_fase")
+
+    assert collection_state(render_daily_html(daily(connectors=[entry]))) == (
+        "ERROR · fase: nueva_fase"
+    )
+
+
+def test_assets_without_agent_show_the_total_before_the_list():
+    refs = [src("k")]
+    listing = Sourced[list[str]](value=["lap-ana", "srv-app"], sources=refs)
+
+    rows = probe(render_daily_html(daily(assets_without_agent=listing))).rows
+
+    assert ["total", "2"] in rows
+    assert rows.index(["total", "2"]) < rows.index(["sin agente", "lap-ana"])
+
+
+def test_a_single_human_review_notice_and_capitalised_pre_audit():
+    report = daily(notices=[HUMAN_REVIEW_PENDING, NO_PRE_AUDIT, NO_CONFORMITY])
+
+    document = render_daily_html(report)
+
+    assert document.count("Revisión humana pendiente") == 1
+    assert "Pre-auditoría no ejecutada" in document
+    assert document.count("no declara conformidad") == 1
