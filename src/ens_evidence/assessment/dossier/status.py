@@ -5,11 +5,15 @@ MEDIA/ALTA, donde la conformidad exige auditoría de certificación (art. 38.1).
 """
 
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime
 
 from ens_evidence.assessment.dossier.drift import DriftReport, rebuild_and_diff
-from ens_evidence.assessment.dossier.model import INTERNAL_REVIEW_NOTICE
-from ens_evidence.assessment.dossier.transitions import CERTIFICATION_NOTE, scan_transitions
+from ens_evidence.assessment.dossier.model import INTERNAL_REVIEW_NOTICE, DossierSnapshot
+from ens_evidence.assessment.dossier.transitions import (
+    CERTIFICATION_NOTE,
+    evaluate_for_declaration,
+    scan_transitions,
+)
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.matrix import CheckResultsSource
 from ens_evidence.matrix.messages import role_label
@@ -17,6 +21,7 @@ from ens_evidence.models.enums import Category, DossierState, Role
 from ens_evidence.workspace import WorkspaceStore
 
 RECOVER = "recupera el expediente desde la copia (runbook); no admite más transiciones"
+RESOLVE = "resuélvelos y genera un expediente nuevo o vuelve a intentarlo"
 REGENERATE = "genera un expediente nuevo: este ya no describe el estado actual"
 _STEPS = {
     DossierState.GENERATED: (
@@ -55,6 +60,8 @@ class DossierStatus:
     integrity: tuple[str, ...]
     drift: DriftReport | None
     """None si la instantánea no se puede leer."""
+    declaration_blocked: tuple[str, ...]
+    """Por qué la preparación actual ya no permite declarar (solo en BÁSICA, ANALYZED)."""
     next_step: str
     fingerprints: Fingerprints
 
@@ -73,6 +80,7 @@ def dossier_status(
     category = scan.snapshot.category if scan.snapshot else None
     analysis = next((e for e in scan.entries if e.record.to_state is DossierState.ANALYZED), None)
     declared = next((e for e in scan.entries if e.record.to_state is DossierState.DECLARED), None)
+    blocked = _declaration_blocks(store, scan.snapshot, state, drift, now, source)
     return DossierStatus(
         dossier_id=dossier,
         category=category,
@@ -80,7 +88,8 @@ def dossier_status(
         notice=scan.snapshot.notice if scan.snapshot else None,
         integrity=scan.problems,
         drift=drift,
-        next_step=_next_step(category, state, bool(scan.problems), drift),
+        declaration_blocked=blocked,
+        next_step=_next_step(category, state, bool(scan.problems), drift, blocked),
         fingerprints=Fingerprints(
             snapshot=scan.snapshot_sha256,
             analysis=analysis.sha256 if analysis else None,
@@ -90,14 +99,41 @@ def dossier_status(
     )
 
 
+def _declaration_blocks(
+    store: WorkspaceStore,
+    snapshot: DossierSnapshot | None,
+    state: DossierState | None,
+    drift: DriftReport | None,
+    now: datetime | None,
+    source: CheckResultsSource | None,
+) -> tuple[str, ...]:
+    """La misma evaluación que exige `record_transition` al declarar."""
+    if (
+        snapshot is None
+        or snapshot.category is not Category.BASICA
+        or state is not DossierState.ANALYZED
+        or drift is None
+        or not drift.current
+    ):
+        return ()
+    instant = now or datetime.now(UTC)
+    _, problems = evaluate_for_declaration(
+        store, instant, source or StoredCheckResults(reference_now=instant)
+    )
+    return tuple(problems)
+
+
 def _next_step(
     category: Category | None,
     state: DossierState | None,
     broken: bool,
     drift: DriftReport | None,
+    blocked: tuple[str, ...],
 ) -> str:
     if broken or state is None or category is None:
         return RECOVER
+    if blocked:
+        return f"el sistema ya no está preparado: {'; '.join(blocked)}; {RESOLVE}"
     if state is DossierState.DECLARED:
         return _STEPS[state]
     if drift is not None and not drift.current:

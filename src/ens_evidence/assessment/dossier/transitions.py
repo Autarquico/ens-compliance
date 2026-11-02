@@ -37,6 +37,7 @@ from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.evidence.verify import verify_one
 from ens_evidence.incidents.privacy import check_declared_name
 from ens_evidence.matrix import CheckResultsSource, assess
+from ens_evidence.matrix.evaluate import AssessmentResult
 from ens_evidence.matrix.store import instant_stamp
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.dossier import (
@@ -604,6 +605,26 @@ def _analysis(
     return _Resolved(actor, elevated_to=target)
 
 
+def evaluate_for_declaration(
+    store: WorkspaceStore, now: datetime, checks: CheckResultsSource
+) -> tuple[AssessmentResult, list[str]]:
+    """La evaluación actual y por qué no permite declarar (vacío si está READY y se leyó entera)."""
+    evaluation = assess(store, now, checks=checks)
+    problems: list[str] = []
+    if evaluation.errors:
+        problems.append(
+            f"la evaluación actual tiene {len(evaluation.errors)} error(es) de lectura; "
+            "revisa `matrix show`"
+        )
+    if evaluation.readiness.readiness is not Readiness.READY:
+        blockers = ", ".join(
+            f"{b.kind.value}:{b.measure_id or '-'}"
+            for b in evaluation.readiness.blockers[:_SHOWN_ROWS]
+        )
+        problems.append(f"la evaluación actual no está READY ({blockers})")
+    return evaluation, problems
+
+
 def _declaration(
     store: WorkspaceStore,
     scan: TransitionScan,
@@ -619,18 +640,8 @@ def _declaration(
     errors += problems
     if _snapshot_readiness(snapshot) is not Readiness.READY:
         errors.append("la instantánea no estaba READY; genera un expediente nuevo")
-    evaluation = assess(store, now, checks=checks)
-    if evaluation.errors:
-        errors.append(
-            f"la evaluación actual tiene {len(evaluation.errors)} error(es) de lectura; "
-            "revisa `matrix show`"
-        )
-    if evaluation.readiness.readiness is not Readiness.READY:
-        blockers = ", ".join(
-            f"{b.kind.value}:{b.measure_id or '-'}"
-            for b in evaluation.readiness.blockers[:_SHOWN_ROWS]
-        )
-        errors.append(f"la evaluación actual no está READY ({blockers})")
+    evaluation, problems = evaluate_for_declaration(store, now, checks)
+    errors += problems
     if evidence_id is not None:
         errors += [f"--evidence: {problem}" for problem in verify_one(store, evidence_id).problems]
     analysis = scan.entries[-1] if scan.entries else None
@@ -649,6 +660,7 @@ __all__ = [
     "TransitionRejected",
     "TransitionScan",
     "entries",
+    "evaluate_for_declaration",
     "record_key",
     "record_transition",
     "scan_transitions",

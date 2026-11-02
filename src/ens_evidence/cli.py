@@ -2696,8 +2696,8 @@ def dossier_list(ctx: typer.Context) -> None:
 def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     """Estado, integridad, deriva por sección, siguiente paso y huellas de un expediente.
 
-    Sale con 1 si hay deriva (el expediente ya no describe el estado actual) o problemas de
-    integridad."""
+    Sale con 1 si hay deriva (el expediente ya no describe el estado actual), problemas de
+    integridad o, listo para declarar, un sistema que ya no está preparado."""
     store = open_workspace(ctx)
     status = dossier_status(store, dossier, now=clock())
     category = status.category.value if status.category else "desconocida"
@@ -2720,7 +2720,10 @@ def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
             typer.echo(f"  {section}:", err=True)
             for line in lines:
                 typer.echo(f"    - {line}", err=True)
-    typer.echo(f"Siguiente paso: {status.next_step}")
+    if status.declaration_blocked:
+        typer.echo(f"Siguiente paso: {status.next_step}", err=True)
+    else:
+        typer.echo(f"Siguiente paso: {status.next_step}")
     prints = status.fingerprints
     for label, value in (
         ("instantánea", prints.snapshot),
@@ -2730,7 +2733,12 @@ def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     ):
         typer.echo(f"Huella {label}: {value or '—'}")
     typer.echo(DOSSIER_FOOTER)
-    if status.integrity or status.drift is None or not status.drift.current:
+    if (
+        status.integrity
+        or status.drift is None
+        or not status.drift.current
+        or status.declaration_blocked
+    ):
         raise typer.Exit(1)
 
 
