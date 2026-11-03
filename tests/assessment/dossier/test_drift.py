@@ -111,7 +111,7 @@ def test_una_ejecucion_posterior_no_cambia_las_fuentes_de_la_instantanea(ready):
     ready.collect(at=NOW + timedelta(minutes=10))
     ready.check_all(NOW + timedelta(minutes=30))
 
-    again = build_snapshot(ready.store, INPUTS)
+    again = build_snapshot(ready.store, first.inputs)
     assert snapshot_sha256(again) == snapshot_sha256(first)
 
 

@@ -72,6 +72,11 @@ class SnapshotInputs(Strict):
     methodology_version: str = Field(min_length=1)
     product_version: str = Field(min_length=1)
     catalog_version: CatalogVersion
+    check_runs: list[str] | None = Field(
+        default=None,
+        description="Claves de las ejecuciones de checks que existían al generar; se fijan al "
+        "generar y la reproducción ve solo esas.",
+    )
 
 
 class DossierSnapshot(Strict):

@@ -6,7 +6,7 @@ status: active
 priority: P0
 size: M
 issue: 24
-prs: []
+prs: [52]
 related_issues: [24]
 depends_on:
   - compliance-matrix
@@ -16,7 +16,7 @@ depends_on:
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-11-03
 ---
 
 # Generación del expediente y sus estados

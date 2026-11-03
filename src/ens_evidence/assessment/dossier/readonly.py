@@ -1,15 +1,16 @@
 """Almacén de solo lectura con memoria, para una operación del expediente.
 
 Una generación, una reproducción o una comprobación leen el mismo workspace varias veces por
-sección. Con este envoltorio cada clave se lee una vez, así que la operación ve una lectura
-coherente (sin que un cambio a mitad de operación afecte a unas secciones y a otras no) y no paga
-las lecturas repetidas. Escribir es un error de programación: el expediente solo lee.
+sección. Con este envoltorio cada clave se lee una vez (los bytes; el texto se deriva de ellos), así
+que la operación ve una lectura coherente (sin que un cambio a mitad de operación afecte a unas
+secciones y a otras no) y no paga las lecturas repetidas. Escribir es un error de programación: el
+expediente solo lee.
 """
 
 from collections.abc import Callable
 from typing import TypeVar
 
-from ens_evidence.workspace import WorkspaceStore
+from ens_evidence.workspace import NotText, WorkspaceStore
 
 T = TypeVar("T")
 _FAILED = object()
@@ -33,7 +34,10 @@ class ReadOnlyStore:
         return found  # type: ignore[return-value]
 
     def read_text(self, key: str) -> str:
-        return self._once("text", key, self._store.read_text)
+        try:
+            return self.read_bytes(key).decode("utf-8")
+        except UnicodeDecodeError as exc:
+            raise NotText("el fichero no es texto UTF-8") from exc
 
     def read_bytes(self, key: str) -> bytes:
         return self._once("bytes", key, self._store.read_bytes)

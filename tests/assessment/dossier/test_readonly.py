@@ -3,7 +3,7 @@
 import pytest
 
 from ens_evidence.assessment.dossier.readonly import ReadOnlyStore
-from ens_evidence.workspace import LocalStore, NotFound
+from ens_evidence.workspace import LocalStore, NotFound, NotText
 
 
 class Counting(LocalStore):
@@ -42,3 +42,23 @@ def test_escribir_es_un_error(tmp_path):
     for write in (store.write_text, store.write_bytes, store.create_bytes):
         with pytest.raises(TypeError):
             write("a", "x" if write is store.write_text else b"x")
+
+
+def test_el_texto_se_deriva_de_los_mismos_bytes_que_se_huellan(tmp_path):
+    inner = Counting(tmp_path)
+    inner.write_text("a.txt", "uno")
+    store = ReadOnlyStore(inner)
+
+    assert store.read_text("a.txt") == "uno"
+    inner.write_text("a.txt", "dos")
+
+    assert store.read_bytes("a.txt") == b"uno"
+    assert inner.reads == ["a.txt"]
+
+
+def test_un_fichero_que_no_es_utf8_sigue_siendo_not_text(tmp_path):
+    inner = LocalStore(tmp_path)
+    inner.write_bytes("a.bin", b"\xff\xfe")
+
+    with pytest.raises(NotText):
+        ReadOnlyStore(inner).read_text("a.bin")

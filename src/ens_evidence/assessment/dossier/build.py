@@ -13,7 +13,7 @@ from pydantic import JsonValue
 
 from ens_evidence import __version__
 from ens_evidence.applicability import declaration_status
-from ens_evidence.assessment.dossier.frozen import FrozenCheckResults
+from ens_evidence.assessment.dossier.frozen import FrozenCheckResults, history_keys
 from ens_evidence.assessment.dossier.methodology import METHODOLOGY_VERSION
 from ens_evidence.assessment.dossier.model import (
     INTERNAL_REVIEW_NOTICE,
@@ -107,6 +107,8 @@ def build_snapshot(
     """
     store = ReadOnlyStore(store)
     _require_reproducible(inputs)
+    if inputs.check_runs is None:
+        inputs = inputs.model_copy(update={"check_runs": history_keys(store)})
     opened = open_dossier(store, inputs.evaluated_at)
     declaration = declaration_status(store, inputs.evaluated_at)
     if declaration.declaration is None:
@@ -114,7 +116,7 @@ def build_snapshot(
             [f"No hay Declaración de Aplicabilidad legible ({declaration.state.value})."]
             + list(declaration.errors)
         )
-    source = checks or FrozenCheckResults(reference_now=inputs.reference_now)
+    source = checks or FrozenCheckResults(inputs.reference_now, inputs.check_runs)
     evaluation = assess(store, inputs.evaluated_at, checks=source)
     try:
         export = build_export(store, evaluation, generated_at=inputs.generated_at)
@@ -197,7 +199,8 @@ def drift_projection(snapshot: DossierSnapshot) -> dict[str, JsonValue]:
     - los incidentes abiertos y los registros de su cadena (la proyección conserva los cerrados);
       abrir o actualizar un incidente no invalida un expediente en curso (plan r2, punto 4);
     - los metadatos temporales de generación (`generated_at`, `evaluated_at`, `reference_now`),
-      los instantes de las fuentes y `last_run_at`;
+      las claves de las ejecuciones congeladas (`check_runs`), los instantes de las fuentes y
+      `last_run_at`;
     - las ejecuciones de checks y las evidencias que solo son su entrada;
     - los resultados de evaluación (bloqueos, preparación, `implemented`, `counts`, estados de las
       secciones 7 a 9), que se recalculan: una ejecución nueva y equivalente no deriva, y una
@@ -206,6 +209,7 @@ def drift_projection(snapshot: DossierSnapshot) -> dict[str, JsonValue]:
     document = snapshot.model_dump(mode="json")
     for name in TEMPORAL_INPUTS:
         del document["inputs"][name]
+    del document["inputs"]["check_runs"]
     sections = {s["number"]: s for s in document["sections"]}
     derived = {m["id"] for m in sections[EVIDENCE_SECTION]["content"]["check_inputs"]}
     for section in document["sections"]:

@@ -62,3 +62,27 @@ def test_un_texto_suelto_con_datos_se_rechaza_con_un_solo_separador():
     problems = free_text_problems("conclusiones", "escribe a ana@example.com")
 
     assert problems == ["conclusiones: contiene un correo electrónico"]
+
+
+def test_con_una_ejecucion_futura_al_generar_la_reproduccion_conserva_el_bloqueo(ready):
+    from ens_evidence.assessment.dossier.build import diff_projection
+
+    ready.collect(at=COLLECTED + timedelta(hours=3))
+    ready.check_all(NOW + timedelta(hours=2))
+    generated = build_snapshot(
+        ready.store, INPUTS, checks=StoredCheckResults(reference_now=INPUTS.reference_now)
+    )
+
+    replayed = build_snapshot(ready.store, generated.inputs)
+
+    assert replayed == generated
+    assert replayed.sections[6].content["matrix"]["readiness"] == Readiness.NOT_READY
+    assert "check_run_in_future:github:" in str(replayed.sections[6].content["matrix"])
+    assert diff_projection(generated, replayed) == {}
+
+
+def test_una_ejecucion_posterior_a_generar_no_cuenta_al_reproducir(ready):
+    generated = build_snapshot(ready.store, INPUTS)
+    ready.check_all(NOW + timedelta(hours=2))
+
+    assert build_snapshot(ready.store, generated.inputs) == generated

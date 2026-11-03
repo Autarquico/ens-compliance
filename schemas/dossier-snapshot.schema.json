@@ -84,6 +84,22 @@
         "catalog_version": {
           "$ref": "#/$defs/CatalogVersion"
         },
+        "check_runs": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Claves de las ejecuciones de checks que exist\u00edan al generar; se fijan al generar y la reproducci\u00f3n ve solo esas.",
+          "title": "Check Runs"
+        },
         "evaluated_at": {
           "format": "date-time",
           "title": "Evaluated At",
