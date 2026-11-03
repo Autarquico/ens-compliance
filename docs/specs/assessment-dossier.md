@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Generación del expediente y sus estados
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 24

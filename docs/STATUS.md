@@ -24,6 +24,7 @@
 - #21 Plantillas de documentación organizativa
 - #22 Procedimiento y registro de incidentes
 - #23 Motor de checks y regla de preparación
+- #24 Generación del expediente y sus estados
 <!-- /pm-sync:done-this-week -->
 
 ---
