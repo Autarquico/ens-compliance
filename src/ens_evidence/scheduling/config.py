@@ -54,7 +54,12 @@ class MonthlyConfig(Strict):
 class CollectConfig(Strict):
     connectors: list[Annotated[str, Field(pattern=_CONNECTOR_NAME.pattern)]] | None = None
     retries: Annotated[int, Field(ge=0, le=5)] = 2
-    retry_delay_minutes: list[Annotated[int, Field(ge=1, le=240)]] = [5, 15]
+    retry_delay_minutes: Annotated[
+        list[Annotated[int, Field(ge=1, le=240)]], Field(min_length=1)
+    ] = [
+        5,
+        15,
+    ]
     timeout_minutes: Annotated[int, Field(ge=1, le=240)] = 15
 
     def delay_for(self, retry: int) -> int:

@@ -8,7 +8,7 @@ acceso) es `Unavailable` con su motivo: nunca 0.
 
 import hashlib
 from collections import Counter
-from collections.abc import Mapping
+from collections.abc import Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta, tzinfo
 
@@ -157,6 +157,7 @@ def build_monthly(
     checks: CheckResultsSource,
     cycle: CycleInfo | None = None,
     expiry_windows: Mapping[str, int] = WINDOW_DAYS,
+    extra_notices: Sequence[str] = (),
 ) -> MonthlyReport:
     """El informe del mes `period` (`YYYY-MM`, hora local de `tz`). Mismos argumentos y mismo
     workspace dan los mismos bytes. `expiry_windows`: antelación de los avisos de caducidad."""
@@ -176,7 +177,7 @@ def build_monthly(
     return MonthlyReport(
         generated_at=generated_at,
         product_version=__version__,
-        notices=_notices(month, pending_review),
+        notices=_notices(month, pending_review, extra_notices),
         period=period,
         window=month.window,
         cycle=cycle,
@@ -195,8 +196,8 @@ def build_monthly(
     )
 
 
-def _notices(month: _Month, pending_review: bool) -> list[str]:
-    notices = []
+def _notices(month: _Month, pending_review: bool, extra: Sequence[str]) -> list[str]:
+    notices = list(extra)
     coverage = month.coverage
     if coverage.partial:
         notices.append(

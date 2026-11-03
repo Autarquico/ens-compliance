@@ -61,7 +61,9 @@ class JobResult:
 
 
 class JobExecutor(Protocol):
-    def run(self, job: Job, cfg: ScheduleConfig, trigger: Trigger) -> JobResult: ...
+    def run(
+        self, job: Job, cfg: ScheduleConfig, trigger: Trigger, *, config_warning: bool = False
+    ) -> JobResult: ...
 
 
 def print_log(line: str) -> None:
@@ -176,7 +178,7 @@ class Scheduler:
         trigger: Trigger = "recovery" if late else "scheduled"
         self._event("job_start", job=job.kind, period=job.period, attempt=attempt, trigger=trigger)
         try:
-            result = self._executor.run(job, cfg, trigger)
+            result = self._executor.run(job, cfg, trigger, config_warning=self._config_invalid)
         except Exception as error:
             result = JobResult("failed", f"executor_crashed:{type(error).__name__}")
         if result.status == "completed":
@@ -285,7 +287,9 @@ class CycleExecutor:
         self._lock_factory = lock_factory
         self._plugins = plugins
 
-    def run(self, job: Job, cfg: ScheduleConfig, trigger: Trigger) -> JobResult:
+    def run(
+        self, job: Job, cfg: ScheduleConfig, trigger: Trigger, *, config_warning: bool = False
+    ) -> JobResult:
         lock = self._lock_factory(self._settings, self._env)
         try:
             acquire_or_wait(lock, self._clock, self._lock_wait_minutes)
@@ -308,6 +312,7 @@ class CycleExecutor:
                 cfg=cfg,
                 trigger=trigger,
                 plugins=self._plugins_for(job),
+                config_warning=config_warning,
             )
         except _Stopped:
             return JobResult("interrupted")

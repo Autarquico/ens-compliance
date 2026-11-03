@@ -7,7 +7,7 @@ del último intento utilizable al corte (`StoredCheckResults`), no de los resúm
 """
 
 import hashlib
-from collections.abc import Iterable, Mapping
+from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, tzinfo
 
@@ -120,6 +120,7 @@ def build_daily(
     cycle: CycleInfo | None,
     checks: CheckResultsSource,
     windows: Mapping[str, int] = WINDOW_DAYS,
+    extra_notices: Sequence[str] = (),
 ) -> DailyReport:
     """El informe del día `period` (fecha local en `tz`) con los datos hasta el corte.
 
@@ -161,7 +162,7 @@ def build_daily(
     )
     expiring, expiry_notice = _expiring(store, cutoff, date.fromisoformat(period), tz, windows)
     fields["expiring"] = expiring
-    fields["notices"] = _notices(status, partial_notice, expiry_notice)
+    fields["notices"] = _notices(status, partial_notice, expiry_notice, *extra_notices)
     draft = DailyReport(**fields)
     return DailyReport(**{**fields, "changes": changes_since_base(store, draft)})
 

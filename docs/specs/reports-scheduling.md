@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 14
-prs: []
+prs: [51]
 related_issues: [14]
 depends_on: [checks-engine]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-11-02
 ---
 
 # Informes y scheduling

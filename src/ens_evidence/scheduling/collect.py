@@ -330,6 +330,7 @@ def _attempt(
     timeout_seconds: float,
     isolated: bool,
     clock: Clock,
+    synthesize_rejection: bool,
 ) -> tuple[CollectionResult | str, Attempt | None, bool]:
     """(resultado a importar o motivo de configuración inválida, intento, si reintentar)."""
     if connector_class is None:
@@ -339,7 +340,10 @@ def _attempt(
     else:
         reply = _run_sequence(store, settings, name, connector_class)
     if reply.problem is not None:
-        return _safe_problem(reply.problem), None, False
+        if not synthesize_rejection:
+            return _safe_problem(reply.problem), None, False
+        # El mensaje lo escribe el conector: solo se guarda el tipo de la excepción.
+        reply = _Reply(phase=Phase.PREPARE, error=_crash(Phase.PREPARE, "WorkspaceError"))
     if reply.result is not None:
         if (rejection := _rejection(reply.result, name, asset_id)) is None:
             status = reply.result.collection_status
@@ -372,11 +376,15 @@ def collect_one(
     cfg: CollectConfig | None = None,
     timeout_minutes: float | None = None,
     isolated: bool = True,
+    synthesize_rejection: bool = True,
 ) -> CollectOutcome:
     """Recoge `name` e importa el resultado final (los intentos intermedios no se importan).
 
     `KeyError` si el conector no está instalado ni se conoce. `isolated=False` ejecuta en este
     proceso (sin tiempo límite): para la CLI interactiva y conectores inyectados.
+    `synthesize_rejection=False`: si `prepare` rechaza la configuración frente al workspace, no se
+    importa nada y se devuelve el motivo (`problem`), para que lo corrija quien lo ejecuta a mano.
+    Por defecto (planificador) se importa un ERROR sintético, con reintentos, sin el mensaje.
     """
     cfg = cfg or CollectConfig()
     connector_class = None if name in plugins.broken else plugins.registry.get(name)
@@ -395,7 +403,7 @@ def collect_one(
         at = now if number == 1 else clock.now()
         result, attempt, retry = _attempt(
             store, settings, name, connector_class, asset_id, at, number, timeout_seconds, isolated,
-            clock,
+            clock, synthesize_rejection,
         )  # fmt: skip
         if isinstance(result, str):
             return CollectOutcome(name, tuple(attempts), problem=result)

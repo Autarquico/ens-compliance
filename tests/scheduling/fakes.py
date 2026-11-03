@@ -59,6 +59,7 @@ class FakeExecutor:
         self.script = list(script or [])
         self.duration = duration
         self.runs: list[tuple[Job, Trigger, datetime]] = []
+        self.warnings: list[bool] = []
         self.active = 0
         self.max_active = 0
         self.during: Callable[[], None] | None = None
@@ -68,7 +69,10 @@ class FakeExecutor:
     def periods(self) -> list[tuple[str, str]]:
         return [(job.kind, job.period) for job, _, _ in self.runs]
 
-    def run(self, job: Job, cfg: ScheduleConfig, trigger: Trigger) -> JobResult:
+    def run(
+        self, job: Job, cfg: ScheduleConfig, trigger: Trigger, *, config_warning: bool = False
+    ) -> JobResult:
+        self.warnings.append(config_warning)
         self.active += 1
         self.max_active = max(self.max_active, self.active)
         try:

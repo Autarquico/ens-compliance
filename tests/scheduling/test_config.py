@@ -190,3 +190,9 @@ def test_backup_timeout_is_configurable_and_bounded(store):
     write(store, "backup:\n  timeout_minutes: 100000\n")
     with pytest.raises(ScheduleConfigError):
         load_schedule_config(store)
+
+
+def test_an_empty_retry_delay_list_is_rejected(store):
+    write(store, "collect:\n  retry_delay_minutes: []\n")
+    with pytest.raises(ScheduleConfigError):
+        load_schedule_config(store)

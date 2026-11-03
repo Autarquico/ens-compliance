@@ -30,10 +30,10 @@ def monthly_down(rig) -> dict:
     state = {"down": True}
     original = rig.executor.run
 
-    def run(job, cfg, trigger):
+    def run(job, cfg, trigger, **options):
         if job.kind == "monthly" and state["down"]:
             rig.executor.script.insert(0, JobResult("failed", "report_failed:ValueError"))
-        return original(job, cfg, trigger)
+        return original(job, cfg, trigger, **options)
 
     rig.executor.run = run
     return state

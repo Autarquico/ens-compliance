@@ -5,6 +5,7 @@ ciclo real y `scheduler status` / `scheduler run` por la CLI.
 """
 
 import datetime as dt
+import json
 import os
 import signal
 import threading
@@ -30,7 +31,9 @@ from ens_evidence.scheduling.config import (
     MonthlyConfig,
     ScheduleConfig,
     ScheduleConfigError,
+    load_schedule_config,
 )
+from ens_evidence.scheduling.cycle import CONFIG_INVALID_NOTICE
 from ens_evidence.scheduling.scheduler import (
     CycleExecutor,
     JobResult,
@@ -432,6 +435,35 @@ def test_la_configuracion_invalida_en_caliente_mantiene_la_ultima_valida_y_avisa
     assert not rig.scheduler.config_warning and len(rig.events("config_loaded")) == 2
 
 
+def test_una_lista_vacia_de_esperas_es_invalida_y_la_recarga_mantiene_la_ultima_valida(store):
+    store.write_text(SCHEDULE_KEY, "collect:\n  retry_delay_minutes: [5]\n")
+    rig = build(utc(2026, 11, 2, 4, 0))
+    rig.scheduler._load_config = lambda: load_schedule_config(store).config
+    rig.scheduler.tick()
+    assert not rig.scheduler.config_warning
+
+    store.write_text(SCHEDULE_KEY, "collect:\n  retry_delay_minutes: []\n")
+    rig.clock.current = utc(2026, 11, 2, 5, 1)
+    executed = rig.scheduler.tick()  # no revienta: sigue con la última válida
+
+    assert rig.scheduler.config_warning
+    assert [job.period for job, _ in executed] == ["2026-11-02"]
+    assert "keeping=last_valid" in rig.events("config_invalid")[0]
+
+
+def test_el_ejecutor_recibe_el_aviso_mientras_la_ultima_recarga_es_invalida():
+    rig = build(utc(2026, 11, 2, 4, 0))
+    rig.scheduler.tick()
+    rig.config = ScheduleConfigError("x")
+    rig.clock.current = utc(2026, 11, 2, 5, 1)
+    rig.scheduler.tick()
+    rig.config = at_time(6, 0)
+    rig.clock.current = utc(2026, 11, 3, 5, 1)
+    rig.scheduler.tick()
+
+    assert rig.executor.warnings == [True, False]
+
+
 def test_sin_ninguna_configuracion_valida_no_se_ejecuta_nada():
     rig = build(utc(2026, 11, 2, 5, 1), ScheduleConfigError("x"))  # type: ignore[arg-type]
 
@@ -532,7 +564,7 @@ def real(store, settings, env, plugins, fake, restic, tmp_path, monkeypatch):
     )
     fake("ok")
 
-    def make(start: datetime):
+    def make(start: datetime, load=lambda: ScheduleConfig()):
         clock, stop, logs = (
             FakeClock(start, auto_advance=timedelta(seconds=1)),
             threading.Event(),
@@ -550,7 +582,7 @@ def real(store, settings, env, plugins, fake, restic, tmp_path, monkeypatch):
         scheduler = Scheduler(
             clock,
             executor,
-            lambda: ScheduleConfig(),
+            load,
             workspace_done_periods(store, clock),
             stop,
             log=logs.append,
@@ -585,6 +617,37 @@ def test_en_el_dia_mensual_el_diario_y_luego_el_mensual_sin_repetir_la_recogida(
 
     restarted, _, _ = real(clock.current)  # el hecho sale del workspace, no de la memoria
     assert restarted.tick() == [] and len(real.collects) == 1
+
+
+def notices_of(store, kind, period):
+    return json.loads(store.read_text(pairs(store, kind, period)[-1].json_key))["notices"]
+
+
+def test_el_aviso_de_configuracion_invalida_llega_a_los_informes_y_desaparece(real, store):
+    cfg = {"load": lambda: ScheduleConfig()}
+    scheduler, clock, _ = real(utc(2026, 12, 1, 5, 0, 30), lambda: cfg["load"]())
+    scheduler.tick()
+    assert CONFIG_INVALID_NOTICE not in notices_of(store, "daily", "2026-12-01")
+
+    def broken():
+        raise ScheduleConfigError("reports/schedule.yaml: valor-secreto-123")
+
+    cfg["load"] = broken
+    clock.current = utc(2027, 1, 1, 5, 0, 30)  # día del mensual
+    scheduler.tick()
+
+    for kind, period in (("daily", "2027-01-01"), ("monthly", "2026-12")):
+        assert CONFIG_INVALID_NOTICE in notices_of(store, kind, period)
+    assert not any(
+        "valor-secreto" in store.read_bytes(key).decode("utf-8", "replace")
+        for key in store.list("")
+        if key
+    )
+
+    cfg["load"] = lambda: ScheduleConfig()
+    clock.current = utc(2027, 1, 2, 5, 0, 30)
+    scheduler.tick()
+    assert CONFIG_INVALID_NOTICE not in notices_of(store, "daily", "2027-01-02")
 
 
 # --- scheduler status --------------------------------------------------------------------------

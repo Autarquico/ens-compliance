@@ -298,11 +298,33 @@ def test_el_rechazo_de_prepare_con_un_secreto_no_se_reproduce(
 ):
     fake("prepare_secret")
 
-    outcome = run_one(store, settings, plugins, isolated=isolated)
+    outcome = run_one(store, settings, plugins, isolated=isolated, synthesize_rejection=False)
 
     assert outcome.result is None
     assert outcome.problem == collect_module.PREPARE_REDACTED
     assert LEAK not in repr(outcome) and evidence_count(store) == 0
+
+
+@pytest.mark.parametrize("mode", ["prepare_invalid", "prepare_secret"])
+@pytest.mark.parametrize("isolated", [False, True])
+def test_el_rechazo_de_prepare_deja_un_error_sintetizado_sin_el_mensaje(
+    store, settings, plugins, fake, mode, isolated
+):
+    collect(store)
+    assert CheckStatus.PASS in github_statuses(store)
+    fake(mode)
+
+    outcome = run_one(store, settings, plugins, cfg=RETRIES, isolated=isolated)
+
+    assert outcome.result.collection_status is CollectionStatus.ERROR
+    assert outcome.result.data == {
+        "error": "prepare_crashed:WorkspaceError",
+        "generated_by": GENERATED_BY,
+        "phase": "prepare",
+    }
+    assert [a.phase for a in outcome.attempts] == [Phase.PREPARE] * 3  # se reintenta
+    assert CheckStatus.PASS not in github_statuses(store)
+    assert LEAK not in everything_stored(store) and "inventario" not in everything_stored(store)
 
 
 def test_de_las_excepciones_solo_se_guarda_el_tipo(store, settings, plugins, fake):
@@ -418,12 +440,14 @@ def test_con_la_configuracion_invalida_no_se_sintetiza_nada(
 
 
 @pytest.mark.parametrize("isolated", [True, False])
-def test_si_el_conector_rechaza_la_configuracion_frente_al_workspace_no_se_importa_nada(
+def test_en_modo_manual_si_el_conector_rechaza_la_configuracion_no_se_importa_nada(
     store, settings, plugins, fake, isolated
 ):
     fake("prepare_invalid")
 
-    outcome = run_one(store, settings, plugins, cfg=RETRIES, isolated=isolated)
+    outcome = run_one(
+        store, settings, plugins, cfg=RETRIES, isolated=isolated, synthesize_rejection=False
+    )
 
     assert outcome.result is None
     assert outcome.problem == "asset_id: debe ser un activo del inventario"

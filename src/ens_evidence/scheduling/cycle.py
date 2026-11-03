@@ -63,6 +63,10 @@ from ens_evidence.workspace.cycle_lock import Clock, CycleContext
 Trigger = Literal["scheduled", "manual", "recovery"]
 RUN_WINDOW = timedelta(days=40)
 INHERITED = ("collected", "checked")
+CONFIG_INVALID_NOTICE = (
+    "La última recarga de reports/schedule.yaml no era válida: el planificador sigue con la "
+    "última configuración válida."
+)
 _STAMP = "%Y%m%dT%H%M%S"
 
 
@@ -255,6 +259,7 @@ def run_cycle(
     cfg: ScheduleConfig,
     trigger: Trigger,
     plugins: Plugins | None = None,
+    config_warning: bool = False,
 ) -> CycleOutcome:
     """Un intento del ciclo de `period` (`YYYY-MM-DD` diario, `YYYY-MM` mensual).
 
@@ -310,7 +315,7 @@ def run_cycle(
         try:
             reports = _publish_report(
                 store, run_id, job, period, due_at, started_at, trigger, attempts, cfg, clock,
-                resumed, inherited,
+                resumed, inherited, (CONFIG_INVALID_NOTICE,) if config_warning else (),
             )  # fmt: skip
         except Exception as error:
             return CycleOutcome(
@@ -348,6 +353,7 @@ def _publish_report(
     clock: Clock,
     resumed: bool,
     inherited: list[InheritedStage],
+    notices: tuple[str, ...],
 ) -> list[str]:
     """El informe del trabajo: el diario del día o el mensual del mes natural anterior."""
     zone = cfg.zone
@@ -379,6 +385,7 @@ def _publish_report(
                 cycle=info,
                 checks=checks,
                 windows=cfg.expiry_warnings.windows(),
+                extra_notices=notices,
             ),
             render_daily_html,
             clock,
@@ -399,6 +406,7 @@ def _publish_report(
             checks=checks,
             cycle=info,
             expiry_windows=cfg.expiry_warnings.windows(),
+            extra_notices=notices,
         ),
         lambda report: render_monthly_html(report, zone),
         clock,

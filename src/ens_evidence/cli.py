@@ -2270,7 +2270,7 @@ def collect(
             outcomes = [
                 collect_one(
                     store, settings, plugins, source, clock(), clock=SystemWaitClock(),
-                    cfg=CollectConfig(retries=0), isolated=False,
+                    cfg=CollectConfig(retries=0), isolated=False, synthesize_rejection=False,
                 )
             ]  # fmt: skip
         else:
