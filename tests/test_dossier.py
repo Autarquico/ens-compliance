@@ -1,3 +1,5 @@
+from datetime import timedelta
+
 import pytest
 from conftest import NOW, SHA
 from pydantic import ValidationError
@@ -11,7 +13,7 @@ from ens_evidence.models import (
     TransitionError,
     transition,
 )
-from ens_evidence.models.dossier import CorrectiveMeasure
+from ens_evidence.models.dossier import CorrectiveMeasure, record_sha256
 from ens_evidence.models.readiness import Blocker, BlockerKind, ReadinessResult
 
 READY = ReadinessResult(readiness=Readiness.READY, blockers=[], pending_human_review=False)
@@ -23,8 +25,20 @@ NOT_READY = ReadinessResult(
 MEASURES = [CorrectiveMeasure(description="rotar claves", addressee=Role.SYSTEM_OWNER)]
 
 
+ELEVATION = {"elevated_to": "Ana Gil", "elevated_at": NOW, "elevation_confirmed": True}
+
+
 def go(dossier, to_state, role, **kwargs):
-    return transition(dossier, to_state, actor="x", role=role, at=NOW, dossier_sha256=SHA, **kwargs)
+    if to_state is DossierState.ANALYZED:
+        kwargs = {**ELEVATION, **kwargs}
+    if (
+        to_state is DossierState.DECLARED
+        and dossier.transitions
+        and "analysis_sha256" not in kwargs
+    ):
+        kwargs["analysis_sha256"] = record_sha256(dossier.transitions[-1])
+    kwargs.setdefault("at", NOW)
+    return transition(dossier, to_state, actor="x", role=role, dossier_sha256=SHA, **kwargs)
 
 
 def self_assessed(category=Category.BASICA):
@@ -52,11 +66,11 @@ def dossier_in(state, category=Category.BASICA):
     dossier = analyzed(category)
     if state is DossierState.ANALYZED:
         return dossier
-    return go(dossier, DossierState.DECLARED, Role.SYSTEM_OWNER, readiness=READY)
+    return go(dossier, DossierState.DECLARED, Role.MANAGEMENT, readiness=READY)
 
 
 def test_camino_feliz_registra_cada_transicion():
-    declared = go(analyzed(manual=True), DossierState.DECLARED, Role.SYSTEM_OWNER, readiness=READY)
+    declared = go(analyzed(manual=True), DossierState.DECLARED, Role.MANAGEMENT, readiness=READY)
     assert declared.state is DossierState.DECLARED
     assert [t.to_state for t in declared.transitions] == list(DossierState)[1:]
     assert all(
@@ -100,7 +114,7 @@ def test_desde_declared_no_hay_siguiente_estado():
     dossier = dossier_in(DossierState.DECLARED)
     for target in DossierState:
         with pytest.raises(TransitionError):
-            go(dossier, target, Role.SYSTEM_OWNER, readiness=READY)
+            go(dossier, target, Role.MANAGEMENT, readiness=READY)
 
 
 @pytest.mark.parametrize("role", [Role.SECURITY_OFFICER, Role.SYSTEM_OWNER])
@@ -166,7 +180,7 @@ def test_declared_fuera_de_basica_se_rechaza_incluso_con_ready(category):
         go(
             analyzed(category, manual=True),
             DossierState.DECLARED,
-            Role.SYSTEM_OWNER,
+            Role.MANAGEMENT,
             readiness=READY,
         )
 
@@ -174,7 +188,7 @@ def test_declared_fuera_de_basica_se_rechaza_incluso_con_ready(category):
 @pytest.mark.parametrize("readiness", [None, NOT_READY])
 def test_declared_exige_readiness_ready(readiness):
     with pytest.raises(TransitionError, match="READY"):
-        go(analyzed(manual=True), DossierState.DECLARED, Role.SYSTEM_OWNER, readiness=readiness)
+        go(analyzed(manual=True), DossierState.DECLARED, Role.MANAGEMENT, readiness=readiness)
 
 
 def test_declared_con_pending_human_review_sin_manual_judgment_review_se_rechaza():
@@ -182,20 +196,20 @@ def test_declared_con_pending_human_review_sin_manual_judgment_review_se_rechaza
         go(
             analyzed(manual=False),
             DossierState.DECLARED,
-            Role.SYSTEM_OWNER,
+            Role.MANAGEMENT,
             readiness=READY_PENDING,
         )
 
 
 def test_declared_con_pending_human_review_y_manual_judgment_review_se_admite():
     declared = go(
-        analyzed(manual=True), DossierState.DECLARED, Role.SYSTEM_OWNER, readiness=READY_PENDING
+        analyzed(manual=True), DossierState.DECLARED, Role.MANAGEMENT, readiness=READY_PENDING
     )
     assert declared.state is DossierState.DECLARED
 
 
 def test_declared_sin_pending_human_review_no_exige_manual_judgment_review():
-    declared = go(analyzed(manual=False), DossierState.DECLARED, Role.SYSTEM_OWNER, readiness=READY)
+    declared = go(analyzed(manual=False), DossierState.DECLARED, Role.MANAGEMENT, readiness=READY)
     assert declared.state is DossierState.DECLARED
 
 
@@ -212,7 +226,7 @@ def test_transicion_rechazada_no_deja_rastro():
 
 
 def test_declared_registra_el_readiness_en_la_transicion():
-    declared = go(analyzed(), DossierState.DECLARED, Role.SYSTEM_OWNER, readiness=READY)
+    declared = go(analyzed(), DossierState.DECLARED, Role.MANAGEMENT, readiness=READY)
     assert declared.transitions[-1].readiness == READY
 
 
@@ -274,3 +288,122 @@ def test_ready_con_bloqueos_falla():
 def test_not_ready_sin_bloqueos_falla():
     with pytest.raises(ValidationError, match="at least one"):
         ReadinessResult(readiness=Readiness.NOT_READY, blockers=[], pending_human_review=False)
+
+
+def test_transicion_con_huella_ajena_se_rechaza():
+    with pytest.raises(TransitionError, match="same dossier_sha256"):
+        transition(
+            self_assessed(),
+            DossierState.ANALYZED,
+            actor="x",
+            role=Role.SECURITY_OFFICER,
+            at=NOW,
+            dossier_sha256="b" * 64,
+            conclusions="ok",
+            **ELEVATION,
+        )
+
+
+def test_transicion_anterior_a_la_previa_se_rechaza():
+    with pytest.raises(TransitionError, match="precede"):
+        go(
+            self_assessed(),
+            DossierState.ANALYZED,
+            Role.SECURITY_OFFICER,
+            conclusions="ok",
+            at=NOW - timedelta(seconds=1),
+        )
+
+
+def test_transicion_en_el_mismo_instante_se_admite():
+    assert analyzed().state is DossierState.ANALYZED
+
+
+@pytest.mark.parametrize(
+    "role", [Role.SYSTEM_OWNER, Role.SECURITY_OFFICER, Role.SYSTEM_ADMINISTRATOR]
+)
+def test_declared_exige_direccion(role):
+    with pytest.raises(TransitionError, match="management"):
+        go(analyzed(manual=True), DossierState.DECLARED, role, readiness=READY)
+
+
+@pytest.mark.parametrize("sha", [None, "c" * 64])
+def test_declared_exige_analysis_sha256_del_registro_analyzed(sha):
+    with pytest.raises(TransitionError, match="analysis_sha256"):
+        go(
+            analyzed(manual=True),
+            DossierState.DECLARED,
+            Role.MANAGEMENT,
+            readiness=READY,
+            analysis_sha256=sha,
+        )
+
+
+def test_declared_registra_analysis_sha256_y_evidencia_opcional():
+    declared = go(
+        analyzed(),
+        DossierState.DECLARED,
+        Role.MANAGEMENT,
+        readiness=READY,
+        declaration_evidence_id="ev-1",
+    )
+    last = declared.transitions[-1]
+    assert last.analysis_sha256 == record_sha256(declared.transitions[1])
+    assert last.declaration_evidence_id == "ev-1"
+    assert dossier_in(DossierState.DECLARED).transitions[-1].declaration_evidence_id is None
+
+
+@pytest.mark.parametrize(
+    "elevation",
+    [
+        {},
+        {"elevated_to": "Ana Gil", "elevated_at": NOW},
+        {"elevated_to": " ", "elevated_at": NOW, "elevation_confirmed": True},
+        {"elevated_to": "Ana Gil", "elevation_confirmed": True},
+    ],
+)
+def test_analyzed_exige_elevacion_confirmada(elevation):
+    with pytest.raises(TransitionError, match="elevat"):
+        transition(
+            self_assessed(),
+            DossierState.ANALYZED,
+            actor="x",
+            role=Role.SECURITY_OFFICER,
+            at=NOW,
+            dossier_sha256=SHA,
+            conclusions="ok",
+            **elevation,
+        )
+
+
+def test_analyzed_sin_medidas_correctoras_registra_la_elevacion():
+    result = go(self_assessed(), DossierState.ANALYZED, Role.SECURITY_OFFICER, conclusions="ok")
+    last = result.transitions[-1]
+    assert last.corrective_measures == []
+    assert (last.elevated_to, last.elevated_at, last.elevation_confirmed) == ("Ana Gil", NOW, True)
+
+
+def test_historial_falsificado_no_deserializa():
+    valid = dossier_in(DossierState.DECLARED).model_dump(mode="json")
+    forged_sha = {**valid, "transitions": [dict(t) for t in valid["transitions"]]}
+    forged_sha["transitions"][1]["dossier_sha256"] = "b" * 64
+    backwards = {**valid, "transitions": [dict(t) for t in valid["transitions"]]}
+    backwards["transitions"][1]["at"] = (NOW - timedelta(days=1)).isoformat()
+    swapped = {**valid, "transitions": [dict(t) for t in valid["transitions"]]}
+    swapped["transitions"][1]["conclusions"] = "otro análisis"
+    for forged in (forged_sha, backwards, swapped):
+        with pytest.raises(ValidationError):
+            Dossier.model_validate(forged)
+
+
+@pytest.mark.parametrize(
+    ("state", "role", "field", "value"),
+    [
+        (DossierState.SELF_ASSESSED, Role.SYSTEM_ADMINISTRATOR, "elevated_to", "Ana"),
+        (DossierState.SELF_ASSESSED, Role.SYSTEM_ADMINISTRATOR, "analysis_sha256", SHA),
+        (DossierState.SELF_ASSESSED, Role.SYSTEM_ADMINISTRATOR, "declaration_evidence_id", "EV-1"),
+    ],
+)
+def test_un_campo_de_otro_estado_se_rechaza(state, role, field, value):
+    with pytest.raises(TransitionError, match=field):
+        go(Dossier(category=Category.BASICA), state, role, **{field: value})

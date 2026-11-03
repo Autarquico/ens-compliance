@@ -147,8 +147,8 @@ def _declare(store, signed_at, proposed_at=LATER) -> None:
     approve_declaration(store, "Luis Pardo", signed_at)
 
 
-def _signed_workspace(path: Path) -> LocalStore:
-    store = prepared_workspace(path / "ws", uniform("MEDIO"))
+def _signed_workspace(path: Path, level: str = "MEDIO") -> LocalStore:
+    store = prepared_workspace(path / "ws", uniform(level))
     _declare(store, SIGNED_AT)
     return store
 
@@ -168,11 +168,11 @@ def _cli(path: Path, monkeypatch, at) -> tuple[Clock, object]:
     return clock, runner(settings)
 
 
-def _build_linked(path: Path) -> None:
+def _build_linked(path: Path, level: str = "MEDIO") -> None:
     """Medidas configuradas y enlazadas, sin revisar y sin recogida ni ejecución."""
     from checks.test_engine import write_config
 
-    store = _signed_workspace(path)
+    store = _signed_workspace(path, level)
     _approve_incident_procedure(store)
     write_config(store, "github", GITHUB_CONFIG)
     with pytest.MonkeyPatch.context() as monkeypatch:
@@ -224,12 +224,12 @@ def _repoint(path: Path) -> None:
 
 
 @functools.cache
-def _template(kind: str) -> Path:
+def _template(kind: str, level: str = "MEDIO") -> Path:
     root = Path(tempfile.mkdtemp(prefix="ens-acceptance-"))
     atexit.register(shutil.rmtree, root, ignore_errors=True)
     linked = root / "linked"
     linked.mkdir()
-    _build_linked(linked)
+    _build_linked(linked, level)
     if kind == "linked":
         return linked
     ready = root / "ready"
@@ -237,10 +237,13 @@ def _template(kind: str) -> Path:
     return ready
 
 
-def make_world(tmp_path: Path, monkeypatch, kind: str, at=NOW) -> World:
-    """`linked`: enlazado, sin ejecuciones. `ready`: además recogida, PASS y revisiones."""
+def make_world(tmp_path: Path, monkeypatch, kind: str, at=NOW, level: str = "MEDIO") -> World:
+    """`linked`: enlazado, sin ejecuciones. `ready`: además recogida, PASS y revisiones.
+
+    `level` es el nivel uniforme de la categorización (MEDIO por defecto; BAJO = BÁSICA).
+    """
     destination = tmp_path / "world"
-    shutil.copytree(_template(kind), destination)
+    shutil.copytree(_template(kind, level), destination)
     settings = settings_file(
         destination, {"backend": "local", "local": {"path": str(destination / "ws")}}
     )

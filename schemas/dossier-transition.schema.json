@@ -1,0 +1,300 @@
+{
+  "$defs": {
+    "Blocker": {
+      "additionalProperties": false,
+      "properties": {
+        "detail": {
+          "default": "",
+          "title": "Detail",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/BlockerKind"
+        },
+        "measure_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measure Id"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Blocker",
+      "type": "object"
+    },
+    "BlockerKind": {
+      "enum": [
+        "UNDETERMINED_APPLICABILITY",
+        "NOT_APPLICABLE_WITHOUT_JUSTIFICATION",
+        "MISSING_EVIDENCE",
+        "EXPIRED_EVIDENCE",
+        "MISSING_REVIEW",
+        "EXPIRED_REVIEW",
+        "NOT_COMPLIANT",
+        "OPEN_FINDING"
+      ],
+      "title": "BlockerKind",
+      "type": "string"
+    },
+    "CorrectiveMeasure": {
+      "additionalProperties": false,
+      "properties": {
+        "addressee": {
+          "$ref": "#/$defs/Role"
+        },
+        "description": {
+          "title": "Description",
+          "type": "string"
+        }
+      },
+      "required": [
+        "description",
+        "addressee"
+      ],
+      "title": "CorrectiveMeasure",
+      "type": "object"
+    },
+    "DossierState": {
+      "enum": [
+        "GENERATED",
+        "SELF_ASSESSED",
+        "ANALYZED",
+        "DECLARED"
+      ],
+      "title": "DossierState",
+      "type": "string"
+    },
+    "Readiness": {
+      "enum": [
+        "READY",
+        "NOT_READY"
+      ],
+      "title": "Readiness",
+      "type": "string"
+    },
+    "ReadinessResult": {
+      "additionalProperties": false,
+      "properties": {
+        "blockers": {
+          "items": {
+            "$ref": "#/$defs/Blocker"
+          },
+          "title": "Blockers",
+          "type": "array"
+        },
+        "pending_human_review": {
+          "title": "Pending Human Review",
+          "type": "boolean"
+        },
+        "readiness": {
+          "$ref": "#/$defs/Readiness"
+        }
+      },
+      "required": [
+        "readiness",
+        "blockers",
+        "pending_human_review"
+      ],
+      "title": "ReadinessResult",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "management",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "Transition": {
+      "additionalProperties": false,
+      "properties": {
+        "acknowledged_incomplete": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Acknowledged Incomplete",
+          "type": "array"
+        },
+        "actor": {
+          "title": "Actor",
+          "type": "string"
+        },
+        "analysis_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Analysis Sha256"
+        },
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "conclusions": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conclusions"
+        },
+        "corrective_measures": {
+          "items": {
+            "$ref": "#/$defs/CorrectiveMeasure"
+          },
+          "title": "Corrective Measures",
+          "type": "array"
+        },
+        "declaration_evidence_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Declaration Evidence Id"
+        },
+        "dossier_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Dossier Sha256",
+          "type": "string"
+        },
+        "elevated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elevated At"
+        },
+        "elevated_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elevated To"
+        },
+        "elevation_confirmed": {
+          "default": false,
+          "title": "Elevation Confirmed",
+          "type": "boolean"
+        },
+        "from_state": {
+          "$ref": "#/$defs/DossierState"
+        },
+        "manual_judgment_review": {
+          "default": false,
+          "title": "Manual Judgment Review",
+          "type": "boolean"
+        },
+        "readiness": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ReadinessResult"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "role": {
+          "$ref": "#/$defs/Role"
+        },
+        "to_state": {
+          "$ref": "#/$defs/DossierState"
+        }
+      },
+      "required": [
+        "from_state",
+        "to_state",
+        "actor",
+        "role",
+        "at",
+        "dossier_sha256"
+      ],
+      "title": "Transition",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "description": "El fichero de la cadena: la transici\u00f3n con su posici\u00f3n y su enlace al anterior.",
+  "properties": {
+    "dossier_id": {
+      "title": "Dossier Id",
+      "type": "string"
+    },
+    "previous_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "title": "Previous Sha256"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    },
+    "transition": {
+      "$ref": "#/$defs/Transition"
+    }
+  },
+  "required": [
+    "dossier_id",
+    "seq",
+    "previous_sha256",
+    "recorded_at",
+    "transition"
+  ],
+  "title": "TransitionRecord",
+  "type": "object"
+}

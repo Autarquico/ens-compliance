@@ -131,9 +131,29 @@
     "Transition": {
       "additionalProperties": false,
       "properties": {
+        "acknowledged_incomplete": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Acknowledged Incomplete",
+          "type": "array"
+        },
         "actor": {
           "title": "Actor",
           "type": "string"
+        },
+        "analysis_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Analysis Sha256"
         },
         "at": {
           "format": "date-time",
@@ -159,10 +179,52 @@
           "title": "Corrective Measures",
           "type": "array"
         },
+        "declaration_evidence_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Declaration Evidence Id"
+        },
         "dossier_sha256": {
           "pattern": "^[0-9a-f]{64}$",
           "title": "Dossier Sha256",
           "type": "string"
+        },
+        "elevated_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elevated At"
+        },
+        "elevated_to": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Elevated To"
+        },
+        "elevation_confirmed": {
+          "default": false,
+          "title": "Elevation Confirmed",
+          "type": "boolean"
         },
         "from_state": {
           "$ref": "#/$defs/DossierState"

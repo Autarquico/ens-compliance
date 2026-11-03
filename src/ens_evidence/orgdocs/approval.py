@@ -130,6 +130,16 @@ def _declared_signatory(role: Role, by: str, values: dict[str, Value]) -> str:
     return holder
 
 
+def declared_signatory(store: WorkspaceStore, role: Role, by: str) -> str:
+    """El nombre declarado para ese rol en las respuestas vigentes; `DocumentApprovalRejected` si
+    `by` no es esa persona. Unas respuestas ilegibles no declaran a nadie."""
+    try:
+        values = validate_answers(read_answers(store), load_templates()).values
+    except ValueError:
+        values = {}
+    return _declared_signatory(role, by, values)
+
+
 def _template(name: str) -> LoadedTemplate:
     for loaded in load_templates():
         if loaded.id == name:

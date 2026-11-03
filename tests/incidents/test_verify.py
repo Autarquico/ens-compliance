@@ -1,5 +1,6 @@
 import pytest
 
+from ens_evidence.chain import render_record
 from ens_evidence.evidence import load_manifest_by_id
 from ens_evidence.evidence.importer import INCIDENT_RECORD_SOURCE, import_generated
 from ens_evidence.evidence.layout import artifact_key, manifest_key
@@ -8,7 +9,7 @@ from ens_evidence.incidents import (
     verify_all_incidents,
     verify_incident,
 )
-from ens_evidence.incidents.layout import record_key, render_record, seq_key
+from ens_evidence.incidents.layout import record_key, seq_key
 from ens_evidence.incidents.verify import scan_incident
 
 from .helpers import RECORDED

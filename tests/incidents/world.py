@@ -6,6 +6,7 @@ from pathlib import Path
 
 import yaml
 
+from ens_evidence.chain import render_record
 from ens_evidence.evidence import import_manual
 from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, import_generated
 from ens_evidence.evidence.layout import manifest_key
@@ -19,7 +20,6 @@ from ens_evidence.incidents import (
 from ens_evidence.incidents.layout import (
     asset_id,
     record_key,
-    render_record,
 )
 from ens_evidence.incidents.verify import scan_incident
 from ens_evidence.workspace import LocalStore

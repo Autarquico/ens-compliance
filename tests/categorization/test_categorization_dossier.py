@@ -37,7 +37,16 @@ def test_el_expediente_media_no_admite_declared(store):
     dossier = open_dossier(store, NOW).dossier
     for state, role, extra in (
         (DossierState.SELF_ASSESSED, Role.SYSTEM_ADMINISTRATOR, {}),
-        (DossierState.ANALYZED, Role.SECURITY_OFFICER, {"conclusions": "Revisado"}),
+        (
+            DossierState.ANALYZED,
+            Role.SECURITY_OFFICER,
+            {
+                "conclusions": "Revisado",
+                "elevated_to": "Ana Gil",
+                "elevated_at": NOW,
+                "elevation_confirmed": True,
+            },
+        ),
     ):
         dossier = transition(
             dossier, state, actor="x", role=role, at=NOW, dossier_sha256=SHA, **extra
@@ -48,7 +57,7 @@ def test_el_expediente_media_no_admite_declared(store):
             dossier,
             DossierState.DECLARED,
             actor="x",
-            role=Role.SYSTEM_OWNER,
+            role=Role.MANAGEMENT,
             at=NOW,
             dossier_sha256=SHA,
             readiness=READY,
