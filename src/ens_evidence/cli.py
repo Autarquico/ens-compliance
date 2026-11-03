@@ -2270,7 +2270,7 @@ def collect(
             outcomes = [
                 collect_one(
                     store, settings, plugins, source, clock(), clock=SystemWaitClock(),
-                    cfg=CollectConfig(retries=0), isolated=False, synthesize_rejection=False,
+                    cfg=CollectConfig(retries=0), isolated=False,
                 )
             ]  # fmt: skip
         else:
@@ -2290,6 +2290,9 @@ def print_collect_outcome(outcome: CollectOutcome, *, labelled: bool) -> int:
         typer.echo(f"{prefix}no se ha recogido: {outcome.problem}", err=True)
         return 2
     typer.echo(f"{prefix}Evidencia registrada: {outcome.evidence_id}")
+    if outcome.problem is not None:
+        typer.echo(f"{prefix}configuración rechazada: {outcome.problem}", err=True)
+        return 2
     sections = result.data.get("sections", {})
     for name, section in sections.items():
         typer.echo(f"  {name}: {section['status']}")

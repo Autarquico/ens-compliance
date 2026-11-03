@@ -18,6 +18,7 @@ from ens_evidence.reports.model import DailyReport
 from ens_evidence.reports.store import cycle_finished, run_ids, stages_of
 from ens_evidence.workspace import LocalStore
 
+from . import acceptance_fakes as fakes
 from .acceptance_helpers import (
     LATE,
     METADATA,
@@ -29,6 +30,8 @@ from .acceptance_helpers import (
     cycle_world,
     daily_html,
     daily_json,
+    everything_stored,
+    fake_plugins,
     html_rows,
     instants,
     is_aware,
@@ -256,6 +259,25 @@ def test_una_recogida_caida_no_recupera_el_pass_anterior(tmp_path, monkeypatch, 
     assert after["PASS"] == 0 and after["ERROR"] > 0
     assert counts(document["checks"])["PASS"] == 0
     assert document["readiness"]["value"]["readiness"] == "NOT_READY"
+
+
+def test_un_rechazo_de_prepare_en_la_recogida_manual_no_deja_visible_el_pass_anterior(
+    tmp_path, monkeypatch
+):
+    world = cycle_world(tmp_path, monkeypatch, {"github": "ok"}, extra=())
+    before = counts(connector(stdout_json(world), "github")["checks"])
+    assert before["PASS"] > 0
+    monkeypatch.setenv(fakes.MODES_ENV, json.dumps({"github": "reject"}))
+    monkeypatch.setattr("ens_evidence.cli.connector_registry", lambda: fake_plugins().registry)
+
+    collected = world.run("collect", "github")
+
+    assert collected.exit_code == 2, collected.output
+    assert fakes.REJECTION in collected.output
+    assert world.run("check", "--all").exit_code in (0, 1, 3)
+    after = counts(connector(stdout_json(world), "github")["checks"])
+    assert after["PASS"] == 0 and after["ERROR"] > 0
+    assert fakes.REJECTION not in everything_stored(world.store)
 
 
 # --- invariante: fuente única ------------------------------------------------------------------

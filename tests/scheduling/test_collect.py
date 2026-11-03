@@ -298,11 +298,10 @@ def test_el_rechazo_de_prepare_con_un_secreto_no_se_reproduce(
 ):
     fake("prepare_secret")
 
-    outcome = run_one(store, settings, plugins, isolated=isolated, synthesize_rejection=False)
+    outcome = run_one(store, settings, plugins, isolated=isolated)
 
-    assert outcome.result is None
     assert outcome.problem == collect_module.PREPARE_REDACTED
-    assert LEAK not in repr(outcome) and evidence_count(store) == 0
+    assert LEAK not in repr(outcome) and LEAK not in everything_stored(store)
 
 
 @pytest.mark.parametrize("mode", ["prepare_invalid", "prepare_secret"])
@@ -440,18 +439,17 @@ def test_con_la_configuracion_invalida_no_se_sintetiza_nada(
 
 
 @pytest.mark.parametrize("isolated", [True, False])
-def test_en_modo_manual_si_el_conector_rechaza_la_configuracion_no_se_importa_nada(
+def test_el_motivo_legible_del_rechazo_de_prepare_se_devuelve_pero_no_se_guarda(
     store, settings, plugins, fake, isolated
 ):
     fake("prepare_invalid")
 
-    outcome = run_one(
-        store, settings, plugins, cfg=RETRIES, isolated=isolated, synthesize_rejection=False
-    )
+    outcome = run_one(store, settings, plugins, cfg=RETRIES, isolated=isolated)
 
-    assert outcome.result is None
     assert outcome.problem == "asset_id: debe ser un activo del inventario"
-    assert evidence_count(store) == 0
+    assert outcome.result.data["phase"] == "prepare"
+    assert outcome.problem not in everything_stored(store)
+    assert evidence_count(store) == 1
 
 
 def test_un_plugin_roto_no_tumba_a_los_demas(store, settings, plugins, fake):

@@ -3,7 +3,7 @@
 El hijo hereda el entorno: `ENS_Q1_MODES` es un JSON `{conector: modo}` y `ENS_Q1_COLLECTED_AT` el
 instante de la recogida. Modos: `ok`, `raise` (excepción con el token del entorno en el mensaje),
 `error` (ERROR devuelto), `hostile` (corpus en la fuente, el activo y los datos), `leak`
-(secreto dentro de `data`).
+(secreto dentro de `data`), `reject` (`prepare` rechaza la configuración).
 """
 
 import json
@@ -21,12 +21,14 @@ from ens_evidence.connectors.github.config import GitHubConfig
 from ens_evidence.connectors.google_workspace.config import GoogleWorkspaceConfig
 from ens_evidence.models.contracts import CollectionResult
 from ens_evidence.models.enums import CollectionStatus
+from ens_evidence.workspace import WorkspaceError
 
 MODES_ENV = "ENS_Q1_MODES"
 COLLECTED_AT_ENV = "ENS_Q1_COLLECTED_AT"
 TOKEN_ENV = "GITHUB_TOKEN"
 LEAK_ENV = "ENS_Q1_LEAK"
 HOSTILE_ENV = "ENS_Q1_HOSTILE"
+REJECTION = "asset_id: motivo-de-rechazo-legible"
 ASSETS = {
     "github": "gh-taller",
     "cloudflare": "cf-taller",
@@ -75,6 +77,8 @@ class _Fake(Connector):
         return cls()
 
     def prepare(self, config: BaseModel, store) -> BaseModel:
+        if json.loads(os.environ[MODES_ENV])[self.name] == "reject":
+            raise WorkspaceError(REJECTION)
         return config
 
     def collect(self, config: BaseModel) -> CollectionResult:

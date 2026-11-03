@@ -103,7 +103,8 @@ class Attempt:
 @dataclass(frozen=True)
 class CollectOutcome:
     """`result` es lo importado (con `evidence_id`); sin él, `problem` explica por qué no se
-    recogió nada (configuración inválida o ausente): el motor de checks ya lo señala."""
+    recogió nada (configuración inválida o ausente). Con él, `problem` es el motivo legible del
+    rechazo de `prepare` (la evidencia guarda solo el tipo): diagnóstico para el operador."""
 
     connector: str
     attempts: tuple[Attempt, ...] = ()
@@ -330,29 +331,28 @@ def _attempt(
     timeout_seconds: float,
     isolated: bool,
     clock: Clock,
-    synthesize_rejection: bool,
-) -> tuple[CollectionResult | str, Attempt | None, bool]:
-    """(resultado a importar o motivo de configuración inválida, intento, si reintentar)."""
+) -> tuple[CollectionResult, Attempt, bool, str | None]:
+    """(resultado a importar, intento, si reintentar, motivo legible si `prepare` rechazó)."""
     if connector_class is None:
         reply = _Reply(phase=Phase.PLUGIN_LOAD, error=_crash(Phase.PLUGIN_LOAD, "LoadError"))
     elif isolated:
         reply = _run_isolated(settings, name, connector_class, timeout_seconds, clock)
     else:
         reply = _run_sequence(store, settings, name, connector_class)
+    problem = None
     if reply.problem is not None:
-        if not synthesize_rejection:
-            return _safe_problem(reply.problem), None, False
         # El mensaje lo escribe el conector: solo se guarda el tipo de la excepción.
+        problem = _safe_problem(reply.problem)
         reply = _Reply(phase=Phase.PREPARE, error=_crash(Phase.PREPARE, "WorkspaceError"))
     if reply.result is not None:
         if (rejection := _rejection(reply.result, name, asset_id)) is None:
             status = reply.result.collection_status
-            return reply.result, Attempt(number, at, status), status is CollectionStatus.ERROR
+            return reply.result, Attempt(number, at, status), status is CollectionStatus.ERROR, None
         reply = _Reply(phase=Phase.RESULT_REJECTED, error=rejection)
     assert reply.phase is not None and reply.error is not None
     result = _synthetic(name, asset_id, at, reply.phase, reply.error)
     attempt = Attempt(number, at, CollectionStatus.ERROR, reply.phase, reply.error)
-    return result, attempt, reply.phase in _RETRYABLE_PHASES
+    return result, attempt, reply.phase in _RETRYABLE_PHASES, problem
 
 
 def _safe_problem(problem: str) -> str:
@@ -376,15 +376,14 @@ def collect_one(
     cfg: CollectConfig | None = None,
     timeout_minutes: float | None = None,
     isolated: bool = True,
-    synthesize_rejection: bool = True,
 ) -> CollectOutcome:
     """Recoge `name` e importa el resultado final (los intentos intermedios no se importan).
 
     `KeyError` si el conector no está instalado ni se conoce. `isolated=False` ejecuta en este
     proceso (sin tiempo límite): para la CLI interactiva y conectores inyectados.
-    `synthesize_rejection=False`: si `prepare` rechaza la configuración frente al workspace, no se
-    importa nada y se devuelve el motivo (`problem`), para que lo corrija quien lo ejecuta a mano.
-    Por defecto (planificador) se importa un ERROR sintético, con reintentos, sin el mensaje.
+    Si `prepare` rechaza la configuración frente al workspace se importa un ERROR sintético (fase
+    `prepare`, solo el tipo de la excepción, reintentable) y `problem` lleva el motivo legible,
+    solo para el operador: no se persiste.
     """
     cfg = cfg or CollectConfig()
     connector_class = None if name in plugins.broken else plugins.registry.get(name)
@@ -401,19 +400,16 @@ def collect_one(
     attempts: list[Attempt] = []
     for number in range(1, cfg.retries + 2):
         at = now if number == 1 else clock.now()
-        result, attempt, retry = _attempt(
+        result, attempt, retry, problem = _attempt(
             store, settings, name, connector_class, asset_id, at, number, timeout_seconds, isolated,
-            clock, synthesize_rejection,
+            clock,
         )  # fmt: skip
-        if isinstance(result, str):
-            return CollectOutcome(name, tuple(attempts), problem=result)
-        assert attempt is not None
         attempts.append(attempt)
         if not retry or number > cfg.retries:
             break
         clock.sleep(cfg.delay_for(number) * 60)
     manifest = import_collected(store, result, collector_version=__version__, now=clock.now())
-    return CollectOutcome(name, tuple(attempts), result, manifest.id)
+    return CollectOutcome(name, tuple(attempts), result, manifest.id, problem)
 
 
 def collect_all(
