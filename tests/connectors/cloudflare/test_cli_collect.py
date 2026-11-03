@@ -133,7 +133,7 @@ def test_las_zonas_del_inventario_se_comparan_con_las_del_token(api, workspace):
     assert summary["missing_from_token"] == ["ausente.example"]
 
 
-def test_asset_id_inexistente_falla_sin_llamar_a_la_red_ni_guardar_evidencia(api, workspace):
+def test_asset_id_inexistente_falla_sin_llamar_a_la_red_y_deja_un_error_de_prepare(api, workspace):
     _, store = workspace
     store.write_text("connectors/cloudflare.yaml", yaml.safe_dump({**CONFIG, "asset_id": "nope"}))
 
@@ -142,7 +142,13 @@ def test_asset_id_inexistente_falla_sin_llamar_a_la_red_ni_guardar_evidencia(api
     assert result.exit_code == 2
     assert "nope" in result.output
     assert api.calls == []
-    assert list_manifests(store).manifests == []
+    stored, data = stored_result(store)
+    assert stored.collection_status is CollectionStatus.ERROR
+    assert (stored.data["phase"], stored.data["error"]) == (
+        "prepare",
+        "prepare_crashed:WorkspaceError",
+    )
+    assert b"debe ser" not in data
 
 
 def test_asset_id_de_otro_tipo_falla(api, workspace):
@@ -156,7 +162,13 @@ def test_asset_id_de_otro_tipo_falla(api, workspace):
     assert result.exit_code == 2
     assert "edge_network" in result.output
     assert api.calls == []
-    assert list_manifests(store).manifests == []
+    stored, data = stored_result(store)
+    assert stored.collection_status is CollectionStatus.ERROR
+    assert (stored.data["phase"], stored.data["error"]) == (
+        "prepare",
+        "prepare_crashed:WorkspaceError",
+    )
+    assert b"edge_network" not in data
 
 
 def test_configuracion_con_clave_de_credencial_falla_sin_llamar_a_la_red(api, workspace):

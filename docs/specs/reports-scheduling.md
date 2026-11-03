@@ -2,17 +2,17 @@
 codename: ens-compliance
 title: Informes y scheduling
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 14
-prs: []
+prs: [51]
 related_issues: [14]
 depends_on: [checks-engine]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-11-03
 ---
 
 # Informes y scheduling

@@ -69,15 +69,6 @@ def test_sin_entry_point_el_conector_no_se_encuentra(workspace, monkeypatch):
     assert "cloudflare" in result.output
 
 
-def test_collect_all_sigue_sin_implementar(workspace):
-    settings, _ = workspace
-
-    result = runner.invoke(app, ["--settings", str(settings), "collect", "--all"])
-
-    assert result.exit_code == 2
-    assert "not implemented" in result.output
-
-
 def test_config_yaml_con_account_id_invalido_sale_con_2_sin_red(workspace):
     _, store = workspace
     store.write_text(

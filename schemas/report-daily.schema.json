@@ -1,0 +1,1179 @@
+{
+  "$defs": {
+    "AssetsSummary": {
+      "additionalProperties": false,
+      "properties": {
+        "by_type": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "title": "By Type",
+          "type": "object"
+        },
+        "total": {
+          "minimum": 0,
+          "title": "Total",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "total",
+        "by_type"
+      ],
+      "title": "AssetsSummary",
+      "type": "object"
+    },
+    "BackupStageResult": {
+      "additionalProperties": false,
+      "description": "Resultado de la etapa de copia del \u00faltimo ciclo diario terminado. `code` es el motivo\n(sin el prefijo del resultado); `configuration_error`: la copia est\u00e1 activada y no hay\najustes de copia, un fallo de configuraci\u00f3n y no una copia omitida.",
+      "properties": {
+        "code": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Code"
+        },
+        "configuration_error": {
+          "default": false,
+          "title": "Configuration Error",
+          "type": "boolean"
+        },
+        "finished_at": {
+          "format": "date-time",
+          "title": "Finished At",
+          "type": "string"
+        },
+        "outcome": {
+          "enum": [
+            "backed_up",
+            "backup_failed",
+            "backup_skipped"
+          ],
+          "title": "Outcome",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "outcome",
+        "finished_at"
+      ],
+      "title": "BackupStageResult",
+      "type": "object"
+    },
+    "ChangeItem": {
+      "additionalProperties": false,
+      "properties": {
+        "change": {
+          "enum": [
+            "added",
+            "removed",
+            "changed"
+          ],
+          "title": "Change",
+          "type": "string"
+        },
+        "subject": {
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "subject",
+        "change"
+      ],
+      "title": "ChangeItem",
+      "type": "object"
+    },
+    "Changes": {
+      "additionalProperties": false,
+      "properties": {
+        "base_period": {
+          "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+          "title": "Base Period",
+          "type": "string"
+        },
+        "items": {
+          "items": {
+            "$ref": "#/$defs/ChangeItem"
+          },
+          "title": "Items",
+          "type": "array"
+        }
+      },
+      "required": [
+        "base_period",
+        "items"
+      ],
+      "title": "Changes",
+      "type": "object"
+    },
+    "CheckCounts": {
+      "additionalProperties": false,
+      "properties": {
+        "counts": {
+          "additionalProperties": {
+            "type": "integer"
+          },
+          "propertyNames": {
+            "$ref": "#/$defs/CheckStatus"
+          },
+          "title": "Counts",
+          "type": "object"
+        }
+      },
+      "required": [
+        "counts"
+      ],
+      "title": "CheckCounts",
+      "type": "object"
+    },
+    "CheckStatus": {
+      "enum": [
+        "PASS",
+        "FAIL",
+        "ERROR",
+        "UNKNOWN"
+      ],
+      "title": "CheckStatus",
+      "type": "string"
+    },
+    "CollectionStatus": {
+      "enum": [
+        "SUCCESS",
+        "ERROR",
+        "PERMISSION_DENIED",
+        "NOT_SUPPORTED"
+      ],
+      "title": "CollectionStatus",
+      "type": "string"
+    },
+    "ConnectorAttempts": {
+      "additionalProperties": false,
+      "description": "Intentos de recogida de un conector. `phase` y `error_type` solo si el \u00faltimo intento lo\ngener\u00f3 el planificador (fase en que fall\u00f3 y tipo del error, sin mensajes ni valores).",
+      "properties": {
+        "attempts": {
+          "minimum": 0,
+          "title": "Attempts",
+          "type": "integer"
+        },
+        "connector": {
+          "minLength": 1,
+          "title": "Connector",
+          "type": "string"
+        },
+        "error_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Error Type"
+        },
+        "last_status": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/CollectionStatus"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Phase"
+        }
+      },
+      "required": [
+        "connector",
+        "attempts"
+      ],
+      "title": "ConnectorAttempts",
+      "type": "object"
+    },
+    "ConnectorEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "attempts": {
+          "anyOf": [
+            {
+              "minimum": 0,
+              "type": "integer"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Attempts"
+        },
+        "checks": {
+          "$ref": "#/$defs/Section_CheckCounts_"
+        },
+        "collection": {
+          "$ref": "#/$defs/Section_CollectionStatus_"
+        },
+        "connector": {
+          "minLength": 1,
+          "title": "Connector",
+          "type": "string"
+        },
+        "error_type": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Tipo del error de la recogida.",
+          "title": "Error Type"
+        },
+        "phase": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Fase en que fall\u00f3 la recogida.",
+          "title": "Phase"
+        }
+      },
+      "required": [
+        "connector",
+        "collection",
+        "checks"
+      ],
+      "title": "ConnectorEntry",
+      "type": "object"
+    },
+    "CycleInfo": {
+      "additionalProperties": false,
+      "properties": {
+        "connector_attempts": {
+          "items": {
+            "$ref": "#/$defs/ConnectorAttempts"
+          },
+          "title": "Connector Attempts",
+          "type": "array"
+        },
+        "data_cutoff": {
+          "format": "date-time",
+          "title": "Data Cutoff",
+          "type": "string"
+        },
+        "due_at": {
+          "format": "date-time",
+          "title": "Due At",
+          "type": "string"
+        },
+        "inherited_stages": {
+          "items": {
+            "$ref": "#/$defs/InheritedStage"
+          },
+          "title": "Inherited Stages",
+          "type": "array"
+        },
+        "period": {
+          "title": "Period",
+          "type": "string"
+        },
+        "resumed": {
+          "default": false,
+          "title": "Resumed",
+          "type": "boolean"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        },
+        "trigger": {
+          "enum": [
+            "scheduled",
+            "manual",
+            "recovery"
+          ],
+          "title": "Trigger",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "trigger",
+        "period",
+        "due_at",
+        "started_at",
+        "data_cutoff"
+      ],
+      "title": "CycleInfo",
+      "type": "object"
+    },
+    "DocumentEntry": {
+      "additionalProperties": false,
+      "description": "Estado de un documento organizativo. Sin caducidad (ADR 0010): solo el estado.",
+      "properties": {
+        "approved_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Approved At"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "reasons": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Reasons",
+          "type": "array"
+        },
+        "state": {
+          "$ref": "#/$defs/DocumentState"
+        }
+      },
+      "required": [
+        "name",
+        "state"
+      ],
+      "title": "DocumentEntry",
+      "type": "object"
+    },
+    "DocumentState": {
+      "enum": [
+        "NOT_GENERATED",
+        "GENERATED",
+        "APPROVED",
+        "OBSOLETE"
+      ],
+      "title": "DocumentState",
+      "type": "string"
+    },
+    "ExpiryItem": {
+      "additionalProperties": false,
+      "properties": {
+        "days_left": {
+          "description": "Negativo: ya vencido.",
+          "title": "Days Left",
+          "type": "integer"
+        },
+        "expires_at": {
+          "format": "date-time",
+          "title": "Expires At",
+          "type": "string"
+        },
+        "kind": {
+          "minLength": 1,
+          "title": "Kind",
+          "type": "string"
+        },
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "subject": {
+          "minLength": 1,
+          "title": "Subject",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "subject",
+        "expires_at",
+        "days_left",
+        "sources"
+      ],
+      "title": "ExpiryItem",
+      "type": "object"
+    },
+    "IncidentEntry": {
+      "additionalProperties": false,
+      "description": "Un incidente del registro. Con `problems` est\u00e1 roto: se muestra su error y ning\u00fan valor\n(no se puede fiar de lo que declara); sin ellos, todos los valores existen.",
+      "properties": {
+        "detected_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Detected At"
+        },
+        "id": {
+          "pattern": "^(INC|SIM)-\\d{4}-\\d{3}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "last_record": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/IncidentRecordRef"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "problems": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Problems",
+          "type": "array"
+        },
+        "severity": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Declarada; None si no se declar\u00f3.",
+          "title": "Severity"
+        },
+        "simulated": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Simulated"
+        },
+        "title": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Title"
+        }
+      },
+      "required": [
+        "id"
+      ],
+      "title": "IncidentEntry",
+      "type": "object"
+    },
+    "IncidentRecordRef": {
+      "additionalProperties": false,
+      "properties": {
+        "kind": {
+          "$ref": "#/$defs/RecordKind"
+        },
+        "recorded_at": {
+          "format": "date-time",
+          "title": "Recorded At",
+          "type": "string"
+        },
+        "seq": {
+          "minimum": 1,
+          "title": "Seq",
+          "type": "integer"
+        }
+      },
+      "required": [
+        "seq",
+        "kind",
+        "recorded_at"
+      ],
+      "title": "IncidentRecordRef",
+      "type": "object"
+    },
+    "InheritedStage": {
+      "additionalProperties": false,
+      "description": "Etapa que este informe hered\u00f3 de un intento anterior del mismo ciclo.",
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "stage": {
+          "title": "Stage",
+          "type": "string"
+        }
+      },
+      "required": [
+        "stage",
+        "at"
+      ],
+      "title": "InheritedStage",
+      "type": "object"
+    },
+    "InterruptedCycle": {
+      "additionalProperties": false,
+      "properties": {
+        "last_stage": {
+          "title": "Last Stage",
+          "type": "string"
+        },
+        "run_id": {
+          "pattern": "^[A-Za-z0-9_-]{1,64}$",
+          "title": "Run Id",
+          "type": "string"
+        },
+        "started_at": {
+          "format": "date-time",
+          "title": "Started At",
+          "type": "string"
+        }
+      },
+      "required": [
+        "run_id",
+        "last_stage",
+        "started_at"
+      ],
+      "title": "InterruptedCycle",
+      "type": "object"
+    },
+    "Readiness": {
+      "enum": [
+        "READY",
+        "NOT_READY"
+      ],
+      "title": "Readiness",
+      "type": "string"
+    },
+    "ReadinessValue": {
+      "additionalProperties": false,
+      "properties": {
+        "blockers": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Blockers",
+          "type": "array"
+        },
+        "readiness": {
+          "$ref": "#/$defs/Readiness"
+        }
+      },
+      "required": [
+        "readiness",
+        "blockers"
+      ],
+      "title": "ReadinessValue",
+      "type": "object"
+    },
+    "RecordKind": {
+      "description": "Reporte inicial, intermedio y final (op.exp.9.1).",
+      "enum": [
+        "opened",
+        "updated",
+        "closed"
+      ],
+      "title": "RecordKind",
+      "type": "string"
+    },
+    "Section_AssetsSummary_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_AssetsSummary_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_BackupStageResult_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_BackupStageResult_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_Changes_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_Changes_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_CheckCounts_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_CheckCounts_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_CollectionStatus_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_CollectionStatus_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_ReadinessValue_": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_ReadinessValue_"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_DocumentEntry__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_DocumentEntry__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_ExpiryItem__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_ExpiryItem__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_IncidentEntry__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_IncidentEntry__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_InterruptedCycle__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_InterruptedCycle__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "Section_list_str__": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Sourced_list_str__"
+        },
+        {
+          "$ref": "#/$defs/Unavailable"
+        }
+      ]
+    },
+    "SourceRef": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "key": {
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "kind": {
+          "enum": [
+            "evidence",
+            "check_run",
+            "collection",
+            "review",
+            "config",
+            "inventory",
+            "document",
+            "approval",
+            "scope",
+            "risk",
+            "backup_run",
+            "restore_test",
+            "report",
+            "incident",
+            "cycle"
+          ],
+          "title": "Kind",
+          "type": "string"
+        },
+        "sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "kind",
+        "key",
+        "sha256",
+        "at"
+      ],
+      "title": "SourceRef",
+      "type": "object"
+    },
+    "Sourced_AssetsSummary_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/AssetsSummary"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[AssetsSummary]",
+      "type": "object"
+    },
+    "Sourced_BackupStageResult_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/BackupStageResult"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[BackupStageResult]",
+      "type": "object"
+    },
+    "Sourced_Changes_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/Changes"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[Changes]",
+      "type": "object"
+    },
+    "Sourced_CheckCounts_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/CheckCounts"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[CheckCounts]",
+      "type": "object"
+    },
+    "Sourced_CollectionStatus_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/CollectionStatus"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[CollectionStatus]",
+      "type": "object"
+    },
+    "Sourced_ReadinessValue_": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "$ref": "#/$defs/ReadinessValue"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[ReadinessValue]",
+      "type": "object"
+    },
+    "Sourced_list_DocumentEntry__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/DocumentEntry"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[DocumentEntry]]",
+      "type": "object"
+    },
+    "Sourced_list_ExpiryItem__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/ExpiryItem"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[ExpiryItem]]",
+      "type": "object"
+    },
+    "Sourced_list_IncidentEntry__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/IncidentEntry"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[IncidentEntry]]",
+      "type": "object"
+    },
+    "Sourced_list_InterruptedCycle__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "$ref": "#/$defs/InterruptedCycle"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[InterruptedCycle]]",
+      "type": "object"
+    },
+    "Sourced_list_str__": {
+      "additionalProperties": false,
+      "properties": {
+        "sources": {
+          "items": {
+            "$ref": "#/$defs/SourceRef"
+          },
+          "minItems": 1,
+          "title": "Sources",
+          "type": "array"
+        },
+        "value": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Value",
+          "type": "array"
+        }
+      },
+      "required": [
+        "value",
+        "sources"
+      ],
+      "title": "Sourced[list[str]]",
+      "type": "object"
+    },
+    "Unavailable": {
+      "additionalProperties": false,
+      "properties": {
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "reason"
+      ],
+      "title": "Unavailable",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "assets": {
+      "$ref": "#/$defs/Section_AssetsSummary_"
+    },
+    "assets_without_agent": {
+      "$ref": "#/$defs/Section_list_str__"
+    },
+    "backup": {
+      "$ref": "#/$defs/Section_BackupStageResult_"
+    },
+    "changes": {
+      "$ref": "#/$defs/Section_Changes_"
+    },
+    "checks": {
+      "$ref": "#/$defs/Section_CheckCounts_"
+    },
+    "connectors": {
+      "items": {
+        "$ref": "#/$defs/ConnectorEntry"
+      },
+      "title": "Connectors",
+      "type": "array"
+    },
+    "critical_alerts": {
+      "$ref": "#/$defs/Section_list_str__"
+    },
+    "cycle": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/CycleInfo"
+        },
+        {
+          "type": "null"
+        }
+      ]
+    },
+    "documents": {
+      "$ref": "#/$defs/Section_list_DocumentEntry__"
+    },
+    "expiring": {
+      "$ref": "#/$defs/Section_list_ExpiryItem__"
+    },
+    "generated_at": {
+      "format": "date-time",
+      "title": "Generated At",
+      "type": "string"
+    },
+    "interrupted_cycles": {
+      "$ref": "#/$defs/Section_list_InterruptedCycle__"
+    },
+    "kind": {
+      "const": "daily",
+      "default": "daily",
+      "title": "Kind",
+      "type": "string"
+    },
+    "notices": {
+      "items": {
+        "type": "string"
+      },
+      "title": "Notices",
+      "type": "array"
+    },
+    "open_incidents": {
+      "$ref": "#/$defs/Section_list_IncidentEntry__"
+    },
+    "period": {
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}$",
+      "title": "Period",
+      "type": "string"
+    },
+    "product_version": {
+      "title": "Product Version",
+      "type": "string"
+    },
+    "readiness": {
+      "$ref": "#/$defs/Section_ReadinessValue_"
+    },
+    "schema_version": {
+      "default": "1.0",
+      "title": "Schema Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "generated_at",
+    "product_version",
+    "notices",
+    "period",
+    "cycle",
+    "assets",
+    "assets_without_agent",
+    "checks",
+    "connectors",
+    "readiness",
+    "documents",
+    "expiring",
+    "critical_alerts",
+    "open_incidents",
+    "changes",
+    "interrupted_cycles",
+    "backup"
+  ],
+  "title": "DailyReport",
+  "type": "object"
+}
