@@ -69,3 +69,8 @@ def export_problems(where: str, value: object) -> list[str]:
 
 def secret_problems(document: object, where: str = "instantánea.") -> list[str]:
     return [f"{where}{path}: parece un secreto" for path in find_secrets(document)]
+
+
+def free_text_problems(label: str, text: str) -> list[str]:
+    """Un texto libre que escribe una persona (conclusiones, medidas): credenciales y datos."""
+    return sorted(set(secret_problems(text, f"{label}: ") + export_problems(f"{label}: ", text)))

@@ -17,9 +17,10 @@ from collections.abc import Sequence
 from dataclasses import dataclass, field
 from datetime import datetime
 
-from pydantic import AwareDatetime, Field, ValidationError, model_validator
+from pydantic import ValidationError
 
 from ens_evidence import chain
+from ens_evidence.assessment.dossier.derived import markdown_problems, view_problems
 from ens_evidence.assessment.dossier.drift import rebuild_and_diff
 from ens_evidence.assessment.dossier.model import (
     DossierSnapshot,
@@ -27,12 +28,17 @@ from ens_evidence.assessment.dossier.model import (
     snapshot_export,
 )
 from ens_evidence.assessment.dossier.notices import CERTIFICATION_NOTE
-from ens_evidence.assessment.dossier.render import TransitionEntry
+from ens_evidence.assessment.dossier.privacy import free_text_problems
 from ens_evidence.assessment.dossier.store import (
     ASSESSMENTS_PREFIX,
     DossierUnreadable,
     load_snapshot,
     stored_snapshot_sha256,
+)
+from ens_evidence.assessment.dossier.view import (
+    TransitionEntry,
+    TransitionRecord,
+    snapshot_readiness,
 )
 from ens_evidence.categorization import CategorizationNotCurrent
 from ens_evidence.categorization.dossier import DossierCategoryMismatch, require_dossier_category
@@ -41,7 +47,6 @@ from ens_evidence.evidence.verify import verify_one
 from ens_evidence.matrix import CheckResultsSource, assess
 from ens_evidence.matrix.evaluate import AssessmentResult
 from ens_evidence.matrix.messages import KIND_FALLBACK
-from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.dossier import (
     ORDER,
     SELF_ASSESSORS,
@@ -53,16 +58,9 @@ from ens_evidence.models.dossier import (
 )
 from ens_evidence.models.enums import Category, DossierState, Readiness, Role
 from ens_evidence.models.readiness import ReadinessResult
-from ens_evidence.orgdocs.answers import read_answers, validate_answers
-from ens_evidence.orgdocs.approval import (
-    DocumentApprovalRejected,
-    _declared_signatory,
-    document_status,
-)
-from ens_evidence.orgdocs.template import load_templates
-from ens_evidence.privacy_text import check_declared_name, has_credential, text_problems
+from ens_evidence.orgdocs import DocumentApprovalRejected, declared_signatory, document_status
+from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.scope.messages import describe_validation
-from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import WorkspaceStore
 
 DESIGNATION_DOCUMENT = "designacion-responsables"
@@ -85,25 +83,12 @@ MANUAL_REVIEW_REQUIRED = (
 
 
 class TransitionRejected(Exception):
-    """No se escribe nada; `errors` dice por qué (rutas y tipos, nunca valores)."""
+    """No se escribe nada; `errors` dice por qué (rutas y tipos; la deriva muestra valores cortos
+    que ya pasaron la política de exportación)."""
 
     def __init__(self, errors: list[str]) -> None:
         super().__init__("; ".join(errors))
         self.errors = errors
-
-
-class TransitionRecord(Strict):
-    dossier_id: str
-    seq: int = Field(ge=1)
-    previous_sha256: str | None = Field(pattern=SHA256_PATTERN)
-    recorded_at: AwareDatetime
-    transition: Transition
-
-    @model_validator(mode="after")
-    def _first_has_no_predecessor(self) -> "TransitionRecord":
-        if (self.seq == 1) != (self.previous_sha256 is None):
-            raise ValueError("only the first record has no previous_sha256")
-        return self
 
 
 _Stored = chain.Stored[TransitionRecord]
@@ -228,14 +213,19 @@ def _record_problems(
 def _free_text_problems(record: Transition) -> list[str]:
     """Los mismos detectores que al escribir, también al leer: un registro forjado a mano con
     las huellas recalculadas no llega a `show` ni a la pre-auditoría con secretos o datos."""
-    problems = check_declared_name(record.actor)
+    problems = _name_problems(record.actor, "actor")
     if record.elevated_to:
-        problems += check_declared_name(record.elevated_to)
+        problems += _name_problems(record.elevated_to, "elevated_to")
     if record.conclusions:
-        problems += _text_errors("conclusiones", record.conclusions)
+        problems += free_text_problems("conclusiones", record.conclusions)
     for index, measure in enumerate(record.corrective_measures):
-        problems += _text_errors(f"medidas correctoras[{index}]", measure.description)
+        problems += free_text_problems(f"medidas correctoras[{index}]", measure.description)
     return problems
+
+
+def _name_problems(name: str, label: str = "--by") -> list[str]:
+    """Los errores de `check_declared_name`, rotulados con el campo que se está leyendo."""
+    return [label + problem.removeprefix("--by") for problem in check_declared_name(name)]
 
 
 def _reconstruct(
@@ -254,20 +244,13 @@ def _reconstruct(
     declared = next((t for t in history if t.to_state is DossierState.DECLARED), None)
     if declared is None:
         return dossier
-    if _snapshot_readiness(snapshot) is not Readiness.READY:
-        problems.append("DECLARED sobre una instantánea que no estaba READY")
+    if snapshot_readiness(snapshot) is not Readiness.READY:
+        problems.append("DECLARED sobre un expediente generado sin estar el sistema preparado")
     if declared.acknowledged_incomplete != _incomplete(snapshot):
         problems.append(
             "DECLARED no reconoce exactamente las secciones INCOMPLETE de la instantánea"
         )
     return None if problems else dossier
-
-
-def _snapshot_readiness(snapshot: DossierSnapshot) -> Readiness | None:
-    try:
-        return snapshot_export(snapshot).readiness
-    except (ValueError, KeyError):
-        return None
 
 
 def _incomplete(snapshot: DossierSnapshot) -> list[int]:
@@ -308,6 +291,18 @@ def record_transition(
     snapshot, current = scan.snapshot, scan.dossier
     previous = scan.entries[-1] if scan.entries else None
 
+    altered = markdown_problems(store, dossier, snapshot) + view_problems(
+        store, dossier, snapshot, list(scan.entries)
+    )
+    if altered:
+        raise TransitionRejected(
+            [
+                f"{dossier} tiene ficheros derivados alterados a mano y no admite más "
+                "transiciones; restáuralos o regenéralos con `assessment dossier render` y "
+                "comprueba con `assessment dossier verify`",
+                *altered,
+            ]
+        )
     drift = rebuild_and_diff(store, snapshot, checks=checks).drift
     if drift:
         raise TransitionRejected(
@@ -507,27 +502,12 @@ def _missing_reviews(snapshot: DossierSnapshot) -> list[str]:
 # --- personas declaradas -----------------------------------------------------------------------
 
 
-def _answers(store: WorkspaceStore) -> dict:
-    try:
-        return dict(validate_answers(read_answers(store), load_templates()).values)
-    except ValueError:
-        return {}
-
-
 def _declared(store: WorkspaceStore, role: Role, name: str, flag: str) -> tuple[str, list[str]]:
     """El nombre tal como lo declaran las respuestas de org-docs para ese rol."""
     try:
-        return _declared_signatory(role, name, _answers(store)), []
+        return declared_signatory(store, role, name), []
     except DocumentApprovalRejected as exc:
         return name, [f"{flag}: {message}" for message in exc.errors]
-
-
-def _text_errors(label: str, text: str) -> list[str]:
-    found = [f"{label}: {problem}" for problem in text_problems(text)[0]]
-    found += [f"{label}: parece un secreto" for _ in find_secrets(text, label)]
-    if has_credential(text):
-        found.append(f"{label}: contiene una credencial")
-    return sorted(set(found))
 
 
 def _analysis(
@@ -548,9 +528,9 @@ def _analysis(
     if not conclusions or not conclusions.strip():
         errors.append("conclusiones: el análisis las exige")
     else:
-        errors += _text_errors("conclusiones", conclusions)
+        errors += free_text_problems("conclusiones", conclusions)
     for index, measure in enumerate(corrective_measures):
-        errors += _text_errors(f"medidas correctoras[{index}]", measure.description)
+        errors += free_text_problems(f"medidas correctoras[{index}]", measure.description)
     target = ""
     if not elevated_to or not elevated_to.strip():
         errors.append("--elevated-to: indica la persona del responsable del sistema")
@@ -606,8 +586,8 @@ def _declaration(
     errors: list[str] = []
     actor, problems = _declared(store, Role.MANAGEMENT, by, "--by")
     errors += problems
-    if _snapshot_readiness(snapshot) is not Readiness.READY:
-        errors.append("la instantánea no estaba READY; genera un expediente nuevo")
+    if snapshot_readiness(snapshot) is not Readiness.READY:
+        errors.append("el sistema no estaba preparado al generar este expediente; genera uno nuevo")
     analysis = scan.entries[-1] if scan.entries else None
     if analysis is None or analysis.record.to_state is not DossierState.ANALYZED:
         errors.append("falta el registro ANALYZED que la declaración debe citar")
@@ -642,7 +622,7 @@ def _declaration_readiness(
     export = snapshot_export(snapshot)
     if export.readiness is Readiness.READY and (export.blockers or export.errors):
         errors.append(
-            "la instantánea declara READY pero registra bloqueos o errores de lectura; "
+            "el expediente dice que el sistema estaba preparado pero registra bloqueos o errores; "
             "genera un expediente nuevo"
         )
     if evidence_id is not None:
@@ -655,7 +635,6 @@ def _declaration_readiness(
 __all__ = [
     "CERTIFICATION_NOTE",
     "Recorded",
-    "TransitionRecord",
     "TransitionRejected",
     "TransitionScan",
     "entries",

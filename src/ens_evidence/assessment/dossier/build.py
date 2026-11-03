@@ -152,9 +152,6 @@ def _require_reproducible(inputs: SnapshotInputs) -> None:
 # --- textos exportables ------------------------------------------------------------------------
 
 
-text_leaks = export_problems  # nombre anterior; package.py migra a `privacy.export_problems`
-
-
 def _leaks(store: WorkspaceStore, snapshot: DossierSnapshot) -> list[str]:
     document = snapshot.model_dump(mode="json")
     found = secret_problems(document)
@@ -268,7 +265,9 @@ FIELD_LABELS = {
     "approval": "aprobación",
     "inputs": "entradas",
     "category": "categoría",
+    "valid_until": "válida hasta",
 }
+_NOISE = "matrix_sha256"  # la huella de la matriz acompaña siempre a un cambio que ya se nombra
 
 
 def diff_projection(a: DossierSnapshot, b: DossierSnapshot) -> dict[str, list[str]]:
@@ -281,6 +280,8 @@ def diff_projection(a: DossierSnapshot, b: DossierSnapshot) -> dict[str, list[st
         differences[GENERAL] = general
     for before, after in zip(left["sections"], right["sections"], strict=True):
         lines = _diff(_by_source(before), _by_source(after), ())
+        if len(lines) > 1:
+            lines = [line for line in lines if not line.split(":")[0].endswith(_NOISE)] or lines
         if lines:
             differences[f"{before['number']}. {before['title']}"] = lines
     return differences

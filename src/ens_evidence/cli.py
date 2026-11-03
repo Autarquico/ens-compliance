@@ -52,11 +52,14 @@ from ens_evidence.assessment.dossier.derived import (
 )
 from ens_evidence.assessment.dossier.model import DossierSnapshot
 from ens_evidence.assessment.dossier.package import (
+    INDEX_NAME,
+    PACKAGE_DIR,
     PackageRejected,
     has_package,
     save_package,
     verify_package,
 )
+from ens_evidence.assessment.dossier.sections_md import category_name
 from ens_evidence.assessment.dossier.status import (
     NOT_READY_NOTICE,
     UNKNOWN,
@@ -2621,7 +2624,13 @@ def load_dossier(store: WorkspaceStore, dossier: str) -> DossierSnapshot:
 
 def dossier_step(dossier: str, snapshot: DossierSnapshot, state: DossierState) -> str:
     """El siguiente paso tras llegar a `state`, nombrando quién lo da."""
-    step = next_step(snapshot.category, state, dossier, incomplete_sections(snapshot))
+    step = next_step(
+        snapshot.category,
+        state,
+        dossier,
+        incomplete_sections(snapshot),
+        readiness_blocked=snapshot_readiness_blocked(snapshot),
+    )
     return f"Siguiente paso: {step}."
 
 
@@ -2634,6 +2643,11 @@ def print_caveats(snapshot: DossierSnapshot, state: DossierState) -> None:
         typer.echo(f"Secciones incompletas: {'; '.join(incomplete)}.")
 
 
+def print_missing_markdown(store: WorkspaceStore, dossier: str) -> None:
+    if not has_markdown(store, dossier):
+        typer.echo(f"dossier.md no está; recréalo con `assessment dossier render {dossier}`.")
+
+
 def print_notice(snapshot: DossierSnapshot) -> None:
     if snapshot.notice:
         typer.echo(snapshot.notice)
@@ -2644,9 +2658,10 @@ def print_notice(snapshot: DossierSnapshot) -> None:
 def dossier_generate(ctx: typer.Context) -> None:
     """Genera la instantánea del expediente con el estado actual del workspace.
 
-    Exige categorización vigente y Declaración de Aplicabilidad legible. Se puede generar aunque
-    el sistema aún no esté preparado: el expediente lo dice. En MEDIA/ALTA genera también el
-    paquete por medida; en BÁSICA, `dossier package` lo genera bajo demanda."""
+    Exige categorización vigente y Declaración de Aplicabilidad legible. Se puede generar \
+    aunque el sistema aún no esté preparado: `generate` y `status` lo avisan. En MEDIA/ALTA \
+    genera también el paquete por medida; en BÁSICA, `dossier package` lo genera bajo \
+    demanda."""
     store = open_workspace(ctx)
     now = clock()
     try:
@@ -2664,7 +2679,7 @@ def dossier_generate(ctx: typer.Context) -> None:
             "Ya existe un expediente con ese contenido y ese instante; reintenta.", 1
         ) from None
     save_markdown(store, dossier, render_snapshot_md(snapshot))
-    typer.echo(f"Expediente {dossier} generado ({snapshot.category.value}).")
+    typer.echo(f"Expediente {dossier} generado ({category_name(snapshot.category)}).")
     typer.echo(snapshot.commitment)
     print_notice(snapshot)
     if snapshot.category is not Category.BASICA:
@@ -2698,7 +2713,7 @@ def dossier_list(ctx: typer.Context) -> None:
         state = scan.dossier.state.value if scan.dossier else "ROTO"
         altered = markdown_problems(store, item.id, item.snapshot)
         typer.echo(
-            f"{item.id}  {item.snapshot.category.value}  {state}"
+            f"{item.id}  {category_name(item.snapshot.category)}  {state}"
             + ("  ALTERADO (ejecuta `dossier verify`)" if altered else "")
         )
         failed = failed or bool(altered) or scan.dossier is None
@@ -2711,13 +2726,14 @@ def dossier_list(ctx: typer.Context) -> None:
 def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     """Estado, integridad, deriva por sección, siguiente paso y huellas de un expediente.
 
-    Sale con 1 si hay deriva (el expediente ya no describe el estado actual), problemas de
-    integridad o, listo para declarar, un sistema que ya no está preparado."""
+    Sale con 1 si hay deriva (el expediente ya no describe el estado actual), problemas de \
+    integridad (también del paquete) o, listo para declarar, un sistema que ya no está \
+    preparado."""
     store = open_workspace(ctx)
     status = dossier_status(store, dossier, now=clock())
     if not status.known:
         raise fail(UNKNOWN, 1)
-    category = status.category.value if status.category else "desconocida"
+    category = category_name(status.category) if status.category else "desconocida"
     typer.echo(f"Expediente {dossier} ({category})")
     if status.state:
         typer.echo(f"Estado: {status.state.value}")
@@ -2734,8 +2750,10 @@ def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     if status.integrity:
         typer.echo("Integridad: PROBLEMAS", err=True)
         print_errors(list(status.integrity))
-    else:
+    elif has_markdown(store, dossier):
         typer.echo("Integridad: íntegro.")
+    else:
+        typer.echo("Integridad: incompleto; falta dossier.md, sin alteraciones en lo demás.")
     if status.drift is None:
         typer.echo("Deriva: no se puede comprobar (instantánea ilegible).", err=True)
     elif status.drift.current:
@@ -2758,6 +2776,8 @@ def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
         ("última transición", prints.last_transition),
     ):
         typer.echo(f"Huella {label}: {value or '—'}")
+    if status.known:
+        print_missing_markdown(store, dossier)
     typer.echo(DOSSIER_FOOTER)
     if (
         status.integrity
@@ -2937,8 +2957,8 @@ def dossier_declare(
 ) -> None:
     """Registra la declaración de conformidad que hace la dirección (solo categoría BÁSICA).
 
-    La herramienta solo registra el acto de la organización y no declara nada por sí sola.
-    No redacta la declaración ni genera el distintivo. En MEDIA/ALTA se rechaza (art. 38.1)."""
+    La herramienta solo registra el acto de la organización y no declara nada por sí sola. No \
+    redacta la declaración ni genera el distintivo. En MEDIA/ALTA se rechaza (art. 38.1)."""
     record_dossier_transition(
         ctx,
         dossier,
@@ -2981,6 +3001,13 @@ def dossier_verify(ctx: typer.Context, dossier: DossierIdArgument) -> None:
         problems += verify_package(store, dossier).problems
     if problems:
         raise dossier_rejected(f"La verificación de {dossier} ha fallado:", problems)
+    if not has_markdown(store, dossier):
+        typer.echo(
+            f"{dossier}: reproducible con sus entradas congeladas y sin alteraciones, pero "
+            "incompleto: falta dossier.md."
+        )
+        print_missing_markdown(store, dossier)
+        return
     typer.echo(
         f"{dossier}: reproducible con sus entradas congeladas, cadena y derivados íntegros"
         + (" y paquete íntegro." if checked_package else "; sin paquete.")
@@ -3015,7 +3042,8 @@ def dossier_render(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     if not has_markdown(store, dossier):
         save_markdown(store, dossier, render_snapshot_md(snapshot))
         recovered.append("dossier.md")
-    if snapshot.category is not Category.BASICA and not store.exists(f"{base}/package/index.json"):
+    index_key = f"{base}/{PACKAGE_DIR}/{INDEX_NAME}"
+    if snapshot.category is not Category.BASICA and not store.exists(index_key):
         if has_package(store, dossier):
             raise dossier_rejected(
                 "El paquete está incompleto y no se sobrescribe:",

@@ -196,7 +196,7 @@ def test_textos_hostiles_se_escapan(snapshot):
 
 def test_contenido_de_secciones_se_escapa(snapshot):
     document = snapshot.model_dump(mode="json")
-    document["sections"][1]["content"] = {"alcance": HOSTILE, "lista": [HOSTILE]}
+    document["sections"][1]["content"] = [{"alcance": HOSTILE, "lista": [HOSTILE]}]
     hostile = DossierSnapshot.model_validate(document)
 
     md = render_snapshot_md(hostile)

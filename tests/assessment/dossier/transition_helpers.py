@@ -1,13 +1,4 @@
-"""Mundos y atajos de las transiciones.
-
-`test_transitions.py` ya no usa `stand_ins`, `reviewed` ni `declared_world`: parte de los árboles
-reales de `stages.py`. Siguen aquí solo para `test_cli.py` y `test_status.py`, que migrará su
-propietario.
-
-`stand_ins` sustituye tres comprobaciones que un mundo BÁSICA ligero no puede cumplir (revisión
-en cada fila, preparación de la instantánea y de la evaluación actual): el mundo READY BÁSICA real
-lo construye qa (Q1). Los demás tests usan el código sin sustituir.
-"""
+"""Mundos y atajos de las transiciones: sobre el código real, sin sustituir internals."""
 
 import atexit
 import functools
@@ -15,7 +6,6 @@ import shutil
 import tempfile
 from datetime import timedelta
 from pathlib import Path
-from types import SimpleNamespace
 
 import pytest
 from matrix.acceptance_helpers import APPROVER, generate_and_approve_documents
@@ -23,11 +13,9 @@ from matrix.evaluate_helpers import NOW
 from orgdocs.orgdocs_helpers import SIGNATORY
 
 from ens_evidence.assessment.dossier import build_snapshot
-from ens_evidence.assessment.dossier import transitions as service
 from ens_evidence.assessment.dossier.store import save_snapshot
 from ens_evidence.assessment.dossier.transitions import record_transition
-from ens_evidence.models.enums import DossierState, Readiness, Role
-from ens_evidence.models.readiness import Blocker, BlockerKind, ReadinessResult
+from ens_evidence.models.enums import DossierState, Role
 from ens_evidence.orgdocs import approve_document
 from ens_evidence.workspace import LocalStore
 
@@ -113,38 +101,6 @@ def declare(store, dossier, *, at=AT + timedelta(minutes=10), now=RECORDED, **kw
     )
 
 
-def fake_assess(readiness: Readiness = Readiness.READY, errors=()):
-    blockers = (
-        []
-        if readiness is Readiness.READY
-        else [Blocker(kind=BlockerKind.MISSING_REVIEW, measure_id="op.exp.1")]
-    )
-    result = ReadinessResult(readiness=readiness, blockers=blockers, pending_human_review=True)
-    return lambda *args, **kwargs: SimpleNamespace(readiness=result, errors=tuple(errors))
-
-
 @pytest.fixture
 def docs(tmp_path):
     return docs_world(tmp_path / "ws")
-
-
-@pytest.fixture
-def reviewed(monkeypatch):
-    """Da por hecha la revisión de cada fila (el mundo ligero no las tiene)."""
-    monkeypatch.setattr(service, "_missing_reviews", lambda snapshot: [])
-
-
-@pytest.fixture
-def stand_ins(monkeypatch, reviewed):
-    """Además, instantánea y evaluación actual READY."""
-    monkeypatch.setattr(service, "_snapshot_readiness", lambda snapshot: Readiness.READY)
-    monkeypatch.setattr(service, "assess", fake_assess())
-
-
-@pytest.fixture
-def declared_world(docs, stand_ins):
-    """Cadena hasta ANALYZED sobre BÁSICA con las comprobaciones sustituidas."""
-    dossier = generate(docs)
-    self_assess(docs, dossier)
-    analyze(docs, dossier)
-    return docs, dossier

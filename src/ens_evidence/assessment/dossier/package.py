@@ -296,7 +296,10 @@ def verify_package(store: WorkspaceStore, dossier: str) -> VerifyReport:
         if _digest(data) != entry.sha256:
             problems.append(f"{prefix}/{entry.file}: ha cambiado desde que se generó el paquete")
             continue
-        cited |= {e["evidence_id"] for e in json.loads(data)["evidence"]}
+        try:
+            cited |= {e["evidence_id"] for e in json.loads(data)["evidence"]}
+        except (ValueError, KeyError, TypeError):
+            problems.append(f"{prefix}/{entry.file}: no tiene el formato de una medida del paquete")
     problems += _differences_from_rebuild(store, dossier, prefix, problems)
     listed_ids = {m.evidence_id for m in index.manifests}
     problems += [

@@ -1,11 +1,11 @@
 """Lo que se añade a la instantánea al avanzar el expediente (secciones 10 y 11)."""
 
-from pydantic import AwareDatetime, Field
+from pydantic import AwareDatetime, Field, model_validator
 
-from ens_evidence.assessment.dossier.model import DossierSnapshot
+from ens_evidence.assessment.dossier.model import DossierSnapshot, snapshot_export
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.dossier import Transition
-from ens_evidence.models.enums import DossierState
+from ens_evidence.models.enums import DossierState, Readiness
 
 
 class TransitionEntry(Strict):
@@ -28,3 +28,27 @@ class DossierView(Strict):
         return next(
             (e for e in self.transitions if e.record.to_state is DossierState.ANALYZED), None
         )
+
+
+class TransitionRecord(Strict):
+    """El fichero de la cadena: la transición con su posición y su enlace al anterior."""
+
+    dossier_id: str
+    seq: int = Field(ge=1)
+    previous_sha256: str | None = Field(pattern=SHA256_PATTERN)
+    recorded_at: AwareDatetime
+    transition: Transition
+
+    @model_validator(mode="after")
+    def _first_has_no_predecessor(self) -> "TransitionRecord":
+        if (self.seq == 1) != (self.previous_sha256 is None):
+            raise ValueError("only the first record has no previous_sha256")
+        return self
+
+
+def snapshot_readiness(snapshot: DossierSnapshot) -> Readiness | None:
+    """La preparación incrustada en la instantánea; None si la sección 7 no se puede leer."""
+    try:
+        return snapshot_export(snapshot).readiness
+    except (ValueError, KeyError):
+        return None

@@ -256,6 +256,7 @@
     }
   },
   "additionalProperties": false,
+  "description": "El fichero de la cadena: la transici\u00f3n con su posici\u00f3n y su enlace al anterior.",
   "properties": {
     "dossier_id": {
       "title": "Dossier Id",

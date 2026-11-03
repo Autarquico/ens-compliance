@@ -10,19 +10,23 @@ import json
 from datetime import UTC, datetime
 
 from ens_evidence.assessment.dossier.model import (
-    RESULTS_SECTION,
+    SECTION_TITLES,
     DossierSnapshot,
     Section,
     SourceRef,
 )
-from ens_evidence.assessment.dossier.notices import CERTIFICATION_NOTE, NOT_READY_NOTICE
+from ens_evidence.assessment.dossier.notices import NOT_READY_NOTICE
 from ens_evidence.assessment.dossier.sections_md import (
     SECTION_STATE_LABELS,
     category_name,
     scalar,
     section_body,
 )
-from ens_evidence.assessment.dossier.view import DossierView, TransitionEntry
+from ens_evidence.assessment.dossier.view import (
+    DossierView,
+    TransitionEntry,
+    snapshot_readiness,
+)
 from ens_evidence.matrix.messages import role_label
 from ens_evidence.matrix.render import md_escape
 from ens_evidence.models.enums import DossierState, Readiness, Role
@@ -75,10 +79,7 @@ def _section_md(section: Section) -> list[str]:
 
 def _not_ready_notice(snapshot: DossierSnapshot) -> list[str]:
     """Una línea en la cabecera si el sistema no estaba preparado al generar el expediente."""
-    content = snapshot.section(RESULTS_SECTION).content
-    matrix = content.get("matrix") if isinstance(content, dict) else None
-    readiness = matrix.get("readiness") if isinstance(matrix, dict) else None
-    if readiness == Readiness.READY.value:
+    if snapshot_readiness(snapshot) is Readiness.READY:
         return []
     return [f"> {NOT_READY_NOTICE}"]
 
@@ -91,7 +92,7 @@ def _header(snapshot: DossierSnapshot) -> list[str]:
         f"> {md_escape(snapshot.commitment)}",
     ]
     if snapshot.notice:
-        lines += [f"> {md_escape(snapshot.notice)}", f"> {md_escape(CERTIFICATION_NOTE)}"]
+        lines.append(f"> {md_escape(snapshot.notice)}")
     return [
         *lines,
         *_not_ready_notice(snapshot),
@@ -171,6 +172,11 @@ def _transition_md(entry: TransitionEntry) -> list[str]:
         label = DECLARED_LABEL.format(actor=md_escape(record.actor), role=role_label(record.role))
         lines.insert(2, f"- {label}")
         lines.append(f"- sha256 del análisis citado: {record.analysis_sha256}")
+        if record.acknowledged_incomplete:
+            sections = "; ".join(
+                f"{n}. {SECTION_TITLES[n - 1]}" for n in record.acknowledged_incomplete
+            )
+            lines.append(f"- Declarada reconociendo secciones incompletas: {sections}")
         if record.declaration_evidence_id:
             lines.append(
                 f"- Documento enlazado: {md_escape(record.declaration_evidence_id)}; "

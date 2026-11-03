@@ -14,8 +14,9 @@ import yaml
 from matrix.evaluate_helpers import NOW
 
 from ens_evidence import chain
+from ens_evidence.assessment.dossier.derived import save_view
+from ens_evidence.assessment.dossier.store import ASSESSMENTS_PREFIX, MARKDOWN_NAME
 from ens_evidence.assessment.dossier.transitions import (
-    TransitionRecord,
     TransitionRejected,
     entries,
     record_key,
@@ -23,6 +24,7 @@ from ens_evidence.assessment.dossier.transitions import (
     scan_transitions,
     seq_key,
 )
+from ens_evidence.assessment.dossier.view import TransitionRecord
 from ens_evidence.evidence.importer import import_manual
 from ens_evidence.evidence.layout import CHECKS_PREFIX
 from ens_evidence.models.dossier import CorrectiveMeasure, record_sha256
@@ -400,7 +402,7 @@ def test_una_instantanea_not_ready_impide_declarar(generated):
 
     message = errors_of(declare, store, dossier)
 
-    assert "la instantánea no estaba READY" in message
+    assert "el sistema no estaba preparado al generar este expediente" in message
     assert len(transition_keys(store, dossier)) == 2
 
 
@@ -726,3 +728,63 @@ def test_en_media_la_revision_interna_se_permite_y_declarar_se_rechaza(ready):
     message = errors_of(helpers.declare, ready.store, dossier)
     assert "auditoría de certificación (art. 38.1)" in message
     assert len(transition_keys(ready.store, dossier)) == 2
+
+
+# --- derivados alterados ----------------------------------------------------------------------
+
+
+def derived_key(dossier, name):
+    return f"{ASSESSMENTS_PREFIX}/{dossier}/{name}"
+
+
+def test_declarar_con_el_markdown_editado_se_rechaza_y_no_escribe(analyzed):
+    store, dossier = analyzed
+    markdown = path(store, derived_key(dossier, MARKDOWN_NAME))
+    markdown.write_text(markdown.read_text() + "\nTodo correcto.\n")
+    before = transition_keys(store, dossier)
+
+    message = errors_of(declare, store, dossier)
+
+    assert "alterados a mano" in message
+    assert MARKDOWN_NAME in message
+    assert transition_keys(store, dossier) == before
+
+
+def test_analizar_con_el_markdown_editado_tambien_se_rechaza(self_assessed):
+    store, dossier = self_assessed
+    markdown = path(store, derived_key(dossier, MARKDOWN_NAME))
+    markdown.write_text("falso\n")
+
+    assert "alterados a mano" in errors_of(analyze, store, dossier)
+
+
+@pytest.mark.parametrize("fmt", ["md", "json"])
+def test_declarar_con_una_vista_guardada_editada_se_rechaza(analyzed, fmt):
+    store, dossier = analyzed
+    scan = scan_transitions(store, dossier)
+    key, _ = save_view(store, dossier, scan.snapshot, list(scan.entries), fmt)
+    path(store, key).write_text("falso\n")
+
+    message = errors_of(declare, store, dossier)
+
+    assert "alterados a mano" in message
+    assert key in message
+
+
+def test_declarar_con_una_vista_guardada_intacta_se_registra(analyzed):
+    store, dossier = analyzed
+    scan = scan_transitions(store, dossier)
+    save_view(store, dossier, scan.snapshot, list(scan.entries), "md")
+
+    declare(store, dossier)
+
+    assert scan_transitions(store, dossier).dossier.state is DossierState.DECLARED
+
+
+def test_un_markdown_que_falta_no_bloquea_porque_render_lo_regenera(analyzed):
+    store, dossier = analyzed
+    path(store, derived_key(dossier, MARKDOWN_NAME)).unlink()
+
+    declare(store, dossier)
+
+    assert scan_transitions(store, dossier).dossier.state is DossierState.DECLARED

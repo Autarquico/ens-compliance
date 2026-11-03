@@ -10,13 +10,9 @@ import re
 from collections.abc import Sequence
 
 from ens_evidence.assessment.dossier.model import DossierSnapshot
-from ens_evidence.assessment.dossier.render import (
-    DossierView,
-    TransitionEntry,
-    render_snapshot_md,
-    render_view_md,
-)
+from ens_evidence.assessment.dossier.render import render_snapshot_md, render_view_md
 from ens_evidence.assessment.dossier.store import ASSESSMENTS_PREFIX, DOSSIER_ID, MARKDOWN_NAME
+from ens_evidence.assessment.dossier.view import DossierView, TransitionEntry
 from ens_evidence.workspace import AlreadyExists, NotFound, WorkspaceStore
 
 VIEW_DIR = "view"

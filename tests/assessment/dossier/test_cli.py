@@ -12,6 +12,7 @@ from matrix.evaluate_helpers import NOW
 from ens_evidence.assessment.dossier.store import ASSESSMENTS_PREFIX, load_snapshot
 from ens_evidence.schemas import CONTRACTS
 
+from .stages import STEP_AT, basic, restore
 from .transition_helpers import CONCLUSIONS, DIRECTION, RECORDED, SECURITY_OFFICER, SYSTEM_OWNER
 from .worlds import basic_store, edit_answers
 
@@ -47,6 +48,27 @@ def cli(docs, tmp_path, monkeypatch):
     return SimpleNamespace(run=go, store=docs)
 
 
+@pytest.fixture
+def at_stage(tmp_path, monkeypatch):
+    """CLI sobre una copia del árbol real de BÁSICA tras `stage`: (cli, id del expediente)."""
+
+    def restored(stage: str):
+        stages = basic()
+        world = restore(stages, stage, tmp_path, monkeypatch)
+
+        def go(*args: str, at=NOW):
+            world.at(at)
+            return world.run(*args)
+
+        return SimpleNamespace(run=go, store=world.store), stages.dossier
+
+    return restored
+
+
+SELF_ASSESS = ["--by", "Ana", "--role", "system_administrator"]
+DECLARE = ["--by", DIRECTION, "--acknowledge-incomplete"]
+
+
 def media(ready):
     def go(*args: str, at=NOW):
         ready.at(at)
@@ -65,17 +87,6 @@ def key(store, dossier: str, name: str) -> str:
     return f"{ASSESSMENTS_PREFIX}/{dossier}/{name}"
 
 
-def advance(cli, dossier: str, upto: str) -> None:
-    steps = [
-        ["self-assess", dossier, "--by", "Ana", "--role", "system_administrator"],
-        ["analyze", dossier, *ANALYZE],
-        ["declare", dossier, "--by", DIRECTION, "--acknowledge-incomplete"],
-    ]
-    for step in steps[: ["self-assess", "analyze", "declare"].index(upto) + 1]:
-        result = cli.run(*D, *step, at=RECORDED)
-        assert result.exit_code == 0, result.output
-
-
 # --- generate / list --------------------------------------------------------------------------
 
 
@@ -84,7 +95,7 @@ def test_generate_en_basica_imprime_id_categoria_compromiso_y_siguiente_paso(cli
 
     assert result.exit_code == 0, result.output
     dossier = ID.search(result.output).group()
-    assert "BASICA" in result.output
+    assert "BÁSICA" in result.output
     assert "La herramienta no declara conformidad." in result.output
     assert INTERNAL not in result.output
     assert "self-assess" in result.output
@@ -124,7 +135,7 @@ def test_list_sin_expedientes_y_con_uno(cli):
     assert empty.exit_code == 0
     assert "No hay expedientes" in empty.output
     assert listed.exit_code == 0
-    assert f"{dossier}  BASICA  GENERATED" in listed.output
+    assert f"{dossier}  BÁSICA  GENERATED" in listed.output
 
 
 def test_sin_ajustes_validos_sale_con_2(tmp_path):
@@ -167,15 +178,14 @@ def test_status_de_un_expediente_inexistente_o_mal_formado_sale_con_1(cli, dossi
     assert cli.run(*D, "status", dossier).exit_code == 1
 
 
-def test_status_con_un_registro_borrado_de_la_cadena_sale_con_1(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "self-assess")
+def test_status_con_un_registro_borrado_de_la_cadena_sale_con_1(at_stage):
+    cli, dossier = at_stage("self-assess")
     record = next(
         k for k in cli.store.list(key(cli.store, dossier, "transitions")) if k.endswith(".yaml")
     )
     (cli.store._root / record).unlink()
 
-    result = cli.run(*D, "status", dossier, at=RECORDED)
+    result = cli.run(*D, "status", dossier, at=STEP_AT["self-assess"])
 
     assert result.exit_code == 1
     assert "Integridad: PROBLEMAS" in result.output
@@ -185,14 +195,10 @@ def test_status_con_un_registro_borrado_de_la_cadena_sale_con_1(cli, stand_ins):
 # --- transiciones -----------------------------------------------------------------------------
 
 
-def test_self_assess_registra_avisa_del_nombre_y_nombra_al_responsable_de_la_seguridad(
-    cli, reviewed
-):
-    dossier = generated(cli)
+def test_self_assess_registra_avisa_del_nombre_y_nombra_al_responsable_de_la_seguridad(at_stage):
+    cli, dossier = at_stage("generated")
 
-    result = cli.run(
-        *D, "self-assess", dossier, "--by", "Ana", "--role", "system_administrator", at=RECORDED
-    )
+    result = cli.run(*D, "self-assess", dossier, *SELF_ASSESS, at=STEP_AT["self-assess"])
 
     assert result.exit_code == 0, result.output
     assert "SELF_ASSESSED registrado" in result.output
@@ -213,18 +219,19 @@ def test_self_assess_sin_revision_en_cada_fila_se_rechaza(cli):
     assert "revisión en cada fila" in result.output
 
 
-def test_self_assess_con_un_rol_ajeno_se_rechaza(cli, reviewed):
-    dossier = generated(cli)
+def test_self_assess_con_un_rol_ajeno_se_rechaza(at_stage):
+    cli, dossier = at_stage("generated")
 
-    result = cli.run(*D, "self-assess", dossier, "--by", "Ana", "--role", "management", at=RECORDED)
+    result = cli.run(
+        *D, "self-assess", dossier, "--by", "Ana", "--role", "management", at=STEP_AT["self-assess"]
+    )
 
     assert result.exit_code == 2
     assert "system_administrator_delegate" in result.output
 
 
-def test_analyze_registra_con_medida_correctora_y_nombra_a_la_direccion(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "self-assess")
+def test_analyze_registra_con_medida_correctora_y_nombra_a_la_direccion(at_stage):
+    cli, dossier = at_stage("self-assess")
 
     result = cli.run(
         *D,
@@ -233,7 +240,7 @@ def test_analyze_registra_con_medida_correctora_y_nombra_a_la_direccion(cli, sta
         *ANALYZE,
         "--corrective-measure",
         "Revisar los accesos de terceros.",
-        at=RECORDED,
+        at=STEP_AT["analyze"],
     )
 
     assert result.exit_code == 0, result.output
@@ -244,12 +251,11 @@ def test_analyze_registra_con_medida_correctora_y_nombra_a_la_direccion(cli, sta
     assert "Revisar los accesos de terceros." in shown.output
 
 
-def test_analyze_sin_confirmar_la_elevacion_se_rechaza_y_dice_que_significa(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "self-assess")
+def test_analyze_sin_confirmar_la_elevacion_se_rechaza_y_dice_que_significa(at_stage):
+    cli, dossier = at_stage("self-assess")
     args = [a for a in ANALYZE if a != "--elevated"]
 
-    result = cli.run(*D, "analyze", dossier, *args, at=RECORDED)
+    result = cli.run(*D, "analyze", dossier, *args, at=STEP_AT["analyze"])
     helped = cli.run(*D, "analyze", "--help")
 
     assert result.exit_code == 1
@@ -259,40 +265,34 @@ def test_analyze_sin_confirmar_la_elevacion_se_rechaza_y_dice_que_significa(cli,
     assert "juicio manual" in help_text
 
 
-def test_escenario_1_declare_sin_analyze_sale_con_1_y_nombra_el_paso_del_responsable(
-    cli, stand_ins
-):
-    dossier = generated(cli)
-    advance(cli, dossier, "self-assess")
+def test_escenario_1_declare_sin_analyze_sale_con_1_y_nombra_el_paso_del_responsable(at_stage):
+    cli, dossier = at_stage("self-assess")
 
-    result = cli.run(*D, "declare", dossier, "--by", DIRECTION, at=RECORDED)
+    result = cli.run(*D, "declare", dossier, "--by", DIRECTION, at=STEP_AT["declare"])
 
     assert result.exit_code == 1
     assert "No se registra DECLARED" in result.output
     assert "análisis del responsable de la seguridad" in result.output
-    assert cli.run(*D, "status", dossier, at=RECORDED).output.count("Estado: SELF_ASSESSED") == 1
+    status = cli.run(*D, "status", dossier, at=STEP_AT["declare"])
+    assert status.output.count("Estado: SELF_ASSESSED") == 1
 
 
-def test_declare_registra_el_acto_de_la_organizacion_sin_declarar_la_herramienta(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "analyze")
+def test_declare_registra_el_acto_de_la_organizacion_sin_declarar_la_herramienta(at_stage):
+    cli, dossier = at_stage("analyze")
 
-    result = cli.run(
-        *D, "declare", dossier, "--by", DIRECTION, "--acknowledge-incomplete", at=RECORDED
-    )
+    result = cli.run(*D, "declare", dossier, *DECLARE, at=STEP_AT["declare"])
 
     assert result.exit_code == 0, result.output
     assert "DECLARED registrado" in result.output
     assert NAME_NOTICE in result.output
     assert "acto de la organización" in result.output
     assert "no los genera ella" in result.output
-    assert cli.run(*D, "status", dossier, at=RECORDED).exit_code == 0
+    assert cli.run(*D, "status", dossier, at=STEP_AT["declare"]).exit_code == 0
     assert "DECLARED" in cli.run(*D, "list").output
 
 
-def test_declare_con_una_evidencia_inexistente_se_rechaza(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "analyze")
+def test_declare_con_una_evidencia_inexistente_se_rechaza(at_stage):
+    cli, dossier = at_stage("analyze")
 
     result = cli.run(
         *D,
@@ -303,20 +303,18 @@ def test_declare_con_una_evidencia_inexistente_se_rechaza(cli, stand_ins):
         "--acknowledge-incomplete",
         "--evidence",
         "EV-20260101-abcdef12",
-        at=RECORDED,
+        at=STEP_AT["declare"],
     )
 
     assert result.exit_code == 1
     assert "--evidence" in result.output
 
 
-def test_una_transicion_sobre_un_expediente_con_deriva_se_rechaza(cli, reviewed):
-    dossier = generated(cli)
+def test_una_transicion_sobre_un_expediente_con_deriva_se_rechaza(at_stage):
+    cli, dossier = at_stage("generated")
     edit_answers(cli.store, "mision", "Otra misión distinta de la registrada.")
 
-    result = cli.run(
-        *D, "self-assess", dossier, "--by", "Ana", "--role", "system_administrator", at=RECORDED
-    )
+    result = cli.run(*D, "self-assess", dossier, *SELF_ASSESS, at=STEP_AT["self-assess"])
 
     assert result.exit_code == 1
     assert "genera uno nuevo" in result.output
@@ -325,9 +323,8 @@ def test_una_transicion_sobre_un_expediente_con_deriva_se_rechaza(cli, reviewed)
 # --- show -------------------------------------------------------------------------------------
 
 
-def test_show_md_trae_las_secciones_10_y_11_con_la_cadena(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "analyze")
+def test_show_md_trae_las_secciones_10_y_11_con_la_cadena(at_stage):
+    cli, dossier = at_stage("analyze")
 
     result = cli.run(*D, "show", dossier)
 
@@ -339,9 +336,8 @@ def test_show_md_trae_las_secciones_10_y_11_con_la_cadena(cli, stand_ins):
     assert CONCLUSIONS in result.output
 
 
-def test_show_json_es_la_vista_y_save_solo_anade(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "self-assess")
+def test_show_json_es_la_vista_y_save_solo_anade(at_stage):
+    cli, dossier = at_stage("self-assess")
 
     shown = cli.run(*D, "show", dossier, "--format", "json", "--save")
     again = cli.run(*D, "show", dossier, "--format", "json", "--save")
@@ -531,15 +527,15 @@ def test_un_paquete_regenerado_con_otro_contenido_no_se_verifica(cli):
     assert cli.run(*D, "verify", dossier).exit_code == 1
 
 
-def test_una_vista_guardada_y_editada_bloquea_verify_y_status(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "self-assess")
+def test_una_vista_guardada_y_editada_bloquea_verify_y_status(at_stage):
+    cli, dossier = at_stage("self-assess")
     cli.run(*D, "show", dossier, "--save")
     saved = cli.store.list(key(cli.store, dossier, "view"))[0]
     (cli.store._root / saved).write_text("vista inventada")
 
-    assert cli.run(*D, "verify", dossier, at=RECORDED).exit_code == 1
-    assert "la vista no coincide" in cli.run(*D, "status", dossier, at=RECORDED).output
+    at = STEP_AT["self-assess"]
+    assert cli.run(*D, "verify", dossier, at=at).exit_code == 1
+    assert "la vista no coincide" in cli.run(*D, "status", dossier, at=at).output
 
 
 def test_status_de_un_id_con_errata_no_manda_restaurar_la_copia(cli):
@@ -590,12 +586,12 @@ def test_status_y_generate_listan_las_secciones_incompletas_con_numero_y_nombre(
     assert re.search(r"Secciones incompletas: .*\d+\. \w", status.output)
 
 
-def test_status_tras_analizar_pide_completar_o_reconocer_las_secciones_incompletas(cli, stand_ins):
-    dossier = generated(cli)
-    advance(cli, dossier, "analyze")
+def test_status_tras_analizar_pide_completar_o_reconocer_las_secciones_incompletas(at_stage):
+    cli, dossier = at_stage("analyze")
+    at = STEP_AT["declare"]
 
-    status = cli.run(*D, "status", dossier, at=RECORDED)
-    refused = cli.run(*D, "declare", dossier, "--by", DIRECTION, at=RECORDED)
+    status = cli.run(*D, "status", dossier, at=at)
+    refused = cli.run(*D, "declare", dossier, "--by", DIRECTION, at=at)
 
     assert "Secciones incompletas: 4. Riesgos" in status.output
     assert refused.exit_code == 1 and "secciones incompletas" in refused.output

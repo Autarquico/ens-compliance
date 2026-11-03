@@ -86,7 +86,8 @@ ens-evidence assessment dossier declare <id> --by "Marta Ibáñez Soler" \
   expediente nuevo o reconocerlas con `--acknowledge-incomplete`; el
   reconocimiento queda en el registro DECLARED (campo
   `acknowledged_incomplete`, con los números de sección) y no se puede
-  reconocer una parte.
+  reconocer una parte. El expediente (sección 11) también lo muestra en el
+  bloque DECLARED.
 - La herramienta solo registra el acto: no redacta la declaración ni genera
   el distintivo.
 - Con `--evidence` enlazas el documento firmado que hayas importado. La
@@ -119,7 +120,8 @@ ens-evidence assessment dossier verify <id>   # reproduce el expediente y compru
   sin rastro. Solo la detecta la copia externa (ADR 0008); haz la copia antes
   de cada paso.
 - Si falta `dossier.md`, `ens-evidence assessment dossier render <id>` lo
-  vuelve a crear; en MEDIA/ALTA también el paquete si falta entero. En BÁSICA
+  vuelve a crear (`status` y `verify` avisan de que falta, sin cambiar su código
+  de salida); en MEDIA/ALTA también el paquete si falta entero. En BÁSICA
   el paquete se vuelve a pedir con `dossier package <id>`. Nunca sobrescribe
   nada.
 

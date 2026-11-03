@@ -5,6 +5,7 @@ tiene la forma esperada (la instantánea guarda JSON sin tipar), se cae a un vol
 perder nada. Nada de lo que se escribe dice «conforme»: la valoración es de la persona que revisa.
 """
 
+import re
 from collections.abc import Callable, Iterable
 from datetime import UTC, datetime
 
@@ -59,6 +60,10 @@ BLOCKER_SUMMARY = {
     BlockerKind.EXPIRED_REVIEW: "revisión caducada",
     BlockerKind.NOT_COMPLIANT: "valoración pendiente o desfavorable",
     BlockerKind.OPEN_FINDING: "hallazgo abierto",
+}
+AXIS_LABELS = {
+    "implementation": "implantación",
+    "applicability": "no aplica (revisión humana)",
 }
 NONE = "—"
 
@@ -294,6 +299,12 @@ def risks(content: dict) -> list[str]:
 # 5 ----------------------------------------------------------------------------------------------
 
 
+def _required_by(value: object) -> str:
+    if value is None:
+        return "elegida por la organización"
+    return esc(re.sub(r"\bBASICA\b", CATEGORY_NAMES[Category.BASICA], str(value)))
+
+
 def applicability(content: dict) -> list[str]:
     declaration = content["declaration"]
     lines = [
@@ -304,7 +315,7 @@ def applicability(content: dict) -> list[str]:
     rows = [
         [
             esc(m["id"]),
-            esc(m["required_by"]),
+            _required_by(m["required_by"]),
             ", ".join(esc(x) for x in m["chosen_reinforcements"]) or NONE,
         ]
         for m in declaration["selected"]
@@ -337,7 +348,9 @@ def _last_review(row: ExportedRow) -> str:
     review = row.last_review
     if review is None:
         return "sin revisión"
-    assessment = ASSESSMENT_LABELS[review.assessment] if review.assessment else review.axis
+    assessment = (
+        ASSESSMENT_LABELS[review.assessment] if review.assessment else AXIS_LABELS[review.axis]
+    )
     return (
         f"{esc(assessment)} · {esc(review.reviewer)}, {instant(review.reviewed_at)} · "
         f"válida hasta {instant(review.valid_until)}"
@@ -520,13 +533,13 @@ RENDERERS: dict[int, Callable[[dict], list[str]]] = {
 
 
 def section_body(section: Section) -> list[str]:
-    """La plantilla de la sección; el volcado genérico si el contenido no encaja en ella."""
+    """La plantilla de la sección; el volcado genérico solo si el contenido no es un objeto.
+
+    Si el contenido generado por la herramienta no encaja en su plantilla es un fallo de la
+    plantilla: se propaga en lugar de degradar el Markdown en silencio."""
     renderer = RENDERERS.get(section.number)
     if renderer is not None and isinstance(section.content, dict):
-        try:
-            return renderer(section.content)
-        except (KeyError, TypeError, AttributeError, ValueError, IndexError):
-            pass
+        return renderer(section.content)
     return tree(section.content)
 
 

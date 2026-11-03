@@ -1,20 +1,21 @@
 """Estado del expediente: estado reconstruido, deriva, integridad, huellas y paso siguiente."""
 
 from ens_evidence.assessment.dossier.model import INTERNAL_REVIEW_NOTICE
+from ens_evidence.assessment.dossier.package import save_package
 from ens_evidence.assessment.dossier.status import (
     RECOVER,
     RECOVER_SNAPSHOT,
     REGENERATE,
     dossier_status,
 )
-from ens_evidence.assessment.dossier.transitions import CERTIFICATION_NOTE, seq_key
+from ens_evidence.assessment.dossier.store import load_snapshot
+from ens_evidence.assessment.dossier.transitions import CERTIFICATION_NOTE, entries, seq_key
 from ens_evidence.models.enums import Category, DossierState
 
-from .transition_helpers import (  # noqa: F401
-    RECORDED,
+from .stages import STEP_AT, basic, restore
+from .transition_helpers import (
     analyze,
     approve_designation,
-    declare,
     generate,
     self_assess,
 )
@@ -36,32 +37,36 @@ def test_un_expediente_recien_generado_espera_la_autoevaluacion(docs):
     assert status.fingerprints.analysis is None
 
 
-def test_el_paso_siguiente_avanza_con_cada_transicion(docs, stand_ins):
-    dossier = generate(docs)
+def stage(name, tmp_path, monkeypatch):
+    stages = basic()
+    return restore(stages, name, tmp_path, monkeypatch).store, stages.dossier
 
-    self_assess(docs, dossier)
-    assert "responsable de la seguridad" in dossier_status(docs, dossier).next_step
-    analysis = analyze(docs, dossier)
-    after_analysis = dossier_status(docs, dossier, now=RECORDED)
-    declaration = declare(docs, dossier)
-    done = dossier_status(docs, dossier)
 
-    assert after_analysis.state is DossierState.ANALYZED
-    assert "no se puede declarar" in after_analysis.next_step  # el mundo `docs` no está READY
-    assert after_analysis.fingerprints.analysis == analysis.entry.sha256
+def test_el_paso_siguiente_avanza_con_cada_transicion(tmp_path, monkeypatch):
+    store, dossier = stage("self-assess", tmp_path / "a", monkeypatch)
+    assessed = dossier_status(store, dossier, now=STEP_AT["self-assess"])
+    store, dossier = stage("analyze", tmp_path / "b", monkeypatch)
+    analyzed = dossier_status(store, dossier, now=STEP_AT["analyze"])
+    analysis = entries(store, dossier)[-1]
+    store, dossier = stage("declare", tmp_path / "c", monkeypatch)
+    done = dossier_status(store, dossier, now=STEP_AT["declare"])
+    declaration = entries(store, dossier)[-1]
+
+    assert "responsable de la seguridad" in assessed.next_step
+    assert analyzed.state is DossierState.ANALYZED
+    assert "dirección" in analyzed.next_step
+    assert analyzed.fingerprints.analysis == analysis.sha256
     assert done.state is DossierState.DECLARED
     assert done.next_step.startswith("ninguno")
-    assert done.fingerprints.cited_analysis == done.fingerprints.analysis == analysis.entry.sha256
-    assert done.fingerprints.last_transition == declaration.entry.sha256
+    assert done.fingerprints.cited_analysis == done.fingerprints.analysis == analysis.sha256
+    assert done.fingerprints.last_transition == declaration.sha256
 
 
-def test_una_cadena_rota_no_da_estado_y_manda_recuperar(docs, stand_ins):
-    dossier = generate(docs)
-    self_assess(docs, dossier)
-    analyze(docs, dossier)
-    docs._root.joinpath(seq_key(dossier, 2)).unlink()
+def test_una_cadena_rota_no_da_estado_y_manda_recuperar(tmp_path, monkeypatch):
+    store, dossier = stage("analyze", tmp_path, monkeypatch)
+    store._root.joinpath(seq_key(dossier, 2)).unlink()
 
-    status = dossier_status(docs, dossier)
+    status = dossier_status(store, dossier, now=STEP_AT["analyze"])
 
     assert status.state is None
     assert status.integrity
@@ -89,6 +94,7 @@ def test_la_deriva_manda_generar_uno_nuevo(docs):
 def test_en_media_nunca_se_propone_declarar(ready):
     approve_designation(ready.store)
     dossier = generate(ready.store)
+    save_package(ready.store, dossier, load_snapshot(ready.store, dossier))
     first = dossier_status(ready.store, dossier)
     self_assess(ready.store, dossier)
     analyze(ready.store, dossier)
@@ -97,7 +103,7 @@ def test_en_media_nunca_se_propone_declarar(ready):
 
     assert first.category is Category.MEDIA
     assert first.notice == INTERNAL_REVIEW_NOTICE
-    assert INTERNAL_REVIEW_NOTICE in first.next_step
+    assert INTERNAL_REVIEW_NOTICE not in first.next_step
     assert last.state is DossierState.ANALYZED
     assert last.next_step == f"ninguno: {CERTIFICATION_NOTE}"
     assert "declaración de conformidad" not in last.next_step

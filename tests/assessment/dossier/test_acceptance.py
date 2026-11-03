@@ -31,7 +31,7 @@ def at_stage(stages, stage, tmp_path, monkeypatch):
 
 def test_el_camino_completo_en_basica_registra_las_cuatro_etapas_por_la_cli(happy):
     assert happy.exit_codes == {"generate": 0, "self-assess": 0, "analyze": 0, "declare": 0}
-    assert "BASICA" in happy.outputs["generate"]
+    assert "BÁSICA" in happy.outputs["generate"]
     assert "SELF_ASSESSED registrado" in happy.outputs["self-assess"]
     assert "ANALYZED registrado" in happy.outputs["analyze"]
     assert (
@@ -50,7 +50,7 @@ def test_el_estado_final_es_declared(happy, tmp_path, monkeypatch):
     assert "Estado: DECLARED" in status.output
     assert "Integridad: íntegro." in status.output
     assert "Deriva: ninguna" in status.output
-    assert f"{happy.dossier}  BASICA  DECLARED" in listed.output
+    assert f"{happy.dossier}  BÁSICA  DECLARED" in listed.output
 
 
 def test_la_vista_dice_que_la_declaracion_la_registro_la_direccion_como_acto_de_la_organizacion(

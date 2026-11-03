@@ -18,6 +18,7 @@ from ens_evidence.orgdocs.approval import (
     all_statuses,
     approval_history,
     approve_document,
+    declared_signatory,
     document_status,
 )
 from ens_evidence.orgdocs.approved import ApprovedCoverage, ApprovedTrace, approved_coverage
@@ -49,6 +50,7 @@ from ens_evidence.orgdocs.trace import Coverage, clause_coverage, measure_covera
 
 __all__ = [
     "document_status",
+    "declared_signatory",
     "approved_coverage",
     "approve_document",
     "approval_history",

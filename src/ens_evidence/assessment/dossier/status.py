@@ -14,21 +14,22 @@ from ens_evidence.assessment.dossier.derived import (
 )
 from ens_evidence.assessment.dossier.drift import DriftReport, rebuild_and_diff
 from ens_evidence.assessment.dossier.model import (
-    INTERNAL_REVIEW_NOTICE,
     DossierSnapshot,
     SectionState,
 )
 from ens_evidence.assessment.dossier.notices import NOT_READY_NOTICE
+from ens_evidence.assessment.dossier.package import has_package, verify_package
 from ens_evidence.assessment.dossier.transitions import (
     CERTIFICATION_NOTE,
     TransitionScan,
     evaluate_for_declaration,
     scan_transitions,
 )
+from ens_evidence.assessment.dossier.view import snapshot_readiness
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.matrix import CheckResultsSource
 from ens_evidence.matrix.messages import role_label
-from ens_evidence.models.enums import Category, DossierState, Role
+from ens_evidence.models.enums import Category, DossierState, Readiness, Role
 from ens_evidence.workspace import WorkspaceStore
 
 RECOVER = "recupera el expediente desde la copia (runbook); no admite más transiciones"
@@ -47,11 +48,15 @@ PUBLICITY = (
     "ninguno por la herramienta: la declaración ya está registrada; la organización debe darle "
     "publicidad (art. 38.2 del RD 311/2022, según la ITS aplicable)"
 )
-_RESULTS_SECTION_NUMBER = 7
 
 
 def next_step(
-    category: Category, state: DossierState, dossier: str, incomplete: tuple[str, ...] = ()
+    category: Category,
+    state: DossierState,
+    dossier: str,
+    incomplete: tuple[str, ...] = (),
+    *,
+    readiness_blocked: bool = False,
 ) -> str:
     """Quién da el siguiente paso y con qué comando. Única fuente para `status` y los comandos."""
     basic = category is Category.BASICA
@@ -68,6 +73,8 @@ def next_step(
                 f"`assessment dossier analyze {dossier}` y eleva las conclusiones al "
                 f"{role_label(Role.SYSTEM_OWNER)}"
             )
+        case DossierState.ANALYZED if basic and readiness_blocked:
+            return f"ninguno en este expediente: {NEW_DOSSIER}"
         case DossierState.ANALYZED if basic:
             pending = (
                 f"; hay secciones incompletas ({'; '.join(incomplete)}): complétalas en un "
@@ -84,19 +91,14 @@ def next_step(
             return f"ninguno: {CERTIFICATION_NOTE}"
         case _:
             return PUBLICITY
-    return step if basic else f"{step} ({INTERNAL_REVIEW_NOTICE})"
+    return step
 
 
 def snapshot_readiness_blocked(snapshot: DossierSnapshot) -> bool:
     """BÁSICA y la instantánea no estaba READY: nunca se podrá declarar con este expediente."""
     if snapshot.category is not Category.BASICA:
         return False
-    for section in snapshot.sections:
-        if section.number == _RESULTS_SECTION_NUMBER and isinstance(section.content, dict):
-            matrix = section.content.get("matrix")
-            value = matrix.get("readiness") if isinstance(matrix, dict) else None
-            return value != "READY"
-    return True
+    return snapshot_readiness(snapshot) is not Readiness.READY
 
 
 def incomplete_sections(snapshot: DossierSnapshot) -> tuple[str, ...]:
@@ -189,6 +191,8 @@ def _derived_problems(store: WorkspaceStore, scan: TransitionScan) -> list[str]:
     if scan.snapshot is None:
         return []
     problems = markdown_problems(store, scan.dossier_id, scan.snapshot)
+    if has_package(store, scan.dossier_id) or scan.snapshot.category is not Category.BASICA:
+        problems += verify_package(store, scan.dossier_id).problems
     if not scan.problems:
         problems += view_problems(store, scan.dossier_id, scan.snapshot, list(scan.entries))
     return problems
@@ -218,7 +222,7 @@ def _declaration_blocks(
     reasons: list[str] = []
     needs_new = snapshot_readiness_blocked(snapshot)
     if needs_new:
-        reasons.append("la instantánea no estaba READY")
+        reasons.append("el sistema no estaba preparado al generar este expediente")
     instant = now or datetime.now(UTC)
     _, problems = evaluate_for_declaration(
         store, instant, source or StoredCheckResults(reference_now=instant)

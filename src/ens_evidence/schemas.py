@@ -7,7 +7,7 @@ from pydantic import BaseModel
 
 from ens_evidence.applicability import Declaration
 from ens_evidence.assessment.dossier.model import DossierSnapshot
-from ens_evidence.assessment.dossier.transitions import TransitionRecord
+from ens_evidence.assessment.dossier.view import TransitionRecord
 from ens_evidence.backup.records import BackupRun, ImmutabilityCheck, IntegrityCheck, RestoreRecord
 from ens_evidence.backup.restore_test import RestoreTest, RestoreTestDeclaration
 from ens_evidence.catalog import MeasureCard

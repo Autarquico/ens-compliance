@@ -103,7 +103,7 @@ def test_un_expediente_declared_con_fuentes_cambiadas_muestra_la_deriva_y_no_adm
     assert "Estado: DECLARED" in status.output
     assert "Deriva: el expediente ya no describe el estado actual" in status.output
     assert "org/answers.yaml" in status.output
-    assert f"{chain.dossier}  BASICA  DECLARED" in listed.output
+    assert f"{chain.dossier}  BÁSICA  DECLARED" in listed.output
     assert again.exit_code == 1 and "ya no describe el estado actual" in again.output
     assert len(records(world, chain.dossier)) == 3
 
