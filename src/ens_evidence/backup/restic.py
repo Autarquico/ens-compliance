@@ -38,11 +38,13 @@ class Restic:
         base_env: Mapping[str, str] | None = None,
         region: str | None = None,
         read_timeout: float = READ_TIMEOUT_SECONDS,
+        backup_timeout: float | None = None,
     ) -> None:
         self._repository = repository
         self._secrets = secrets
         self._env = subprocess_env(secrets, base_env, region)
         self._read_timeout = read_timeout
+        self._backup_timeout = backup_timeout
         self._repository_id: str | None = None
 
     def init(self) -> bool:
@@ -62,7 +64,9 @@ class Restic:
 
     def backup(self, directory: Path) -> str:
         """Hace snapshot de `directory` y devuelve su id."""
-        output = self._run(["backup", "--json", "--tag", TAG, "."], cwd=directory)
+        output = self._run(
+            ["backup", "--json", "--tag", TAG, "."], cwd=directory, timeout=self._backup_timeout
+        )
         for line in reversed(output.splitlines()):
             try:
                 message = json.loads(line)
@@ -121,8 +125,8 @@ class Restic:
     def _snapshots(self, extra: list[str]) -> list[dict[str, Any]]:
         return _parse_snapshots(self._run(["snapshots", "--json", *extra]))
 
-    def _run(self, args: list[str], cwd: Path | None = None) -> str:
-        result = self._execute(args, cwd)
+    def _run(self, args: list[str], cwd: Path | None = None, timeout: float | None = None) -> str:
+        result = self._execute(args, cwd, timeout)
         if result.returncode != 0:
             raise self._failure(result)
         return result.stdout

@@ -32,6 +32,7 @@ from ens_evidence.models import (
 )
 from ens_evidence.orgdocs.approval import DocumentApproval
 from ens_evidence.orgdocs.meta import DocumentMeta
+from ens_evidence.reports.model import CycleStage, DailyReport, MonthlyReport
 from ens_evidence.risk import Methodology, RegisterFile, RiskApproval, TreatmentPlanFile
 from ens_evidence.scope import (
     Approval,
@@ -66,6 +67,9 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "matrix-export": MatrixExport,
     "matrix-change": MatrixChange,
     "measure-review": MeasureReviewRecord,
+    "report-daily": DailyReport,
+    "report-monthly": MonthlyReport,
+    "cycle-stage": CycleStage,
     "readiness-input": ReadinessInput,
     "readiness-result": ReadinessResult,
     "review": Review,
