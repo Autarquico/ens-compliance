@@ -171,14 +171,14 @@ def text_problems(text: str) -> tuple[list[str], list[str]]:
     return errors, warnings
 
 
-def check_declared_name(name: str) -> list[str]:
-    """Errores de `--by`: un nombre declarado no puede ser vacío, largo, un secreto ni un
-    identificador personal (correo, DNI/NIE, IBAN, teléfono). Nunca incluye el valor."""
+def check_declared_name(name: str, label: str = "--by") -> list[str]:
+    """Errores de `--by` (o del campo `label`): un nombre declarado no puede ser vacío, largo,
+    un secreto ni un identificador personal (correo, DNI/NIE, IBAN, teléfono). Sin el valor."""
     if not name.strip():
-        return ["--by: indica quién registra (nombre declarado)"]
+        return [f"{label}: indica quién registra (nombre declarado)"]
     errors = (
-        [f"--by: demasiado largo (máximo {NAME_MAX} caracteres)"] if len(name) > NAME_MAX else []
+        [f"{label}: demasiado largo (máximo {NAME_MAX} caracteres)"] if len(name) > NAME_MAX else []
     )
-    errors += [f"{p}: parece un secreto; quítalo" for p in find_secrets(name, "--by")]
-    errors += [f"--by: {problem}; indica solo un nombre" for problem in text_problems(name)[0]]
+    errors += [f"{p}: parece un secreto; quítalo" for p in find_secrets(name, label)]
+    errors += [f"{label}: {problem}; indica solo un nombre" for problem in text_problems(name)[0]]
     return errors

@@ -8,24 +8,22 @@ from dataclasses import dataclass
 from datetime import UTC, datetime
 
 from ens_evidence.assessment.dossier.derived import (
+    derived_problems,
     dossier_exists,
-    markdown_problems,
-    view_problems,
 )
 from ens_evidence.assessment.dossier.drift import DriftReport, rebuild_and_diff
 from ens_evidence.assessment.dossier.model import (
     DossierSnapshot,
     SectionState,
+    snapshot_readiness,
 )
 from ens_evidence.assessment.dossier.notices import NOT_READY_NOTICE
-from ens_evidence.assessment.dossier.package import has_package, verify_package
 from ens_evidence.assessment.dossier.transitions import (
     CERTIFICATION_NOTE,
     TransitionScan,
     evaluate_for_declaration,
     scan_transitions,
 )
-from ens_evidence.assessment.dossier.view import snapshot_readiness
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.matrix import CheckResultsSource
 from ens_evidence.matrix.messages import role_label
@@ -190,12 +188,8 @@ def dossier_status(
 def _derived_problems(store: WorkspaceStore, scan: TransitionScan) -> list[str]:
     if scan.snapshot is None:
         return []
-    problems = markdown_problems(store, scan.dossier_id, scan.snapshot)
-    if has_package(store, scan.dossier_id) or scan.snapshot.category is not Category.BASICA:
-        problems += verify_package(store, scan.dossier_id).problems
-    if not scan.problems:
-        problems += view_problems(store, scan.dossier_id, scan.snapshot, list(scan.entries))
-    return problems
+    chain = None if scan.problems else list(scan.entries)
+    return derived_problems(store, scan.dossier_id, scan.snapshot, chain)
 
 
 def _declaration_blocks(

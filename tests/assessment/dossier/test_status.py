@@ -1,15 +1,21 @@
 """Estado del expediente: estado reconstruido, deriva, integridad, huellas y paso siguiente."""
 
+import pytest
+
 from ens_evidence.assessment.dossier.model import INTERNAL_REVIEW_NOTICE
-from ens_evidence.assessment.dossier.package import save_package
 from ens_evidence.assessment.dossier.status import (
     RECOVER,
     RECOVER_SNAPSHOT,
     REGENERATE,
     dossier_status,
 )
-from ens_evidence.assessment.dossier.store import load_snapshot
-from ens_evidence.assessment.dossier.transitions import CERTIFICATION_NOTE, entries, seq_key
+from ens_evidence.assessment.dossier.store import ASSESSMENTS_PREFIX
+from ens_evidence.assessment.dossier.transitions import (
+    CERTIFICATION_NOTE,
+    TransitionRejected,
+    entries,
+    seq_key,
+)
 from ens_evidence.models.enums import Category, DossierState
 
 from .stages import STEP_AT, basic, restore
@@ -94,7 +100,6 @@ def test_la_deriva_manda_generar_uno_nuevo(docs):
 def test_en_media_nunca_se_propone_declarar(ready):
     approve_designation(ready.store)
     dossier = generate(ready.store)
-    save_package(ready.store, dossier, load_snapshot(ready.store, dossier))
     first = dossier_status(ready.store, dossier)
     self_assess(ready.store, dossier)
     analyze(ready.store, dossier)
@@ -107,3 +112,20 @@ def test_en_media_nunca_se_propone_declarar(ready):
     assert last.state is DossierState.ANALYZED
     assert last.next_step == f"ninguno: {CERTIFICATION_NOTE}"
     assert "declaración de conformidad" not in last.next_step
+
+
+def test_en_media_con_el_paquete_editado_ninguna_transicion_se_registra(ready):
+    approve_designation(ready.store)
+    dossier = generate(ready.store)
+    file = next(
+        k for k in ready.store.list(f"{ASSESSMENTS_PREFIX}/{dossier}/package") if "index" not in k
+    )
+    (ready.store._root / file).write_text("falso\n")
+
+    status = dossier_status(ready.store, dossier)
+    with pytest.raises(TransitionRejected) as error:
+        self_assess(ready.store, dossier)
+
+    assert any(file in problem for problem in status.integrity)
+    assert file in "\n".join(error.value.errors)
+    assert dossier_status(ready.store, dossier).state is DossierState.GENERATED

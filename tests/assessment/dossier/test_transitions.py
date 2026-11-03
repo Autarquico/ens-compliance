@@ -15,6 +15,7 @@ from matrix.evaluate_helpers import NOW
 
 from ens_evidence import chain
 from ens_evidence.assessment.dossier.derived import save_view
+from ens_evidence.assessment.dossier.package import save_package
 from ens_evidence.assessment.dossier.store import ASSESSMENTS_PREFIX, MARKDOWN_NAME
 from ens_evidence.assessment.dossier.transitions import (
     TransitionRejected,
@@ -303,7 +304,8 @@ def test_unas_conclusiones_con_contrasena_se_rechazan_sin_el_valor(self_assessed
 
     message = errors_of(analyze, store, dossier, conclusions=f"Se anotó password={PASSWORD} en el")
 
-    assert "conclusiones" in message
+    assert "conclusiones: contiene una credencial" in message
+    assert ": :" not in message
     assert PASSWORD not in message
     assert len(transition_keys(store, dossier)) == 1
 
@@ -747,6 +749,32 @@ def test_declarar_con_el_markdown_editado_se_rechaza_y_no_escribe(analyzed):
 
     assert "alterados a mano" in message
     assert MARKDOWN_NAME in message
+    assert transition_keys(store, dossier) == before
+
+
+def test_el_rechazo_por_markdown_alterado_propone_restaurar_y_no_solo_render(analyzed):
+    store, dossier = analyzed
+    path(store, derived_key(dossier, MARKDOWN_NAME)).write_text("falso\n")
+
+    message = errors_of(declare, store, dossier)
+
+    assert "desde la copia" in message
+    assert f"borra {MARKDOWN_NAME} y recréalo con `assessment dossier render {dossier}`" in message
+    assert "regenéral" not in message
+
+
+def test_declarar_con_el_paquete_editado_se_rechaza_y_no_escribe(analyzed):
+    store, dossier = analyzed
+    scan = scan_transitions(store, dossier)
+    save_package(store, dossier, scan.snapshot)
+    file = next(k for k in store.list(derived_key(dossier, "package")) if "index" not in k)
+    path(store, file).write_text("falso\n")
+    before = transition_keys(store, dossier)
+
+    message = errors_of(declare, store, dossier)
+
+    assert "alterados a mano" in message
+    assert file in message
     assert transition_keys(store, dossier) == before
 
 

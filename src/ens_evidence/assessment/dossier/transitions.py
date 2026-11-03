@@ -20,12 +20,13 @@ from datetime import datetime
 from pydantic import ValidationError
 
 from ens_evidence import chain
-from ens_evidence.assessment.dossier.derived import markdown_problems, view_problems
+from ens_evidence.assessment.dossier.derived import derived_problems
 from ens_evidence.assessment.dossier.drift import rebuild_and_diff
 from ens_evidence.assessment.dossier.model import (
     DossierSnapshot,
     SectionState,
     snapshot_export,
+    snapshot_readiness,
 )
 from ens_evidence.assessment.dossier.notices import CERTIFICATION_NOTE
 from ens_evidence.assessment.dossier.privacy import free_text_problems
@@ -35,11 +36,7 @@ from ens_evidence.assessment.dossier.store import (
     load_snapshot,
     stored_snapshot_sha256,
 )
-from ens_evidence.assessment.dossier.view import (
-    TransitionEntry,
-    TransitionRecord,
-    snapshot_readiness,
-)
+from ens_evidence.assessment.dossier.view import TransitionEntry, TransitionRecord
 from ens_evidence.categorization import CategorizationNotCurrent
 from ens_evidence.categorization.dossier import DossierCategoryMismatch, require_dossier_category
 from ens_evidence.checks.source import StoredCheckResults
@@ -213,19 +210,14 @@ def _record_problems(
 def _free_text_problems(record: Transition) -> list[str]:
     """Los mismos detectores que al escribir, también al leer: un registro forjado a mano con
     las huellas recalculadas no llega a `show` ni a la pre-auditoría con secretos o datos."""
-    problems = _name_problems(record.actor, "actor")
+    problems = check_declared_name(record.actor, "actor")
     if record.elevated_to:
-        problems += _name_problems(record.elevated_to, "elevated_to")
+        problems += check_declared_name(record.elevated_to, "elevated_to")
     if record.conclusions:
         problems += free_text_problems("conclusiones", record.conclusions)
     for index, measure in enumerate(record.corrective_measures):
         problems += free_text_problems(f"medidas correctoras[{index}]", measure.description)
     return problems
-
-
-def _name_problems(name: str, label: str = "--by") -> list[str]:
-    """Los errores de `check_declared_name`, rotulados con el campo que se está leyendo."""
-    return [label + problem.removeprefix("--by") for problem in check_declared_name(name)]
 
 
 def _reconstruct(
@@ -281,8 +273,10 @@ def record_transition(
     """Añade una transición. `TransitionRejected` si algo falla: no se escribe nada.
 
     `at` es cuándo la persona hizo el acto; `now`, cuándo se registra. La preparación (READY) se
-    evalúa aquí, nunca la aporta el llamador. La deriva se comprueba primero: si el expediente ya
-    no describe el estado actual, ese es el motivo, sea cual sea la persona o el estado."""
+    evalúa aquí, nunca la aporta el llamador. Orden: primero la integridad (la cadena y los
+    derivados: `dossier.md`, el paquete y las vistas), luego la deriva (si el expediente ya no
+    describe el estado actual, ese es el motivo, sea cual sea la persona o el estado) y después
+    las comprobaciones de la transición."""
     scan = scan_transitions(store, dossier)
     if scan.problems or scan.snapshot is None or scan.dossier is None:
         raise TransitionRejected(
@@ -291,15 +285,13 @@ def record_transition(
     snapshot, current = scan.snapshot, scan.dossier
     previous = scan.entries[-1] if scan.entries else None
 
-    altered = markdown_problems(store, dossier, snapshot) + view_problems(
-        store, dossier, snapshot, list(scan.entries)
-    )
+    altered = derived_problems(store, dossier, snapshot, list(scan.entries))
     if altered:
         raise TransitionRejected(
             [
                 f"{dossier} tiene ficheros derivados alterados a mano y no admite más "
-                "transiciones; restáuralos o regenéralos con `assessment dossier render` y "
-                "comprueba con `assessment dossier verify`",
+                "transiciones; restaura lo indicado desde la copia (runbook) y comprueba con "
+                "`assessment dossier verify`",
                 *altered,
             ]
         )

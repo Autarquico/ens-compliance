@@ -2,10 +2,10 @@
 
 from pydantic import AwareDatetime, Field, model_validator
 
-from ens_evidence.assessment.dossier.model import DossierSnapshot, snapshot_export
+from ens_evidence.assessment.dossier.model import DossierSnapshot
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.dossier import Transition
-from ens_evidence.models.enums import DossierState, Readiness
+from ens_evidence.models.enums import DossierState
 
 
 class TransitionEntry(Strict):
@@ -44,11 +44,3 @@ class TransitionRecord(Strict):
         if (self.seq == 1) != (self.previous_sha256 is None):
             raise ValueError("only the first record has no previous_sha256")
         return self
-
-
-def snapshot_readiness(snapshot: DossierSnapshot) -> Readiness | None:
-    """La preparación incrustada en la instantánea; None si la sección 7 no se puede leer."""
-    try:
-        return snapshot_export(snapshot).readiness
-    except (ValueError, KeyError):
-        return None

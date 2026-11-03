@@ -10,9 +10,11 @@ import re
 from collections.abc import Sequence
 
 from ens_evidence.assessment.dossier.model import DossierSnapshot
+from ens_evidence.assessment.dossier.package import has_package, verify_package
 from ens_evidence.assessment.dossier.render import render_snapshot_md, render_view_md
 from ens_evidence.assessment.dossier.store import ASSESSMENTS_PREFIX, DOSSIER_ID, MARKDOWN_NAME
 from ens_evidence.assessment.dossier.view import DossierView, TransitionEntry
+from ens_evidence.models.enums import Category
 from ens_evidence.workspace import AlreadyExists, NotFound, WorkspaceStore
 
 VIEW_DIR = "view"
@@ -56,7 +58,11 @@ def markdown_problems(store: WorkspaceStore, dossier: str, snapshot: DossierSnap
     except NotFound:
         return []
     if stored != render_snapshot_md(snapshot).encode("utf-8"):
-        return [f"{key}: no coincide con dossier.json; restáuralo desde la copia o regenéralo"]
+        return [
+            f"{key}: no coincide con dossier.json; restaura `{ASSESSMENTS_PREFIX}/{dossier}/` "
+            f"desde la copia, o borra {MARKDOWN_NAME} y recréalo con "
+            f"`assessment dossier render {dossier}`"
+        ]
     return []
 
 
@@ -79,6 +85,22 @@ def view_problems(
         if stored != expected or hashlib.sha256(stored).hexdigest()[:12] != found[2]:
             problems.append(f"{key}: la vista no coincide con la que sale del expediente")
     return problems
+
+
+def derived_problems(
+    store: WorkspaceStore,
+    dossier: str,
+    snapshot: DossierSnapshot,
+    chain: Sequence[TransitionEntry] | None,
+) -> list[str]:
+    """Todo lo derivado que no es lo que saldría del expediente: `dossier.md`, el paquete (en
+    MEDIA/ALTA siempre; en BÁSICA, si existe) y las vistas (si la cadena es legible; `None`
+    si no). Es la única regla de integridad de los derivados: la comparten `status` y las
+    transiciones."""
+    problems = markdown_problems(store, dossier, snapshot)
+    if has_package(store, dossier) or snapshot.category is not Category.BASICA:
+        problems += verify_package(store, dossier).problems
+    return problems if chain is None else problems + view_problems(store, dossier, snapshot, chain)
 
 
 def dossier_exists(store: WorkspaceStore, dossier: str) -> bool:

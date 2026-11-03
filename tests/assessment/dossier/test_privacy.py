@@ -6,7 +6,7 @@ from checks.acceptance_helpers import COLLECTED
 from matrix.evaluate_helpers import NOW
 
 from ens_evidence.assessment.dossier import build_snapshot
-from ens_evidence.assessment.dossier.privacy import export_problems
+from ens_evidence.assessment.dossier.privacy import export_problems, free_text_problems
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.models.enums import Readiness
 
@@ -56,3 +56,9 @@ def test_una_ejecucion_con_fecha_futura_genera_un_expediente_not_ready(ready):
     )
 
     assert snapshot.sections[6].content["matrix"]["readiness"] == Readiness.NOT_READY
+
+
+def test_un_texto_suelto_con_datos_se_rechaza_con_un_solo_separador():
+    problems = free_text_problems("conclusiones", "escribe a ana@example.com")
+
+    assert problems == ["conclusiones: contiene un correo electrónico"]

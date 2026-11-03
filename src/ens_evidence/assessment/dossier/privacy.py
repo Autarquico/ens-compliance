@@ -73,4 +73,4 @@ def secret_problems(document: object, where: str = "instantánea.") -> list[str]
 
 def free_text_problems(label: str, text: str) -> list[str]:
     """Un texto libre que escribe una persona (conclusiones, medidas): credenciales y datos."""
-    return sorted(set(secret_problems(text, f"{label}: ") + export_problems(f"{label}: ", text)))
+    return sorted(set(secret_problems(text, label) + export_problems(label, text)))

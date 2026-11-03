@@ -275,13 +275,14 @@ def diff_projection(a: DossierSnapshot, b: DossierSnapshot) -> dict[str, list[st
     deriva. Las medidas de la sección 7 se nombran por su id, no por su posición."""
     left, right = drift_projection(a), drift_projection(b)
     differences: dict[str, list[str]] = {}
-    general = _diff(_general(left), _general(right), ())
+    general = _lines(_diff(_general(left), _general(right), ()))
     if general:
         differences[GENERAL] = general
     for before, after in zip(left["sections"], right["sections"], strict=True):
-        lines = _diff(_by_source(before), _by_source(after), ())
-        if len(lines) > 1:
-            lines = [line for line in lines if not line.split(":")[0].endswith(_NOISE)] or lines
+        changes = _diff(_by_source(before), _by_source(after), ())
+        if len(changes) > 1:
+            changes = [change for change in changes if change[0][-1:] != (_NOISE,)] or changes
+        lines = _lines(changes)
         if lines:
             differences[f"{before['number']}. {before['title']}"] = lines
     return differences
@@ -307,7 +308,14 @@ def _where(path: tuple[str, ...]) -> str:
     return " › ".join(FIELD_LABELS.get(part, part) for part in path)
 
 
-def _diff(before: object, after: object, path: tuple[str, ...]) -> list[str]:
+def _lines(changes: list[tuple[tuple[str, ...], str]]) -> list[str]:
+    return [line for _, line in changes]
+
+
+def _diff(
+    before: object, after: object, path: tuple[str, ...]
+) -> list[tuple[tuple[str, ...], str]]:
+    """Cada cambio con su ruta, para decidir sobre la ruta y no sobre el texto."""
     if isinstance(before, dict) and isinstance(after, dict):
         return [
             line
@@ -323,10 +331,10 @@ def _diff(before: object, after: object, path: tuple[str, ...]) -> list[str]:
             for line in _diff(x, y, (*path, f"[{index + 1}]"))
         ]
     if isinstance(before, list) and isinstance(after, list):
-        return [f"{_where(path)}: {len(before)} → {len(after)} elementos"]
+        return [(path, f"{_where(path)}: {len(before)} → {len(after)} elementos")]
     if before == after:
         return []
-    return [f"{_where(path)}: {_show(before)} → {_show(after)}"]
+    return [(path, f"{_where(path)}: {_show(before)} → {_show(after)}")]
 
 
 def _show(value: object) -> str:

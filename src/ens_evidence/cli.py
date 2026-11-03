@@ -2658,10 +2658,11 @@ def print_notice(snapshot: DossierSnapshot) -> None:
 def dossier_generate(ctx: typer.Context) -> None:
     """Genera la instantánea del expediente con el estado actual del workspace.
 
-    Exige categorización vigente y Declaración de Aplicabilidad legible. Se puede generar \
-    aunque el sistema aún no esté preparado: `generate` y `status` lo avisan. En MEDIA/ALTA \
-    genera también el paquete por medida; en BÁSICA, `dossier package` lo genera bajo \
-    demanda."""
+    Exige categorización vigente y Declaración de Aplicabilidad legible.
+
+    Se puede generar aunque el sistema aún no esté preparado: `generate` y `status` lo avisan.
+
+    En MEDIA/ALTA genera también el paquete por medida; en BÁSICA, `dossier package` lo genera bajo demanda."""  # noqa: E501
     store = open_workspace(ctx)
     now = clock()
     try:
@@ -2726,9 +2727,7 @@ def dossier_list(ctx: typer.Context) -> None:
 def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     """Estado, integridad, deriva por sección, siguiente paso y huellas de un expediente.
 
-    Sale con 1 si hay deriva (el expediente ya no describe el estado actual), problemas de \
-    integridad (también del paquete) o, listo para declarar, un sistema que ya no está \
-    preparado."""
+    Sale con 1 si hay deriva (el expediente ya no describe el estado actual), problemas de integridad (también del paquete) o, listo para declarar, un sistema que ya no está preparado."""  # noqa: E501
     store = open_workspace(ctx)
     status = dossier_status(store, dossier, now=clock())
     if not status.known:
@@ -2776,8 +2775,7 @@ def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
         ("última transición", prints.last_transition),
     ):
         typer.echo(f"Huella {label}: {value or '—'}")
-    if status.known:
-        print_missing_markdown(store, dossier)
+    print_missing_markdown(store, dossier)
     typer.echo(DOSSIER_FOOTER)
     if (
         status.integrity

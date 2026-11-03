@@ -13,9 +13,10 @@ from matrix.evaluate_helpers import NOW
 from orgdocs.orgdocs_helpers import SIGNATORY
 
 from ens_evidence.assessment.dossier import build_snapshot
+from ens_evidence.assessment.dossier.package import save_package
 from ens_evidence.assessment.dossier.store import save_snapshot
 from ens_evidence.assessment.dossier.transitions import record_transition
-from ens_evidence.models.enums import DossierState, Role
+from ens_evidence.models.enums import Category, DossierState, Role
 from ens_evidence.orgdocs import approve_document
 from ens_evidence.workspace import LocalStore
 
@@ -52,7 +53,12 @@ def approve_designation(store) -> None:
 
 
 def generate(store) -> str:
-    return save_snapshot(store, build_snapshot(store, INPUTS))
+    """Como `dossier generate`: en MEDIA/ALTA guarda también el paquete por medida."""
+    snapshot = build_snapshot(store, INPUTS)
+    dossier = save_snapshot(store, snapshot)
+    if snapshot.category is not Category.BASICA:
+        save_package(store, dossier, snapshot)
+    return dossier
 
 
 def self_assess(store, dossier, *, at=AT, now=RECORDED, **kwargs):

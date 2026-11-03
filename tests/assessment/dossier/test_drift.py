@@ -101,7 +101,6 @@ def test_un_check_all_posterior_a_la_generacion_no_rompe_la_reproduccion(ready):
     assert rebuild_and_diff(ready.store, snapshot).current
     rebuilt = build_snapshot(ready.store, snapshot.inputs)
     assert snapshot_sha256(rebuilt) == stored_snapshot_sha256(ready.store, dossier)
-    assert ready.run("assessment", "dossier", "package", dossier).exit_code == 0
     verified = ready.run("assessment", "dossier", "verify", dossier)
     assert verified.exit_code == 0, verified.output
 

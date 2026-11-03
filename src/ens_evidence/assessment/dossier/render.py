@@ -14,6 +14,7 @@ from ens_evidence.assessment.dossier.model import (
     DossierSnapshot,
     Section,
     SourceRef,
+    snapshot_readiness,
 )
 from ens_evidence.assessment.dossier.notices import NOT_READY_NOTICE
 from ens_evidence.assessment.dossier.sections_md import (
@@ -22,11 +23,7 @@ from ens_evidence.assessment.dossier.sections_md import (
     scalar,
     section_body,
 )
-from ens_evidence.assessment.dossier.view import (
-    DossierView,
-    TransitionEntry,
-    snapshot_readiness,
-)
+from ens_evidence.assessment.dossier.view import DossierView, TransitionEntry
 from ens_evidence.matrix.messages import role_label
 from ens_evidence.matrix.render import md_escape
 from ens_evidence.models.enums import DossierState, Readiness, Role

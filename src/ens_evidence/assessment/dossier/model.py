@@ -12,7 +12,7 @@ from pydantic import AwareDatetime, Field, JsonValue, field_validator, model_val
 from ens_evidence.catalog.controls import CatalogVersion
 from ens_evidence.matrix import MatrixExport
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
-from ens_evidence.models.enums import Category
+from ens_evidence.models.enums import Category, Readiness
 
 SECTION_TITLES = (
     "Identificación",
@@ -108,3 +108,11 @@ def snapshot_export(snapshot: DossierSnapshot) -> MatrixExport:
     if not isinstance(content, dict):
         raise ValueError("la sección de resultados no tiene el formato esperado")
     return MatrixExport.model_validate(content["matrix"])
+
+
+def snapshot_readiness(snapshot: DossierSnapshot) -> Readiness | None:
+    """La preparación incrustada en la instantánea; None si la sección 7 no se puede leer."""
+    try:
+        return snapshot_export(snapshot).readiness
+    except (ValueError, KeyError):
+        return None
