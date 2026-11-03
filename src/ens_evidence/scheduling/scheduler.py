@@ -7,6 +7,7 @@ evento, periodos, tipos de excepción), nunca mensajes de excepción ni el entor
 
 import hashlib
 import json
+import os
 import signal
 import threading
 from collections.abc import Callable, Collection, Iterator, Mapping
@@ -43,11 +44,13 @@ from ens_evidence.workspace.cycle_lock import (
     CycleContext,
     CycleLock,
     acquire_or_wait,
+    resolve_state_dir,
 )
 
 MAX_SLEEP_SECONDS = 60.0
 LATE_AFTER = timedelta(minutes=5)
 LOCK_WAIT_MINUTES = 10.0
+HEARTBEAT_FILE = "scheduler-heartbeat"
 Key = tuple[JobKind, str]
 Status = Literal["completed", "failed", "busy", "interrupted"]
 
@@ -75,6 +78,24 @@ def config_sha256(cfg: ScheduleConfig) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def file_heartbeat(env: Mapping[str, str]) -> Callable[[], None]:
+    """Latido para el healthcheck del contenedor: renueva la fecha de modificación de un fichero
+    del directorio de estado. Un fallo al escribirlo no para el planificador: el fichero
+    envejece y es el healthcheck quien lo avisa."""
+    path = resolve_state_dir(env) / HEARTBEAT_FILE
+
+    def beat() -> None:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            temporary = path.with_name(f".{path.name}.tmp")
+            temporary.write_text(f"{os.getpid()}\n", encoding="utf-8")
+            os.replace(temporary, path)
+        except OSError:
+            pass
+
+    return beat
+
+
 class Scheduler:
     def __init__(
         self,
@@ -85,7 +106,9 @@ class Scheduler:
         stop: threading.Event,
         *,
         log: Callable[[str], None] = print_log,
+        heartbeat: Callable[[], None] | None = None,
     ) -> None:
+        self._heartbeat = heartbeat
         self._clock = clock
         self._executor = executor
         self._load_config = load_config
@@ -122,6 +145,7 @@ class Scheduler:
             self._event("tick_skipped", reason="reentrant")
             return []
         self._ticking = True
+        self._beat()
         try:
             return self._tick()
         finally:
@@ -145,10 +169,15 @@ class Scheduler:
             if self._stop.is_set() or not self._ready(job, self._clock.now()):
                 continue
             result = self._execute(job, cfg)
+            self._beat()
             executed.append((job, result))
             if result.status == "interrupted":
                 break
         return executed
+
+    def _beat(self) -> None:
+        if self._heartbeat is not None:
+            self._heartbeat()
 
     def _pending(self, now: datetime, cfg: ScheduleConfig) -> list[Job]:
         """Los vencidos del periodo en curso y los que reintentan de un periodo anterior (que
@@ -278,7 +307,9 @@ class CycleExecutor:
         plugins: Plugins | None = None,
         lock_wait_minutes: float = LOCK_WAIT_MINUTES,
         lock_factory: Callable[[Settings, Mapping[str, str]], CycleLock] = CycleLock.for_settings,
+        heartbeat: Callable[[], None] | None = None,
     ) -> None:
+        self._heartbeat = heartbeat
         self._store = store
         self._settings = settings
         self._env = env
@@ -313,6 +344,7 @@ class CycleExecutor:
                 trigger=trigger,
                 plugins=self._plugins_for(job),
                 config_warning=config_warning,
+                heartbeat=self._heartbeat,
             )
         except _Stopped:
             return JobResult("interrupted")

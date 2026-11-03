@@ -1,0 +1,22 @@
+# Deny-all: toda ruta responde 403 y queda en el log (ADR 0016).
+# /agent/* no se publica hasta osquery-server; no hay UI pública.
+# Escucha en :8080 dentro de la red interna `edge`; ningún puerto se publica en el host.
+{
+	auto_https off
+	admin localhost:2019
+}
+
+:8080 {
+	log {
+		output stdout
+		format filter {
+			wrap json
+			# Ni query string ni cabeceras (pueden llevar tokens de Access).
+			request>uri regexp \?.*$ ""
+			request>headers delete
+			request>tls delete
+			resp_headers delete
+		}
+	}
+	respond "Forbidden" 403
+}

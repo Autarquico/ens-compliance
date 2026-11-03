@@ -68,6 +68,34 @@ CONFIG_INVALID_NOTICE = (
     "última configuración válida."
 )
 _STAMP = "%Y%m%dT%H%M%S"
+BEAT_EVERY_SECONDS = 60.0
+Heartbeat = Callable[[], None]
+
+
+class _BeatingClock:
+    """Reloj que late con cada lectura y con cada tramo de espera.
+
+    El latido sale del mismo hilo que hace el trabajo: si el ciclo se cuelga, deja de latir.
+    Las esperas largas (reintentos de conectores) se parten en tramos de `BEAT_EVERY_SECONDS`.
+    """
+
+    def __init__(self, clock: Clock, heartbeat: Heartbeat) -> None:
+        self._clock = clock
+        self._heartbeat = heartbeat
+
+    def now(self) -> datetime:
+        self._heartbeat()
+        return self._clock.now()
+
+    def sleep(self, seconds: float) -> None:
+        remaining = seconds
+        while True:
+            self._heartbeat()
+            chunk = min(remaining, BEAT_EVERY_SECONDS)
+            self._clock.sleep(chunk)
+            remaining -= chunk
+            if remaining <= 0:
+                return
 
 
 @dataclass(frozen=True)
@@ -260,13 +288,17 @@ def run_cycle(
     trigger: Trigger,
     plugins: Plugins | None = None,
     config_warning: bool = False,
+    heartbeat: Heartbeat | None = None,
 ) -> CycleOutcome:
     """Un intento del ciclo de `period` (`YYYY-MM-DD` diario, `YYYY-MM` mensual).
 
     El diario recoge, evalúa, informa y copia. El mensual solo genera el informe del mes natural
     anterior (`started` -> `reported`). Con un `run_id` del mismo `period` sin terminar, se
-    reanudan solo las etapas pendientes.
+    reanudan solo las etapas pendientes. `heartbeat` se invoca al empezar, en cada etapa, entre
+    conectores y durante las esperas.
     """
+    if heartbeat is not None:
+        clock = _BeatingClock(clock, heartbeat)
     if not (is_day(period) if job == "daily" else is_month(period)):
         raise ValueError("period no corresponde al tipo de trabajo")
     attempt_at = clock.now()

@@ -243,6 +243,7 @@ from ens_evidence.scheduling.cycle import run_cycle
 from ens_evidence.scheduling.scheduler import (
     CycleExecutor,
     Scheduler,
+    file_heartbeat,
     render_status,
     scheduler_status,
     stop_on_signals,
@@ -2671,12 +2672,14 @@ def scheduler_run(ctx: typer.Context) -> None:
     load_schedule_config(store)
     stop = threading.Event()
     system_clock = SystemClock(stop)
+    heartbeat = file_heartbeat(os.environ)
     scheduler = Scheduler(
         system_clock,
-        CycleExecutor(store, settings, os.environ, system_clock, stop),
+        CycleExecutor(store, settings, os.environ, system_clock, stop, heartbeat=heartbeat),
         lambda: load_schedule_config(store).config,
         workspace_done_periods(store, system_clock),
         stop,
+        heartbeat=heartbeat,
     )
     with stop_on_signals(stop):
         scheduler.run()

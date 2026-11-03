@@ -45,6 +45,8 @@ packages = ["src/ens_evidence"]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]
+addopts = "-m 'not docker'"
+markers = ["docker: integración con Docker real (fuera del gate; pytest -m docker)"]
 
 [tool.ruff]
 line-length = 100

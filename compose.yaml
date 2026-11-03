@@ -1,0 +1,94 @@
+# Caja de v0.1 (ADR 0016). Se opera con deploy/box.sh; no hay puertos publicados.
+# ENS_BOX_PROJECT solo cambia el nombre del proyecto y del volumen (pruebas aisladas).
+name: ${ENS_BOX_PROJECT:-ens-box}
+
+services:
+  app:
+    image: ens-evidence:${ENS_VERSION:?usa deploy/box.sh}
+    init: true
+    restart: unless-stopped
+    stop_grace_period: 120s
+    env_file: deploy/.env
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - data:/data
+    networks: [backend]
+    healthcheck:
+      # El latido lo renueva el bucle del scheduler en cada vuelta y, durante un ciclo, el propio
+      # ciclo entre etapas, entre conectores y en cada espera (scheduling/cycle.py), siempre
+      # desde el mismo hilo: si el ciclo se cuelga, el latido envejece. Lo que no late son las
+      # operaciones largas e indivisibles (checks, informes, copia). Umbral: el máximo entre
+      # 15 min y el timeout por conector (collect.timeout_minutes, 15 por defecto) más 5 min
+      # de margen = 1200 s. Si subes ese timeout en reports/schedule.yaml, sube el umbral a
+      # timeout_minutes * 60 + 300 en la línea de abajo.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import os,sys,time; sys.exit(time.time() - os.stat('/data/state/scheduler-heartbeat').st_mtime >= 1200)"
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 60s
+
+  caddy:
+    image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    # El binario de la imagen oficial lleva la capacidad de fichero cap_net_bind_service; sin
+    # ella en el conjunto permitido, el exec falla con no-new-privileges. Escucha en :8080.
+    cap_add: [NET_BIND_SERVICE]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy-data:/data
+      - caddy-config:/config
+    networks: [edge]
+    healthcheck:
+      # Toda ruta da 403, así que se sondea la API de administración (solo en localhost).
+      test: ["CMD", "wget", "-q", "-O", "/dev/null", "http://127.0.0.1:2019/config/"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 10s
+
+  cloudflared:
+    profiles: [tunnel]
+    image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
+    command: tunnel --no-autoupdate --metrics 127.0.0.1:2000 run
+    restart: unless-stopped
+    env_file: deploy/tunnel.env
+    read_only: true
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      caddy:
+        condition: service_healthy
+    networks: [edge, tunnel]
+    healthcheck:
+      test: ["CMD", "cloudflared", "tunnel", "--metrics", "127.0.0.1:2000", "ready"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+# Salidas de red:
+#   app         backend: sin entrada; salida a Internet (conectores y R2).
+#   caddy       edge:    interna, sin salida a Internet; escucha en :8080 solo en esta red.
+#   cloudflared edge + tunnel: llega a caddy:8080 y sale hacia Cloudflare.
+networks:
+  backend: {}
+  edge:
+    internal: true
+  tunnel: {}
+
+volumes:
+  data:
+    name: ${ENS_BOX_PROJECT:-ens-box}_data
+  caddy-data: {}
+  caddy-config: {}

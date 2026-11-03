@@ -44,6 +44,7 @@ def cycle(
     cfg=DEFAULT_CONFIG,
     job="daily",
     period=PERIOD,
+    **extra,
 ):
     return run_cycle(
         context,
@@ -57,4 +58,5 @@ def cycle(
         cfg=cfg,
         trigger="scheduled",
         plugins=plugins,
+        **extra,
     )
