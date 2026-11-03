@@ -7,8 +7,8 @@ escribir nada. Los mensajes nombran el campo, nunca el valor.
 import re
 from typing import Any
 
-from ens_evidence.incidents.model import OPAQUE_ID_PATTERN, TITLE_MAX
-from ens_evidence.privacy_text import text_problems
+from ens_evidence.incidents.model import OPAQUE_ID_PATTERN
+from ens_evidence.privacy_text import check_declared_name, text_problems
 from ens_evidence.scope.secrets import find_secrets
 
 _TEXT = "text"  # texto libre: se busca de todo
@@ -130,14 +130,4 @@ def check_incident_payload(payload: Any) -> tuple[list[str], list[str]]:
     return walk.errors, walk.warnings
 
 
-def check_declared_name(name: str) -> list[str]:
-    """Errores de `--by`: un nombre declarado no puede ser vacío, largo, un secreto ni un
-    identificador personal (correo, DNI/NIE, IBAN, teléfono). Nunca incluye el valor."""
-    if not name.strip():
-        return ["--by: indica quién registra (nombre declarado)"]
-    errors = (
-        [f"--by: demasiado largo (máximo {TITLE_MAX} caracteres)"] if len(name) > TITLE_MAX else []
-    )
-    errors += [f"{p}: parece un secreto; quítalo" for p in find_secrets(name, "--by")]
-    errors += [f"--by: {problem}; indica solo un nombre" for problem in text_problems(name)[0]]
-    return errors
+__all__ = ["check_declared_name", "check_incident_payload"]

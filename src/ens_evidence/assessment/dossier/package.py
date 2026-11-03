@@ -13,12 +13,17 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from ens_evidence.assessment.dossier.build import text_leaks, walk_texts
-from ens_evidence.assessment.dossier.model import COMMITMENT, DossierSnapshot
+from ens_evidence.assessment.dossier.model import (
+    COMMITMENT,
+    DossierSnapshot,
+    snapshot_export,
+)
+from ens_evidence.assessment.dossier.privacy import export_problems, secret_problems
 from ens_evidence.assessment.dossier.render import snapshot_sha256
 from ens_evidence.assessment.dossier.store import (
     ASSESSMENTS_PREFIX,
     DossierUnreadable,
+    load_snapshot,
     stored_snapshot_sha256,
 )
 from ens_evidence.checks.store import CHECKS_PREFIX
@@ -27,13 +32,10 @@ from ens_evidence.evidence.verify import VerifyReport, verify_one
 from ens_evidence.matrix import MatrixExport
 from ens_evidence.matrix.render import ExportedRow
 from ens_evidence.models.contracts import Strict
-from ens_evidence.privacy_text import has_credential
-from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import NotFound, WorkspaceStore
 
 PACKAGE_DIR = "package"
 INDEX_NAME = "index.json"
-RESULTS_SECTION = 7
 
 
 class PackageRejected(Exception):
@@ -81,11 +83,6 @@ def _digest(data: bytes) -> str:
 
 def _source_digests(snapshot: DossierSnapshot) -> dict[str, str]:
     return {s.key: s.sha256 for section in snapshot.sections for s in section.sources}
-
-
-def _export(snapshot: DossierSnapshot) -> MatrixExport:
-    content = snapshot.sections[RESULTS_SECTION - 1].content
-    return MatrixExport.model_validate(content["matrix"])  # type: ignore[index]
 
 
 def _row_evidence_ids(row: ExportedRow, export: MatrixExport) -> list[str]:
@@ -164,18 +161,12 @@ def _measure_file(
 
 def _leaks(name: str, document: Any) -> list[str]:
     where = f"{name}: "
-    found = [f"{where}{path}: parece un secreto" for path in find_secrets(document)]
-    found += text_leaks(where, document)
-    found += [
-        f"{where}{path}: contiene una credencial"
-        for path, text in walk_texts(document)
-        if has_credential(text)
-    ]
+    found = secret_problems(document, where) + export_problems(where, document)
     return sorted(set(found))
 
 
 def build_package(snapshot: DossierSnapshot) -> Package:
-    export = _export(snapshot)
+    export = snapshot_export(snapshot)
     digests = _source_digests(snapshot)
     files: dict[str, bytes] = {}
     manifests: dict[str, _Reference] = {}
@@ -222,6 +213,11 @@ def _prefix(dossier: str) -> str:
     return f"{ASSESSMENTS_PREFIX}/{dossier}/{PACKAGE_DIR}"
 
 
+def has_package(store: WorkspaceStore, dossier: str) -> bool:
+    """Hay algo bajo `package/`, aunque falte el índice: un paquete sin índice es incompleto."""
+    return bool(store.list(_prefix(dossier)))
+
+
 def save_package(store: WorkspaceStore, dossier: str, snapshot: DossierSnapshot) -> None:
     """Solo adición: `AlreadyExists` si ya hay un paquete. El índice se escribe el último."""
     if stored_snapshot_sha256(store, dossier) != snapshot_sha256(snapshot):
@@ -245,6 +241,28 @@ def _verify_reference(
     data = _read(store, reference.key, problems)
     if data is not None and sha256_hex(data) != reference.sha256:
         problems.append(f"{reference.key}: el {kind} ha cambiado desde que se generó el paquete")
+
+
+def _differences_from_rebuild(
+    store: WorkspaceStore, dossier: str, prefix: str, known: list[str]
+) -> list[str]:
+    """Los ficheros guardados son byte a byte los que da `build_package` del expediente."""
+    try:
+        expected = build_package(load_snapshot(store, dossier)).files
+    except PackageRejected as error:
+        return [f"{prefix}: el paquete no se puede reconstruir ({'; '.join(error.errors)})"]
+    found: list[str] = []
+    for name, data in expected.items():
+        key = f"{prefix}/{name}"
+        if any(problem.startswith(f"{key}:") for problem in known):
+            continue
+        try:
+            stored = store.read_bytes(key)
+        except NotFound:
+            continue
+        if stored != data:
+            found.append(f"{key}: no coincide con el que sale del expediente")
+    return found
 
 
 def verify_package(store: WorkspaceStore, dossier: str) -> VerifyReport:
@@ -279,6 +297,7 @@ def verify_package(store: WorkspaceStore, dossier: str) -> VerifyReport:
             problems.append(f"{prefix}/{entry.file}: ha cambiado desde que se generó el paquete")
             continue
         cited |= {e["evidence_id"] for e in json.loads(data)["evidence"]}
+    problems += _differences_from_rebuild(store, dossier, prefix, problems)
     listed_ids = {m.evidence_id for m in index.manifests}
     problems += [
         f"{prefix}/{INDEX_NAME}: {i} lo cita una medida y falta en el índice"
@@ -299,6 +318,7 @@ __all__ = [
     "PackageIndex",
     "PackageRejected",
     "build_package",
+    "has_package",
     "save_package",
     "verify_package",
 ]

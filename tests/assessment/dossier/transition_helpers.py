@@ -1,5 +1,9 @@
 """Mundos y atajos de las transiciones.
 
+`test_transitions.py` ya no usa `stand_ins`, `reviewed` ni `declared_world`: parte de los árboles
+reales de `stages.py`. Siguen aquí solo para `test_cli.py` y `test_status.py`, que migrará su
+propietario.
+
 `stand_ins` sustituye tres comprobaciones que un mundo BÁSICA ligero no puede cumplir (revisión
 en cada fila, preparación de la instantánea y de la evaluación actual): el mundo READY BÁSICA real
 lo construye qa (Q1). Los demás tests usan el código sin sustituir.
@@ -95,7 +99,9 @@ def analyze(store, dossier, *, at=AT + timedelta(minutes=5), now=RECORDED, **kwa
 
 
 def declare(store, dossier, *, at=AT + timedelta(minutes=10), now=RECORDED, **kwargs):
-    values = {"by": DIRECTION} | kwargs
+    """Los mundos de prueba dejan secciones INCOMPLETE (p. ej. Riesgos): se reconocen salvo que
+    el test diga lo contrario."""
+    values = {"by": DIRECTION, "acknowledge_incomplete": True} | kwargs
     return record_transition(
         store,
         dossier,

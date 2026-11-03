@@ -131,6 +131,13 @@
     "Transition": {
       "additionalProperties": false,
       "properties": {
+        "acknowledged_incomplete": {
+          "items": {
+            "type": "integer"
+          },
+          "title": "Acknowledged Incomplete",
+          "type": "array"
+        },
         "actor": {
           "title": "Actor",
           "type": "string"

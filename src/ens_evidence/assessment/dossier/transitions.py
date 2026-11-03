@@ -13,17 +13,20 @@ expediente no admite más transiciones hasta recuperarlo desde la copia (runbook
 La herramienta solo registra el acto humano; los nombres son declarados, no autenticados.
 """
 
-import hashlib
-import re
 from collections.abc import Sequence
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import datetime
 
-import yaml
 from pydantic import AwareDatetime, Field, ValidationError, model_validator
 
+from ens_evidence import chain
 from ens_evidence.assessment.dossier.drift import rebuild_and_diff
-from ens_evidence.assessment.dossier.model import DossierSnapshot
+from ens_evidence.assessment.dossier.model import (
+    DossierSnapshot,
+    SectionState,
+    snapshot_export,
+)
+from ens_evidence.assessment.dossier.notices import CERTIFICATION_NOTE
 from ens_evidence.assessment.dossier.render import TransitionEntry
 from ens_evidence.assessment.dossier.store import (
     ASSESSMENTS_PREFIX,
@@ -35,10 +38,9 @@ from ens_evidence.categorization import CategorizationNotCurrent
 from ens_evidence.categorization.dossier import DossierCategoryMismatch, require_dossier_category
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.evidence.verify import verify_one
-from ens_evidence.incidents.privacy import check_declared_name
 from ens_evidence.matrix import CheckResultsSource, assess
 from ens_evidence.matrix.evaluate import AssessmentResult
-from ens_evidence.matrix.store import instant_stamp
+from ens_evidence.matrix.messages import KIND_FALLBACK
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.dossier import (
     ORDER,
@@ -58,18 +60,13 @@ from ens_evidence.orgdocs.approval import (
     document_status,
 )
 from ens_evidence.orgdocs.template import load_templates
-from ens_evidence.privacy_text import has_credential, text_problems
+from ens_evidence.privacy_text import check_declared_name, has_credential, text_problems
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.secrets import find_secrets
-from ens_evidence.workspace import AlreadyExists, NotFound, WorkspaceStore
-from ens_evidence.yaml_unique import safe_load_unique
+from ens_evidence.workspace import WorkspaceStore
 
 DESIGNATION_DOCUMENT = "designacion-responsables"
 TRANSITIONS_DIR = "transitions"
-RECORD_NAME = re.compile(r"(\d{6})-(\d{8}T\d{12}Z)-([0-9a-f]{12})\.yaml")
-RESERVATION_NAME = re.compile(r"seq/(\d{6})")
-_RESERVED = b"reservada\n"
-_RESULTS_SECTION = 6  # índice de la sección 7, «Resultado por medida»
 _SHOWN_ROWS = 10
 
 _STEP = {
@@ -81,9 +78,9 @@ _EXPECTED_ROLE = {
     DossierState.ANALYZED: Role.SECURITY_OFFICER,
     DossierState.DECLARED: Role.MANAGEMENT,
 }
-CERTIFICATION_NOTE = (
-    "en categoría MEDIA/ALTA la conformidad exige auditoría de certificación (art. 38.1): "
-    "la herramienta no registra una declaración"
+MANUAL_REVIEW_REQUIRED = (
+    "--manual-judgment-review: en BÁSICA el análisis exige confirmar la revisión humana del "
+    "juicio; sin ella no se podrá declarar y el expediente habría que generarlo de nuevo"
 )
 
 
@@ -109,11 +106,7 @@ class TransitionRecord(Strict):
         return self
 
 
-@dataclass(frozen=True)
-class _Stored:
-    key: str
-    file_sha256: str
-    record: TransitionRecord
+_Stored = chain.Stored[TransitionRecord]
 
 
 @dataclass(frozen=True)
@@ -145,18 +138,11 @@ def _prefix(dossier: str) -> str:
 
 
 def seq_key(dossier: str, seq: int) -> str:
-    return f"{_prefix(dossier)}/seq/{seq:06d}"
+    return chain.seq_key(_prefix(dossier), seq)
 
 
 def record_key(record: TransitionRecord, data: bytes) -> str:
-    sha12 = hashlib.sha256(data).hexdigest()[:12]
-    stamp = instant_stamp(record.recorded_at)
-    return f"{_prefix(record.dossier_id)}/{record.seq:06d}-{stamp}-{sha12}.yaml"
-
-
-def _render(record: TransitionRecord) -> bytes:
-    payload = record.model_dump(mode="json")
-    return yaml.safe_dump(payload, sort_keys=True, allow_unicode=True).encode("utf-8")
+    return chain.record_key(_prefix(record.dossier_id), record.seq, record.recorded_at, data)
 
 
 # --- integridad --------------------------------------------------------------------------------
@@ -171,13 +157,20 @@ def scan_transitions(store: WorkspaceStore, dossier: str) -> TransitionScan:
         snapshot_sha = stored_snapshot_sha256(store, dossier)
     except DossierUnreadable as exc:
         return TransitionScan(dossier, None, None, (), tuple(exc.problems), None, None)
-    problems: list[str] = []
-    stored, reserved = _read_keys(store, dossier, problems)
-    by_seq: dict[int, list[_Stored]] = {}
-    for item in stored:
-        by_seq.setdefault(item.record.seq, []).append(item)
-    problems += _sequence_problems(by_seq, reserved)
-    problems += _record_problems(stored, by_seq, snapshot, snapshot_sha)
+    stored, reserved, problems = chain.read_chain(
+        store,
+        _prefix(dossier),
+        TransitionRecord,
+        owner=dossier,
+        owner_of=lambda record: record.dossier_id,
+        owner_label="expediente",
+        chain_label="las transiciones",
+    )
+    by_seq = chain.group_by_seq(stored)
+    pairs = chain.linked_pairs(stored, by_seq)
+    problems += chain.sequence_problems(by_seq, reserved)
+    problems += chain.link_problems(pairs)
+    problems += _record_problems(stored, pairs, snapshot, snapshot_sha)
     entries = tuple(_entry(item) for item in stored)
     dossier_state = None if problems else _reconstruct(snapshot, stored, problems)
     return TransitionScan(
@@ -187,7 +180,7 @@ def scan_transitions(store: WorkspaceStore, dossier: str) -> TransitionScan:
         entries,
         tuple(problems),
         dossier_state,
-        stored[-1].file_sha256 if stored else None,
+        stored[-1].sha256 if stored else None,
     )
 
 
@@ -208,87 +201,13 @@ def entries(store: WorkspaceStore, dossier: str) -> list[TransitionEntry]:
     return list(scan.entries)
 
 
-def _read_keys(
-    store: WorkspaceStore, dossier: str, problems: list[str]
-) -> tuple[list[_Stored], set[int]]:
-    prefix = _prefix(dossier)
-    stored: list[_Stored] = []
-    reserved: set[int] = set()
-    for key in store.list(prefix):
-        name = key.removeprefix(f"{prefix}/")
-        if (match := RESERVATION_NAME.fullmatch(name)) is not None:
-            reserved.add(int(match.group(1)))
-        elif RECORD_NAME.fullmatch(name) is not None:
-            if (item := _read_record(store, dossier, key, problems)) is not None:
-                stored.append(item)
-        else:
-            problems.append(f"{key}: clave inesperada en las transiciones")
-    stored.sort(key=lambda s: (s.record.seq, s.key))
-    return stored, reserved
-
-
-def _read_record(
-    store: WorkspaceStore, dossier: str, key: str, problems: list[str]
-) -> _Stored | None:
-    raw = None
-    try:
-        data = store.read_bytes(key)
-        raw = safe_load_unique(data.decode("utf-8"))
-        record = TransitionRecord.model_validate(raw)
-    except NotFound:
-        problems.append(f"{key}: desapareció mientras se leía")
-    except UnicodeDecodeError:
-        problems.append(f"{key}: no es texto UTF-8")
-    except yaml.YAMLError:
-        problems.append(f"{key}: YAML no válido o con una clave repetida")
-    except ValidationError as exc:
-        problems += describe_validation(key, exc, raw)
-    else:
-        if record.dossier_id != dossier:
-            problems.append(f"{key}: el registro es de otro expediente")
-            return None
-        if key != record_key(record, data):
-            problems.append(
-                f"{key}: la clave no coincide con el contenido (número, instante o hash)"
-            )
-        return _Stored(key, hashlib.sha256(data).hexdigest(), record)
-    return None
-
-
-def _sequence_problems(by_seq: dict[int, list[_Stored]], reserved: set[int]) -> list[str]:
-    problems = [
-        f"bifurcación: {len(group)} registros con el mismo número {seq}: "
-        + ", ".join(s.key for s in group)
-        for seq, group in sorted(by_seq.items())
-        if len(group) > 1
-    ]
-    last = max(by_seq, default=0)
-    problems += [f"falta el registro {seq}" for seq in range(1, last + 1) if seq not in by_seq]
-    problems += [
-        f"reserva de la secuencia {seq} sin registro" for seq in sorted(reserved - set(by_seq))
-    ]
-    problems += [
-        f"registro {seq} sin reserva de la secuencia" for seq in sorted(set(by_seq) - reserved)
-    ]
-    return sorted(set(problems))
-
-
 def _record_problems(
     stored: list[_Stored],
-    by_seq: dict[int, list[_Stored]],
+    pairs: list[tuple[_Stored, _Stored]],
     snapshot: DossierSnapshot,
     snapshot_sha: str,
 ) -> list[str]:
     problems: list[str] = []
-    linear = [s for s in stored if len(by_seq[s.record.seq]) == 1]
-    for before, after in zip(linear, linear[1:], strict=False):
-        if after.record.seq == before.record.seq + 1 and (
-            after.record.previous_sha256 != before.file_sha256
-        ):
-            problems.append(
-                f"registros {before.record.seq} y {after.record.seq}: "
-                "la cadena previous_sha256 está rota"
-            )
     for item in stored:
         record = item.record
         if record.transition.dossier_sha256 != snapshot_sha:
@@ -297,11 +216,25 @@ def _record_problems(
             problems.append(f"{item.key}: at es anterior a la generación del expediente")
         if record.transition.at > record.recorded_at:
             problems.append(f"{item.key}: at es posterior a recorded_at")
+        problems += [f"{item.key}: {p}" for p in _free_text_problems(record.transition)]
     problems += [
         f"registros {a.record.seq} y {b.record.seq}: recorded_at retrocede"
-        for a, b in zip(linear, linear[1:], strict=False)
+        for a, b in pairs
         if b.record.recorded_at < a.record.recorded_at
     ]
+    return problems
+
+
+def _free_text_problems(record: Transition) -> list[str]:
+    """Los mismos detectores que al escribir, también al leer: un registro forjado a mano con
+    las huellas recalculadas no llega a `show` ni a la pre-auditoría con secretos o datos."""
+    problems = check_declared_name(record.actor)
+    if record.elevated_to:
+        problems += check_declared_name(record.elevated_to)
+    if record.conclusions:
+        problems += _text_errors("conclusiones", record.conclusions)
+    for index, measure in enumerate(record.corrective_measures):
+        problems += _text_errors(f"medidas correctoras[{index}]", measure.description)
     return problems
 
 
@@ -319,20 +252,26 @@ def _reconstruct(
         ]
         return None
     declared = next((t for t in history if t.to_state is DossierState.DECLARED), None)
-    if declared is not None and _snapshot_readiness(snapshot) is not Readiness.READY:
+    if declared is None:
+        return dossier
+    if _snapshot_readiness(snapshot) is not Readiness.READY:
         problems.append("DECLARED sobre una instantánea que no estaba READY")
-        return None
-    return dossier
+    if declared.acknowledged_incomplete != _incomplete(snapshot):
+        problems.append(
+            "DECLARED no reconoce exactamente las secciones INCOMPLETE de la instantánea"
+        )
+    return None if problems else dossier
 
 
 def _snapshot_readiness(snapshot: DossierSnapshot) -> Readiness | None:
-    content = snapshot.sections[_RESULTS_SECTION].content
-    matrix = content.get("matrix") if isinstance(content, dict) else None
-    value = matrix.get("readiness") if isinstance(matrix, dict) else None
     try:
-        return Readiness(value)
-    except ValueError:
+        return snapshot_export(snapshot).readiness
+    except (ValueError, KeyError):
         return None
+
+
+def _incomplete(snapshot: DossierSnapshot) -> list[int]:
+    return [s.number for s in snapshot.sections if s.state is SectionState.INCOMPLETE]
 
 
 # --- registro ----------------------------------------------------------------------------------
@@ -354,22 +293,22 @@ def record_transition(
     elevated_to: str | None = None,
     elevation_confirmed: bool = False,
     declaration_evidence_id: str | None = None,
+    acknowledge_incomplete: bool = False,
 ) -> Recorded:
     """Añade una transición. `TransitionRejected` si algo falla: no se escribe nada.
 
     `at` es cuándo la persona hizo el acto; `now`, cuándo se registra. La preparación (READY) se
-    evalúa aquí, nunca la aporta el llamador."""
+    evalúa aquí, nunca la aporta el llamador. La deriva se comprueba primero: si el expediente ya
+    no describe el estado actual, ese es el motivo, sea cual sea la persona o el estado."""
     scan = scan_transitions(store, dossier)
     if scan.problems or scan.snapshot is None or scan.dossier is None:
         raise TransitionRejected(
             [f"{dossier} está roto y no admite más transiciones", *scan.problems]
         )
     snapshot, current = scan.snapshot, scan.dossier
-    previous = current.transitions[-1] if current.transitions else None
+    previous = scan.entries[-1] if scan.entries else None
 
-    _check_time(snapshot, previous, at, now)
-    source = checks or StoredCheckResults(reference_now=now)
-    drift = rebuild_and_diff(store, snapshot, checks=source).drift
+    drift = rebuild_and_diff(store, snapshot, checks=checks).drift
     if drift:
         raise TransitionRejected(
             [
@@ -377,42 +316,53 @@ def record_transition(
                 *(f"{section}: {line}" for section, lines in drift.items() for line in lines),
             ]
         )
-    try:
-        require_dossier_category(current, store, now)
-    except (DossierCategoryMismatch, CategorizationNotCurrent) as exc:
-        raise TransitionRejected([str(exc)]) from None
-
-    extra = _preconditions(
+    _check_time(snapshot, previous, at, now)
+    resolved = _preconditions(
         store,
         scan,
         to_state,
         by=by,
         role=role,
-        now=now,
-        checks=source,
         conclusions=conclusions,
         corrective_measures=corrective_measures,
+        manual_judgment_review=manual_judgment_review,
         elevated_to=elevated_to,
         elevation_confirmed=elevation_confirmed,
-        declaration_evidence_id=declaration_evidence_id,
+        acknowledge_incomplete=acknowledge_incomplete,
     )
+
+    try:
+        require_dossier_category(current, store, now)
+    except (DossierCategoryMismatch, CategorizationNotCurrent) as exc:
+        raise TransitionRejected([str(exc)]) from None
+
+    readiness = None
+    if to_state is DossierState.DECLARED:
+        readiness = _declaration_readiness(
+            store,
+            snapshot,
+            now,
+            checks or StoredCheckResults(reference_now=now),
+            declaration_evidence_id,
+        )
     try:
         updated = transition(
             current,
             to_state,
-            actor=extra.actor,
+            actor=resolved.actor,
             role=role,
             at=at,
             dossier_sha256=scan.snapshot_sha256 or "",
             conclusions=conclusions,
             corrective_measures=list(corrective_measures),
             manual_judgment_review=manual_judgment_review,
-            readiness=extra.readiness,
-            elevated_to=extra.elevated_to,
+            readiness=readiness,
+            elevated_to=resolved.elevated_to,
             elevated_at=at if to_state is DossierState.ANALYZED else None,
             elevation_confirmed=elevation_confirmed,
-            analysis_sha256=extra.analysis_sha256,
+            analysis_sha256=resolved.analysis_sha256,
             declaration_evidence_id=declaration_evidence_id,
+            acknowledged_incomplete=resolved.acknowledged_incomplete,
         )
     except ValidationError as exc:
         raise TransitionRejected(describe_validation("transición", exc)) from None
@@ -434,10 +384,10 @@ def _write(
         recorded_at=now,
         transition=record,
     )
-    data = _render(stored)
+    data = chain.render_record(stored.model_dump(mode="json"))
     try:
-        store.create_bytes(seq_key(scan.dossier_id, seq), _RESERVED)
-    except AlreadyExists:
+        chain.reserve_sequence(store, _prefix(scan.dossier_id), seq)
+    except chain.SequenceTaken:
         raise TransitionRejected(
             [f"{scan.dossier_id}: otra orden reservó antes la secuencia {seq}; revisa y reintenta"]
         ) from None
@@ -447,15 +397,20 @@ def _write(
 
 
 def _check_time(
-    snapshot: DossierSnapshot, previous: Transition | None, at: datetime, now: datetime
+    snapshot: DossierSnapshot, previous: TransitionEntry | None, at: datetime, now: datetime
 ) -> None:
     errors = []
     if at > now:
         errors.append("--at está en el futuro respecto al instante de registro")
     if at < snapshot.inputs.generated_at:
         errors.append("--at es anterior a la generación del expediente")
-    if previous is not None and at < previous.at:
+    if previous is not None and at < previous.record.at:
         errors.append("--at es anterior a la transición previa")
+    if previous is not None and now < previous.recorded_at:
+        errors.append(
+            "el reloj va por detrás del último registro: escribirlo rompería la cadena; "
+            "corrige la hora del sistema"
+        )
     if errors:
         raise TransitionRejected(errors)
 
@@ -463,9 +418,9 @@ def _check_time(
 @dataclass(frozen=True)
 class _Resolved:
     actor: str
-    readiness: ReadinessResult | None = None
     elevated_to: str | None = None
     analysis_sha256: str | None = None
+    acknowledged_incomplete: list[int] = field(default_factory=list)
 
 
 def _preconditions(
@@ -475,14 +430,14 @@ def _preconditions(
     *,
     by: str,
     role: Role,
-    now: datetime,
-    checks: CheckResultsSource,
     conclusions: str | None,
     corrective_measures: Sequence[CorrectiveMeasure],
+    manual_judgment_review: bool,
     elevated_to: str | None,
     elevation_confirmed: bool,
-    declaration_evidence_id: str | None,
+    acknowledge_incomplete: bool,
 ) -> _Resolved:
+    """Todo lo que se decide sin reconstruir ni evaluar el expediente."""
     snapshot, current = scan.snapshot, scan.dossier
     assert snapshot is not None and current is not None  # el llamador ya comprobó la integridad
     errors: list[str] = []
@@ -504,10 +459,17 @@ def _preconditions(
             return _Resolved(by)
         case DossierState.ANALYZED:
             return _analysis(
-                store, by, conclusions, corrective_measures, elevated_to, elevation_confirmed
+                store,
+                snapshot,
+                by,
+                conclusions,
+                corrective_measures,
+                manual_judgment_review,
+                elevated_to,
+                elevation_confirmed,
             )
         case DossierState.DECLARED:
-            return _declaration(store, scan, by, now, checks, declaration_evidence_id)
+            return _declaration(store, scan, by, acknowledge_incomplete)
     raise TransitionRejected([f"no se puede registrar {to_state.value}"])
 
 
@@ -526,16 +488,13 @@ def _require_next(state: DossierState, to_state: DossierState) -> None:
 
 
 def _missing_reviews(snapshot: DossierSnapshot) -> list[str]:
-    content = snapshot.sections[_RESULTS_SECTION].content
-    matrix = content.get("matrix") if isinstance(content, dict) else None
-    rows = matrix.get("rows") if isinstance(matrix, dict) else None
-    if not isinstance(rows, list) or not rows:
+    try:
+        rows = snapshot_export(snapshot).rows
+    except (ValueError, KeyError):
+        return ["la instantánea no tiene el resultado por medida en un formato legible"]
+    if not rows:
         return ["la instantánea no tiene filas de resultado por medida que revisar"]
-    unreviewed = [
-        str(row.get("measure_id"))
-        for row in rows
-        if isinstance(row, dict) and not row.get("last_review")
-    ]
+    unreviewed = [row.measure_id for row in rows if row.last_review is None]
     if not unreviewed:
         return []
     shown = ", ".join(unreviewed[:_SHOWN_ROWS])
@@ -573,9 +532,11 @@ def _text_errors(label: str, text: str) -> list[str]:
 
 def _analysis(
     store: WorkspaceStore,
+    snapshot: DossierSnapshot,
     by: str,
     conclusions: str | None,
     corrective_measures: Sequence[CorrectiveMeasure],
+    manual_judgment_review: bool,
     elevated_to: str | None,
     elevation_confirmed: bool,
 ) -> _Resolved:
@@ -600,9 +561,21 @@ def _analysis(
         errors.append(
             "--elevated: confirma que las conclusiones se elevaron al responsable del sistema"
         )
+    if snapshot.category is Category.BASICA and not manual_judgment_review:
+        errors.append(MANUAL_REVIEW_REQUIRED)
     if errors:
         raise TransitionRejected(sorted(set(errors)))
     return _Resolved(actor, elevated_to=target)
+
+
+def _blocker_labels(evaluation: AssessmentResult) -> str:
+    labels = dict.fromkeys(
+        f"{KIND_FALLBACK[b.kind]} ({b.measure_id})" if b.measure_id else KIND_FALLBACK[b.kind]
+        for b in evaluation.readiness.blockers
+    )
+    shown = list(labels)[:_SHOWN_ROWS]
+    more = f" y {len(labels) - _SHOWN_ROWS} más" if len(labels) > _SHOWN_ROWS else ""
+    return "; ".join(shown) + more
 
 
 def evaluate_for_declaration(
@@ -614,43 +587,69 @@ def evaluate_for_declaration(
     if evaluation.errors:
         problems.append(
             f"la evaluación actual tiene {len(evaluation.errors)} error(es) de lectura; "
-            "revisa `matrix show`"
+            "revisa `ens-evidence matrix show`"
         )
     if evaluation.readiness.readiness is not Readiness.READY:
-        blockers = ", ".join(
-            f"{b.kind.value}:{b.measure_id or '-'}"
-            for b in evaluation.readiness.blockers[:_SHOWN_ROWS]
+        problems.append(
+            f"la evaluación actual no está preparada: {_blocker_labels(evaluation)}. "
+            "Detalle: `ens-evidence assessment status`"
         )
-        problems.append(f"la evaluación actual no está READY ({blockers})")
     return evaluation, problems
 
 
 def _declaration(
-    store: WorkspaceStore,
-    scan: TransitionScan,
-    by: str,
-    now: datetime,
-    checks: CheckResultsSource,
-    evidence_id: str | None,
+    store: WorkspaceStore, scan: TransitionScan, by: str, acknowledge_incomplete: bool
 ) -> _Resolved:
-    snapshot, current = scan.snapshot, scan.dossier
-    assert snapshot is not None and current is not None
+    """Guardas puras de DECLARED: persona, análisis citado y secciones incompletas."""
+    snapshot = scan.snapshot
+    assert snapshot is not None
     errors: list[str] = []
     actor, problems = _declared(store, Role.MANAGEMENT, by, "--by")
     errors += problems
     if _snapshot_readiness(snapshot) is not Readiness.READY:
         errors.append("la instantánea no estaba READY; genera un expediente nuevo")
-    evaluation, problems = evaluate_for_declaration(store, now, checks)
-    errors += problems
-    if evidence_id is not None:
-        errors += [f"--evidence: {problem}" for problem in verify_one(store, evidence_id).problems]
     analysis = scan.entries[-1] if scan.entries else None
     if analysis is None or analysis.record.to_state is not DossierState.ANALYZED:
         errors.append("falta el registro ANALYZED que la declaración debe citar")
+    incomplete = _incomplete(snapshot)
+    if incomplete and not acknowledge_incomplete:
+        listed = ", ".join(f"{n} «{snapshot.section(n).title}»" for n in incomplete)
+        errors.append(
+            f"el expediente tiene secciones incompletas ({listed}); complétalas y genera un "
+            "expediente nuevo, o reconócelas con --acknowledge-incomplete"
+        )
     if errors:
         raise TransitionRejected(sorted(set(errors)))
     assert analysis is not None
-    return _Resolved(actor, readiness=evaluation.readiness, analysis_sha256=analysis.sha256)
+    return _Resolved(
+        actor,
+        analysis_sha256=analysis.sha256,
+        acknowledged_incomplete=incomplete if acknowledge_incomplete else [],
+    )
+
+
+def _declaration_readiness(
+    store: WorkspaceStore,
+    snapshot: DossierSnapshot,
+    now: datetime,
+    checks: CheckResultsSource,
+    evidence_id: str | None,
+) -> ReadinessResult:
+    """La preparación que cita DECLARED: la actual debe ser READY y la instantánea, coherente
+    consigo misma. No se repite la evaluación congelada: una recolección posterior de evidencias
+    la haría fallar aunque nada derive, y la deriva ya compara filas y fuentes."""
+    evaluation, errors = evaluate_for_declaration(store, now, checks)
+    export = snapshot_export(snapshot)
+    if export.readiness is Readiness.READY and (export.blockers or export.errors):
+        errors.append(
+            "la instantánea declara READY pero registra bloqueos o errores de lectura; "
+            "genera un expediente nuevo"
+        )
+    if evidence_id is not None:
+        errors += [f"--evidence: {problem}" for problem in verify_one(store, evidence_id).problems]
+    if errors:
+        raise TransitionRejected(sorted(set(errors)))
+    return evaluation.readiness
 
 
 __all__ = [

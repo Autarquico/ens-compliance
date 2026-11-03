@@ -57,6 +57,7 @@ from ens_evidence.workspace import WorkspaceStore
 
 CHECK_RUN = "check-run"
 CHECK_EVIDENCE = "check-evidence"
+INCIDENT_RECORD = "incident-record"
 PRE_AUDIT_PENDING = "pre-auditoría no ejecutada; revisión humana pendiente"
 CONCLUSIONS_PENDING = (
     "Conclusiones pendientes: las registra el responsable de la seguridad al analizar el informe "
@@ -350,12 +351,15 @@ def _document_sources(ctx: SectionContext) -> list[SourceRef]:
 
 
 def _run_sources(ctx: SectionContext) -> list[SourceRef]:
-    """Las ejecuciones vivas de los conectores que sustentan la matriz."""
+    """Las ejecuciones vivas, hasta el instante de lectura, de los conectores que sustentan la
+    matriz: las posteriores no estaban cuando se generó el expediente."""
     scan = scan_runs(ctx.store)
     connectors = {c.connector for c in ctx.export.sources.checks if c.connector is not None}
     sources: list[SourceRef] = []
     for connector in sorted(connectors):
         for stored in scan.live(connector):
+            if stored.run.finished_at > ctx.read_at:
+                continue
             sources += ctx.sources(CHECK_RUN, [stored.key], stored.run.finished_at)
     return sources
 
@@ -380,7 +384,7 @@ def _incidents(ctx: SectionContext) -> tuple[list[dict], list[SourceRef], list[s
         )
         problems += check.problems
         for stored in records:
-            sources += ctx.sources("incident-record", [stored.key], stored.record.recorded_at)
+            sources += ctx.sources(INCIDENT_RECORD, [stored.key], stored.record.recorded_at)
     return content, sources, problems
 
 

@@ -8,9 +8,13 @@ que además borren los anclajes (reservas y manifiestos).
 import re
 from dataclasses import dataclass
 
-import yaml
-from pydantic import ValidationError
-
+from ens_evidence.chain import (
+    group_by_seq,
+    link_problems,
+    linked_pairs,
+    read_chain,
+    sequence_problems,
+)
 from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, INCIDENT_RECORD_SOURCE
 from ens_evidence.evidence.manifests import list_manifests
 from ens_evidence.evidence.verify import verify_one
@@ -18,22 +22,17 @@ from ens_evidence.incidents.layout import (
     ASSET_PREFIX,
     INCIDENTS_PREFIX,
     PROCEDURE_DOCUMENT,
-    RECORD_NAME,
-    RESERVATION_NAME,
     StoredRecord,
     approval_key,
     asset_id,
     incident_ids_in,
     incident_of_asset,
     incident_prefix,
-    record_key,
 )
 from ens_evidence.incidents.model import IncidentRecord, Procedure, RecordKind, check_successor
 from ens_evidence.models.contracts import EvidenceManifest
 from ens_evidence.orgdocs.approval import scan_approvals
-from ens_evidence.scope.messages import describe_validation
 from ens_evidence.workspace import WorkspaceStore
-from ens_evidence.yaml_unique import safe_load_unique
 
 _NUMBERED_ID = re.compile(r"(INC|SIM)-(\d{4})-(\d{3})")
 
@@ -61,7 +60,7 @@ def scan_incident(
     manifests = list_manifests(store).manifests if manifests is None else manifests
     problems: list[str] = []
     records, reserved = _read_keys(store, incident_id, problems)
-    by_seq = _group_by_seq(records)
+    by_seq = group_by_seq(records)
     problems += _sequence_problems(records, by_seq, reserved)
     problems += _link_problems(records, by_seq)
     asset = asset_id(incident_id)
@@ -170,70 +169,23 @@ def history_presence_problems(scan: IncidentScan) -> list[str]:
 def _read_keys(
     store: WorkspaceStore, incident_id: str, problems: list[str]
 ) -> tuple[list[StoredRecord], set[int]]:
-    prefix = incident_prefix(incident_id)
-    records: list[StoredRecord] = []
-    reserved: set[int] = set()
-    for key in store.list(prefix):
-        name = key.removeprefix(f"{prefix}/")
-        if (match := RESERVATION_NAME.fullmatch(name)) is not None:
-            reserved.add(int(match.group(1)))
-        elif RECORD_NAME.fullmatch(name) is not None:
-            stored = _read_record(store, incident_id, key, problems)
-            if stored is not None:
-                records.append(stored)
-        else:
-            problems.append(f"{key}: clave inesperada en el registro de incidentes")
-    records.sort(key=lambda s: (s.record.seq, s.key))
+    records, reserved, found = read_chain(
+        store,
+        incident_prefix(incident_id),
+        IncidentRecord,
+        owner=incident_id,
+        owner_of=lambda record: record.state.id,
+        owner_label="incidente",
+        chain_label="el registro de incidentes",
+    )
+    problems += found
     return records, reserved
-
-
-def _read_record(
-    store: WorkspaceStore, incident_id: str, key: str, problems: list[str]
-) -> StoredRecord | None:
-    try:
-        data = store.read_bytes(key)
-        raw = safe_load_unique(data.decode("utf-8"))
-        record = IncidentRecord.model_validate(raw)
-    except UnicodeDecodeError:
-        problems.append(f"{key}: no es texto UTF-8")
-    except yaml.YAMLError:
-        problems.append(f"{key}: YAML no válido o con una clave repetida")
-    except ValidationError as exc:
-        problems += describe_validation(key, exc, raw)
-    else:
-        if record.state.id != incident_id:
-            problems.append(f"{key}: el registro es de otro incidente")
-            return None
-        if key != record_key(record, data):
-            problems.append(
-                f"{key}: la clave no coincide con el contenido (número, instante o hash)"
-            )
-        return StoredRecord(key, data, record)
-    return None
-
-
-def _group_by_seq(records: list[StoredRecord]) -> dict[int, list[StoredRecord]]:
-    by_seq: dict[int, list[StoredRecord]] = {}
-    for stored in records:
-        by_seq.setdefault(stored.record.seq, []).append(stored)
-    return by_seq
 
 
 def _sequence_problems(
     records: list[StoredRecord], by_seq: dict[int, list[StoredRecord]], reserved: set[int]
 ) -> list[str]:
-    problems = []
-    for seq, group in by_seq.items():
-        if len(group) > 1:
-            keys = ", ".join(s.key for s in group)
-            problems.append(
-                f"bifurcación: {len(group)} registros con el mismo número {seq}: {keys}"
-            )
-    last = max(by_seq, default=0)
-    problems += [f"falta el registro {seq}" for seq in range(1, last + 1) if seq not in by_seq]
-    problems += [
-        f"reserva de la secuencia {seq} sin registro" for seq in sorted(reserved - set(by_seq))
-    ]
+    problems = sequence_problems(by_seq, reserved)
     if records and records[0].record.kind is not RecordKind.OPENED:
         problems.append("el primer registro no es `opened`")
     return problems
@@ -241,14 +193,10 @@ def _sequence_problems(
 
 def _link_problems(records: list[StoredRecord], by_seq: dict[int, list[StoredRecord]]) -> list[str]:
     """Cadena y reglas de sucesión entre registros contiguos y sin bifurcación."""
-    linear = [s for s in records if len(by_seq[s.record.seq]) == 1]
-    problems = []
-    for before, after in zip(linear, linear[1:], strict=False):
-        if after.record.seq != before.record.seq + 1:
-            continue
+    pairs = linked_pairs(records, by_seq)
+    problems = link_problems(pairs)
+    for before, after in pairs:
         pair = f"registros {before.record.seq} y {after.record.seq}"
-        if after.record.previous_sha256 != before.sha256:
-            problems.append(f"{pair}: la cadena previous_sha256 está rota")
         problems += [f"{pair}: {error}" for error in check_successor(before.record, after.record)]
     return problems
 

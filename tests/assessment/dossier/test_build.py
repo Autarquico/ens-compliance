@@ -180,7 +180,7 @@ def test_editar_la_matriz_deriva_en_su_seccion(ready):
     drift = diff_projection(before, after)
     assert list(drift) == ["7. Resultado por medida"]
     assert any("controls/matrix.yaml" in line for line in drift["7. Resultado por medida"])
-    assert any("review_every_days" in line for line in drift["7. Resultado por medida"])
+    assert any("periodicidad de revisión" in line for line in drift["7. Resultado por medida"])
 
 
 def test_editar_el_registro_de_riesgos_deriva_en_su_seccion(ready):

@@ -69,7 +69,7 @@ def advance(cli, dossier: str, upto: str) -> None:
     steps = [
         ["self-assess", dossier, "--by", "Ana", "--role", "system_administrator"],
         ["analyze", dossier, *ANALYZE],
-        ["declare", dossier, "--by", DIRECTION],
+        ["declare", dossier, "--by", DIRECTION, "--acknowledge-incomplete"],
     ]
     for step in steps[: ["self-assess", "analyze", "declare"].index(upto) + 1]:
         result = cli.run(*D, *step, at=RECORDED)
@@ -218,8 +218,8 @@ def test_self_assess_con_un_rol_ajeno_se_rechaza(cli, reviewed):
 
     result = cli.run(*D, "self-assess", dossier, "--by", "Ana", "--role", "management", at=RECORDED)
 
-    assert result.exit_code == 1
-    assert "administrador del sistema o su delegado" in result.output
+    assert result.exit_code == 2
+    assert "system_administrator_delegate" in result.output
 
 
 def test_analyze_registra_con_medida_correctora_y_nombra_a_la_direccion(cli, stand_ins):
@@ -277,7 +277,9 @@ def test_declare_registra_el_acto_de_la_organizacion_sin_declarar_la_herramienta
     dossier = generated(cli)
     advance(cli, dossier, "analyze")
 
-    result = cli.run(*D, "declare", dossier, "--by", DIRECTION, at=RECORDED)
+    result = cli.run(
+        *D, "declare", dossier, "--by", DIRECTION, "--acknowledge-incomplete", at=RECORDED
+    )
 
     assert result.exit_code == 0, result.output
     assert "DECLARED registrado" in result.output
@@ -293,7 +295,15 @@ def test_declare_con_una_evidencia_inexistente_se_rechaza(cli, stand_ins):
     advance(cli, dossier, "analyze")
 
     result = cli.run(
-        *D, "declare", dossier, "--by", DIRECTION, "--evidence", "EV-20260101-abcdef12", at=RECORDED
+        *D,
+        "declare",
+        dossier,
+        "--by",
+        DIRECTION,
+        "--acknowledge-incomplete",
+        "--evidence",
+        "EV-20260101-abcdef12",
+        at=RECORDED,
     )
 
     assert result.exit_code == 1
@@ -461,3 +471,131 @@ def test_un_expediente_guardado_se_relee(cli):
     dossier = generated(cli)
 
     assert load_snapshot(cli.store, dossier).inputs.generated_at == NOW
+
+
+# --- derivados manipulados, ids y avisos -------------------------------------------------------
+
+
+def edit(cli, dossier: str, name: str, text: str) -> None:
+    (cli.store._root / key(cli.store, dossier, name)).write_text(text)
+
+
+def test_un_dossier_md_editado_a_mano_bloquea_verify_y_status(cli):
+    dossier = generated(cli)
+    original = (cli.store._root / key(cli.store, dossier, "dossier.md")).read_text()
+    edit(cli, dossier, "dossier.md", original.replace("NOT_READY", "READY") + "\nTodo en orden.\n")
+
+    verified = cli.run(*D, "verify", dossier)
+    status = cli.run(*D, "status", dossier)
+
+    assert verified.exit_code == 1 and "dossier.md: no coincide" in verified.output
+    assert status.exit_code == 1 and "dossier.md: no coincide" in status.output
+    assert "ALTERADO" in cli.run(*D, "list").output
+    assert cli.run(*D, "list").exit_code == 1
+
+
+def test_borrar_el_indice_del_paquete_no_oculta_un_paquete_manipulado(cli):
+    dossier = generated(cli)
+    cli.run(*D, "package", dossier)
+    files = cli.store.list(key(cli.store, dossier, "package"))
+    measure = next(k for k in files if not k.endswith("index.json"))
+    (cli.store._root / measure).write_text("{}")
+    (cli.store._root / key(cli.store, dossier, "package/index.json")).unlink()
+
+    result = cli.run(*D, "verify", dossier)
+
+    assert result.exit_code == 1
+    assert "index.json: no existe" in result.output
+
+
+def test_sin_paquete_verify_no_dice_paquete_integro(cli):
+    dossier = generated(cli)
+
+    result = cli.run(*D, "verify", dossier, at=RECORDED)
+
+    assert result.exit_code == 0, result.output
+    assert "sin paquete" in result.output and "paquete íntegro" not in result.output
+
+
+def test_un_paquete_regenerado_con_otro_contenido_no_se_verifica(cli):
+    dossier = generated(cli)
+    cli.run(*D, "package", dossier)
+    path = next(
+        cli.store._root / k
+        for k in cli.store.list(key(cli.store, dossier, "package"))
+        if not k.endswith("index.json")
+    )
+
+    path.write_text(path.read_text() + " ")
+
+    assert cli.run(*D, "verify", dossier).exit_code == 1
+
+
+def test_una_vista_guardada_y_editada_bloquea_verify_y_status(cli, stand_ins):
+    dossier = generated(cli)
+    advance(cli, dossier, "self-assess")
+    cli.run(*D, "show", dossier, "--save")
+    saved = cli.store.list(key(cli.store, dossier, "view"))[0]
+    (cli.store._root / saved).write_text("vista inventada")
+
+    assert cli.run(*D, "verify", dossier, at=RECORDED).exit_code == 1
+    assert "la vista no coincide" in cli.run(*D, "status", dossier, at=RECORDED).output
+
+
+def test_status_de_un_id_con_errata_no_manda_restaurar_la_copia(cli):
+    result = cli.run(*D, "status", "20990101T000000000000Z-000000000000")
+
+    assert result.exit_code == 1
+    assert "No hay ningún expediente con ese id" in result.output
+    assert "cadena rota" not in result.output and "copia" not in result.output
+
+
+def test_status_de_un_dossier_json_alterado_dice_instantanea_y_no_cadena(cli):
+    dossier = generated(cli)
+    edit(cli, dossier, "dossier.json", "{}")
+
+    result = cli.run(*D, "status", dossier)
+
+    assert result.exit_code == 1
+    assert "instantánea" in result.output and "cadena rota" not in result.output
+
+
+def test_self_assess_solo_ofrece_los_dos_roles_validos(cli):
+    dossier = generated(cli)
+
+    result = cli.run(*D, "self-assess", dossier, "--by", "Ana", "--role", "management")
+
+    assert result.exit_code == 2
+    assert "system_administrator_delegate" in result.output
+    assert "security_officer" not in result.output
+
+
+def test_un_expediente_no_preparado_lo_avisa_al_generar_y_en_status(cli):
+    result = cli.run(*D, "generate")
+    dossier = ID.search(result.output).group()
+
+    status = cli.run(*D, "status", dossier, at=RECORDED)
+
+    assert "El sistema no estaba preparado al generar" in result.output
+    assert "El sistema no estaba preparado al generar" in status.output
+
+
+def test_status_y_generate_listan_las_secciones_incompletas_con_numero_y_nombre(cli):
+    result = cli.run(*D, "generate")
+    dossier = ID.search(result.output).group()
+
+    status = cli.run(*D, "status", dossier, at=RECORDED)
+
+    assert re.search(r"Secciones incompletas: .*\d+\. \w", result.output)
+    assert re.search(r"Secciones incompletas: .*\d+\. \w", status.output)
+
+
+def test_status_tras_analizar_pide_completar_o_reconocer_las_secciones_incompletas(cli, stand_ins):
+    dossier = generated(cli)
+    advance(cli, dossier, "analyze")
+
+    status = cli.run(*D, "status", dossier, at=RECORDED)
+    refused = cli.run(*D, "declare", dossier, "--by", DIRECTION, at=RECORDED)
+
+    assert "Secciones incompletas: 4. Riesgos" in status.output
+    assert refused.exit_code == 1 and "secciones incompletas" in refused.output

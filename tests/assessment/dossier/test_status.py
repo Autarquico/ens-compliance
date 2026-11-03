@@ -1,7 +1,12 @@
 """Estado del expediente: estado reconstruido, deriva, integridad, huellas y paso siguiente."""
 
 from ens_evidence.assessment.dossier.model import INTERNAL_REVIEW_NOTICE
-from ens_evidence.assessment.dossier.status import RECOVER, REGENERATE, dossier_status
+from ens_evidence.assessment.dossier.status import (
+    RECOVER,
+    RECOVER_SNAPSHOT,
+    REGENERATE,
+    dossier_status,
+)
 from ens_evidence.assessment.dossier.transitions import CERTIFICATION_NOTE, seq_key
 from ens_evidence.models.enums import Category, DossierState
 
@@ -42,7 +47,7 @@ def test_el_paso_siguiente_avanza_con_cada_transicion(docs, stand_ins):
     done = dossier_status(docs, dossier)
 
     assert after_analysis.state is DossierState.ANALYZED
-    assert "dirección" in after_analysis.next_step
+    assert "no se puede declarar" in after_analysis.next_step  # el mundo `docs` no está READY
     assert after_analysis.fingerprints.analysis == analysis.entry.sha256
     assert done.state is DossierState.DECLARED
     assert done.next_step.startswith("ninguno")
@@ -67,7 +72,8 @@ def test_un_expediente_ilegible_se_informa_sin_estado(docs):
     status = dossier_status(docs, "20260101T000000000000Z-aaaaaaaaaaaa")
 
     assert status.state is None and status.category is None and status.drift is None
-    assert status.integrity and status.next_step == RECOVER
+    assert status.integrity and status.next_step == RECOVER_SNAPSHOT
+    assert not status.known
 
 
 def test_la_deriva_manda_generar_uno_nuevo(docs):

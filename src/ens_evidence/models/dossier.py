@@ -50,6 +50,7 @@ class Transition(Strict):
     elevation_confirmed: bool = False
     analysis_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
     declaration_evidence_id: str | None = None
+    acknowledged_incomplete: list[int] = Field(default_factory=list)
 
 
 # Campos que solo admite una transición concreta: en cualquier otra se rechazan.
@@ -59,6 +60,7 @@ _STATE_FIELDS = {
     "elevation_confirmed": DossierState.ANALYZED,
     "analysis_sha256": DossierState.DECLARED,
     "declaration_evidence_id": DossierState.DECLARED,
+    "acknowledged_incomplete": DossierState.DECLARED,
 }
 
 
@@ -76,7 +78,7 @@ def _check_guards(category: Category, history: list[Transition], record: Transit
     misplaced = [
         name
         for name, owner in _STATE_FIELDS.items()
-        if owner is not record.to_state and getattr(record, name) not in (None, False)
+        if owner is not record.to_state and getattr(record, name)
     ]
     if misplaced:
         raise TransitionError(f"{record.to_state} does not take {', '.join(misplaced)}")
@@ -149,6 +151,7 @@ def transition(
     elevation_confirmed: bool = False,
     analysis_sha256: str | None = None,
     declaration_evidence_id: str | None = None,
+    acknowledged_incomplete: list[int] | None = None,
 ) -> Dossier:
     """Devuelve un expediente nuevo con la transición registrada, o lanza TransitionError."""
     record = Transition(
@@ -167,6 +170,7 @@ def transition(
         elevation_confirmed=elevation_confirmed,
         analysis_sha256=analysis_sha256,
         declaration_evidence_id=declaration_evidence_id,
+        acknowledged_incomplete=acknowledged_incomplete or [],
     )
     _check_guards(dossier.category, dossier.transitions, record)
     return Dossier(

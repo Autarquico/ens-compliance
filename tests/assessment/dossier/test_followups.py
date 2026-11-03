@@ -122,9 +122,9 @@ def test_status_listo_para_declarar_avisa_si_el_sistema_ya_no_esta_preparado(
 
     assert status.exit_code == 1
     assert "Estado: ANALYZED" in status.output
-    assert re.search(r"el sistema ya no está preparado: .*READY", status.output)
-    assert "resuélvelos y genera un expediente nuevo o vuelve a intentarlo" in status.output
-    assert "declaración de conformidad" not in status.output
+    assert re.search(r"no se puede declarar: .*no está preparada", status.output)
+    assert "resuélvelos y vuelve a intentarlo" in status.output
+    assert "la dirección decide" not in status.output
 
 
 def test_status_listo_para_declarar_y_preparado_ofrece_declarar_con_exit_0(
@@ -135,5 +135,5 @@ def test_status_listo_para_declarar_y_preparado_ofrece_declarar_con_exit_0(
     status = status_of(world, chain.dossier)
 
     assert status.exit_code == 0, status.output
-    assert "declaración de conformidad" in status.output
-    assert "ya no está preparado" not in status.output
+    assert "la dirección decide" in status.output
+    assert "no se puede declarar" not in status.output

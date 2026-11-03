@@ -82,7 +82,7 @@ def test_declarar_con_un_check_que_falla_despues_de_generar_se_rechaza(
 
     assert declared.exit_code == 1
     assert "No se registra DECLARED" in declared.output
-    assert "la evaluación actual no está READY" in declared.output
+    assert "la evaluación actual no está preparada" in declared.output
     assert state_of(world, chain.dossier) == "ANALYZED"
 
 
@@ -98,6 +98,16 @@ def test_una_ejecucion_nueva_equivalente_de_check_all_no_deriva_y_permite_declar
     declared = step(world, "declare", chain.dossier)
 
     assert "Deriva: ninguna" in status.output
+    assert declared.exit_code == 0, declared.output
+    assert state_of(world, chain.dossier) == "DECLARED"
+
+
+def test_check_all_tras_analizar_no_impide_declarar(chain, tmp_path, monkeypatch):
+    world = restore(chain, "analyze", tmp_path, monkeypatch)
+    assert run_at(world, "check", "--all", at=RERUN).exit_code == 0
+
+    declared = step(world, "declare", chain.dossier)
+
     assert declared.exit_code == 0, declared.output
     assert state_of(world, chain.dossier) == "DECLARED"
 

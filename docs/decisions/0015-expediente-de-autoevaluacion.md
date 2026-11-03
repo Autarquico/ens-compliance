@@ -57,6 +57,11 @@ expediente.
     declarada en `firmante_direccion`. Exige READY en la instantánea y en la
     evaluación actual, sin errores, calculado por el servicio y nunca
     aportado por quien llama. Cita la huella del registro ANALYZED.
+- **Incidentes y checks.** Del registro de incidentes solo derivan los
+  incidentes cerrados. El historial de checks se reproduce congelado al
+  instante de referencia guardado en la instantánea: las ejecuciones
+  posteriores (`check --all`) no rompen `verify` ni cuentan como deriva por sí
+  solas.
 - **Declaración.** La herramienta solo registra el acto humano. No genera
   texto ni distintivo. Se puede enlazar la evidencia del documento firmado
   que importe la organización; la herramienta verifica su integridad, y la
@@ -84,5 +89,13 @@ expediente.
   curso: hay que generar uno nuevo.
 - Cada transición reconstruye la instantánea completa para comprobar la
   deriva. Es lento con muchas medidas, pero seguro.
+- Hay una manipulación que no se detecta en local y solo detecta la copia
+  externa (ADR 0008): borrar a la vez el último registro de la cadena y su
+  reserva. El expediente vuelve al estado anterior y el análisis o la
+  declaración se pueden rehacer sin rastro. Un hueco en medio, un registro
+  editado o una reserva sin registro sí se detectan.
+- `dossier.md` y las vistas guardadas con `show --save` son derivados: `verify`
+  y `status` los comparan byte a byte con lo que sale de `dossier.json` y la
+  cadena, y bloquean el expediente si alguien los edita.
 - Los nombres son declarados, no autenticados. La autenticación llega con la
   UI (v0.2).

@@ -33,8 +33,13 @@ El expediente es una foto del estado actual. Tiene 11 secciones:
 11. aprobación.
 
 Cada sección cita sus fuentes con su huella y su fecha. Se puede generar aunque
-el sistema todavía no esté preparado: el expediente lo dice y sirve para el
-análisis.
+el sistema todavía no esté preparado. En ese caso `generate` y `status` lo
+avisan: el expediente sirve para la autoevaluación y el análisis (anexo III,
+2.1.b), no para declarar. Si quieres declarar, resuelve los bloqueos y genera
+uno nuevo (ver «Si no puedes declarar»).
+
+Las secciones con estado INCOMPLETE (por ejemplo, riesgos sin registro) se
+listan con su número y nombre en `generate` y `status`.
 
 En MEDIA o ALTA se genera también un paquete por medida para el auditor
 (`evidence/assessments/<id>/package/`). En BÁSICA se pide con
@@ -43,7 +48,7 @@ En MEDIA o ALTA se genera también un paquete por medida para el auditor
 ## 2. Autoevaluación
 
 ```bash
-ens-evidence assessment dossier self-assess <id> --by "Hugo Serrano Ortiz" --role system_administrator
+ens-evidence assessment dossier self-assess <id> --by "Ana Pérez" --role system_administrator
 ```
 
 La registra el administrador del sistema o su delegado (anexo III, 2.1.a).
@@ -63,17 +68,25 @@ ens-evidence assessment dossier analyze <id> --by "Lucía Navarro Gil" \
   envía nada: `--elevated` confirma que lo has hecho tú.
 - `--manual-judgment-review` confirma que una persona ha revisado lo que la
   herramienta no puede valorar sola. Mientras no exista la pre-auditoría, sin
-  esta confirmación no se puede declarar.
+  esta confirmación no se puede declarar: en BÁSICA `analyze` la exige.
+  El análisis no se puede repetir.
 
 ## 4. Declaración (solo BÁSICA)
 
 ```bash
-ens-evidence assessment dossier declare <id> --by "Marta Ibáñez Soler" [--evidence EV-…]
+ens-evidence assessment dossier declare <id> --by "Marta Ibáñez Soler" \
+  [--evidence EV-…] [--acknowledge-incomplete]
 ```
 
 - La registra la dirección, con la persona declarada en `firmante_direccion`.
 - Exige que el sistema esté preparado al generar el expediente y también
   ahora.
+- Si el expediente tiene secciones INCOMPLETE, `declare` se rechaza y las
+  lista con su número y nombre. La dirección puede completarlas en un
+  expediente nuevo o reconocerlas con `--acknowledge-incomplete`; el
+  reconocimiento queda en el registro DECLARED (campo
+  `acknowledged_incomplete`, con los números de sección) y no se puede
+  reconocer una parte.
 - La herramienta solo registra el acto: no redacta la declaración ni genera
   el distintivo.
 - Con `--evidence` enlazas el documento firmado que hayas importado. La
@@ -88,7 +101,7 @@ interna.
 
 ```bash
 ens-evidence assessment dossier status <id>   # estado, siguiente paso y cambios desde la generación
-ens-evidence assessment dossier verify <id>   # reproduce el expediente byte a byte
+ens-evidence assessment dossier verify <id>   # reproduce el expediente y comprueba cadena, derivados y paquete
 ```
 
 - Si después de generar el expediente cambia algo organizativo (la matriz,
@@ -97,10 +110,39 @@ ens-evidence assessment dossier verify <id>   # reproduce el expediente byte a b
   registrado se conserva como historia.
 - Una ejecución nueva de checks que dé lo mismo no cuenta como cambio. Si un
   check falla, la declaración se rechaza.
-- Si alguien edita a mano el expediente o un registro de transición, el
-  expediente queda bloqueado con un error visible. Para recuperarlo, restaura
+- Si alguien edita a mano `dossier.json`, `dossier.md`, una vista guardada, el
+  paquete o un registro de transición, `status` y `verify` lo señalan con un
+  error visible y salen con 1. Para recuperarlo, restaura
   `evidence/assessments/` desde la copia o genera uno nuevo.
-- Si falta el Markdown o el paquete, `ens-evidence assessment dossier render <id>`
-  lo vuelve a crear. Nunca sobrescribe nada.
+- Hay una manipulación que no se detecta en local: borrar a la vez el último
+  registro de la cadena y su reserva deja el expediente en el estado anterior
+  sin rastro. Solo la detecta la copia externa (ADR 0008); haz la copia antes
+  de cada paso.
+- Si falta `dossier.md`, `ens-evidence assessment dossier render <id>` lo
+  vuelve a crear; en MEDIA/ALTA también el paquete si falta entero. En BÁSICA
+  el paquete se vuelve a pedir con `dossier package <id>`. Nunca sobrescribe
+  nada.
+
+## 6. Si no puedes declarar
+
+`status` explica por qué. Hay dos casos que no se arreglan en el mismo
+expediente:
+
+- **El expediente se generó sin estar preparado el sistema.** Resuelve los
+  bloqueos que indica `status` (`matrix show`, `check --all`) y genera un
+  expediente nuevo con `dossier generate`. Rehaz la autoevaluación y el
+  análisis en el nuevo.
+- **El análisis se registró sin `--manual-judgment-review`** (expedientes
+  anteriores a que `analyze` la exigiera en BÁSICA). El análisis no se puede
+  repetir: genera un expediente nuevo y rehaz la autoevaluación y el análisis
+  con esa confirmación.
+
+Si el motivo es que el sistema ya no está preparado, o que ha cambiado algo
+organizativo, resuelve lo que indica `status` y vuelve a intentarlo, o genera
+uno nuevo si dice que el expediente ya no describe el estado actual.
+
+Tras registrar la declaración, la herramienta no da más pasos, pero el trabajo
+no ha terminado: la organización debe darle publicidad (art. 38.2 del RD
+311/2022, según la ITS aplicable). La herramienta no lo hace.
 
 Los nombres son declarados; la herramienta no los autentica.

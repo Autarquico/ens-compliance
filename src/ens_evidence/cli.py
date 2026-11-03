@@ -1,5 +1,4 @@
 import functools
-import hashlib
 import json
 import os
 import re
@@ -33,7 +32,6 @@ from ens_evidence.assessment import (
     render_status_text,
 )
 from ens_evidence.assessment.dossier import (
-    DossierView,
     TransitionRejected,
     build_snapshot,
     current_inputs,
@@ -41,13 +39,31 @@ from ens_evidence.assessment.dossier import (
     entries,
     record_transition,
     render_snapshot_md,
-    render_view_md,
     scan_transitions,
     snapshot_sha256,
 )
 from ens_evidence.assessment.dossier.build import DossierRejected
+from ens_evidence.assessment.dossier.derived import (
+    has_markdown,
+    markdown_problems,
+    render_view,
+    save_view,
+    view_problems,
+)
 from ens_evidence.assessment.dossier.model import DossierSnapshot
-from ens_evidence.assessment.dossier.package import PackageRejected, save_package, verify_package
+from ens_evidence.assessment.dossier.package import (
+    PackageRejected,
+    has_package,
+    save_package,
+    verify_package,
+)
+from ens_evidence.assessment.dossier.status import (
+    NOT_READY_NOTICE,
+    UNKNOWN,
+    incomplete_sections,
+    next_step,
+    snapshot_readiness_blocked,
+)
 from ens_evidence.assessment.dossier.store import (
     ASSESSMENTS_PREFIX,
     DossierUnreadable,
@@ -2580,6 +2596,11 @@ AtOption = Annotated[
 ]
 
 
+class SelfAssessRole(StrEnum):
+    SYSTEM_ADMINISTRATOR = "system_administrator"
+    SYSTEM_ADMINISTRATOR_DELEGATE = "system_administrator_delegate"
+
+
 class ViewFormat(StrEnum):
     MD = "md"
     JSON = "json"
@@ -2600,32 +2621,17 @@ def load_dossier(store: WorkspaceStore, dossier: str) -> DossierSnapshot:
 
 def dossier_step(dossier: str, snapshot: DossierSnapshot, state: DossierState) -> str:
     """El siguiente paso tras llegar a `state`, nombrando quién lo da."""
-    basic = snapshot.category is Category.BASICA
-    match state:
-        case DossierState.GENERATED:
-            return (
-                f"Siguiente paso: {role_label(Role.SYSTEM_ADMINISTRATOR)} (o su delegado) revisa "
-                f"cada medida y registra `assessment dossier self-assess {dossier} --by <nombre> "
-                "--role system_administrator`."
-            )
-        case DossierState.SELF_ASSESSED:
-            return (
-                f"Siguiente paso: el {role_label(Role.SECURITY_OFFICER)} analiza y registra "
-                f"`assessment dossier analyze {dossier}` y eleva las conclusiones al "
-                f"{role_label(Role.SYSTEM_OWNER)}."
-            )
-        case DossierState.ANALYZED if basic:
-            return (
-                f"Siguiente paso: la {role_label(Role.MANAGEMENT)} decide y, si la organización "
-                f"declara, registra `assessment dossier declare {dossier} --by <nombre>`."
-            )
-        case DossierState.ANALYZED:
-            return (
-                "Siguiente paso: auditoría de certificación (art. 38.1); "
-                "la herramienta no registra una declaración en MEDIA/ALTA."
-            )
-        case _:
-            return "Siguiente paso: ninguno; el expediente no admite más transiciones."
+    step = next_step(snapshot.category, state, dossier, incomplete_sections(snapshot))
+    return f"Siguiente paso: {step}."
+
+
+def print_caveats(snapshot: DossierSnapshot, state: DossierState) -> None:
+    """Lo que la organización debe saber antes del siguiente paso, sin esperar a declarar."""
+    if state is not DossierState.DECLARED and snapshot_readiness_blocked(snapshot):
+        typer.echo(NOT_READY_NOTICE)
+    incomplete = incomplete_sections(snapshot)
+    if incomplete:
+        typer.echo(f"Secciones incompletas: {'; '.join(incomplete)}.")
 
 
 def print_notice(snapshot: DossierSnapshot) -> None:
@@ -2671,6 +2677,7 @@ def dossier_generate(ctx: typer.Context) -> None:
             )
             raise dossier_rejected("Paquete rechazado:", exc.errors) from None
         typer.echo("Paquete por medida guardado.")
+    print_caveats(snapshot, DossierState.GENERATED)
     typer.echo(dossier_step(dossier, snapshot, DossierState.GENERATED))
 
 
@@ -2680,6 +2687,7 @@ def dossier_list(ctx: typer.Context) -> None:
     """Lista los expedientes con su categoría y su estado."""
     store = open_workspace(ctx)
     found = list_dossiers(store)
+    failed = False
     if not found:
         typer.echo("No hay expedientes. Genera uno con `assessment dossier generate`.")
     for item in found:
@@ -2688,7 +2696,14 @@ def dossier_list(ctx: typer.Context) -> None:
             continue
         scan = scan_transitions(store, item.id)
         state = scan.dossier.state.value if scan.dossier else "ROTO"
-        typer.echo(f"{item.id}  {item.snapshot.category.value}  {state}")
+        altered = markdown_problems(store, item.id, item.snapshot)
+        typer.echo(
+            f"{item.id}  {item.snapshot.category.value}  {state}"
+            + ("  ALTERADO (ejecuta `dossier verify`)" if altered else "")
+        )
+        failed = failed or bool(altered) or scan.dossier is None
+    if failed:
+        raise typer.Exit(1)
 
 
 @dossier_app.command("status")
@@ -2700,9 +2715,20 @@ def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     integridad o, listo para declarar, un sistema que ya no está preparado."""
     store = open_workspace(ctx)
     status = dossier_status(store, dossier, now=clock())
+    if not status.known:
+        raise fail(UNKNOWN, 1)
     category = status.category.value if status.category else "desconocida"
     typer.echo(f"Expediente {dossier} ({category})")
-    typer.echo(f"Estado: {status.state.value if status.state else 'no fiable (cadena rota)'}")
+    if status.state:
+        typer.echo(f"Estado: {status.state.value}")
+    elif status.category is None:
+        typer.echo("Estado: no fiable (instantánea ilegible o alterada)")
+    else:
+        typer.echo("Estado: no fiable (cadena rota)")
+    if status.readiness_notice:
+        typer.echo(status.readiness_notice)
+    if status.incomplete_sections:
+        typer.echo(f"Secciones incompletas: {'; '.join(status.incomplete_sections)}.")
     if status.notice:
         typer.echo(status.notice)
     if status.integrity:
@@ -2762,20 +2788,11 @@ def dossier_show(
         chain = entries(store, dossier)
     except TransitionRejected as exc:
         raise dossier_rejected(f"La cadena de {dossier} no se verifica:", exc.errors) from None
-    if fmt is ViewFormat.JSON:
-        text = DossierView(snapshot=snapshot, transitions=chain).model_dump_json(indent=2) + "\n"
-    else:
-        text = render_view_md(snapshot, chain)
-    typer.echo(text, nl=False)
+    typer.echo(render_view(snapshot, chain, fmt.value), nl=False)
     if save:
-        digest = hashlib.sha256(text.encode()).hexdigest()[:12]
-        key = f"{ASSESSMENTS_PREFIX}/{dossier}/view/{len(chain):06d}-{digest}.{fmt.value}"
-        try:
-            store.create_bytes(key, text.encode())
-        except AlreadyExists:
-            typer.echo(f"Ya estaba guardada: {key}", err=True)
-        else:
-            typer.echo(f"Vista guardada en {key}", err=True)
+        key, created = save_view(store, dossier, snapshot, chain, fmt.value)
+        message = "Vista guardada en" if created else "Ya estaba guardada:"
+        typer.echo(f"{message} {key}", err=True)
 
 
 def record_dossier_transition(
@@ -2806,6 +2823,7 @@ def record_dossier_transition(
     if recorded.notice:
         typer.echo(recorded.notice)
     snapshot = load_dossier(store, dossier)
+    print_caveats(snapshot, to_state)
     typer.echo(dossier_step(dossier, snapshot, to_state))
 
 
@@ -2816,17 +2834,16 @@ def dossier_self_assess(
     dossier: DossierIdArgument,
     by: By,
     role: Annotated[
-        Role,
-        typer.Option(
-            "--role", help="system_administrator o system_administrator_delegate (anexo III 2.1.a)."
-        ),
+        SelfAssessRole, typer.Option("--role", help="Quién la registra (anexo III 2.1.a).")
     ],
     at: AtOption = None,
 ) -> None:
     """Registra la autoevaluación por quien administra el sistema o su delegado.
 
     Exige una revisión humana en cada medida de la matriz."""
-    record_dossier_transition(ctx, dossier, DossierState.SELF_ASSESSED, by=by, role=role, at=at)
+    record_dossier_transition(
+        ctx, dossier, DossierState.SELF_ASSESSED, by=by, role=Role(role.value), at=at
+    )
 
 
 @dossier_app.command("analyze")
@@ -2906,12 +2923,22 @@ def dossier_declare(
             ),
         ),
     ] = None,
+    acknowledge_incomplete: Annotated[
+        bool,
+        typer.Option(
+            "--acknowledge-incomplete",
+            help=(
+                "Reconoces que declaras sobre un expediente con secciones INCOMPLETE; "
+                "quedan listadas en el registro."
+            ),
+        ),
+    ] = False,
     at: AtOption = None,
 ) -> None:
     """Registra la declaración de conformidad que hace la dirección (solo categoría BÁSICA).
 
-    La herramienta solo registra el acto de la organización: no redacta la declaración, no
-    genera el distintivo ni declara nada por sí sola. En MEDIA/ALTA se rechaza (art. 38.1)."""
+    La herramienta solo registra el acto de la organización y no declara nada por sí sola.
+    No redacta la declaración ni genera el distintivo. En MEDIA/ALTA se rechaza (art. 38.1)."""
     record_dossier_transition(
         ctx,
         dossier,
@@ -2920,6 +2947,7 @@ def dossier_declare(
         role=Role.MANAGEMENT,
         at=at,
         declaration_evidence_id=evidence,
+        acknowledge_incomplete=acknowledge_incomplete,
     )
     typer.echo(
         "Es un acto de la organización: la herramienta solo lo registra. "
@@ -2943,13 +2971,20 @@ def dossier_verify(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     else:
         if snapshot_sha256(rebuilt) != stored_snapshot_sha256(store, dossier):
             problems.append("la reproducción con las entradas congeladas no da los mismos bytes")
-    if store.exists(f"{ASSESSMENTS_PREFIX}/{dossier}/package/index.json") or (
-        snapshot.category is not Category.BASICA
-    ):
+    problems += markdown_problems(store, dossier, snapshot)
+    scan = scan_transitions(store, dossier)
+    problems += scan.problems
+    if not scan.problems:
+        problems += view_problems(store, dossier, snapshot, list(scan.entries))
+    checked_package = has_package(store, dossier) or snapshot.category is not Category.BASICA
+    if checked_package:
         problems += verify_package(store, dossier).problems
     if problems:
         raise dossier_rejected(f"La verificación de {dossier} ha fallado:", problems)
-    typer.echo(f"{dossier}: reproducible con sus entradas congeladas y paquete íntegro.")
+    typer.echo(
+        f"{dossier}: reproducible con sus entradas congeladas, cadena y derivados íntegros"
+        + (" y paquete íntegro." if checked_package else "; sin paquete.")
+    )
 
 
 @dossier_app.command("package")
@@ -2977,11 +3012,11 @@ def dossier_render(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     snapshot = load_dossier(store, dossier)
     base = f"{ASSESSMENTS_PREFIX}/{dossier}"
     recovered: list[str] = []
-    if not store.exists(f"{base}/dossier.md"):
+    if not has_markdown(store, dossier):
         save_markdown(store, dossier, render_snapshot_md(snapshot))
         recovered.append("dossier.md")
     if snapshot.category is not Category.BASICA and not store.exists(f"{base}/package/index.json"):
-        if store.list(f"{base}/package"):
+        if has_package(store, dossier):
             raise dossier_rejected(
                 "El paquete está incompleto y no se sobrescribe:",
                 [f"restaura {base}/package desde la copia y ejecuta `dossier verify {dossier}`"],

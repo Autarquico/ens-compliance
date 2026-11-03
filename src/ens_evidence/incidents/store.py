@@ -23,6 +23,7 @@ from datetime import datetime
 
 from pydantic import ValidationError
 
+from ens_evidence.chain import SequenceTaken, render_record, reserve_sequence
 from ens_evidence.evidence.importer import INCIDENT_RECORD_SOURCE, import_generated
 from ens_evidence.evidence.verify import verify_one
 from ens_evidence.incidents.errors import IncidentRejected
@@ -34,9 +35,8 @@ from ens_evidence.incidents.layout import (
     approval_key,
     asset_id,
     incident_ids_in,
+    incident_prefix,
     record_key,
-    render_record,
-    seq_key,
 )
 from ens_evidence.incidents.model import (
     IncidentRecord,
@@ -54,9 +54,8 @@ from ens_evidence.orgdocs.contract import INCIDENT_LEVEL_FIELDS, INCIDENT_LEVELS
 from ens_evidence.orgdocs.template import load_templates
 from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.messages import describe_validation
-from ens_evidence.workspace import AlreadyExists, WorkspaceStore
+from ens_evidence.workspace import WorkspaceStore
 
-_RESERVED = b"reservada\n"
 _LEVEL = INCIDENT_LEVEL_FIELDS[0]
 
 
@@ -173,8 +172,8 @@ def record_incident(
 
     data = render_record(payload)
     try:
-        store.create_bytes(seq_key(state.id, record.seq), _RESERVED)
-    except AlreadyExists:
+        reserve_sequence(store, incident_prefix(state.id), record.seq)
+    except SequenceTaken:
         raise IncidentRejected(
             [f"{state.id}: otra orden reservó antes la secuencia {record.seq}; revisa y reintenta"]
         ) from None

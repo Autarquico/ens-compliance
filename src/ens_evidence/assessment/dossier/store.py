@@ -14,19 +14,17 @@ from typing import Any
 
 from pydantic import ValidationError
 
-from ens_evidence.assessment.dossier.build import text_leaks, walk_texts
 from ens_evidence.assessment.dossier.model import DossierSnapshot
+from ens_evidence.assessment.dossier.privacy import export_problems, secret_problems
 from ens_evidence.assessment.dossier.render import render_snapshot_json
 from ens_evidence.matrix.store import instant_stamp
-from ens_evidence.privacy_text import has_credential
-from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import AlreadyExists, NotFound, NotText, WorkspaceStore
 
 ASSESSMENTS_PREFIX = "evidence/assessments"
 SNAPSHOT_NAME = "dossier.json"
 MARKDOWN_NAME = "dossier.md"
 
-_ID = re.compile(r"\d{8}T\d{12}Z-[0-9a-f]{12}")
+DOSSIER_ID = re.compile(r"\d{8}T\d{12}Z-[0-9a-f]{12}")
 
 
 class DossierUnreadable(Exception):
@@ -67,7 +65,7 @@ def _no_duplicates(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _verified(store: WorkspaceStore, dossier: str) -> tuple[DossierSnapshot, bytes]:
-    if not _ID.fullmatch(dossier):
+    if not DOSSIER_ID.fullmatch(dossier):
         raise DossierUnreadable(dossier, ["el id no tiene la forma <instante>-<sha12>"])
     key = _key(dossier, SNAPSHOT_NAME)
     try:
@@ -96,15 +94,10 @@ def _verified(store: WorkspaceStore, dossier: str) -> tuple[DossierSnapshot, byt
 
 def _privacy_problems(snapshot: DossierSnapshot) -> list[str]:
     document = snapshot.model_dump(mode="json")
-    found = [f"instantánea.{path}: parece un secreto" for path in find_secrets(document)]
+    found = secret_problems(document)
     for section in document["sections"]:
         where = f"sección {section['number']} ({section['title']}): "
-        found += text_leaks(where, section["content"])
-        found += [
-            f"{where}{path}: contiene una credencial"
-            for path, text in walk_texts(section["content"])
-            if has_credential(text)
-        ]
+        found += export_problems(where, section["content"])
     return sorted(set(found))
 
 

@@ -10,6 +10,7 @@ from typing import Self
 from pydantic import AwareDatetime, Field, JsonValue, field_validator, model_validator
 
 from ens_evidence.catalog.controls import CatalogVersion
+from ens_evidence.matrix import MatrixExport
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.enums import Category
 
@@ -26,6 +27,7 @@ SECTION_TITLES = (
     "Conclusiones",
     "Aprobación/fecha",
 )
+RESULTS_SECTION = 7  # «Resultado por medida»: el único número de sección que se cita
 COMMITMENT = "La herramienta no declara conformidad."
 INTERNAL_REVIEW_NOTICE = (
     "Revisión interna; no sustituye a la auditoría de certificación (art. 38.1)."
@@ -94,3 +96,15 @@ class DossierSnapshot(Strict):
         if self.notice != expected:
             raise ValueError(f"notice for {self.category} must be {expected!r}")
         return self
+
+    def section(self, number: int) -> Section:
+        """La sección por su número de la guía (1 a 11), nunca por índice."""
+        return self.sections[number - 1]
+
+
+def snapshot_export(snapshot: DossierSnapshot) -> MatrixExport:
+    """La matriz incrustada en «Resultado por medida», tipada."""
+    content = snapshot.section(RESULTS_SECTION).content
+    if not isinstance(content, dict):
+        raise ValueError("la sección de resultados no tiene el formato esperado")
+    return MatrixExport.model_validate(content["matrix"])

@@ -48,7 +48,7 @@ STEPS = {
         "--elevated",
         "--manual-judgment-review",
     ],
-    "declare": ["--by", DIRECTION],
+    "declare": ["--by", DIRECTION, "--acknowledge-incomplete"],
 }
 
 

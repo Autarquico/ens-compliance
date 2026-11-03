@@ -216,3 +216,43 @@ def test_nunca_conforme_ni_cumple(snapshot, media, declared):
         render_view_md(subject, entries),
     ):
         assert not FORBIDDEN.search(text), FORBIDDEN.search(text)
+
+
+def test_el_json_es_canonico_con_claves_ordenadas(snapshot):
+    data = render_snapshot_json(snapshot).decode()
+
+    assert data == json.dumps(json.loads(data), indent=2, ensure_ascii=False, sort_keys=True) + "\n"
+
+
+def test_el_md_muestra_la_metodologia_de_la_instantanea_no_la_del_codigo(snapshot):
+    document = snapshot.model_dump(mode="json")
+    document["sections"][5]["content"]["text"] = "Metodología antigua de otra versión."
+
+    md = render_snapshot_md(DossierSnapshot.model_validate(document))
+
+    assert "Metodología antigua de otra versión." in md
+    assert "art. 38.1" not in md
+
+
+def test_el_md_esta_en_castellano_sin_claves_ni_enums_en_crudo(snapshot):
+    md = render_snapshot_md(snapshot)
+
+    for raw in ("approved_by", "system_owner", "NOT_APPROVED", "readiness:", "recorded_at"):
+        assert raw not in md, raw
+    assert "Categoría: BÁSICA" in md
+    assert "Estado de la sección: registrada" in md
+
+
+def test_la_seccion_7_es_una_tabla_por_medida(snapshot):
+    md = render_snapshot_md(snapshot)
+
+    assert "| Medida | Nombre | Tipo | Implantada | Revisión regular | Última revisión |" in md
+    assert len([line for line in md.splitlines() if line.startswith("| org.1 |")]) == 2
+
+
+def test_un_sistema_no_preparado_se_avisa_en_la_cabecera(snapshot):
+    assert snapshot.sections[6].content["matrix"]["readiness"] == "NOT_READY"
+
+    head = render_snapshot_md(snapshot).split("## 1.")[0]
+
+    assert "no estaba preparado al generar" in head

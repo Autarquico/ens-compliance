@@ -9,15 +9,23 @@ import hashlib
 import json
 from datetime import UTC, datetime
 
-from pydantic import AwareDatetime, Field, JsonValue
-
-from ens_evidence.assessment.dossier.methodology import methodology_text
-from ens_evidence.assessment.dossier.model import DossierSnapshot, Section, SourceRef
+from ens_evidence.assessment.dossier.model import (
+    RESULTS_SECTION,
+    DossierSnapshot,
+    Section,
+    SourceRef,
+)
+from ens_evidence.assessment.dossier.notices import CERTIFICATION_NOTE, NOT_READY_NOTICE
+from ens_evidence.assessment.dossier.sections_md import (
+    SECTION_STATE_LABELS,
+    category_name,
+    scalar,
+    section_body,
+)
+from ens_evidence.assessment.dossier.view import DossierView, TransitionEntry
 from ens_evidence.matrix.messages import role_label
 from ens_evidence.matrix.render import md_escape
-from ens_evidence.models.contracts import SHA256_PATTERN, Strict
-from ens_evidence.models.dossier import Transition
-from ens_evidence.models.enums import DossierState, Role
+from ens_evidence.models.enums import DossierState, Readiness, Role
 
 NO_CORRECTIVE_MEASURES = "Sin medidas correctoras registradas."
 DECLARED_LABEL = (
@@ -27,7 +35,7 @@ DECLARED_LABEL = (
 EVIDENCE_REVIEW_NOTE = (
     "integridad del documento verificada; firma, formato PDF-A y vinculación los revisa una persona"
 )
-_METHODOLOGY = 6
+FIRST_HUMAN_SECTION = 10
 
 
 def snapshot_sha256(snapshot: DossierSnapshot) -> str:
@@ -36,47 +44,11 @@ def snapshot_sha256(snapshot: DossierSnapshot) -> str:
 
 def render_snapshot_json(snapshot: DossierSnapshot) -> bytes:
     document = snapshot.model_dump(mode="json")
-    return (json.dumps(document, indent=2, ensure_ascii=False) + "\n").encode()
+    return (json.dumps(document, indent=2, ensure_ascii=False, sort_keys=True) + "\n").encode()
 
 
 def _instant(moment: datetime) -> str:
     return moment.astimezone(UTC).isoformat()
-
-
-def _scalar(value: JsonValue) -> str:
-    if value is None:
-        return "—"
-    if isinstance(value, bool):
-        return "sí" if value else "no"
-    return md_escape(str(value))
-
-
-def _tree(value: JsonValue, depth: int) -> list[str]:
-    pad = "  " * depth
-    match value:
-        case dict():
-            lines: list[str] = []
-            for key, item in value.items():
-                head = f"{pad}- **{md_escape(str(key))}**:"
-                if isinstance(item, dict | list) and item:
-                    lines += [head, *_tree(item, depth + 1)]
-                else:
-                    lines.append(
-                        f"{head} {'—' if isinstance(item, dict | list) else _scalar(item)}"
-                    )
-            return lines
-        case list():
-            lines = []
-            for item in value:
-                if isinstance(item, dict | list) and item:
-                    lines += [f"{pad}-", *_tree(item, depth + 1)]
-                else:
-                    lines.append(
-                        f"{pad}- {'—' if isinstance(item, dict | list) else _scalar(item)}"
-                    )
-            return lines
-        case _:
-            return [f"{pad}- {_scalar(value)}"]
 
 
 def _source_line(source: SourceRef) -> str:
@@ -86,26 +58,29 @@ def _source_line(source: SourceRef) -> str:
     )
 
 
-def _methodology_lines() -> list[str]:
-    return [f"> {md_escape(paragraph)}" for paragraph in methodology_text().split("\n\n")]
-
-
 def _section_md(section: Section) -> list[str]:
     lines = [
         f"## {section.number}. {md_escape(section.title)}",
         "",
-        f"Estado: {section.state.value}",
+        f"Estado de la sección: {SECTION_STATE_LABELS[section.state.value]}",
     ]
     lines += (
         ["", "Fuentes:", *(_source_line(s) for s in section.sources)] if section.sources else []
     )
-    lines.append("")
-    if section.number == _METHODOLOGY and isinstance(section.content, dict):
-        meta = {k: v for k, v in section.content.items() if k != "text"}
-        lines += [*_tree(meta, 0), "", *_methodology_lines()]
-    else:
-        lines += _tree(section.content, 0)
-    return [*lines, ""]
+    body = section_body(section)
+    while body and body[-1] == "":
+        body.pop()
+    return [*lines, "", *body, ""]
+
+
+def _not_ready_notice(snapshot: DossierSnapshot) -> list[str]:
+    """Una línea en la cabecera si el sistema no estaba preparado al generar el expediente."""
+    content = snapshot.section(RESULTS_SECTION).content
+    matrix = content.get("matrix") if isinstance(content, dict) else None
+    readiness = matrix.get("readiness") if isinstance(matrix, dict) else None
+    if readiness == Readiness.READY.value:
+        return []
+    return [f"> {NOT_READY_NOTICE}"]
 
 
 def _header(snapshot: DossierSnapshot) -> list[str]:
@@ -116,11 +91,12 @@ def _header(snapshot: DossierSnapshot) -> list[str]:
         f"> {md_escape(snapshot.commitment)}",
     ]
     if snapshot.notice:
-        lines += [f"> {md_escape(snapshot.notice)}"]
+        lines += [f"> {md_escape(snapshot.notice)}", f"> {md_escape(CERTIFICATION_NOTE)}"]
     return [
         *lines,
+        *_not_ready_notice(snapshot),
         "",
-        f"Categoría: {snapshot.category.value}",
+        f"Categoría: {category_name(snapshot.category)}",
         f"Generado: {_instant(inputs.generated_at)}",
         f"Evaluado: {_instant(inputs.evaluated_at)}",
         f"Referencia temporal: {_instant(inputs.reference_now)}",
@@ -130,42 +106,27 @@ def _header(snapshot: DossierSnapshot) -> list[str]:
     ]
 
 
+def _canonical(snapshot: DossierSnapshot) -> DossierSnapshot:
+    """La instantánea con las claves de los diccionarios en el orden del JSON firmado, que es el
+    que se obtiene al releerla: el Markdown no depende de cómo se construyó en memoria."""
+    return DossierSnapshot.model_validate_json(render_snapshot_json(snapshot))
+
+
 def render_snapshot_md(snapshot: DossierSnapshot) -> str:
+    snapshot = _canonical(snapshot)
     lines = _header(snapshot)
     for section in snapshot.sections:
         lines += _section_md(section)
     return "\n".join(lines).rstrip("\n") + "\n"
 
 
-class TransitionEntry(Strict):
-    """Un registro de la cadena tal como lo guarda el almacén."""
-
-    key: str = Field(min_length=1)
-    sha256: str = Field(pattern=SHA256_PATTERN)
-    recorded_at: AwareDatetime
-    record: Transition
-
-
-class DossierView(Strict):
-    """Lo que se añade a la instantánea al avanzar el expediente (secciones 10 y 11)."""
-
-    snapshot: DossierSnapshot
-    transitions: list[TransitionEntry]
-
-    @property
-    def analysis(self) -> TransitionEntry | None:
-        return next(
-            (e for e in self.transitions if e.record.to_state is DossierState.ANALYZED), None
-        )
-
-
 def _conclusions_md(view: DossierView) -> list[str]:
     lines = ["## 10. Conclusiones", ""]
     analysis = view.analysis
     if analysis is None:
-        pending = view.snapshot.sections[9].content
+        pending = view.snapshot.section(FIRST_HUMAN_SECTION).content
         note = pending.get("note") if isinstance(pending, dict) else None
-        return [*lines, _scalar(note), ""]
+        return [*lines, scalar(note), ""]
     record = analysis.record
     lines += [
         f"Análisis de {md_escape(record.actor)} ({role_label(record.role)}), "
@@ -189,7 +150,7 @@ def _conclusions_md(view: DossierView) -> list[str]:
         "",
         f"Elevado a {md_escape(record.elevated_to or '—')} "
         f"({role_label(Role.SYSTEM_OWNER)}) el {elevated_at}; "
-        f"elevación confirmada: {_scalar(record.elevation_confirmed)}.",
+        f"elevación confirmada: {scalar(record.elevation_confirmed)}.",
         "",
     ]
 
@@ -201,8 +162,8 @@ def _transition_md(entry: TransitionEntry) -> list[str]:
         f"### {record.to_state.value}",
         "",
         f"- Persona: {who}",
-        f"- at: {_instant(record.at)}",
-        f"- recorded_at: {_instant(entry.recorded_at)}",
+        f"- Cuándo se hizo: {_instant(record.at)}",
+        f"- Cuándo se registró: {_instant(entry.recorded_at)}",
         f"- Clave: {md_escape(entry.key)}",
         f"- sha256 del registro: {entry.sha256}",
     ]
@@ -239,9 +200,10 @@ def _approval_md(view: DossierView) -> list[str]:
 
 
 def render_view_md(snapshot: DossierSnapshot, transitions: list[TransitionEntry]) -> str:
+    snapshot = _canonical(snapshot)
     view = DossierView(snapshot=snapshot, transitions=transitions)
     lines = _header(snapshot)
-    for section in snapshot.sections[:9]:
+    for section in [s for s in snapshot.sections if s.number < FIRST_HUMAN_SECTION]:
         lines += _section_md(section)
     lines += _conclusions_md(view)
     lines += _approval_md(view)

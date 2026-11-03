@@ -8,6 +8,10 @@ import ipaddress
 import re
 import string
 
+from ens_evidence.scope.secrets import find_secrets
+
+NAME_MAX = 120
+
 _EMAIL = re.compile(r"[\w.+-]+\s?@\s?[\w-]+(?:\.[\w-]+)+")
 # DNI/NIE: dígitos con separadores opcionales y letra final. Si la letra va separada, debe ser la
 # letra de control válida («20261015 a las» no es un DNI); pegada, cualquier letra.
@@ -165,3 +169,16 @@ def text_problems(text: str) -> tuple[list[str], list[str]]:
         ["contiene una dirección IP, que puede ser un dato personal"] if _has_ip(text) else []
     )
     return errors, warnings
+
+
+def check_declared_name(name: str) -> list[str]:
+    """Errores de `--by`: un nombre declarado no puede ser vacío, largo, un secreto ni un
+    identificador personal (correo, DNI/NIE, IBAN, teléfono). Nunca incluye el valor."""
+    if not name.strip():
+        return ["--by: indica quién registra (nombre declarado)"]
+    errors = (
+        [f"--by: demasiado largo (máximo {NAME_MAX} caracteres)"] if len(name) > NAME_MAX else []
+    )
+    errors += [f"{p}: parece un secreto; quítalo" for p in find_secrets(name, "--by")]
+    errors += [f"--by: {problem}; indica solo un nombre" for problem in text_problems(name)[0]]
+    return errors
