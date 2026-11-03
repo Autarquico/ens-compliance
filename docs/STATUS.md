@@ -16,6 +16,7 @@
 - #6 Collector de Cloudflare
 - #7 Collector de Google Workspace
 - #13 Collector de Restic y pruebas de restauración
+- #14 Informes y scheduling
 - #16 Inventario y alcance
 - #17 Categorización, riesgos y aplicabilidad
 - #19 Evidencia de endpoints con script guiado
