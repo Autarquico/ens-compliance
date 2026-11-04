@@ -153,7 +153,7 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
     ),
     (BlockerKind.OPEN_FINDING, FINDING_DETAIL): (
         "hallazgo de pre-auditoría {a} sin resolver ni descartar (propuesta; la decide una "
-        "persona). Siguiente paso: importa la evidencia de la corrección y preaudit review {a} "
+        "persona). Siguiente paso: importa la evidencia de la corrección y preaudit review ID "
         "--by NOMBRE --decision resolved --evidence EV-… o --decision dismissed --reason «…»; "
         "ACCEPTED lo reconoce pero sigue bloqueando"
     ),

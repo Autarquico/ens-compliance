@@ -121,10 +121,11 @@ ens-evidence preaudit run <expediente> --consent <huella> --by "Lucía Navarro G
 
 La capa de juicio puede acabar así:
 
-- `DONE`: con sus hallazgos y el número de descartados por no apoyarse en el
-  expediente. Se descarta, por ejemplo, un hallazgo cuyo fragmento no está
+- `DONE`: con sus hallazgos y los descartados por la validación, desglosados
+  por motivo. Se descarta, por ejemplo, un hallazgo cuyo fragmento no está
   literalmente en lo que cita o es demasiado corto para apoyar nada (menos de
-  4 palabras o de 20 caracteres, sin contar las marcas de redacción);
+  4 palabras o de 20 caracteres, sin contar las marcas de redacción), o que
+  repite otro: si los dos proponen clases distintas, se queda la más grave;
 - `ERROR`: la respuesta no sirve y no deja ningún hallazgo. Sale con 1;
 - `NOT_RUN`: no se pidió.
 

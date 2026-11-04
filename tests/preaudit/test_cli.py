@@ -1,12 +1,17 @@
 """Uso de la CLI de la pre-auditoría. Los escenarios de la spec están en `test_acceptance.py`."""
 
+from datetime import UTC, datetime
+
 import pytest
 from assessment.dossier.stages import AFTER, basic
 
-from ens_evidence.cli import REDACTION_LIMIT, print_finding
+from ens_evidence.cli import REDACTION_LIMIT, discard_breakdown, disposition_line, print_finding
 from ens_evidence.models.preaudit import (
     Classification,
     DeterministicRule,
+    DiscardReason,
+    Disposition,
+    DispositionState,
     Finding,
     Layer,
     Ref,
@@ -15,6 +20,7 @@ from ens_evidence.models.preaudit import (
 )
 from ens_evidence.preaudit.classify import judgment_classification_source, proposal_for, source_for
 from ens_evidence.preaudit.deterministic import RULE_LABELS
+from ens_evidence.preaudit.findings import FindingState
 from ens_evidence.preaudit.service import PREAUDITS_PREFIX, SHELL_RISK
 
 from .helpers import configure, fake_codex, world_at
@@ -107,7 +113,8 @@ def test_a_deterministic_finding_is_shown_in_plain_language(capsys):
 
     shown = capsys.readouterr().out
     assert f"[SIN_CLASIFICAR] org.1 — {RULE_LABELS[rule]} (DETERMINISTIC)" in shown
-    assert "  Sección: 7\n" in shown and "  Evidencia: EV-20261030-abc\n" in shown
+    assert "  Sección: 7. Resultado por medida\n" in shown
+    assert "  Evidencia: EV-20261030-abc\n" in shown
     assert f"  Fuente de la clasificación: {source_for(rule)}" in shown
     for code in (rule.value, "document_not_approved", "SECTION", "Cita "):
         assert code not in shown
@@ -144,3 +151,41 @@ def test_an_observation_shows_its_own_classification_source_apart_from_the_crite
     assert "  Fuente del criterio: CCN-CERT IC-01/19, apartado 53" in shown
     [classified] = [ln for ln in shown.splitlines() if "Fuente de la clasificación" in ln]
     assert "§VI.2, Observación" in classified and "No Conformidad Menor" not in classified
+
+
+def test_discards_are_broken_down_by_reason():
+    breakdown = discard_breakdown({DiscardReason.QUOTE_NOT_FOUND: 2, DiscardReason.DUPLICATE: 1})
+
+    assert breakdown == (
+        " (cita no literal o demasiado corta: 2; duplicado; se queda la clase más grave: 1)"
+    )
+    assert "apoyarse en el expediente" not in breakdown
+    assert discard_breakdown({}) == ""
+
+
+def test_a_dismissal_quotes_its_reason_once():
+    refs = [Ref(kind=RefKind.DOCUMENT, id="politica-seguridad")]
+    finding = Finding(
+        id=finding_id("coherencia-politica-evidencia", "org.1", refs),
+        layer=Layer.JUDGMENT,
+        proposal=Classification.NC_MENOR,
+        measure="org.1",
+        refs=refs,
+        criterion="coherencia-politica-evidencia",
+        reason="motivo",
+        quote="politica-seguridad: «cita»",
+        source="fuente",
+        classification_source=judgment_classification_source(Classification.NC_MENOR),
+    )
+    dismissed = Disposition(
+        finding_id=finding.id,
+        covers_run=1,
+        state=DispositionState.DISMISSED,
+        by="Ana Pérez",
+        at=datetime(2026, 11, 4, tzinfo=UTC),
+        reason="La política ya cubre ese detalle.",
+    )
+
+    line = disposition_line(Layer.JUDGMENT, FindingState(finding, (), dismissed))
+
+    assert line.endswith("motivo: «La política ya cubre ese detalle.»; no bloquea.")

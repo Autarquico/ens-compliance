@@ -19,7 +19,7 @@ from ens_evidence.matrix.technical import (
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus, Readiness
 from ens_evidence.models.preaudit import PreAuditRecord
-from ens_evidence.preaudit.findings import last_run
+from ens_evidence.preaudit.findings import current_dossier_run
 from ens_evidence.workspace import WorkspaceStore
 
 STATUS_ORDER = (CheckStatus.PASS, CheckStatus.FAIL, CheckStatus.UNKNOWN, CheckStatus.ERROR)
@@ -78,4 +78,4 @@ def assessment_status(
                 count_statuses(run.results if run else ()),
             )
         )
-    return AssessmentStatus(result, tuple(summaries), last_run(store, at))
+    return AssessmentStatus(result, tuple(summaries), current_dossier_run(store, at))

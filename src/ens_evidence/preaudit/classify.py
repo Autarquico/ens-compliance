@@ -1,8 +1,9 @@
 """Tabla de decisión de la capa determinista y agrupación de hallazgos (IC-01/19 §54).
 
 Nada de aquí inventa severidades: cada propuesta sale de `DETERMINISTIC_PROPOSAL` (modelo) y cita
-la fuente que la sustenta. La agrupación es solo una propuesta derivada; los hallazgos originales
-se conservan y la confirma una persona.
+literalmente la fuente que la sustenta; lo que no es de la fuente va fuera de las comillas y
+marcado como nota de la herramienta. La agrupación es solo una propuesta derivada; los hallazgos
+originales se conservan y la confirma una persona.
 """
 
 from collections import defaultdict
@@ -21,18 +22,11 @@ from ens_evidence.preaudit.pack import Source
 ITS_SOURCE = "ITS de Auditoría (BOE-A-2018-4573) §VI.2"
 IC_SOURCE = "CCN-CERT IC-01/19 (octubre 2026)"
 
-_MENOR_SOURCE = (
-    f"{ITS_SOURCE}, «No Conformidad Menor» (fallo en la implantación de los requisitos); "
-    f"{IC_SOURCE} §53, incumplimiento parcial de alguna medida"
-)
-_UNCLASSIFIED_SOURCE = (
-    f"{ITS_SOURCE} y {IC_SOURCE} §53: no hay evidencia objetiva de incumplimiento, solo de falta "
-    "de información; la clasifica una persona"
-)
 GROUPING_SOURCE = f"{IC_SOURCE} §54"
 
-# Definiciones literales de las clases que la capa de juicio puede proponer. Cada `quote` aparece
-# tal cual en su texto oficial (tests/preaudit/test_pack.py lo comprueba contra los fixtures).
+# Definiciones literales de las clases que se proponen. Cada `quote` aparece tal cual en su texto
+# oficial (tests/preaudit/test_pack.py lo comprueba contra los fixtures, y test_classify que toda
+# cita «…» de una fuente atribuida es literal).
 JUDGMENT_CLASSIFICATIONS: dict[Classification, tuple[Source, ...]] = {
     Classification.NC_MENOR: (
         Source(
@@ -70,12 +64,30 @@ JUDGMENT_CLASSIFICATIONS: dict[Classification, tuple[Source, ...]] = {
 
 def judgment_classification_source(proposal: Classification) -> str:
     """La fuente literal de la clase que propone un hallazgo de juicio."""
-    return "; ".join(f"{s.reference}: «{s.quote}»" for s in JUDGMENT_CLASSIFICATIONS[proposal])
+    return _cited(JUDGMENT_CLASSIFICATIONS[proposal])
 
+
+def _cited(sources: tuple[Source, ...]) -> str:
+    return "; ".join(f"{s.reference}: «{s.quote}»" for s in sources)
+
+
+# Sin clase propuesta: la falta de información no es la «evidencia objetiva» que pide §VI.2. Solo
+# ese fragmento es de la fuente; el resto es explicación de la herramienta y se marca como tal.
+UNCLASSIFIED_BASIS = Source(
+    document="its-auditoria",
+    reference=f"{ITS_SOURCE}, «No Conformidad Menor»",
+    quote="en base a una evidencia objetiva",
+)
+TOOL_NOTE = "Nota de la herramienta, no de la fuente"
+UNCLASSIFIED_NOTE = (
+    "lo que falta es información, no una evidencia objetiva de incumplimiento; no se propone "
+    "clase y la clasifica una persona"
+)
 
 _SOURCE_BY_PROPOSAL = {
-    Classification.NC_MENOR: _MENOR_SOURCE,
-    Classification.SIN_CLASIFICAR: _UNCLASSIFIED_SOURCE,
+    Classification.NC_MENOR: judgment_classification_source(Classification.NC_MENOR),
+    Classification.SIN_CLASIFICAR: f"{_cited((UNCLASSIFIED_BASIS,))}. {TOOL_NOTE}: "
+    f"{UNCLASSIFIED_NOTE}",
 }
 
 

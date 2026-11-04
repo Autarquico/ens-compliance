@@ -13,6 +13,7 @@ from assessment.dossier.stages import ID, basic, run_at
 from matrix.acceptance_helpers import import_manual_evidence
 from reports.world import MADRID
 
+from ens_evidence.assessment.dossier import render_snapshot_md
 from ens_evidence.assessment.dossier.model import snapshot_export
 from ens_evidence.assessment.dossier.store import load_snapshot
 from ens_evidence.assessment.dossier.transitions import evaluate_for_declaration
@@ -22,7 +23,12 @@ from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.evidence.manifests import load_manifest
 from ens_evidence.models.preaudit import DispositionState, Layer, RefKind
 from ens_evidence.preaudit.findings import BROKEN_DETAIL, FINDING_DETAIL
-from ens_evidence.preaudit.records import DISPOSITIONS_PREFIX, RUNS_PREFIX, scan_dispositions
+from ens_evidence.preaudit.records import (
+    DISPOSITIONS_PREFIX,
+    RUNS_PREFIX,
+    scan_dispositions,
+    scan_runs,
+)
 from ens_evidence.preaudit.review import ReviewRejected, review
 from ens_evidence.preaudit.service import prepare, run
 from ens_evidence.reports.daily import build_daily
@@ -304,6 +310,26 @@ def test_a_later_dossier_freezes_the_open_finding_and_still_verifies(judged):
     assert result.exit_code == 0, result.output
 
 
+def test_a_later_dossier_says_which_preaudit_it_froze_in_section_9(judged):
+    world, dossier, _, _ = judged
+    [stored] = scan_runs(world.store).records
+    deterministic = sum(f.layer is Layer.DETERMINISTIC for f in stored.record.findings)
+    at = stored.record.recorded_at.isoformat()
+    generated = run_at(world, "assessment", "dossier", "generate", at=REVIEWED_AT)
+    assert generated.exit_code == 0, generated.output
+    snapshot = load_snapshot(world.store, ID.search(generated.output).group())
+
+    treatment = snapshot.sections[8]
+
+    assert treatment.content["pre_audit"] == (
+        f"pre-auditoría 1 del {at} sobre el expediente {dossier}: capa determinista ejecutada, "
+        f"{deterministic} hallazgo{'' if deterministic == 1 else 's'}; capa de juicio "
+        "ejecutada, 1 hallazgo. Cada hallazgo es una propuesta; revisión humana pendiente"
+    )
+    assert stored.key in {source.key for source in treatment.sources}
+    assert f"Pre-auditoría 1 del {at} sobre el expediente {dossier}" in render_snapshot_md(snapshot)
+
+
 def delete(world, prefix: str) -> None:
     for key in world.store.list(prefix):
         (world.store._root / key).unlink()
@@ -375,4 +401,6 @@ def test_the_open_finding_names_the_next_step(judged):
 
     lines = daily_lines(world.store, LATER)
 
-    assert any(f"preaudit review {finding.id}" in line for line in lines)
+    [line] = [line for line in lines if finding.id in line]
+    assert "preaudit review ID --by NOMBRE" in line
+    assert line.count(finding.id) == 1

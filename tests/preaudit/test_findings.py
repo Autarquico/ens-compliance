@@ -8,6 +8,7 @@ from datetime import UTC, datetime, timedelta
 import pytest
 
 from ens_evidence import chain
+from ens_evidence.assessment.dossier.model import SnapshotInputs
 from ens_evidence.models.preaudit import (
     Classification,
     Consent,
@@ -28,10 +29,11 @@ from ens_evidence.models.preaudit import (
 from ens_evidence.preaudit.findings import (
     BROKEN_DETAIL,
     FINDING_DETAIL,
+    FROZEN_FIELDS,
     PreAuditFindings,
     current_dossier,
+    current_dossier_run,
     findings_view,
-    last_run,
 )
 from ens_evidence.preaudit.records import DISPOSITIONS_PREFIX, RUNS_PREFIX
 from ens_evidence.workspace import LocalStore
@@ -342,15 +344,15 @@ def test_a_judgment_that_did_not_finish_keeps_human_review_pending(store, status
 def test_last_run_is_the_latest_on_the_current_dossier_and_not_from_the_future(store):
     first = dossier_at(store, T0)
     add_run(store, first, T0 + timedelta(minutes=1))
-    assert last_run(store, T0) is None
-    assert last_run(store, T0 + timedelta(minutes=2)).seq == 1
+    assert current_dossier_run(store, T0) is None
+    assert current_dossier_run(store, T0 + timedelta(minutes=2)).seq == 1
 
     later = T0 + timedelta(minutes=3)
     second = dossier_at(store, later, b'{"dossier": 2}\n')
-    assert last_run(store, later + timedelta(minutes=1)) is None
+    assert current_dossier_run(store, later + timedelta(minutes=1)) is None
 
     add_run(store, second, later + timedelta(minutes=2), judged_status=LayerStatus.NOT_RUN)
-    shown = last_run(store, later + timedelta(minutes=3))
+    shown = current_dossier_run(store, later + timedelta(minutes=3))
     assert (shown.seq, shown.run.judgment_status) == (2, LayerStatus.NOT_RUN)
 
 
@@ -572,3 +574,7 @@ def test_a_dossier_generated_after_the_evaluated_instant_does_not_count(store):
     remove(store, RUNS_PREFIX)
 
     assert not findings_view(store, minutes(4)).problems
+
+
+def test_the_frozen_fields_read_from_dossier_json_are_fields_of_snapshot_inputs():
+    assert set(FROZEN_FIELDS) <= SnapshotInputs.model_fields.keys()

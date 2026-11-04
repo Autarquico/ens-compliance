@@ -34,8 +34,8 @@ from ens_evidence.dossier_layout import dossiers_before, matches_content, snapsh
 from ens_evidence.models.preaudit import (
     BLOCKING_PROPOSALS,
     NEXT_STATES,
+    SEVERITY,
     UNBLOCKING,
-    Classification,
     Disposition,
     DispositionRecord,
     DispositionState,
@@ -55,9 +55,6 @@ from ens_evidence.workspace import NotFound, WorkspaceStore
 
 FINDING_DETAIL = "preaudit_finding"
 BROKEN_DETAIL = "preaudit_history_broken"
-
-SEVERITY = (Classification.NC_MAYOR, Classification.NC_MENOR, Classification.OBSERVACION)
-"""De más a menos grave."""
 
 FROZEN_FIELDS = ("preaudit_runs", "preaudit_dispositions")
 """Los campos de `SnapshotInputs` con las claves de pre-auditoría congeladas al generar."""
@@ -226,7 +223,7 @@ def current_dossier(store: WorkspaceStore, at: datetime) -> str | None:
     return max(dossiers_before(store, at), default=None)
 
 
-def last_run(store: WorkspaceStore, at: datetime) -> PreAuditRecord | None:
+def current_dossier_run(store: WorkspaceStore, at: datetime) -> PreAuditRecord | None:
     """La última ejecución legible registrada en o antes de `at` sobre el expediente vigente.
     Informa; no decide nada (eso es de `findings_view`)."""
     dossier = current_dossier(store, at)

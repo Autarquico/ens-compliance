@@ -449,7 +449,7 @@ def _record(
         consent=consented.consent if judged else None,
         judgment_status=outcome.status,
         judgment_error=outcome.error,
-        discarded=outcome.discarded,
+        discards=dict(outcome.discards),
     )
     seq, previous = next_link(scan)
     return PreAuditRecord(

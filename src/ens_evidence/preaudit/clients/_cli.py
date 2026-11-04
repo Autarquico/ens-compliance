@@ -40,16 +40,11 @@ class Executable:
     sha256: str
 
 
-def cli_destination(name: str, version: str) -> str:
-    """La CLI y su versión, con la sesión del usuario."""
-    return f"{name} {version}, {USER_SESSION}"
-
-
 def describe_cli(name: str, version: str, executable: Executable, notice: str) -> str:
     """Destino al que se liga el consentimiento de un proveedor de CLI: la CLI, su ejecutable
     concreto y lo que el aislamiento no garantiza (`notice`)."""
     return (
-        f"{cli_destination(name, version)}; ejecutable {executable.path} "
+        f"{name} {version}, {USER_SESSION}; ejecutable {executable.path} "
         f"(sha256 {executable.sha256}); {notice}"
     )
 

@@ -38,6 +38,25 @@
       "title": "Consent",
       "type": "object"
     },
+    "DiscardReason": {
+      "description": "Por qu\u00e9 la validaci\u00f3n descarta un hallazgo de juicio (`preaudit/validate.py`).",
+      "enum": [
+        "UNKNOWN_CRITERION",
+        "PROPOSAL_NOT_ALLOWED",
+        "UNKNOWN_MEASURE",
+        "MEASURE_NOT_APPLICABLE",
+        "MEASURE_NOT_JUSTIFIED",
+        "MISSING_CITATION",
+        "UNLINKED_REF",
+        "QUOTE_NOT_FOUND",
+        "EMPTY_REASON",
+        "SENSITIVE_TEXT",
+        "UNDISPLAYABLE_TEXT",
+        "DUPLICATE"
+      ],
+      "title": "DiscardReason",
+      "type": "string"
+    },
     "LayerStatus": {
       "enum": [
         "NOT_RUN",
@@ -80,11 +99,17 @@
       "$ref": "#/$defs/LayerStatus",
       "default": "DONE"
     },
-    "discarded": {
-      "default": 0,
-      "minimum": 0,
-      "title": "Discarded",
-      "type": "integer"
+    "discards": {
+      "additionalProperties": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "default": {},
+      "propertyNames": {
+        "$ref": "#/$defs/DiscardReason"
+      },
+      "title": "Discards",
+      "type": "object"
     },
     "dossier": {
       "minLength": 1,

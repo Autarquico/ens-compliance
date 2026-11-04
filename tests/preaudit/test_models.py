@@ -8,6 +8,7 @@ from ens_evidence.models.preaudit import (
     Classification,
     Consent,
     DeterministicRule,
+    DiscardReason,
     Disposition,
     DispositionState,
     Finding,
@@ -219,7 +220,8 @@ def test_run_without_provider_has_deterministic_only():
 
 
 def test_run_with_judgment_records_provider_and_consent():
-    assert run(**JUDGED, discarded=2).discarded == 2
+    judged = run(**JUDGED, discards={DiscardReason.DUPLICATE: 1, DiscardReason.UNLINKED_REF: 1})
+    assert judged.discarded == 2
 
 
 @pytest.mark.parametrize("missing", ["provider", "model", "consent"])
@@ -241,7 +243,11 @@ def test_judgment_error_goes_only_with_an_error_layer():
 
 
 def test_run_not_run_rejects_provider_consent_and_discards():
-    for over in [{"provider": Provider.OPENAI}, {"consent": CONSENT}, {"discarded": 1}]:
+    for over in [
+        {"provider": Provider.OPENAI},
+        {"consent": CONSENT},
+        {"discards": {DiscardReason.DUPLICATE: 1}},
+    ]:
         with pytest.raises(ValidationError, match="NOT_RUN"):
             run(**over)
 
@@ -252,7 +258,7 @@ def test_run_rejects_non_completed_deterministic_layer_and_bad_values():
     with pytest.raises(ValidationError):
         run(dossier_sha256="xyz")
     with pytest.raises(ValidationError):
-        run(**JUDGED | {"discarded": -1})
+        run(**JUDGED | {"discards": {DiscardReason.DUPLICATE: 0}})
 
 
 def test_run_rejects_unknown_provider():

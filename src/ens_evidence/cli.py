@@ -4,7 +4,7 @@ import os
 import re
 import shutil
 import threading
-from collections.abc import Callable, Iterator
+from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime, tzinfo
 from enum import StrEnum
@@ -50,7 +50,7 @@ from ens_evidence.assessment.dossier.derived import (
     render_view,
     save_view,
 )
-from ens_evidence.assessment.dossier.model import DossierSnapshot
+from ens_evidence.assessment.dossier.model import SECTION_TITLES, DossierSnapshot
 from ens_evidence.assessment.dossier.package import (
     INDEX_NAME,
     PACKAGE_DIR,
@@ -193,12 +193,14 @@ from ens_evidence.models.enums import Category, CheckStatus, CollectionStatus, D
 from ens_evidence.models.preaudit import (
     PROPOSAL_NOTICE,
     DeterministicRule,
+    DiscardReason,
     DispositionState,
     Finding,
     Layer,
     LayerStatus,
     PreAuditRecord,
     Provider,
+    Ref,
     RefKind,
 )
 from ens_evidence.orgdocs import (
@@ -3423,6 +3425,20 @@ REF_LABELS = {
     RefKind.EVIDENCE: "Evidencia",
     RefKind.SECTION: "Sección",
 }
+DISCARD_LABELS = {
+    DiscardReason.UNKNOWN_CRITERION: "criterio desconocido",
+    DiscardReason.PROPOSAL_NOT_ALLOWED: "clase no admitida por el criterio",
+    DiscardReason.UNKNOWN_MEASURE: "medida desconocida o fuera del expediente",
+    DiscardReason.MEASURE_NOT_APPLICABLE: "medida no aplicable",
+    DiscardReason.MEASURE_NOT_JUSTIFIED: "medida sin justificación que revisar",
+    DiscardReason.MISSING_CITATION: "no cita lo que pide el criterio",
+    DiscardReason.UNLINKED_REF: "cita algo que no está enlazado a la medida",
+    DiscardReason.QUOTE_NOT_FOUND: "cita no literal o demasiado corta",
+    DiscardReason.EMPTY_REASON: "sin motivo",
+    DiscardReason.SENSITIVE_TEXT: "texto con un secreto o un dato personal",
+    DiscardReason.UNDISPLAYABLE_TEXT: "texto que no se puede mostrar tal cual",
+    DiscardReason.DUPLICATE: "duplicado; se queda la clase más grave",
+}
 SHA256_ARG = re.compile(r"[0-9a-f]{64}")
 ProviderOption = Annotated[
     Provider | None,
@@ -3577,8 +3593,7 @@ def print_finding(finding: Finding) -> None:
     typer.echo(f"[{finding.proposal.value}] {finding.measure} — {rule} ({finding.layer.value})")
     typer.echo(f"  Motivo: {finding.reason}")
     for ref in finding.refs:
-        shown = ref.id.split(":", 1)[0] if deterministic and ref.kind is RefKind.SECTION else ref.id
-        typer.echo(f"  {REF_LABELS[ref.kind]}: {shown}")
+        typer.echo(f"  {REF_LABELS[ref.kind]}: {shown_ref(ref, deterministic)}")
     for line in (finding.quote or "").splitlines():
         typer.echo(f"    {line}")
     if deterministic:
@@ -3587,6 +3602,16 @@ def print_finding(finding: Finding) -> None:
     typer.echo(f"  Fuente del criterio: {finding.source}")
     if finding.classification_source:
         typer.echo(f"  Fuente de la clasificación: {finding.classification_source}")
+
+
+def shown_ref(ref: Ref, deterministic: bool) -> str:
+    """Una sección del expediente con su título; el resto de refs, tal cual."""
+    if not (deterministic and ref.kind is RefKind.SECTION):
+        return ref.id
+    number = ref.id.split(":", 1)[0]
+    if number.isdigit() and 1 <= int(number) <= len(SECTION_TITLES):
+        return f"{number}. {SECTION_TITLES[int(number) - 1]}"
+    return number
 
 
 DISPOSITION_LABELS = {
@@ -3608,7 +3633,7 @@ def disposition_line(layer: Layer, state: FindingState | None) -> str:
         if decided.evidence_id:
             line += f", evidencia {decided.evidence_id}"
         if decided.reason:
-            line += f", motivo: {decided.reason}"
+            line += f", motivo: «{decided.reason}»"
     return line + ("; bloquea la preparación." if state.blocks else "; no bloquea.")
 
 
@@ -3689,6 +3714,12 @@ def counted(n: int, noun: str) -> str:
     return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
 
 
+def discard_breakdown(discards: Mapping[DiscardReason, int]) -> str:
+    """` (motivo: n; …)` en el orden de `DiscardReason`, o nada si no hay descartes."""
+    parts = [f"{DISCARD_LABELS[r]}: {discards[r]}" for r in DiscardReason if discards.get(r)]
+    return f" ({'; '.join(parts)})" if parts else ""
+
+
 def print_preaudit_layers(record: PreAuditRecord) -> None:
     executed = record.run
     deterministic = [f for f in record.findings if f.layer is Layer.DETERMINISTIC]
@@ -3701,7 +3732,9 @@ def print_preaudit_layers(record: PreAuditRecord) -> None:
         case LayerStatus.DONE:
             typer.echo(
                 f"Capa de juicio: DONE, {counted(judged, 'hallazgo')}, "
-                f"{counted(executed.discarded, 'descartado')} por no apoyarse en el expediente."
+                f"{counted(executed.discarded, 'descartado')} por la validación"
+                + discard_breakdown(executed.discards)
+                + "."
             )
         case LayerStatus.ERROR:
             typer.echo(

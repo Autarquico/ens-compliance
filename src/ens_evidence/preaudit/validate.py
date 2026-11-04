@@ -13,8 +13,14 @@ hallazgo se descarta, y se cuenta, si:
 - un fragmento citado no aparece literalmente en el elemento citado, o es demasiado corto para
   apoyar nada: sin contar las marcas de redacción (`[PERSONA]`, `[REDACTADO:…]`…), menos de
   `MIN_QUOTE_WORDS` palabras o de `MIN_QUOTE_CHARS` caracteres no blancos;
-- no da motivo, o repite un hallazgo ya aceptado en esta respuesta;
-- su motivo o sus fragmentos contienen un secreto o un dato personal detectable.
+- no da motivo;
+- su motivo o sus fragmentos contienen un secreto o un dato personal detectable, o texto que no
+  se puede mostrar ni guardar tal cual (caracteres de control, o más de `MAX_REASON_CHARS` /
+  `MAX_QUOTE_CHARS` caracteres);
+- repite un hallazgo de esta respuesta (mismo id). Entre los dos se queda la propuesta más grave
+  y el otro cuenta como duplicado.
+
+Cada descarte se cuenta por motivo (`DiscardReason`).
 
 Las fuentes normativas no las elige la respuesta: el hallazgo cita la del criterio (qué se
 compara) y la de la clase que propone (`classify.JUDGMENT_CLASSIFICATIONS`).
@@ -36,13 +42,20 @@ Una justificación citada es una ref `SECTION` con el id de la justificación.
 import re
 from collections import Counter
 from dataclasses import dataclass, field
-from enum import StrEnum
 from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from ens_evidence.catalog.load import load_catalog
-from ens_evidence.models.preaudit import Finding, Layer, Ref, RefKind, finding_id
+from ens_evidence.models.preaudit import (
+    SEVERITY,
+    DiscardReason,
+    Finding,
+    Layer,
+    Ref,
+    RefKind,
+    finding_id,
+)
 from ens_evidence.preaudit.classify import judgment_classification_source
 from ens_evidence.preaudit.pack import AuditPack, Criterion, MeasureScope
 from ens_evidence.privacy_text import sensitive_problems
@@ -76,20 +89,11 @@ MIN_QUOTE_WORDS = 4
 MIN_QUOTE_CHARS = 20
 _PLACEHOLDER = re.compile(r"\[[^\[\]]*\]")
 _WORD = re.compile(r"[^\W_]+")
-
-
-class DiscardReason(StrEnum):
-    UNKNOWN_CRITERION = "UNKNOWN_CRITERION"
-    PROPOSAL_NOT_ALLOWED = "PROPOSAL_NOT_ALLOWED"
-    UNKNOWN_MEASURE = "UNKNOWN_MEASURE"
-    MEASURE_NOT_APPLICABLE = "MEASURE_NOT_APPLICABLE"
-    MEASURE_NOT_JUSTIFIED = "MEASURE_NOT_JUSTIFIED"
-    MISSING_CITATION = "MISSING_CITATION"
-    UNLINKED_REF = "UNLINKED_REF"
-    QUOTE_NOT_FOUND = "QUOTE_NOT_FOUND"
-    EMPTY_REASON = "EMPTY_REASON"
-    SENSITIVE_TEXT = "SENSITIVE_TEXT"
-    DUPLICATE = "DUPLICATE"
+MAX_REASON_CHARS = 2000
+MAX_QUOTE_CHARS = 1000
+# C0 salvo tabulador y salto de línea, DEL y C1: secuencias que manipularían el terminal de quien
+# revisa (`preaudit show`).
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
 
 
 class _Lenient(BaseModel):
@@ -147,16 +151,25 @@ def validate_findings(
     except ValidationError:
         raise PayloadShapeError("el payload no tiene la forma esperada") from None
     context = _Context(dossier)
-    result = Validation(findings=[])
+    accepted: dict[str, Finding] = {}
+    discards: Counter[DiscardReason] = Counter()
     for candidate in response.findings:
         verdict = _judge(pack, context, candidate)
-        if isinstance(verdict, Finding) and verdict.id in {f.id for f in result.findings}:
-            verdict = DiscardReason.DUPLICATE
         if isinstance(verdict, DiscardReason):
-            result.discards[verdict] += 1
-        else:
-            result.findings.append(verdict)
-    return result
+            discards[verdict] += 1
+            continue
+        if kept := accepted.get(verdict.id):
+            discards[DiscardReason.DUPLICATE] += 1
+            verdict = _graver(kept, verdict)
+        accepted[verdict.id] = verdict
+    return Validation(list(accepted.values()), discards)
+
+
+def _graver(kept: Finding, repeated: Finding) -> Finding:
+    """Entre dos propuestas del mismo hallazgo, la más grave (a igual gravedad, la primera)."""
+    if SEVERITY.index(repeated.proposal) < SEVERITY.index(kept.proposal):
+        return repeated
+    return kept
 
 
 class _Context:
@@ -203,7 +216,10 @@ def _judge(
         return problem
     if not candidate.reason.strip():
         return DiscardReason.EMPTY_REASON
-    if _sensitive(candidate.reason, *(item.quote for _, item in cited)):
+    quotes = [item.quote for _, item in cited]
+    if not _displayable(candidate.reason, quotes):
+        return DiscardReason.UNDISPLAYABLE_TEXT
+    if _sensitive(candidate.reason, *quotes):
         return DiscardReason.SENSITIVE_TEXT
     return _finding(criterion, candidate, cited)
 
@@ -244,6 +260,14 @@ def _substantive(quote: str) -> bool:
     content = _PLACEHOLDER.sub(" ", quote)
     words = _WORD.findall(content)
     return len(words) >= MIN_QUOTE_WORDS and len("".join(content.split())) >= MIN_QUOTE_CHARS
+
+
+def _displayable(reason: str, quotes: list[str]) -> bool:
+    return (
+        len(reason) <= MAX_REASON_CHARS
+        and all(len(quote) <= MAX_QUOTE_CHARS for quote in quotes)
+        and not any(_CONTROL.search(text) for text in (reason, *quotes))
+    )
 
 
 def _sensitive(*texts: str) -> bool:

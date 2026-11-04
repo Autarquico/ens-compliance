@@ -21,7 +21,6 @@ from ens_evidence.preaudit.payload import (
     PayloadError,
     build_payload,
     canonical_json,
-    describe_destination,
 )
 from ens_evidence.preaudit.redact import PERSON, SECRET, RedactionLeak
 from ens_evidence.preaudit.validate import PayloadView as ValidatedShape
@@ -267,53 +266,6 @@ def test_the_semantic_validator_reads_this_shape(generated):
 
 
 # --- destino del consentimiento -------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("provider", "kwargs", "expected"),
-    [
-        (
-            "anthropic",
-            {"base_url": "https://API.anthropic.com/"},
-            "anthropic https://api.anthropic.com",
-        ),
-        (
-            " OpenAI ",
-            {"base_url": "https://gw.example.com:8443/v1/"},
-            "openai https://gw.example.com:8443/v1",
-        ),
-        (
-            "claude-code",
-            {"cli_version": " 2.1.317 "},
-            "claude-code 2.1.317, sesión del usuario (plan contratado)",
-        ),
-        (
-            "codex",
-            {"cli_version": "0.160.1"},
-            "codex 0.160.1, sesión del usuario (plan contratado)",
-        ),
-    ],
-)
-def test_destination_is_normalized(provider, kwargs, expected):
-    assert describe_destination(provider, **kwargs) == expected
-
-
-@pytest.mark.parametrize(
-    ("provider", "kwargs"),
-    [
-        ("anthropic", {}),
-        ("anthropic", {"base_url": "http://api.anthropic.com"}),
-        ("anthropic", {"base_url": "https://user:pw@api.anthropic.com"}),
-        ("anthropic", {"base_url": "https://api.anthropic.com", "cli_version": "1"}),
-        ("claude-code", {}),
-        ("claude-code", {"cli_version": "2.1 (Claude Code)"}),
-        ("codex", {"cli_version": "0.1", "base_url": "https://x"}),
-        ("otro", {"base_url": "https://x"}),
-    ],
-)
-def test_destination_that_cannot_be_described_is_rejected(provider, kwargs):
-    with pytest.raises(ValueError):
-        describe_destination(provider, **kwargs)
 
 
 # --- utilidades -----------------------------------------------------------------------------

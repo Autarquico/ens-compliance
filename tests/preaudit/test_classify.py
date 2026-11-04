@@ -1,5 +1,7 @@
 """Tabla de decisión y agrupación §54 (IC-01/19) sobre medidas reales del catálogo."""
 
+from pathlib import Path
+
 import pytest
 
 from ens_evidence.catalog import load_catalog
@@ -16,10 +18,15 @@ from ens_evidence.models.preaudit import (
 )
 from ens_evidence.preaudit.classify import (
     GROUPING_SOURCE,
+    JUDGMENT_CLASSIFICATIONS,
+    TOOL_NOTE,
     group_findings,
+    judgment_classification_source,
     proposal_for,
     source_for,
 )
+
+FIXTURES = Path(__file__).parents[1] / "fixtures" / "ccn"
 
 MENOR, MAYOR, OBS = Classification.NC_MENOR, Classification.NC_MAYOR, Classification.OBSERVACION
 
@@ -110,6 +117,45 @@ def test_el_grupo_es_el_prefijo_del_catalogo():
 def test_cada_regla_determinista_tiene_propuesta_y_fuente():
     for rule in DeterministicRule:
         assert proposal_for(rule) is DETERMINISTIC_PROPOSAL[rule]
-        assert "IC-01/19" in source_for(rule)
+        assert "§VI.2" in source_for(rule)
     assert proposal_for(DeterministicRule.CHECK_FAIL) is MENOR
     assert {proposal_for(r) for r in DeterministicRule} == {MENOR, Classification.SIN_CLASIFICAR}
+
+
+def _quoted(text: str) -> list[str]:
+    """Los fragmentos «…» de primer nivel (las comillas pueden anidarse)."""
+    found, depth, start = [], 0, 0
+    for i, char in enumerate(text):
+        if char == "«":
+            depth += 1
+            if depth == 1:
+                start = i + 1
+        elif char == "»":
+            depth -= 1
+            if depth == 0:
+                found.append(text[start:i])
+    assert depth == 0, text
+    return found
+
+
+def _normalized(text: str) -> str:
+    return " ".join(text.split())
+
+
+def test_toda_cita_atribuida_a_una_fuente_es_literal() -> None:
+    official = " ".join(_normalized(p.read_text(encoding="utf-8")) for p in FIXTURES.glob("*.txt"))
+    attributed = [source_for(rule) for rule in DeterministicRule]
+    attributed += [judgment_classification_source(p) for p in JUDGMENT_CLASSIFICATIONS]
+    for text in attributed:
+        quotes = _quoted(text)
+        assert quotes, text
+        for quote in quotes:
+            assert _normalized(quote) in official, quote
+
+
+def test_lo_que_no_dice_la_fuente_va_fuera_de_las_comillas_y_marcado() -> None:
+    unclassified = source_for(DeterministicRule.EVIDENCE_MISSING)
+    cited, note = unclassified.split(f"{TOOL_NOTE}: ")
+    assert "«en base a una evidencia objetiva»" in cited
+    assert "la clasifica una persona" in note and "«" not in note
+    assert source_for(DeterministicRule.CHECK_FAIL) == judgment_classification_source(MENOR)

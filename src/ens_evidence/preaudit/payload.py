@@ -38,15 +38,11 @@ from ens_evidence.evidence.layout import artifact_key
 from ens_evidence.matrix.obligations import RowKind
 from ens_evidence.matrix.render import ExportedLink, ExportedRow, MatrixExport
 from ens_evidence.models.enums import Role
-from ens_evidence.models.preaudit import CLI_PROVIDERS, Provider
 from ens_evidence.orgdocs.answers import declared_people, validate_answers
 from ens_evidence.orgdocs.approval import ROLE_QUESTION
 from ens_evidence.orgdocs.keys import ANSWERS_KEY, document_key
 from ens_evidence.orgdocs.template import load_templates
-from ens_evidence.preaudit.adapter import ProviderError
 from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
-from ens_evidence.preaudit.clients._cli import cli_destination
-from ens_evidence.preaudit.clients._http import normalize_base_url
 from ens_evidence.preaudit.pack import AuditPack
 from ens_evidence.preaudit.redact import Designated, redact_fields, require_clean
 from ens_evidence.workspace import NotFound, WorkspaceStore
@@ -63,7 +59,6 @@ TEXT_FIELDS = frozenset(
 )
 EVIDENCE_TEXT_MAX_BYTES = 64 * 1024
 DECLARATION_SECTION = 5
-_CLI_VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+-]*")
 ANSWER_ROLES = {
     **{question: role for role, question in ROLE_QUESTION.items()},
     "resp_informacion": Role.INFORMATION_OWNER,
@@ -153,28 +148,6 @@ def canonical_json(data: Any) -> bytes:
     for char in "<>&":
         text = text.replace(char, f"\\u{ord(char):04x}")
     return text.encode("utf-8")
-
-
-def describe_destination(
-    provider: str, *, base_url: str | None = None, cli_version: str | None = None
-) -> str:
-    """Destino normalizado al que se liga el consentimiento: `<proveedor> <base_url>` para una
-    API, `<cli> <versión>, sesión del usuario (plan contratado)` para una CLI. ValueError si no se
-    puede describir."""
-    name = provider.strip().lower()
-    if name in CLI_PROVIDERS:
-        version = (cli_version or "").strip()
-        if base_url is not None or not _CLI_VERSION.fullmatch(version):
-            raise ValueError(f"{name}: indica solo la versión de la CLI")
-        return cli_destination(name, version)
-    if name not in {p.value for p in Provider}:
-        raise ValueError(f"proveedor desconocido: {name}")
-    if base_url is None or cli_version is not None:
-        raise ValueError(f"{name}: indica solo la URL base")
-    try:
-        return f"{name} {normalize_base_url(base_url)}"
-    except ProviderError as error:
-        raise ValueError(f"{name}: {error.message}") from None
 
 
 class _Files:

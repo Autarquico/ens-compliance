@@ -8,7 +8,7 @@ import pytest
 import yaml
 from assessment.dossier.stages import AFTER, basic
 
-from ens_evidence.models.preaudit import Layer, LayerStatus, Provider
+from ens_evidence.models.preaudit import DiscardReason, Layer, LayerStatus, Provider
 from ens_evidence.preaudit import service
 from ens_evidence.preaudit.service import (
     PREAUDITS_PREFIX,
@@ -198,7 +198,7 @@ def test_model_text_that_cannot_be_shown_as_is_discards_the_finding(contradicted
     result = send(store, dossier, prepared.payload.sha256)
 
     assert result.record.run.judgment_status is LayerStatus.DONE
-    assert result.record.run.discarded == 1
+    assert result.record.run.discards == {DiscardReason.UNDISPLAYABLE_TEXT: 1}
     assert not [f for f in result.record.findings if f.layer is Layer.JUDGMENT]
 
 

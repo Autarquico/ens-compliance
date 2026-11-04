@@ -5,7 +5,7 @@ Todo hallazgo es una propuesta; la decide una persona. Nunca es un dictamen.
 
 import hashlib
 from enum import StrEnum
-from typing import Self
+from typing import Annotated, Self
 
 from pydantic import AwareDatetime, Field, model_validator
 
@@ -48,6 +48,23 @@ class Provider(StrEnum):
 
 CLI_PROVIDERS = frozenset({Provider.CLAUDE_CODE, Provider.CODEX})
 """Destinos que usan la CLI y la sesión de quien ejecuta: no admiten temperatura."""
+
+
+class DiscardReason(StrEnum):
+    """Por qué la validación descarta un hallazgo de juicio (`preaudit/validate.py`)."""
+
+    UNKNOWN_CRITERION = "UNKNOWN_CRITERION"
+    PROPOSAL_NOT_ALLOWED = "PROPOSAL_NOT_ALLOWED"
+    UNKNOWN_MEASURE = "UNKNOWN_MEASURE"
+    MEASURE_NOT_APPLICABLE = "MEASURE_NOT_APPLICABLE"
+    MEASURE_NOT_JUSTIFIED = "MEASURE_NOT_JUSTIFIED"
+    MISSING_CITATION = "MISSING_CITATION"
+    UNLINKED_REF = "UNLINKED_REF"
+    QUOTE_NOT_FOUND = "QUOTE_NOT_FOUND"
+    EMPTY_REASON = "EMPTY_REASON"
+    SENSITIVE_TEXT = "SENSITIVE_TEXT"
+    UNDISPLAYABLE_TEXT = "UNDISPLAYABLE_TEXT"
+    DUPLICATE = "DUPLICATE"
 
 
 class RefKind(StrEnum):
@@ -175,6 +192,9 @@ NEXT_STATES = {
 BLOCKING_PROPOSALS = frozenset({Classification.NC_MAYOR, Classification.NC_MENOR})
 """Las propuestas de juicio que, sin disponer, bloquean la preparación (`OPEN_FINDING`)."""
 
+SEVERITY = (Classification.NC_MAYOR, Classification.NC_MENOR, Classification.OBSERVACION)
+"""Las clases que propone la capa de juicio, de más a menos grave."""
+
 
 class DispositionRecord(Strict):
     """Un registro de la cadena de disposiciones, de solo adición (`chain.py`)."""
@@ -244,7 +264,12 @@ class PreAuditRun(Strict):
     deterministic_status: LayerStatus = LayerStatus.DONE
     judgment_status: LayerStatus = LayerStatus.NOT_RUN
     judgment_error: str | None = Field(default=None, min_length=1)
-    discarded: int = Field(default=0, ge=0)
+    discards: dict[DiscardReason, Annotated[int, Field(ge=1)]] = {}
+    """Los hallazgos de juicio descartados por la validación, por motivo."""
+
+    @property
+    def discarded(self) -> int:
+        return sum(self.discards.values())
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:

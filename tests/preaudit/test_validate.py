@@ -5,7 +5,13 @@ from typing import Any
 
 import pytest
 
-from ens_evidence.models.preaudit import Classification, Layer, LayerStatus, RefKind
+from ens_evidence.models.preaudit import (
+    Classification,
+    DiscardReason,
+    Layer,
+    LayerStatus,
+    RefKind,
+)
 from ens_evidence.preaudit.adapter import (
     SCHEMA_ERROR,
     JudgmentConfig,
@@ -15,9 +21,12 @@ from ens_evidence.preaudit.adapter import (
     parse_response,
     run_judgment,
 )
-from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
+from ens_evidence.preaudit.classify import (
+    JUDGMENT_CLASSIFICATIONS,
+    judgment_classification_source,
+)
 from ens_evidence.preaudit.pack import PACK_V1, load_pack
-from ens_evidence.preaudit.validate import DiscardReason, validate_findings
+from ens_evidence.preaudit.validate import MAX_REASON_CHARS, validate_findings
 
 PACK = load_pack()
 POLICY = "Todas las cuentas de administración exigen doble factor de autenticación."
@@ -276,6 +285,32 @@ def test_repeated_finding_counts_as_discarded() -> None:
     assert result.discards == {DiscardReason.DUPLICATE: 1}
 
 
+@pytest.mark.parametrize("order", [("OBSERVACION", "NC_MENOR"), ("NC_MENOR", "OBSERVACION")])
+def test_a_duplicate_with_another_class_keeps_the_gravest(order: tuple[str, str]) -> None:
+    result = validate(*(finding(proposal=proposal) for proposal in order))
+
+    [kept] = result.findings
+    assert kept.proposal is Classification.NC_MENOR
+    assert kept.classification_source == judgment_classification_source(Classification.NC_MENOR)
+    assert result.discards == {DiscardReason.DUPLICATE: 1}
+
+
+@pytest.mark.parametrize(
+    "reason",
+    [
+        "Cambia el título del terminal\x1b]0;aprobado\x07.",
+        "Borra la línea\r con un retorno de carro.",
+        "Un control C1 \x9b en el motivo.",
+        "x" * (MAX_REASON_CHARS + 1),
+    ],
+)
+def test_text_that_cannot_be_shown_as_is_is_discarded_with_its_reason(reason: str) -> None:
+    result = validate(finding(reason=reason))
+
+    assert result.findings == []
+    assert result.discards == {DiscardReason.UNDISPLAYABLE_TEXT: 1}
+
+
 def test_response_model_matches_pack_schema() -> None:
     schema = json.loads((PACK_V1 / "response.schema.json").read_text(encoding="utf-8"))
     item = schema["properties"]["findings"]["items"]
@@ -330,7 +365,7 @@ def test_valid_response_leaves_layer_done() -> None:
     outcome = run(json.dumps({"findings": [finding()]}))
 
     assert outcome.status is LayerStatus.DONE
-    assert len(outcome.findings) == 1 and outcome.discarded == 0
+    assert len(outcome.findings) == 1 and outcome.discards == {}
 
 
 def test_schema_violation_leaves_whole_layer_in_error_without_findings() -> None:
@@ -345,7 +380,8 @@ def test_semantic_discards_keep_layer_done_with_count() -> None:
     outcome = run(json.dumps({"findings": [finding(), finding(measure="op.acc.99")]}))
 
     assert outcome.status is LayerStatus.DONE
-    assert len(outcome.findings) == 1 and outcome.discarded == 1
+    assert len(outcome.findings) == 1
+    assert outcome.discards == {DiscardReason.UNKNOWN_MEASURE: 1}
 
 
 def test_provider_error_leaves_layer_in_error() -> None:

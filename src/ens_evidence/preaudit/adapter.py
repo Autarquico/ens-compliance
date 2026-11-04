@@ -5,32 +5,23 @@ minimizados y redactados) y el esquema, y devuelve el texto JSON en bruto. Nada 
 ni se registra: este módulo no escribe logs, y los errores llevan mensajes fijos por tipo de fallo.
 
 Una respuesta que no cumple el esquema deja toda la capa en `ERROR` y sin hallazgos. Una que lo
-cumple pierde antes los hallazgos con texto que no se puede mostrar ni guardar tal cual
-(caracteres de control o longitud desmedida) y pasa por la validación semántica (`validate.py`),
-que descarta hallazgos uno a uno.
+cumple pasa por la validación semántica (`validate.py`), que descarta hallazgos uno a uno.
 """
 
 import json
-import re
-from dataclasses import dataclass
+from collections.abc import Mapping
+from dataclasses import dataclass, field
 from enum import StrEnum
 from typing import Any, Protocol
 
 from pydantic import ValidationError
 
-from ens_evidence.models.preaudit import Finding, LayerStatus
+from ens_evidence.models.preaudit import DiscardReason, Finding, LayerStatus
 from ens_evidence.preaudit.pack import AuditPack
-from ens_evidence.preaudit.validate import CitedItem as CitedItem
 from ens_evidence.preaudit.validate import JudgmentResponse, validate_findings
-from ens_evidence.preaudit.validate import ResponseFinding as ResponseFinding
 
 DEFAULT_TIMEOUT_SECONDS = 120.0
 DEFAULT_MAX_TOKENS = 8192
-MAX_REASON_CHARS = 2000
-MAX_QUOTE_CHARS = 1000
-# C0 salvo tabulador y salto de línea, DEL y C1: secuencias que manipularían el terminal de quien
-# revisa (`preaudit show`).
-_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
 
 
 class ProviderErrorKind(StrEnum):
@@ -94,7 +85,7 @@ class JudgmentProvider(Protocol):
 class JudgmentOutcome:
     status: LayerStatus
     findings: tuple[Finding, ...] = ()
-    discarded: int = 0
+    discards: Mapping[DiscardReason, int] = field(default_factory=dict)
     error: str | None = None
 
 
@@ -121,26 +112,10 @@ def run_judgment(
     response = parse_response(raw)
     if response is None:
         return JudgmentOutcome(LayerStatus.ERROR, error=SCHEMA_ERROR)
-    displayable = [f for f in response.findings if _displayable(f)]
-    unsafe = len(response.findings) - len(displayable)
     try:
-        validation = validate_findings(
-            pack, json.loads(payload), response.model_copy(update={"findings": displayable})
-        )
+        validation = validate_findings(pack, json.loads(payload), response)
     except ValueError:
         return JudgmentOutcome(LayerStatus.ERROR, error=PAYLOAD_ERROR)
     return JudgmentOutcome(
-        LayerStatus.DONE,
-        findings=tuple(validation.findings),
-        discarded=validation.discarded + unsafe,
-    )
-
-
-def _displayable(finding: ResponseFinding) -> bool:
-    cited = (*finding.documents, *finding.evidence, *finding.justifications)
-    quotes = [item.quote for item in cited]
-    return (
-        len(finding.reason) <= MAX_REASON_CHARS
-        and all(len(quote) <= MAX_QUOTE_CHARS for quote in quotes)
-        and not any(_CONTROL.search(text) for text in (finding.reason, *quotes))
+        LayerStatus.DONE, findings=tuple(validation.findings), discards=dict(validation.discards)
     )
