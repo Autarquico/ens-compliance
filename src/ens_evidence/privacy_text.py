@@ -49,9 +49,13 @@ _IPV4 = re.compile(r"(?<![\w.])(?:\d{1,3}\.){3}\d{1,3}(?![\w.])")
 _IPV6 = re.compile(r"(?<![\w:])[0-9A-Fa-f]{0,4}(?::[0-9A-Fa-f]{0,4}){2,7}(?![\w:])")
 
 
-def _has_iban(text: str) -> bool:
-    """IBAN sin distinguir mayúsculas y con separadores; el checksum se valida normalizado."""
+def iban_spans(text: str) -> list[tuple[int, int]]:
+    """Tramos con un IBAN, sin distinguir mayúsculas y con separadores; el checksum se valida
+    normalizado."""
+    spans: list[tuple[int, int]] = []
     for start in _IBAN_START.finditer(text):
+        if spans and start.start() < spans[-1][1]:
+            continue
         normalized = ""
         for i in range(start.start(), len(text)):
             char = text[i]
@@ -59,12 +63,17 @@ def _has_iban(text: str) -> bool:
                 normalized += char.upper()
                 follows_alnum = i + 1 < len(text) and text[i + 1] in _ALNUM
                 if 15 <= len(normalized) and not follows_alnum and _iban_checksum(normalized):
-                    return True
+                    spans.append((start.start(), i + 1))
+                    break
             elif char not in _IBAN_SEPARATORS or text[i - 1] in _IBAN_SEPARATORS:
                 break
             if len(normalized) >= 34:
                 break
-    return False
+    return spans
+
+
+def _has_iban(text: str) -> bool:
+    return bool(iban_spans(text))
 
 
 def _iban_checksum(iban: str) -> bool:
@@ -72,51 +81,73 @@ def _iban_checksum(iban: str) -> bool:
     return int("".join(str(int(c, 36)) for c in rearranged)) % 97 == 1
 
 
-def _has_dni_nie(text: str) -> bool:
+def dni_nie_spans(text: str) -> list[tuple[int, int]]:
+    spans = []
     for m in _DNI_NIE.finditer(text):
         if not m["sep"]:
-            return True
+            spans.append(m.span())
+            continue
         prefix = str("XYZ".index(m["body"][0].upper())) if m["body"][0].isalpha() else ""
         number = int(prefix + re.sub(r"\D", "", m["body"]))
         if _CONTROL_LETTERS[number % 23] == m["letter"].upper():
-            return True
-    return False
+            spans.append(m.span())
+    return spans
 
 
-def _has_phone(text: str) -> bool:
+def _has_dni_nie(text: str) -> bool:
+    return bool(dni_nie_spans(text))
+
+
+def phone_spans(text: str) -> list[tuple[int, int]]:
     """Cualquier tramo de 9+ dígitos (con separadores) es un posible teléfono o identificador
     numérico, salvo que el tramo completo sea una IP o un instante ISO 8601."""
-    for m in _DIGIT_RUN.finditer(_OWN_IDS.sub("_", text)):
+    # Los ids propios se tapan con el mismo largo: los tramos conservan sus posiciones.
+    masked = _OWN_IDS.sub(lambda m: "_" * len(m.group()), text)
+    spans = []
+    for m in _DIGIT_RUN.finditer(masked):
         run = m.group()
         if sum(c.isdigit() for c in run) < _PHONE_MIN_DIGITS:
             continue
         if not (
             _is_ip(run) or _is_ip_with_port(run) or _ISO_8601.fullmatch(run) or _is_ip_list(run)
         ):
-            return True
-    return False
+            spans.append(m.span())
+    return spans
 
 
-def has_credential(text: str) -> bool:
+def _has_phone(text: str) -> bool:
+    return bool(phone_spans(text))
+
+
+def credential_spans(text: str) -> list[tuple[int, int]]:
+    """Tramos con una credencial etiquetada («password=…», «token: …»), etiqueta incluida: tras
+    «password:» cualquier valor sigue siendo una credencial."""
+    spans = []
     for m in _CREDENTIAL_KEY.finditer(text):
         rest = text[m.end() :]
         if rest[:1] in ("'", '"'):
             closing = rest.find(rest[0], 1)
             value = rest[1:] if closing < 0 else rest[1:closing]
+            span = (m.start(), len(text) if closing < 0 else m.end() + closing + 1)
         else:
             value = _UNQUOTED_VALUE.match(rest).group()
+            span = (m.start(), m.end() + len(value))
         # Etiqueta inequívoca: cualquier valor. «=» o «:» pegado: basta con 3 caracteres.
         # «: valor» con espacio tras una etiqueta ambigua: solo si parece un secreto (6+
         # caracteres con algún dígito o símbolo): «clave: revisar» no.
         if _UNAMBIGUOUS_LABELS.fullmatch(m["label"]):
             if value.strip():
-                return True
+                spans.append(span)
         elif m["sep"] == "=" or not m["gap"]:
             if len(value) >= 3:
-                return True
+                spans.append(span)
         elif len(value) >= 6 and _LOOKS_SECRET.search(value):
-            return True
-    return False
+            spans.append(span)
+    return spans
+
+
+def has_credential(text: str) -> bool:
+    return bool(credential_spans(text))
 
 
 def _is_ip(candidate: str) -> bool:
@@ -141,6 +172,10 @@ def _is_ip_with_port(candidate: str) -> bool:
     return _is_ip(m["v4"] or m["v6"])
 
 
+def email_spans(text: str) -> list[tuple[int, int]]:
+    return [m.span() for m in _EMAIL.finditer(text)]
+
+
 def _has_email(text: str) -> bool:
     return _EMAIL.search(text) is not None
 
@@ -156,10 +191,14 @@ def _identifiers(text: str) -> list[str]:
     return [what for what, found in checks if found(text)]
 
 
+def ip_spans(text: str) -> list[tuple[int, int]]:
+    v4 = [m.span() for m in _IPV4.finditer(text) if _is_ip(m.group())]
+    v6 = [m.span() for m in _IPV6.finditer(text) if m.group().count(":") >= 2 and _is_ip(m.group())]
+    return sorted(v4 + v6)
+
+
 def _has_ip(text: str) -> bool:
-    return any(_is_ip(m.group()) for m in _IPV4.finditer(text)) or any(
-        m.group().count(":") >= 2 and _is_ip(m.group()) for m in _IPV6.finditer(text)
-    )
+    return bool(ip_spans(text))
 
 
 def text_problems(text: str) -> tuple[list[str], list[str]]:
