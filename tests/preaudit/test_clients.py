@@ -481,7 +481,7 @@ API_CREDENTIALS = {
     "OPENAI_BASE_URL": "https://gateway.example.com/v1",
     "AWS_SECRET_ACCESS_KEY": "nunca",
 }
-SESSION_ONLY = {"PATH", "HOME", "LANG", "LC_ALL", "TMPDIR"}
+SESSION_ONLY = {"PATH", "HOME", "USER", "LOGNAME", "LANG", "LC_ALL", "TMPDIR"}
 
 
 @pytest.mark.parametrize(
