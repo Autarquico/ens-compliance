@@ -17,8 +17,8 @@ from ens_evidence import __version__
 from ens_evidence.assessment.render import (
     HUMAN_REVIEW_PENDING,
     NO_CONFORMITY,
-    NO_PRE_AUDIT,
     blocker_lines_by_measure,
+    pre_audit_notice,
 )
 from ens_evidence.assessment.status import AssessmentStatus, assessment_status, count_statuses
 from ens_evidence.backup.records import BackupRun
@@ -373,11 +373,8 @@ def _documents(store: WorkspaceStore, cutoff: datetime) -> Section[list[Document
 
 def _notices(status: AssessmentStatus, *extra: str | None) -> list[str]:
     notices = [n for n in extra if n]
-    if status.pending_human_review:
-        notices += [HUMAN_REVIEW_PENDING, NO_PRE_AUDIT]
-    else:
-        notices.append(REPORT_NOT_A_REVIEW)
-    return [*notices, NO_CONFORMITY]
+    notices.append(HUMAN_REVIEW_PENDING if status.pending_human_review else REPORT_NOT_A_REVIEW)
+    return [*notices, pre_audit_notice(status.pre_audit), NO_CONFORMITY]
 
 
 # --- incidentes ---------------------------------------------------------------------------------

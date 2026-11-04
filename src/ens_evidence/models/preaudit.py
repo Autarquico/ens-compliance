@@ -102,6 +102,10 @@ class Finding(Strict):
     reason: str = Field(min_length=1)
     quote: str | None = None
     source: str = Field(min_length=1)
+    """En juicio, la fuente del criterio (qué se compara); en la capa determinista, la de su
+    clasificación."""
+    classification_source: str | None = Field(default=None, min_length=1)
+    """En juicio, la fuente literal de la clase propuesta (ITS §VI.2, IC-01/19 §53)."""
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
@@ -128,6 +132,8 @@ class Finding(Strict):
             raise ValueError("a judgment finding must quote its source")
         if not self.refs:
             raise ValueError("a judgment finding must cite at least one reference")
+        if self.classification_source is None:
+            raise ValueError("a judgment finding must cite the source of its classification")
 
 
 class Disposition(Strict):
@@ -234,7 +240,6 @@ class PreAuditRun(Strict):
     at: AwareDatetime
     provider: Provider | None = None
     model: str | None = Field(default=None, min_length=1)
-    temperature: float | None = Field(default=None, ge=0)
     consent: Consent | None = None
     deterministic_status: LayerStatus = LayerStatus.DONE
     judgment_status: LayerStatus = LayerStatus.NOT_RUN
@@ -245,9 +250,8 @@ class PreAuditRun(Strict):
     def _consistent(self) -> Self:
         if self.deterministic_status is not LayerStatus.DONE:
             raise ValueError("the deterministic layer always completes")
-        engine = (self.provider, self.model, self.temperature)
         if self.judgment_status is LayerStatus.NOT_RUN:
-            if any(v is not None for v in (*engine, self.consent)):
+            if any(v is not None for v in (self.provider, self.model, self.consent)):
                 raise ValueError("NOT_RUN judgment carries no provider, model or consent")
             if self.discarded:
                 raise ValueError("NOT_RUN judgment has nothing to discard")
@@ -256,8 +260,6 @@ class PreAuditRun(Strict):
                 raise ValueError("judgment requires provider and model")
             if self.consent is None:
                 raise ValueError("judgment requires consent")
-        if self.provider in CLI_PROVIDERS and self.temperature is not None:
-            raise ValueError("a CLI provider takes no temperature")
         if (self.judgment_error is not None) != (self.judgment_status is LayerStatus.ERROR):
             raise ValueError("judgment_error goes with, and only with, an ERROR judgment")
         if self.judgment_status is LayerStatus.ERROR and self.discarded:

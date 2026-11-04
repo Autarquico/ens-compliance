@@ -10,9 +10,12 @@ y el destino actuales son los mismos que se prepararon. El resultado es un regis
 adición en la cadena `evidence/preaudits/runs/` (`chain.py`). Orden de escritura, como en las
 transiciones del expediente:
 
-1. comprobaciones y envío: un rechazo no escribe nada;
-2. reservar `runs/seq/<n>` con creación exclusiva;
-3. escribir el registro.
+1. comprobaciones: un rechazo no escribe nada;
+2. constancia del consentimiento, con creación exclusiva, en el directorio de la preparación
+   (`consent-<instante>.json`), antes de que nada salga del equipo;
+3. envío;
+4. reservar `runs/seq/<n>` con creación exclusiva;
+5. escribir el registro.
 
 Una ejecución nueva nunca sustituye a otra ni cierra lo que propuso, y una fallida o vacía queda
 registrada como tal. La disposición humana de los hallazgos va aparte (`review.py`).
@@ -51,6 +54,7 @@ from ens_evidence.preaudit.adapter import (
 )
 from ens_evidence.preaudit.classify import group_findings
 from ens_evidence.preaudit.clients import anthropic, openai
+from ens_evidence.preaudit.clients._http import api_destination
 from ens_evidence.preaudit.clients.claude_code import ClaudeCodeProvider
 from ens_evidence.preaudit.clients.codex import CodexProvider
 from ens_evidence.preaudit.deterministic import deterministic_findings
@@ -60,9 +64,15 @@ from ens_evidence.preaudit.payload import (
     PayloadError,
     build_payload,
     canonical_json,
-    describe_destination,
 )
-from ens_evidence.preaudit.records import PREAUDITS_PREFIX, RUNS_PREFIX, RunScan, scan_runs
+from ens_evidence.preaudit.records import (
+    PREAUDITS_PREFIX,
+    RUNS_PREFIX,
+    RunScan,
+    append,
+    next_link,
+    scan_runs,
+)
 from ens_evidence.preaudit.redact import RedactionLeak
 from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.workspace import AlreadyExists, NotFound, PreAuditSettings, WorkspaceStore
@@ -70,6 +80,7 @@ from ens_evidence.workspace import AlreadyExists, NotFound, PreAuditSettings, Wo
 PREPARED_NAME = "prepared.json"
 PAYLOAD_NAME = "payload.json"
 PREPARED_FORMAT = "ens-preaudit-prepared/1"
+CONSENT_FORMAT = "ens-preaudit-consent/1"
 _PREPARED_KEY = re.compile(
     rf"{PREAUDITS_PREFIX}/\d{{8}}T\d{{12}}Z-[0-9a-f]{{12}}/{re.escape(PREPARED_NAME)}"
 )
@@ -228,9 +239,9 @@ def _destination(provider: Provider, config: PreAuditSettings) -> tuple[str, boo
         return client.destination, client.requires_shell_warning
     base_url = config.base_url or DEFAULT_BASE_URL[provider]
     try:
-        return describe_destination(provider, base_url=base_url), False
-    except ValueError as exc:
-        raise PreAuditRejected([str(exc)]) from None
+        return api_destination(provider.value, base_url), False
+    except ProviderError as error:
+        raise PreAuditRejected([f"{provider.value}: {error.message}"]) from None
 
 
 def _client(provider: Provider, config: PreAuditSettings) -> JudgmentProvider:
@@ -238,12 +249,6 @@ def _client(provider: Provider, config: PreAuditSettings) -> JudgmentProvider:
         return default_client(provider, config)
     except ProviderError as error:
         raise PreAuditRejected([error.message]) from None
-
-
-def _client_destination(provider: Provider, client: JudgmentProvider) -> str:
-    if provider in CLI_PROVIDERS:
-        return client.destination
-    return describe_destination(provider, base_url=client.destination)
 
 
 # --- ejecutar ----------------------------------------------------------------------------------
@@ -307,6 +312,7 @@ def run(
     findings = deterministic_findings(snapshot, integrity=integrity)
     outcome = JudgmentOutcome(LayerStatus.NOT_RUN)
     if consented is not None:
+        _record_consent(store, consented)
         judgment = JudgmentConfig(model=consented.config.model, timeout=consented.config.timeout)
         outcome = run_judgment(consented.client, pack, consented.payload.canonical, judgment)
         findings += [f for f in outcome.findings if f.id not in {g.id for g in findings}]
@@ -358,7 +364,7 @@ def _consented(
             ["lo que se enviaría ha cambiado desde la preparación; vuelve a preparar y a consentir"]
         )
     client = _client(chosen, config)
-    destination = _client_destination(chosen, client)
+    destination = client.destination
     if destination != prepared["destination"]:
         raise PreAuditRejected(
             ["el destino ha cambiado desde la preparación; vuelve a preparar y a consentir"]
@@ -373,6 +379,21 @@ def _consented(
         shell_risk_accepted=client.requires_shell_warning,
     )
     return Consented(key, payload, client, config, consent)
+
+
+def _record_consent(store: WorkspaceStore, consented: Consented) -> None:
+    """Constancia de quién consintió, cuándo, qué huella y a qué destino, antes del envío: un
+    corte tras enviar no deja datos fuera del equipo sin ella."""
+    consent = consented.consent
+    directory = consented.prepared_key.rsplit("/", 1)[0]
+    key = f"{directory}/consent-{chain.instant_stamp(consent.at)}.json"
+    data = canonical_json({"format": CONSENT_FORMAT, **consent.model_dump(mode="json")})
+    try:
+        store.create_bytes(key, data)
+    except AlreadyExists:
+        raise PreAuditRejected(
+            ["ya hay un consentimiento de esa preparación con el mismo instante; reintenta"]
+        ) from None
 
 
 def _find_prepared(store: WorkspaceStore, dossier: str, sha256: str) -> tuple[str, dict]:
@@ -430,10 +451,10 @@ def _record(
         judgment_error=outcome.error,
         discarded=outcome.discarded,
     )
-    last = scan.records[-1] if scan.records else None
+    seq, previous = next_link(scan)
     return PreAuditRecord(
-        seq=(last.record.seq if last else 0) + 1,
-        previous_sha256=last.sha256 if last else None,
+        seq=seq,
+        previous_sha256=previous,
         recorded_at=now,
         prepared=consented.prepared_key if judged else None,
         run=run_model,
@@ -443,16 +464,12 @@ def _record(
 
 
 def _write(store: WorkspaceStore, record: PreAuditRecord) -> str:
-    data = chain.render_record(record.model_dump(mode="json"))
     try:
-        chain.reserve_sequence(store, RUNS_PREFIX, record.seq)
+        return append(store, RUNS_PREFIX, record).key
     except chain.SequenceTaken:
         raise PreAuditRejected(
             [f"otra orden reservó antes la ejecución {record.seq}; revisa y reintenta"]
         ) from None
-    key = chain.record_key(RUNS_PREFIX, record.seq, record.recorded_at, data)
-    store.create_bytes(key, data)
-    return key
 
 
 # --- leer --------------------------------------------------------------------------------------

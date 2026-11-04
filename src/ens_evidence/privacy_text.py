@@ -121,7 +121,8 @@ def _has_phone(text: str) -> bool:
 
 def credential_spans(text: str) -> list[tuple[int, int]]:
     """Tramos con una credencial etiquetada («password=…», «token: …»), etiqueta incluida: tras
-    «password:» cualquier valor sigue siendo una credencial."""
+    «password:» cualquier valor sigue siendo una credencial y, sin comillas, llega hasta el final
+    de la línea («password: correct horse battery staple»)."""
     spans = []
     for m in _CREDENTIAL_KEY.finditer(text):
         rest = text[m.end() :]
@@ -129,15 +130,17 @@ def credential_spans(text: str) -> list[tuple[int, int]]:
             closing = rest.find(rest[0], 1)
             value = rest[1:] if closing < 0 else rest[1:closing]
             span = (m.start(), len(text) if closing < 0 else m.end() + closing + 1)
+            unambiguous_span = span
         else:
             value = _UNQUOTED_VALUE.match(rest).group()
             span = (m.start(), m.end() + len(value))
-        # Etiqueta inequívoca: cualquier valor. «=» o «:» pegado: basta con 3 caracteres.
-        # «: valor» con espacio tras una etiqueta ambigua: solo si parece un secreto (6+
-        # caracteres con algún dígito o símbolo): «clave: revisar» no.
+            unambiguous_span = (m.start(), m.end() + len(rest.split("\n", 1)[0].rstrip("\r")))
+        # Etiqueta inequívoca: cualquier valor, hasta el final de la línea. «=» o «:» pegado:
+        # basta con 3 caracteres. «: valor» con espacio tras una etiqueta ambigua: solo si parece
+        # un secreto (6+ caracteres con algún dígito o símbolo): «clave: revisar» no.
         if _UNAMBIGUOUS_LABELS.fullmatch(m["label"]):
             if value.strip():
-                spans.append(span)
+                spans.append(unambiguous_span)
         elif m["sep"] == "=" or not m["gap"]:
             if len(value) >= 3:
                 spans.append(span)
@@ -221,3 +224,10 @@ def check_declared_name(name: str, label: str = "--by") -> list[str]:
     errors += [f"{p}: parece un secreto; quítalo" for p in find_secrets(name, label)]
     errors += [f"{label}: {problem}; indica solo un nombre" for problem in text_problems(name)[0]]
     return errors
+
+
+def sensitive_problems(text: str) -> list[str]:
+    """Todo lo que impide guardar o enviar un texto libre: identificadores personales, una IP y
+    lo que parece un secreto. Sin el valor."""
+    errors, warnings = text_problems(text)
+    return [*errors, *warnings, *(["parece un secreto"] if find_secrets(text) else [])]

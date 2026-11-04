@@ -6,6 +6,7 @@ from pathlib import Path
 import pytest
 
 from ens_evidence.models.preaudit import Classification
+from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
 from ens_evidence.preaudit.pack import PACK_V1, MeasureScope, PackError, load_pack
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
@@ -154,3 +155,37 @@ def test_every_source_quote_is_literal_in_its_fixture():
         assert source.document in SOURCE_FIXTURES, criterion.id
         text = _normalized(SOURCE_FIXTURES[source.document].read_text(encoding="utf-8"))
         assert _normalized(source.quote) in text, criterion.id
+
+
+def test_every_classification_quote_is_literal_in_its_fixture():
+    for proposal, sources in JUDGMENT_CLASSIFICATIONS.items():
+        assert sources, proposal
+        for source in sources:
+            assert source.document in SOURCE_FIXTURES, proposal
+            text = _normalized(SOURCE_FIXTURES[source.document].read_text(encoding="utf-8"))
+            assert _normalized(source.quote) in text, (proposal, source.reference)
+
+
+def test_classifications_follow_section_vi_2_and_ic_section_53():
+    menor = {(s.document, s.reference) for s in JUDGMENT_CLASSIFICATIONS[Classification.NC_MENOR]}
+    [observation] = JUDGMENT_CLASSIFICATIONS[Classification.OBSERVACION]
+    assert {doc for doc, _ in menor} == {"its-auditoria", "ic0119"}
+    assert all("No Conformidad Menor" in reference for _, reference in menor)
+    assert observation.document == "its-auditoria"
+    assert "§VI.2" in observation.reference and "Observación" in observation.reference
+    assert "Observación" in observation.quote and "No Conformidad" not in observation.quote
+
+
+def test_every_allowed_proposal_has_its_classification_source():
+    for criterion in load_pack().criteria:
+        assert set(criterion.allowed_proposals) <= set(JUDGMENT_CLASSIFICATIONS), criterion.id
+
+
+def test_the_criterion_source_does_not_name_a_class():
+    for criterion in load_pack().criteria:
+        assert "Conformidad" not in criterion.source.reference, criterion.id
+
+
+def test_system_prompt_points_to_the_classification_definitions():
+    prompt = load_pack().system_prompt
+    assert "`classifications`" in prompt and "§VI.2" in prompt and "§53" in prompt

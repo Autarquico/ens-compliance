@@ -2,6 +2,9 @@
 
 Reutiliza lo que el expediente ya calculó en la sección 7 (bloqueos de la matriz); no recalcula
 la matriz. Sin red y sin escribir. Cada hallazgo cita su fuente normativa y es una propuesta.
+
+El motivo es el texto llano del bloqueo, con su siguiente paso (`matrix.messages`), el mismo que
+da `assessment status`; el código del bloqueo solo queda en las refs del registro.
 """
 
 import hashlib
@@ -9,8 +12,8 @@ from collections.abc import Iterable, Sequence
 
 from ens_evidence.assessment.dossier.model import RESULTS_SECTION, DossierSnapshot, snapshot_export
 from ens_evidence.evidence.layout import is_evidence_id
+from ens_evidence.matrix.messages import blocker_text
 from ens_evidence.models.preaudit import (
-    PROPOSAL_NOTICE,
     DeterministicRule,
     Finding,
     Layer,
@@ -34,14 +37,17 @@ _HASH_DETAILS = frozenset(
     }
 )
 
-_REASONS = {
-    DeterministicRule.CHECK_FAIL: "un check ha fallado en una medida aplicable",
-    DeterministicRule.EVIDENCE_MISSING: "falta evidencia que sustente la medida",
-    DeterministicRule.EVIDENCE_EXPIRED: "la evidencia que sustenta la medida está caducada",
-    DeterministicRule.CHECK_UNKNOWN: "un check no pudo valorar la medida",
-    DeterministicRule.HASH_MISMATCH: "la huella de la evidencia no cuadra con lo registrado",
-    DeterministicRule.DOSSIER_INTEGRITY: "el expediente o su matriz no se pueden leer o verificar",
+RULE_LABELS = {
+    DeterministicRule.CHECK_FAIL: "check fallido",
+    DeterministicRule.EVIDENCE_MISSING: "falta evidencia válida",
+    DeterministicRule.EVIDENCE_EXPIRED: "evidencia o documento caducado",
+    DeterministicRule.CHECK_UNKNOWN: "check sin valorar",
+    DeterministicRule.HASH_MISMATCH: "huella de evidencia no verificada",
+    DeterministicRule.DOSSIER_INTEGRITY: "integridad del expediente",
 }
+"""La regla de la tabla de decisión, en castellano llano, para quien lee los hallazgos."""
+
+_INTEGRITY_REASON = "el expediente o su matriz no se pueden leer o verificar"
 
 
 def deterministic_findings(
@@ -92,15 +98,14 @@ def _from_blocker(blocker: Blocker) -> Finding | None:
         for part in blocker.detail.split(":")
         if is_evidence_id(part)
     ]
-    detail = f" ({blocker.detail})" if blocker.detail else ""
-    return _finding(rule, blocker.measure_id or DOSSIER_SCOPE, refs, f"{_REASONS[rule]}{detail}")
+    return _finding(rule, blocker.measure_id or DOSSIER_SCOPE, refs, blocker_text(blocker))
 
 
 def _integrity_finding(problem: str) -> Finding:
     digest = hashlib.sha256(problem.encode()).hexdigest()[:12]
     refs = [Ref(kind=RefKind.SECTION, id=f"integridad:{digest}")]
     rule = DeterministicRule.DOSSIER_INTEGRITY
-    return _finding(rule, DOSSIER_SCOPE, refs, f"{_REASONS[rule]}: {problem}")
+    return _finding(rule, DOSSIER_SCOPE, refs, f"{_INTEGRITY_REASON}: {problem}")
 
 
 def _finding(rule: DeterministicRule, measure: str, refs: list[Ref], reason: str) -> Finding:
@@ -111,6 +116,6 @@ def _finding(rule: DeterministicRule, measure: str, refs: list[Ref], reason: str
         measure=measure,
         refs=refs,
         criterion=rule,
-        reason=f"{reason}; {PROPOSAL_NOTICE}",
+        reason=reason,
         source=source_for(rule),
     )

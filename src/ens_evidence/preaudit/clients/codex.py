@@ -10,6 +10,12 @@ el consentimiento (`requires_shell_warning`).
 Las instrucciones del pack van como argumento PROMPT y el payload por stdin: `codex exec` lo
 añade como bloque `<stdin>`. El esquema y la salida van en un directorio temporal distinto del
 de trabajo, que queda vacío.
+
+Sin la configuración del usuario: `--ignore-user-config` no carga `$CODEX_HOME/config.toml` (sus
+`mcp_servers`, `model_provider` y perfiles; la sesión sigue en `CODEX_HOME`) e `--ignore-rules`
+no carga reglas de execpolicy. `shell_environment_policy.inherit=none` deja sin entorno a los
+comandos que aún pueda lanzar. La configuración gestionada del equipo y el `AGENTS.md` de
+`CODEX_HOME` no se pueden excluir desde la línea de órdenes: van en el aviso (`NOTICE`).
 """
 
 import json
@@ -18,13 +24,7 @@ from pathlib import Path
 from typing import Any
 
 from ens_evidence.preaudit.adapter import JudgmentConfig, ProviderError, ProviderErrorKind
-from ens_evidence.preaudit.clients._cli import (
-    cli_destination,
-    cli_version,
-    find_cli,
-    reject_temperature,
-    run_cli,
-)
+from ens_evidence.preaudit.clients._cli import cli_version, describe_cli, find_cli, run_cli
 
 CLI = "codex"
 NAME = "codex"
@@ -41,6 +41,10 @@ DISABLED_FEATURES = (
     "code_mode_host",
     "hooks",
 )
+NOTICE = (
+    "sin config.toml ni reglas del usuario; la configuración gestionada por la organización y "
+    "el AGENTS.md de CODEX_HOME pueden aplicar"
+)
 
 
 class CodexProvider:
@@ -55,12 +59,11 @@ class CodexProvider:
 
     @property
     def destination(self) -> str:
-        return cli_destination(NAME, self.version)
+        return describe_cli(NAME, self.version, self._executable, NOTICE)
 
     def judge(
         self, system_prompt: str, payload: bytes, schema: dict[str, Any], config: JudgmentConfig
     ) -> str:
-        reject_temperature(config, NAME)
         with (
             tempfile.TemporaryDirectory(prefix="ens-preaudit-") as workdir,
             tempfile.TemporaryDirectory(prefix="ens-preaudit-io-") as io_dir,
@@ -69,8 +72,11 @@ class CodexProvider:
             output_file = Path(io_dir) / "last-message.json"
             schema_file.write_text(json.dumps(schema, ensure_ascii=False), encoding="utf-8")
             args = [
-                self._executable,
+                self._executable.path,
                 "exec",
+                "--ignore-user-config",
+                "--ignore-rules",
+                "-c", "shell_environment_policy.inherit=none",
                 "--sandbox", "read-only",
                 "--ephemeral",
                 "--skip-git-repo-check",

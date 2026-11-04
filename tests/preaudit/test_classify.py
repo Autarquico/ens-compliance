@@ -37,6 +37,7 @@ def judgment(measure: str, proposal: Classification, n: int = 1) -> Finding:
         reason="motivo; propuesta; la decide una persona",
         quote="cita",
         source="fuente",
+        classification_source="fuente de la clase",
     )
 
 

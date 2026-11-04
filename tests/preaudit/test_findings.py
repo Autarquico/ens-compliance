@@ -2,6 +2,7 @@
 cadenas escritas a mano. Una ejecución nueva nunca cierra nada; una cadena rota bloquea."""
 
 import hashlib
+import json
 from datetime import UTC, datetime, timedelta
 
 import pytest
@@ -30,6 +31,7 @@ from ens_evidence.preaudit.findings import (
     PreAuditFindings,
     current_dossier,
     findings_view,
+    last_run,
 )
 from ens_evidence.preaudit.records import DISPOSITIONS_PREFIX, RUNS_PREFIX
 from ens_evidence.workspace import LocalStore
@@ -61,7 +63,8 @@ def judged(proposal=Classification.NC_MENOR, measure="op.mon.1") -> Finding:
         criterion=criterion,
         reason="La política exige lo que la evidencia no muestra.",
         quote="texto citado",
-        source="ITS de Auditoría §VI.2",
+        source="CCN-CERT IC-01/19, apartado 53",
+        classification_source="ITS de Auditoría §VI.2",
     )
 
 
@@ -164,6 +167,16 @@ def test_an_undisposed_nonconformity_blocks(store, proposal):
     found, executed = blocking(store, T0 + timedelta(minutes=2))
 
     assert found == [f"{FINDING_DETAIL}:{finding.id}"] and executed
+
+
+def test_an_open_finding_names_its_measure(store):
+    dossier = dossier_at(store, T0)
+    finding = judged(measure="op.mon.1")
+    add_run(store, dossier, T0 + timedelta(minutes=1), [finding])
+
+    [found], _ = PreAuditFindings().open_findings(store, T0 + timedelta(minutes=2))
+
+    assert found.measure_id == "op.mon.1"
 
 
 def test_an_observation_and_a_deterministic_finding_do_not_block(store):
@@ -326,6 +339,21 @@ def test_a_judgment_that_did_not_finish_keeps_human_review_pending(store, status
     assert blocking(store, T0 + timedelta(minutes=2)) == ([], False)
 
 
+def test_last_run_is_the_latest_on_the_current_dossier_and_not_from_the_future(store):
+    first = dossier_at(store, T0)
+    add_run(store, first, T0 + timedelta(minutes=1))
+    assert last_run(store, T0) is None
+    assert last_run(store, T0 + timedelta(minutes=2)).seq == 1
+
+    later = T0 + timedelta(minutes=3)
+    second = dossier_at(store, later, b'{"dossier": 2}\n')
+    assert last_run(store, later + timedelta(minutes=1)) is None
+
+    add_run(store, second, later + timedelta(minutes=2), judged_status=LayerStatus.NOT_RUN)
+    shown = last_run(store, later + timedelta(minutes=3))
+    assert (shown.seq, shown.run.judgment_status) == (2, LayerStatus.NOT_RUN)
+
+
 # --- vigencia ----------------------------------------------------------------------------------
 
 
@@ -410,3 +438,137 @@ def test_a_frozen_record_that_disappeared_blocks(store):
     (store._root / key).unlink()
 
     assert broken(blocking(store, T0 + timedelta(minutes=2), frozen)[0])
+
+
+# --- la propuesta que manda --------------------------------------------------------------------
+
+
+def test_a_nonconformity_raised_after_an_observation_blocks(store):
+    dossier = dossier_at(store, T0)
+    add_run(store, dossier, minutes(1), [judged(Classification.OBSERVACION)])
+    add_run(store, dossier, minutes(2), [judged(Classification.NC_MAYOR)])
+
+    [found], _ = PreAuditFindings().open_findings(store, minutes(3))
+
+    assert found.id == f"{FINDING_DETAIL}:{judged().id}"
+    assert found.description.startswith("NC_MAYOR en op.mon.1")
+
+
+def test_an_observation_raised_after_a_nonconformity_does_not_unblock_it(store):
+    dossier = dossier_at(store, T0)
+    add_run(store, dossier, minutes(1), [judged(Classification.NC_MENOR)])
+    add_run(store, dossier, minutes(2), [judged(Classification.OBSERVACION)])
+
+    state = findings_view(store, minutes(3)).state_of(judged().id)
+
+    assert state.finding.proposal is Classification.NC_MENOR and state.blocks
+    assert (state.run_seq, state.last_run_seq) == (1, 2)
+
+
+def test_an_accepted_nonconformity_raised_again_as_an_observation_still_blocks(store):
+    dossier = dossier_at(store, T0)
+    finding = judged(Classification.NC_MENOR)
+    add_run(store, dossier, minutes(1), [finding])
+    dispose(store, finding, DispositionState.ACCEPTED, minutes(2))
+    add_run(store, dossier, minutes(3), [judged(Classification.OBSERVACION)])
+
+    assert findings_view(store, minutes(4)).state_of(finding.id).blocks
+
+
+def test_a_dismissed_nonconformity_raised_again_as_an_observation_does_not_block(store):
+    dossier = dossier_at(store, T0)
+    finding = judged(Classification.NC_MENOR)
+    add_run(store, dossier, minutes(1), [finding])
+    dispose(store, finding, DispositionState.DISMISSED, minutes(2))
+    add_run(store, dossier, minutes(3), [judged(Classification.OBSERVACION)])
+
+    state = findings_view(store, minutes(4)).state_of(finding.id)
+
+    assert state.state is DispositionState.OPEN and not state.blocks
+    assert state.finding.proposal is Classification.OBSERVACION
+
+
+def test_the_finding_names_every_dossier_it_was_raised_on(store):
+    first = dossier_at(store, T0)
+    add_run(store, first, minutes(1), [judged()])
+    second = dossier_at(store, minutes(2), b'{"dossier": 2}\n')
+    add_run(store, second, minutes(3), [judged()])
+
+    state = findings_view(store, minutes(4)).state_of(judged().id)
+
+    assert state.dossier == second and state.dossiers == {first, second}
+
+
+# --- lo que congeló un expediente --------------------------------------------------------------
+
+
+def freezing_dossier(store, at: datetime) -> str:
+    """Un expediente que congela las claves de pre-auditoría que hay en `at`."""
+    inputs = {
+        "preaudit_runs": sorted(store.list(RUNS_PREFIX)),
+        "preaudit_dispositions": sorted(store.list(DISPOSITIONS_PREFIX)),
+    }
+    return dossier_at(store, at, json.dumps({"inputs": inputs}).encode())
+
+
+def remove(store, prefix: str) -> None:
+    for key in store.list(prefix):
+        (store._root / key).unlink()
+
+
+@pytest.mark.parametrize("prefix", [RUNS_PREFIX, DISPOSITIONS_PREFIX])
+def test_deleting_what_a_dossier_froze_blocks_with_a_visible_error(store, prefix):
+    dossier = dossier_at(store, T0)
+    finding = judged()
+    add_run(store, dossier, minutes(1), [finding])
+    dispose(store, finding, DispositionState.DISMISSED, minutes(2))
+    frozen = freezing_dossier(store, minutes(3))
+    assert blocking(store, minutes(4)) == ([], False)
+
+    remove(store, prefix)
+
+    view = findings_view(store, minutes(4))
+    assert broken(blocking(store, minutes(4))[0])
+    assert any(f"lo congeló el expediente {frozen} y ya no está" in p for p in view.problems)
+
+
+def test_deleting_only_the_last_reservation_a_dossier_froze_blocks(store):
+    dossier = dossier_at(store, T0)
+    add_run(store, dossier, minutes(1), [judged()])
+    freezing_dossier(store, minutes(2))
+
+    (store._root / chain.seq_key(RUNS_PREFIX, 1)).unlink()
+
+    assert broken(blocking(store, minutes(3))[0])
+
+
+def test_the_frozen_view_also_sees_what_an_earlier_dossier_froze(store):
+    dossier = dossier_at(store, T0)
+    add_run(store, dossier, minutes(1), [judged()])
+    freezing_dossier(store, minutes(2))
+    remove(store, RUNS_PREFIX)
+    later = PreAuditFindings(store.list(RUNS_PREFIX), store.list(DISPOSITIONS_PREFIX))
+
+    assert broken(blocking(store, minutes(3), later)[0])
+
+
+def test_an_altered_dossier_hides_nothing_it_froze(store):
+    dossier = dossier_at(store, T0)
+    add_run(store, dossier, minutes(1), [judged()])
+    frozen = freezing_dossier(store, minutes(2))
+    store.write_bytes(f"evidence/assessments/{frozen}/dossier.json", b'{"inputs": {}}\n')
+    remove(store, RUNS_PREFIX)
+
+    view = findings_view(store, minutes(3))
+
+    assert any("no coincide con la huella del id" in p for p in view.problems)
+    assert broken(blocking(store, minutes(3))[0])
+
+
+def test_a_dossier_generated_after_the_evaluated_instant_does_not_count(store):
+    dossier = dossier_at(store, T0)
+    add_run(store, dossier, minutes(1), [judged()])
+    freezing_dossier(store, minutes(5))
+    remove(store, RUNS_PREFIX)
+
+    assert not findings_view(store, minutes(4)).problems

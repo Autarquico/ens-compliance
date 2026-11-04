@@ -18,6 +18,8 @@ from ens_evidence.matrix.technical import (
 )
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus, Readiness
+from ens_evidence.models.preaudit import PreAuditRecord
+from ens_evidence.preaudit.findings import last_run
 from ens_evidence.workspace import WorkspaceStore
 
 STATUS_ORDER = (CheckStatus.PASS, CheckStatus.FAIL, CheckStatus.UNKNOWN, CheckStatus.ERROR)
@@ -46,6 +48,8 @@ class ConnectorSummary:
 class AssessmentStatus:
     result: AssessmentResult
     connectors: tuple[ConnectorSummary, ...]
+    pre_audit: PreAuditRecord | None = None
+    """La última pre-auditoría sobre el expediente vigente (None: ninguna)."""
 
     @property
     def pending_human_review(self) -> bool:
@@ -74,4 +78,4 @@ def assessment_status(
                 count_statuses(run.results if run else ()),
             )
         )
-    return AssessmentStatus(result, tuple(summaries))
+    return AssessmentStatus(result, tuple(summaries), last_run(store, at))

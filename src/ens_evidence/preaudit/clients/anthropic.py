@@ -15,8 +15,9 @@ from typing import Any
 import httpx
 
 from ens_evidence.preaudit.adapter import JudgmentConfig, ProviderError, ProviderErrorKind
-from ens_evidence.preaudit.clients._http import JsonPoster, api_key
+from ens_evidence.preaudit.clients._http import JsonPoster, api_destination, api_key
 
+NAME = "anthropic"
 DEFAULT_BASE_URL = "https://api.anthropic.com"
 API_VERSION = "2023-06-01"
 KEY_ENV = "ANTHROPIC_API_KEY"
@@ -43,7 +44,7 @@ class AnthropicProvider:
 
     @property
     def destination(self) -> str:
-        return self._poster.base_url
+        return api_destination(NAME, self._poster.base_url)
 
     def judge(
         self, system_prompt: str, payload: bytes, schema: dict[str, Any], config: JudgmentConfig
@@ -56,8 +57,6 @@ class AnthropicProvider:
             "tools": [{"name": TOOL_NAME, "description": TOOL_DESCRIPTION, "input_schema": schema}],
             "tool_choice": {"type": "tool", "name": TOOL_NAME},
         }
-        if config.temperature is not None:
-            body["temperature"] = config.temperature
         return _tool_input(self._poster.post("/v1/messages", body, config.timeout))
 
 

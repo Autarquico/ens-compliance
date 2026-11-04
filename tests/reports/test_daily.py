@@ -15,7 +15,7 @@ from orgdocs.orgdocs_helpers import (
     write_answers,
 )
 
-from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY
+from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY, NO_PRE_AUDIT
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.models.enums import CheckStatus, CollectionStatus, Readiness, Role
@@ -239,6 +239,7 @@ def test_avisos_de_revision_humana_y_no_conformidad(ready):
 
     assert HUMAN_REVIEW_PENDING in report.notices
     assert report.notices[-1] == NO_CONFORMITY
+    assert NO_PRE_AUDIT in report.notices
 
 
 # --- alertas e incidentes ----------------------------------------------------------------------

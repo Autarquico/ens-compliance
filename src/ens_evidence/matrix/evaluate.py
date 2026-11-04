@@ -107,13 +107,6 @@ class StaticFindings:
         return list(self._findings), self._executed
 
 
-class NoFindings(StaticFindings):
-    """Sin hallazgos y sin juicio ejecutado (tests)."""
-
-    def __init__(self) -> None:
-        super().__init__((), executed=False)
-
-
 def _gap(kind: BlockerKind, measure_id: str, detail: str) -> Blocker:
     return Blocker(kind=kind, measure_id=measure_id, detail=detail)
 

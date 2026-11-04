@@ -5,8 +5,12 @@
 
 Una cadena con huecos, bifurcaciones, enlaces rotos, una clave que no corresponde a su contenido,
 un `recorded_at` que retrocede o que está en el futuro respecto a `now` es un problema. Con
-`known` se lee la cadena tal como era al generar un expediente: los registros posteriores (y sus
-reservas) no existían entonces y no se ven; uno congelado que falta sí es un problema.
+`known` se lee la cadena tal como era al generar un expediente: las claves congeladas incluyen los
+registros y sus reservas; lo posterior no existía entonces y no se ve; algo congelado que falta sí
+es un problema.
+
+`append` añade un registro a una de las dos cadenas con el orden de escritura común: reservar la
+secuencia (creación exclusiva) y después escribir.
 """
 
 from collections.abc import Collection
@@ -91,17 +95,33 @@ def _scan[R: BaseModel](
     return ChainScan(tuple(stored), tuple(problems))
 
 
+def next_link[R: (PreAuditRecord, DispositionRecord)](scan: ChainScan[R]) -> tuple[int, str | None]:
+    """(`seq`, `previous_sha256`) del registro que sigue al último legible."""
+    if not scan.records:
+        return 1, None
+    last = scan.records[-1]
+    return last.record.seq + 1, last.sha256
+
+
+def append[R: (PreAuditRecord, DispositionRecord)](
+    store: WorkspaceStore, prefix: str, record: R
+) -> chain.Stored[R]:
+    """Reserva la secuencia de `record` y lo escribe; `chain.SequenceTaken` si otra orden la
+    reservó antes (no se escribe nada). Cada llamador lo traduce a su rechazo."""
+    data = chain.render_record(record.model_dump(mode="json"))
+    chain.reserve_sequence(store, prefix, record.seq)
+    key = chain.record_key(prefix, record.seq, record.recorded_at, data)
+    store.create_bytes(key, data)
+    return chain.Stored(key, data, record)
+
+
 class _AsKnown:
-    """La cadena con solo los registros de `known` y sus reservas: lo que había al generar."""
+    """La cadena con solo las claves de `known` (registros y reservas): lo que había al generar."""
 
     def __init__(self, store: WorkspaceStore, prefix: str, known: Collection[str]) -> None:
         self._store = store
         self._prefix = f"{prefix}/"
-        records = set(known)
-        seqs = {
-            key.removeprefix(self._prefix)[:6] for key in records if key.startswith(self._prefix)
-        }
-        self._visible = records | {f"{self._prefix}seq/{seq}" for seq in seqs}
+        self._visible = set(known)
 
     def _shown(self, key: str) -> bool:
         return not key.startswith(self._prefix) or key in self._visible

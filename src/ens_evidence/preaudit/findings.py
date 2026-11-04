@@ -8,12 +8,15 @@ bloqueando. Los hallazgos deterministas no bloquean aquí: sus hechos ya bloquea
 
 Una disposición cubre las apariciones del hallazgo hasta la ejecución `covers_run`. Si una
 ejecución posterior lo vuelve a proponer, el hallazgo vuelve a estar `OPEN` hasta que una persona
-lo disponga de nuevo. El orden entre las dos cadenas lo fija `covers_run`; los instantes deben
-confirmarlo: si lo contradicen, es un error visible. `preaudit run` y `preaudit review` escriben
-con el lock del ciclo tomado, así que esa contradicción solo puede venir de una manipulación.
+lo disponga de nuevo. Entre las apariciones que no cubre ninguna disposición que desbloquea manda
+la propuesta más grave: una NC nunca deja de bloquear porque antes fuera una observación.
+
+El orden entre las dos cadenas lo fija `covers_run`; los instantes deben confirmarlo: si lo
+contradicen, es un error visible. `preaudit run` y `preaudit review` escriben con el lock del
+ciclo tomado, así que esa contradicción solo puede venir de una manipulación.
 
 Unas cadenas ilegibles, alteradas o con fechas futuras no se interpretan a medias: bloquean con un
-error visible.
+error visible. También bloquea que falte algo que congeló un expediente (`frozen_problems`).
 
 `judgment_executed` es cierto solo si hay una ejecución con la capa de juicio en `DONE` sobre el
 expediente vigente: el último generado antes del instante evaluado, con la misma huella que
@@ -21,16 +24,18 @@ revisó la ejecución.
 """
 
 import hashlib
-import re
+import json
 from collections.abc import Collection, Iterable
 from dataclasses import dataclass
 from datetime import datetime
 
 from ens_evidence import chain
+from ens_evidence.dossier_layout import dossiers_before, matches_content, snapshot_key
 from ens_evidence.models.preaudit import (
     BLOCKING_PROPOSALS,
     NEXT_STATES,
     UNBLOCKING,
+    Classification,
     Disposition,
     DispositionRecord,
     DispositionState,
@@ -40,23 +45,59 @@ from ens_evidence.models.preaudit import (
     PreAuditRecord,
 )
 from ens_evidence.models.readiness import OpenFinding
-from ens_evidence.preaudit.records import scan_dispositions, scan_runs
+from ens_evidence.preaudit.records import (
+    DISPOSITIONS_PREFIX,
+    RUNS_PREFIX,
+    scan_dispositions,
+    scan_runs,
+)
 from ens_evidence.workspace import NotFound, WorkspaceStore
 
 FINDING_DETAIL = "preaudit_finding"
 BROKEN_DETAIL = "preaudit_history_broken"
 
+SEVERITY = (Classification.NC_MAYOR, Classification.NC_MENOR, Classification.OBSERVACION)
+"""De más a menos grave."""
+
+FROZEN_FIELDS = ("preaudit_runs", "preaudit_dispositions")
+"""Los campos de `SnapshotInputs` con las claves de pre-auditoría congeladas al generar."""
+
 
 @dataclass(frozen=True)
 class FindingState:
-    """Un hallazgo de juicio, la primera ejecución que lo propuso (y su expediente), la última y
-    la disposición que cubre esa última (None: abierto)."""
+    """Un hallazgo de juicio, las ejecuciones que lo proponen (en orden de secuencia) y la
+    disposición que cubre la última (None: abierto).
+
+    `finding` es la aparición que manda: la más grave de las que no cubre ninguna disposición que
+    desbloquea (a igual gravedad, la más reciente). Una NC nunca deja de bloquear porque antes se
+    propusiera como observación."""
 
     finding: Finding
-    run_seq: int
-    dossier: str
-    last_run_seq: int
+    runs: tuple[PreAuditRecord, ...]
     disposition: Disposition | None = None
+
+    @property
+    def run_seq(self) -> int:
+        """La primera ejecución que lo propuso."""
+        return self.runs[0].seq
+
+    @property
+    def last_run(self) -> PreAuditRecord:
+        return self.runs[-1]
+
+    @property
+    def last_run_seq(self) -> int:
+        return self.last_run.seq
+
+    @property
+    def dossier(self) -> str:
+        """El expediente de la última ejecución que lo propuso."""
+        return self.last_run.run.dossier
+
+    @property
+    def dossiers(self) -> frozenset[str]:
+        """Los expedientes de todas las ejecuciones que lo propusieron."""
+        return frozenset(r.run.dossier for r in self.runs)
 
     @property
     def state(self) -> DispositionState:
@@ -85,56 +126,60 @@ def findings_view(
     dispositions: Collection[str] | None = None,
 ) -> FindingsView:
     """Los hallazgos de juicio en `at`. `runs` y `dispositions`: las claves congeladas en un
-    expediente (None: todas las que hay)."""
+    expediente (None: todas las que hay). En los dos casos, lo que congeló cualquier expediente
+    generado antes de `at` tiene que seguir ahí."""
     run_scan = scan_runs(store, now=at, known=runs)
     disposition_scan = scan_dispositions(store, now=at, known=dispositions)
-    problems = [*run_scan.problems, *disposition_scan.problems]
+    problems = [*run_scan.problems, *disposition_scan.problems, *frozen_problems(store, at)]
     proposed = _appearances(run_scan.records)
     decided, decision_problems = _decisions(disposition_scan.records, proposed)
-    states = tuple(
-        _state(finding, seen, decided.get(finding.id)) for finding, seen in proposed.values()
-    )
+    states = tuple(_state(seen, decided.get(fid, [])) for fid, seen in proposed.items())
     executed, sha_problems = _judgment_executed(store, at, run_scan.records)
     problems += decision_problems + sha_problems
     return FindingsView(states, executed, tuple(problems))
 
 
-type Runs = list[chain.Stored[PreAuditRecord]]
+type Appearance = tuple[chain.Stored[PreAuditRecord], Finding]
 
 
 def _appearances(
     records: Iterable[chain.Stored[PreAuditRecord]],
-) -> dict[str, tuple[Finding, Runs]]:
-    """Cada hallazgo de juicio como lo propuso la primera ejecución, y las ejecuciones que lo
-    proponen, en orden de secuencia."""
-    proposed: dict[str, tuple[Finding, Runs]] = {}
+) -> dict[str, list[Appearance]]:
+    """Cada hallazgo de juicio con sus apariciones (ejecución y propuesta), en orden de
+    secuencia."""
+    proposed: dict[str, list[Appearance]] = {}
     for stored in records:
         for finding in stored.record.findings:
             if finding.layer is Layer.JUDGMENT:
-                proposed.setdefault(finding.id, (finding, []))[1].append(stored)
+                proposed.setdefault(finding.id, []).append((stored, finding))
     return proposed
 
 
-def _state(finding: Finding, seen: Runs, decided: Disposition | None) -> FindingState:
-    first, last = seen[0].record, seen[-1].record.seq
-    covering = decided if decided and decided.covers_run == last else None
-    return FindingState(finding, first.seq, first.run.dossier, last, covering)
+def _state(seen: list[Appearance], history: list[Disposition]) -> FindingState:
+    last = seen[-1][0].record.seq
+    covering = history[-1] if history and history[-1].covers_run == last else None
+    cleared = max((d.covers_run for d in history if d.state in UNBLOCKING), default=0)
+    pending = [finding for stored, finding in seen if stored.record.seq > cleared]
+    ruling = min(reversed(pending or [seen[-1][1]]), key=lambda f: SEVERITY.index(f.proposal))
+    return FindingState(ruling, tuple(stored.record for stored, _ in seen), covering)
 
 
 def _decisions(
-    records: Iterable[chain.Stored[DispositionRecord]], proposed: dict[str, tuple[Finding, Runs]]
-) -> tuple[dict[str, Disposition], list[str]]:
-    """La última disposición válida de cada hallazgo, recorriendo la cadena en orden. Una
+    records: Iterable[chain.Stored[DispositionRecord]], proposed: dict[str, list[Appearance]]
+) -> tuple[dict[str, list[Disposition]], list[str]]:
+    """Las disposiciones válidas de cada hallazgo, recorriendo la cadena en orden. Una
     disposición que cubre una ejecución posterior a la anterior parte de `OPEN`."""
-    decided: dict[str, Disposition] = {}
+    decided: dict[str, list[Disposition]] = {}
     problems: list[str] = []
     for stored in records:
         disposition = stored.record.disposition
         if disposition.finding_id not in proposed:
             problems.append(f"{stored.key}: dispone un hallazgo que ninguna ejecución propuso")
             continue
-        order = _order_problems(stored, proposed[disposition.finding_id][1])
-        current = decided.get(disposition.finding_id)
+        seen = [run for run, _ in proposed[disposition.finding_id]]
+        order = _order_problems(stored, seen)
+        history = decided.setdefault(disposition.finding_id, [])
+        current = history[-1] if history else None
         if current and disposition.covers_run < current.covers_run:
             order.append(
                 f"{stored.key}: cubre la ejecución {disposition.covers_run}, anterior a la "
@@ -151,11 +196,13 @@ def _decisions(
                 "válida"
             )
             continue
-        decided[disposition.finding_id] = disposition
+        history.append(disposition)
     return decided, problems
 
 
-def _order_problems(stored: chain.Stored[DispositionRecord], seen: Runs) -> list[str]:
+def _order_problems(
+    stored: chain.Stored[DispositionRecord], seen: list[chain.Stored[PreAuditRecord]]
+) -> list[str]:
     """`covers_run` debe ser una ejecución que propuso el hallazgo, registrada antes de la
     disposición; y ninguna ejecución posterior en la secuencia puede ser anterior en el reloj."""
     covers, at = stored.record.disposition.covers_run, stored.record.recorded_at
@@ -174,26 +221,71 @@ def _order_problems(stored: chain.Stored[DispositionRecord], seen: Runs) -> list
     return problems
 
 
-def _dossier_layout() -> tuple[str, re.Pattern[str], str]:
-    # Importación diferida: `assessment.dossier` evalúa con `assess`, que usa esta fuente.
-    from ens_evidence.assessment.dossier import store as layout
-
-    return layout.ASSESSMENTS_PREFIX, layout.DOSSIER_ID, layout.SNAPSHOT_NAME
-
-
 def current_dossier(store: WorkspaceStore, at: datetime) -> str | None:
     """El último expediente generado antes de `at` (por el instante de su id)."""
-    assessments, dossier_id, _ = _dossier_layout()
-    stamp = chain.instant_stamp(at)
-    ids = {key.removeprefix(f"{assessments}/").split("/", 1)[0] for key in store.list(assessments)}
-    earlier = [d for d in ids if dossier_id.fullmatch(d) and d.split("-", 1)[0] < stamp]
-    return max(earlier, default=None)
+    return max(dossiers_before(store, at), default=None)
+
+
+def last_run(store: WorkspaceStore, at: datetime) -> PreAuditRecord | None:
+    """La última ejecución legible registrada en o antes de `at` sobre el expediente vigente.
+    Informa; no decide nada (eso es de `findings_view`)."""
+    dossier = current_dossier(store, at)
+    runs = [
+        s.record
+        for s in scan_runs(store, now=at).records
+        if s.record.run.dossier == dossier and s.record.recorded_at <= at
+    ]
+    return max(runs, key=lambda r: r.seq, default=None)
+
+
+def frozen_problems(store: WorkspaceStore, at: datetime) -> list[str]:
+    """Lo que congeló un expediente generado antes de `at` y ya no está: historia rota.
+
+    Cada expediente guarda las claves de pre-auditoría que existían al generarlo
+    (`SnapshotInputs`), y es una copia inmutable con su huella en el id. Borrar o rehacer una
+    ejecución o una disposición congelada se ve aquí; para borrarla sin que se vea habría que
+    alterar también cada expediente que la congeló."""
+    problems: list[str] = []
+    for dossier in dossiers_before(store, at):
+        keys, unreadable = _frozen_by(store, dossier)
+        problems += unreadable + missing_frozen(store, dossier, keys)
+    return problems
+
+
+def missing_frozen(store: WorkspaceStore, dossier: str, keys: Iterable[str]) -> list[str]:
+    """Las claves de pre-auditoría que congeló `dossier` y ya no están. Que una siga ahí con
+    otro contenido lo detecta la lectura de la cadena: cada clave lleva la huella de su registro."""
+    present = {*store.list(RUNS_PREFIX), *store.list(DISPOSITIONS_PREFIX)}
+    return [
+        f"{key}: lo congeló el expediente {dossier} y ya no está"
+        for key in keys
+        if key not in present
+    ]
+
+
+def _frozen_by(store: WorkspaceStore, dossier: str) -> tuple[list[str], list[str]]:
+    """(claves de pre-auditoría que congeló `dossier`, problema si no se pueden leer)."""
+    key = snapshot_key(dossier)
+    unreadable = f"{key}: no se lee; no se comprueban las pre-auditorías que congeló"
+    try:
+        data = store.read_bytes(key)
+    except NotFound:
+        return [], [unreadable]
+    if not matches_content(dossier, data):
+        return [], [f"{key}: el contenido no coincide con la huella del id"]
+    try:
+        inputs = json.loads(data).get("inputs") or {}
+        keys = [k for name in FROZEN_FIELDS for k in inputs.get(name) or []]
+    except (ValueError, AttributeError, TypeError):
+        return [], [unreadable]
+    if not all(isinstance(k, str) for k in keys):
+        return [], [unreadable]
+    return keys, []
 
 
 def _judgment_executed(
     store: WorkspaceStore, at: datetime, records: Iterable[chain.Stored[PreAuditRecord]]
 ) -> tuple[bool, list[str]]:
-    assessments, _, snapshot_name = _dossier_layout()
     dossier = current_dossier(store, at)
     done = [
         s
@@ -203,7 +295,7 @@ def _judgment_executed(
     if dossier is None or not done:
         return False, []
     try:
-        data = store.read_bytes(f"{assessments}/{dossier}/{snapshot_name}")
+        data = store.read_bytes(snapshot_key(dossier))
     except NotFound:
         return False, [f"{dossier}: no se puede leer el expediente que revisó la pre-auditoría"]
     sha256 = hashlib.sha256(data).hexdigest()
@@ -221,6 +313,7 @@ def open_findings(view: FindingsView) -> list[OpenFinding]:
         OpenFinding(
             id=f"{FINDING_DETAIL}:{s.finding.id}",
             description=f"{s.finding.proposal.value} en {s.finding.measure}: {s.finding.reason}",
+            measure_id=s.finding.measure,
         )
         for s in view.states
         if s.blocks

@@ -1,5 +1,7 @@
-# Criterios de la capa de juicio. Cada criterio cita su fuente literal; la cita debe aparecer
-# en el texto oficial (tests/preaudit/test_pack.py lo comprueba contra los fixtures).
+# Criterios de la capa de juicio. Cada criterio cita su fuente literal, la que dice qué se
+# compara; la cita debe aparecer en el texto oficial (tests/preaudit/test_pack.py lo comprueba
+# contra los fixtures). La fuente de la clase propuesta (ITS §VI.2, IC-01/19 §53) no va aquí: va
+# en `classifications` del mensaje de usuario y en cada hallazgo, según la propuesta.
 # `allowed_proposals`: lo único que el modelo puede proponer con este criterio. Nunca un dictamen.
 # `measure_scope`: `applicable` (cita documentos y evidencias enlazados a la medida) o
 # `not_applicable_or_compensated` (cita la justificación de la medida en `justifications`).
@@ -16,7 +18,7 @@ criteria:
     allowed_proposals: [NC_MENOR, OBSERVACION]
     source:
       document: ic0119
-      reference: "CCN-CERT IC-01/19, apartado 53 (No Conformidad Menor)"
+      reference: "CCN-CERT IC-01/19, apartado 53"
       quote: "se aprecian incoherencias entre requisitos que deberían estar alineados"
   - id: calidad-documental
     text: >-

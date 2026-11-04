@@ -9,7 +9,8 @@ from checks.acceptance_helpers import COLLECTED, make_world
 from matrix.evaluate_helpers import NOW
 
 from ens_evidence.assessment.dossier import build_snapshot, current_inputs
-from ens_evidence.assessment.dossier.model import DossierSnapshot
+from ens_evidence.assessment.dossier.model import DossierSnapshot, snapshot_export
+from ens_evidence.matrix.messages import blocker_text
 from ens_evidence.models.preaudit import (
     PROPOSAL_NOTICE,
     Classification,
@@ -17,7 +18,12 @@ from ens_evidence.models.preaudit import (
     Layer,
     RefKind,
 )
-from ens_evidence.preaudit.deterministic import DOSSIER_SCOPE, deterministic_findings
+from ens_evidence.models.readiness import Blocker, BlockerKind
+from ens_evidence.preaudit.deterministic import (
+    DOSSIER_SCOPE,
+    RULE_LABELS,
+    deterministic_findings,
+)
 
 CHECK_MEASURE = "op.exp.1"
 CHECK = "github.secret_scanning_enabled"
@@ -64,7 +70,7 @@ def test_un_check_fallido_se_propone_como_menor_citando_its_e_ic(ready):
     assert fail.refs[0].kind is RefKind.SECTION
     assert "ITS de Auditoría (BOE-A-2018-4573) §VI.2" in fail.source
     assert "IC-01/19" in fail.source
-    assert fail.reason.endswith(PROPOSAL_NOTICE)
+    assert PROPOSAL_NOTICE not in fail.reason  # el aviso va en su propia línea, una vez
 
 
 def test_la_falta_de_evidencia_derivada_del_fallo_queda_sin_clasificar(ready):
@@ -169,3 +175,31 @@ def test_es_determinista_y_no_toca_la_instantanea(ready):
     assert [f.model_dump_json() for f in first] == [f.model_dump_json() for f in second]
     assert snapshot.model_dump_json() == before
     assert len({f.id for f in first}) == len(first)
+
+
+def test_el_motivo_es_el_texto_llano_del_bloqueo_con_su_siguiente_paso(ready):
+    snapshot = failing_world(ready)
+    texts = {blocker_text(b) for b in snapshot_export(snapshot).blockers}
+
+    findings = deterministic_findings(snapshot)
+
+    assert findings and all(f.reason in texts for f in findings)
+    [fail] = by_rule(findings, DeterministicRule.CHECK_FAIL)
+    assert "Siguiente paso" in fail.reason and "check_failed" not in fail.reason
+
+
+def test_un_documento_sin_aprobar_no_se_explica_como_falta_de_evidencia(ready):
+    detail = "document_not_approved:politica-seguridad:GENERATED"
+    snapshot = with_blocker(build_snapshot(ready.store, INPUTS), "EXPIRED_EVIDENCE", detail)
+
+    [finding] = deterministic_findings(snapshot)
+
+    expected = Blocker(kind=BlockerKind.EXPIRED_EVIDENCE, measure_id="op.pl.1", detail=detail)
+    assert finding.reason == blocker_text(expected)
+    assert "docs approve politica-seguridad" in finding.reason
+    assert "falta evidencia" not in finding.reason and detail not in finding.reason
+
+
+def test_cada_regla_tiene_su_etiqueta_en_castellano():
+    assert set(RULE_LABELS) == set(DeterministicRule)
+    assert all(label != rule.value for rule, label in RULE_LABELS.items())

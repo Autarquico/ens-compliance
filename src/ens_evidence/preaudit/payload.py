@@ -31,6 +31,7 @@ import yaml
 
 from ens_evidence.applicability.declaration import Declaration
 from ens_evidence.approvals import safe_load_unique
+from ens_evidence.assessment.dossier.build import EVIDENCE_SECTION
 from ens_evidence.assessment.dossier.model import DossierSnapshot, SourceRef, snapshot_export
 from ens_evidence.assessment.dossier.store import load_snapshot, stored_snapshot_sha256
 from ens_evidence.evidence.layout import artifact_key
@@ -43,6 +44,7 @@ from ens_evidence.orgdocs.approval import ROLE_QUESTION
 from ens_evidence.orgdocs.keys import ANSWERS_KEY, document_key
 from ens_evidence.orgdocs.template import load_templates
 from ens_evidence.preaudit.adapter import ProviderError
+from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
 from ens_evidence.preaudit.clients._cli import cli_destination
 from ens_evidence.preaudit.clients._http import normalize_base_url
 from ens_evidence.preaudit.pack import AuditPack
@@ -60,7 +62,6 @@ TEXT_FIELDS = frozenset(
     {"name", "justification", "compensating_measures", "asset_type", "source", "text"}
 )
 EVIDENCE_TEXT_MAX_BYTES = 64 * 1024
-EVIDENCE_SECTION = 8
 DECLARATION_SECTION = 5
 _CLI_VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+-]*")
 ANSWER_ROLES = {
@@ -134,6 +135,10 @@ def build_payload(store: WorkspaceStore, dossier: str, pack: AuditPack) -> Paylo
             "category": snapshot.category.value,
         },
         "criteria": [c.model_dump(mode="json") for c in pack.criteria],
+        "classifications": {
+            proposal.value: [source.model_dump(mode="json") for source in sources]
+            for proposal, sources in JUDGMENT_CLASSIFICATIONS.items()
+        },
         "dossier": redact_fields(content, TEXT_FIELDS, designated),
     }
     require_clean(data, TEXT_FIELDS, designated)
@@ -397,9 +402,9 @@ def _people(
             if isinstance(holder := values.get(question), str) and holder.strip():
                 people[holder].add(role)
         for name in declared_people(values):
-            people[name]  # noqa: B018 - sin rol: se sustituye por [PERSONA]
+            people.setdefault(name, set())
     for name in _registry_people(store):
-        people[name]  # noqa: B018 - sin rol: se sustituye por [PERSONA]
+        people.setdefault(name, set())
     for row in export.rows:
         if row.owner is not None:
             people[row.owner.name].add(row.owner.role)

@@ -168,6 +168,20 @@ def test_hallazgo_abierto_bloquea_aunque_las_medidas_esten_bien():
     assert result.blockers == [Blocker(kind=BlockerKind.OPEN_FINDING, detail="f-1")]
 
 
+def test_un_hallazgo_de_una_medida_bloquea_bajo_esa_medida():
+    result = evaluate_readiness(
+        ReadinessInput(
+            measures=[good_measure()],
+            open_findings=[OpenFinding(id="f-1", measure_id="op.mon.1")],
+            judgment_executed=True,
+            evaluated_at=NOW,
+        )
+    )
+    assert result.blockers == [
+        Blocker(kind=BlockerKind.OPEN_FINDING, measure_id="op.mon.1", detail="f-1")
+    ]
+
+
 def test_una_medida_mala_basta_para_not_ready():
     result = evaluate(good_measure(), good_measure(id="m2", review=None))
     assert result.readiness is Readiness.NOT_READY

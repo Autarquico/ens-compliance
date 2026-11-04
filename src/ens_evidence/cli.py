@@ -58,7 +58,6 @@ from ens_evidence.assessment.dossier.package import (
     has_package,
     save_package,
 )
-from ens_evidence.assessment.dossier.sections import PRE_AUDIT_PENDING
 from ens_evidence.assessment.dossier.sections_md import category_name
 from ens_evidence.assessment.dossier.status import (
     NOT_READY_NOTICE,
@@ -75,7 +74,7 @@ from ens_evidence.assessment.dossier.store import (
     save_markdown,
     save_snapshot,
 )
-from ens_evidence.assessment.dossier.verification import verification_problems
+from ens_evidence.assessment.dossier.verification import package_required, verification_problems
 from ens_evidence.backup import (
     IMMUTABILITY_PREFIX,
     BackupError,
@@ -193,11 +192,14 @@ from ens_evidence.models.dossier import CorrectiveMeasure
 from ens_evidence.models.enums import Category, CheckStatus, CollectionStatus, DossierState, Role
 from ens_evidence.models.preaudit import (
     PROPOSAL_NOTICE,
+    DeterministicRule,
     DispositionState,
+    Finding,
     Layer,
     LayerStatus,
     PreAuditRecord,
     Provider,
+    RefKind,
 )
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
@@ -216,6 +218,7 @@ from ens_evidence.orgdocs import (
     skeleton,
 )
 from ens_evidence.preaudit import service as preaudit
+from ens_evidence.preaudit.deterministic import RULE_LABELS
 from ens_evidence.preaudit.findings import FindingState, FindingsView, findings_view
 from ens_evidence.preaudit.review import ReviewRejected, review
 from ens_evidence.reports.daily import build_daily
@@ -3342,7 +3345,7 @@ def dossier_verify(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     store = open_workspace(ctx)
     snapshot = load_dossier(store, dossier)
     problems = verification_problems(store, dossier, snapshot)
-    checked_package = has_package(store, dossier) or snapshot.category is not Category.BASICA
+    checked_package = package_required(store, dossier, snapshot)
     if problems:
         raise dossier_rejected(f"La verificación de {dossier} ha fallado:", problems)
     if not has_markdown(store, dossier):
@@ -3408,6 +3411,18 @@ def dossier_render(ctx: typer.Context, dossier: DossierIdArgument) -> None:
 PREAUDIT_FOOTER = (
     f"Cada hallazgo es una {PROPOSAL_NOTICE}. La herramienta no dictamina ni declara conformidad."
 )
+JUDGMENT_PENDING = "capa de juicio no ejecutada; revisión humana pendiente"
+REDACTION_LIMIT = (
+    "Revisa el payload antes de consentir: los nombres de personas que no constan en ningún "
+    "registro del workspace no se redactan."
+)
+PLAN_RECIPIENT = {Provider.CLAUDE_CODE: "Anthropic", Provider.CODEX: "OpenAI"}
+"""Quién recibe los datos cuando se envían con la sesión del plan contratado (CLI)."""
+REF_LABELS = {
+    RefKind.DOCUMENT: "Documento",
+    RefKind.EVIDENCE: "Evidencia",
+    RefKind.SECTION: "Sección",
+}
 SHA256_ARG = re.compile(r"[0-9a-f]{64}")
 ProviderOption = Annotated[
     Provider | None,
@@ -3439,9 +3454,12 @@ def preaudit_prepare(
     typer.echo(json.dumps(prepared.payload.data, indent=2, ensure_ascii=False, sort_keys=True))
     typer.echo(f"Expediente: {dossier}")
     typer.echo(f"Destino: {prepared.destination} (modelo {prepared.model})")
+    if recipient := PLAN_RECIPIENT.get(prepared.provider):
+        typer.echo(f"Los datos los recibe {recipient} con tu plan.")
     typer.echo(f"Audit pack: {prepared.pack_version}")
     typer.echo(f"Huella del payload (sha256): {prepared.payload.sha256}")
     typer.echo(f"Preparado en {prepared.key}; el payload no ha salido de este equipo.")
+    typer.echo(REDACTION_LIMIT)
     shell = " --accept-shell-risk" if prepared.requires_shell_warning else ""
     if prepared.requires_shell_warning:
         typer.echo(f"Aviso: {preaudit.SHELL_RISK}.")
@@ -3538,17 +3556,7 @@ def preaudit_show(
     print_preaudit_layers(record)
     for finding in record.findings:
         typer.echo("")
-        typer.echo(
-            f"[{finding.proposal.value}] {finding.measure} — {finding.criterion} "
-            f"({finding.layer.value})"
-        )
-        typer.echo(f"  Motivo: {finding.reason}")
-        for ref in finding.refs:
-            typer.echo(f"  Cita {ref.kind.value}: {ref.id}")
-        if finding.quote:
-            for line in finding.quote.splitlines():
-                typer.echo(f"    {line}")
-        typer.echo(f"  Fuente: {finding.source}")
+        print_finding(finding)
         typer.echo(f"  Id: {finding.id}")
         typer.echo(f"  {disposition_line(finding.layer, view.state_of(finding.id))}")
         typer.echo(f"  {PROPOSAL_NOTICE[0].upper()}{PROPOSAL_NOTICE[1:]}.")
@@ -3560,6 +3568,25 @@ def preaudit_show(
         )
     typer.echo("")
     typer.echo(PREAUDIT_FOOTER)
+
+
+def print_finding(finding: Finding) -> None:
+    """Un hallazgo en lenguaje llano; los códigos de regla y de bloqueo quedan en el registro."""
+    deterministic = finding.layer is Layer.DETERMINISTIC
+    rule = RULE_LABELS[DeterministicRule(finding.criterion)] if deterministic else finding.criterion
+    typer.echo(f"[{finding.proposal.value}] {finding.measure} — {rule} ({finding.layer.value})")
+    typer.echo(f"  Motivo: {finding.reason}")
+    for ref in finding.refs:
+        shown = ref.id.split(":", 1)[0] if deterministic and ref.kind is RefKind.SECTION else ref.id
+        typer.echo(f"  {REF_LABELS[ref.kind]}: {shown}")
+    for line in (finding.quote or "").splitlines():
+        typer.echo(f"    {line}")
+    if deterministic:
+        typer.echo(f"  Fuente de la clasificación: {finding.source}")
+        return
+    typer.echo(f"  Fuente del criterio: {finding.source}")
+    if finding.classification_source:
+        typer.echo(f"  Fuente de la clasificación: {finding.classification_source}")
 
 
 DISPOSITION_LABELS = {
@@ -3641,7 +3668,7 @@ def preaudit_review(
 def print_dossier_preaudit(view: FindingsView, dossier: str) -> None:
     """Los hallazgos de juicio propuestos sobre `dossier` y su estado actual. Vista derivada: la
     instantánea no cambia."""
-    found = [s for s in view.states if s.dossier == dossier]
+    found = [s for s in view.states if dossier in s.dossiers]
     typer.echo("Pre-auditoría (vista derivada; la instantánea no cambia):")
     if view.problems:
         typer.echo("  el registro de pre-auditorías no se verifica:", err=True)
@@ -3658,18 +3685,23 @@ def print_dossier_preaudit(view: FindingsView, dossier: str) -> None:
         )
 
 
+def counted(n: int, noun: str) -> str:
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
+
+
 def print_preaudit_layers(record: PreAuditRecord) -> None:
     executed = record.run
     deterministic = [f for f in record.findings if f.layer is Layer.DETERMINISTIC]
     typer.echo(
-        f"Capa determinista: {executed.deterministic_status.value}, {len(deterministic)} hallazgos."
+        f"Capa determinista: {executed.deterministic_status.value}, "
+        f"{counted(len(deterministic), 'hallazgo')}."
     )
     judged = len(record.findings) - len(deterministic)
     match executed.judgment_status:
         case LayerStatus.DONE:
             typer.echo(
-                f"Capa de juicio: DONE, {judged} hallazgos, {executed.discarded} descartados por "
-                "no apoyarse en el expediente."
+                f"Capa de juicio: DONE, {counted(judged, 'hallazgo')}, "
+                f"{counted(executed.discarded, 'descartado')} por no apoyarse en el expediente."
             )
         case LayerStatus.ERROR:
             typer.echo(
@@ -3678,4 +3710,4 @@ def print_preaudit_layers(record: PreAuditRecord) -> None:
             typer.echo("Revisión humana pendiente: la capa de juicio no dio resultado.")
         case LayerStatus.NOT_RUN:
             typer.echo("Capa de juicio: NOT_RUN.")
-            typer.echo(f"Estado: {PRE_AUDIT_PENDING}.")
+            typer.echo(f"Estado: {JUDGMENT_PENDING}.")

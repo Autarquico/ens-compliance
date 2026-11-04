@@ -232,6 +232,20 @@ contradice los relojes bloquea con un error visible
 - Un error de orden en la cadena de disposiciones es permanente: la cadena
   es de solo adición. Se recupera restaurando `evidence/preaudits/` desde la
   copia (ADR 0008).
+- Cada expediente congela las claves de las ejecuciones y disposiciones que
+  existían al generarlo. Si falta una, la historia está rota: bloquea la
+  preparación con un error visible en toda evaluación posterior a ese
+  expediente y en `assessment dossier verify`. Para borrarla sin que se vea
+  hay que alterar también cada expediente que la congeló.
+- Hay dos manipulaciones que no se detectan en local; solo las detecta la
+  copia externa (ADR 0008):
+  - borrar toda la historia de pre-auditoría antes de generar el siguiente
+    expediente. Equivale a no haberla ejecutado nunca. La pre-auditoría es
+    opcional y no sustituye la revisión manual del juicio, que sigue siendo
+    obligatoria;
+  - borrar a la vez el último registro de una cadena y su reserva, como en
+    las ADR 0013 y 0015. Si ese registro es la ejecución que reabrió un
+    hallazgo descartado, el hallazgo deja de bloquear sin rastro.
 - Los modos de plan contratado solo funcionan en el equipo de quien ejecuta.
   En la caja de Docker (ADR 0016) no hay CLIs ni sesión.
 - Cambiar el pack exige regenerar su manifiesto, y cambia la huella: hay que

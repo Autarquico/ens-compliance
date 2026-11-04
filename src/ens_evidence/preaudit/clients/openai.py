@@ -14,8 +14,9 @@ from typing import Any
 import httpx
 
 from ens_evidence.preaudit.adapter import JudgmentConfig, ProviderError, ProviderErrorKind
-from ens_evidence.preaudit.clients._http import JsonPoster, api_key
+from ens_evidence.preaudit.clients._http import JsonPoster, api_destination, api_key
 
+NAME = "openai"
 DEFAULT_BASE_URL = "https://api.openai.com"
 KEY_ENV = "OPENAI_API_KEY"
 SCHEMA_NAME = "preaudit_findings"
@@ -40,7 +41,7 @@ class OpenAIProvider:
 
     @property
     def destination(self) -> str:
-        return self._poster.base_url
+        return api_destination(NAME, self._poster.base_url)
 
     def judge(
         self, system_prompt: str, payload: bytes, schema: dict[str, Any], config: JudgmentConfig
@@ -57,8 +58,6 @@ class OpenAIProvider:
                 "json_schema": {"name": SCHEMA_NAME, "schema": schema, "strict": True},
             },
         }
-        if config.temperature is not None:
-            body["temperature"] = config.temperature
         return _content(self._poster.post("/v1/chat/completions", body, config.timeout))
 
 

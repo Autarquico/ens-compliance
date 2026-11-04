@@ -13,6 +13,7 @@ from matrix.acceptance_helpers import ASSET, EVIDENCE_ID, import_manual_evidence
 
 from ens_evidence.assessment.dossier.store import stored_snapshot_sha256
 from ens_evidence.preaudit import payload as payload_module
+from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
 from ens_evidence.preaudit.pack import load_pack
 from ens_evidence.preaudit.payload import (
     FORMAT,
@@ -23,7 +24,7 @@ from ens_evidence.preaudit.payload import (
     describe_destination,
 )
 from ens_evidence.preaudit.redact import PERSON, SECRET, RedactionLeak
-from ens_evidence.preaudit.validate import Payload as ValidatedShape
+from ens_evidence.preaudit.validate import PayloadView as ValidatedShape
 from ens_evidence.workspace import LocalStore
 
 PACK = load_pack()
@@ -187,8 +188,12 @@ def test_only_what_the_criteria_ask_for(generated):
     data = built.data
     content = data["dossier"]
 
-    assert set(data) == {"format", "dossier_ref", "criteria", "dossier"}
+    assert set(data) == {"format", "dossier_ref", "criteria", "classifications", "dossier"}
     assert data["criteria"] == [c.model_dump(mode="json") for c in PACK.criteria]
+    assert data["classifications"] == {
+        proposal.value: [s.model_dump(mode="json") for s in sources]
+        for proposal, sources in JUDGMENT_CLASSIFICATIONS.items()
+    }
     assert set(content) == {
         "untrusted",
         "notice",

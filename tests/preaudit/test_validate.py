@@ -5,7 +5,7 @@ from typing import Any
 
 import pytest
 
-from ens_evidence.models.preaudit import Layer, LayerStatus, RefKind
+from ens_evidence.models.preaudit import Classification, Layer, LayerStatus, RefKind
 from ens_evidence.preaudit.adapter import (
     SCHEMA_ERROR,
     JudgmentConfig,
@@ -15,6 +15,7 @@ from ens_evidence.preaudit.adapter import (
     parse_response,
     run_judgment,
 )
+from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
 from ens_evidence.preaudit.pack import PACK_V1, load_pack
 from ens_evidence.preaudit.validate import DiscardReason, validate_findings
 
@@ -102,6 +103,70 @@ def test_traceable_finding_cites_measure_document_and_evidence() -> None:
     assert POLICY in accepted.quote and REPORT in accepted.quote
     criterion = PACK.criterion("coherencia-politica-evidencia")
     assert criterion is not None and criterion.source.quote in accepted.source
+
+
+@pytest.mark.parametrize("proposal", [Classification.NC_MENOR, Classification.OBSERVACION])
+@pytest.mark.parametrize("make", [finding, justification_finding])
+def test_a_judgment_finding_cites_the_definition_of_the_class_it_proposes(make, proposal) -> None:
+    [accepted] = validate(make(proposal=proposal.value)).findings
+
+    expected = JUDGMENT_CLASSIFICATIONS[proposal]
+    others = [
+        s for p, sources in JUDGMENT_CLASSIFICATIONS.items() if p != proposal for s in sources
+    ]
+    assert accepted.classification_source is not None
+    assert all(s.quote in accepted.classification_source for s in expected)
+    assert not any(s.quote in accepted.classification_source for s in others)
+    assert accepted.classification_source not in accepted.source
+
+
+def test_an_observation_never_cites_the_definition_of_a_minor_non_conformity() -> None:
+    [accepted] = validate(finding(proposal="OBSERVACION")).findings
+
+    assert accepted.classification_source is not None
+    assert "No Conformidad Menor" not in accepted.classification_source
+    assert "Observación" in accepted.classification_source
+
+
+@pytest.mark.parametrize(
+    "quote",
+    [
+        "P",  # una letra
+        "doble factor",  # una expresión común
+        "Todas las cuentas",  # tres palabras
+        "Política de accesos.",  # un título: tres palabras, menos de 20 caracteres
+    ],
+)
+def test_a_trivial_quote_does_not_support_a_finding(quote: str) -> None:
+    assert quote in f"Política de accesos. {POLICY}"
+
+    result = validate(finding(documents=[{"ref": "DOC-1", "quote": quote}]))
+
+    assert result.findings == []
+    assert result.discards == {DiscardReason.QUOTE_NOT_FOUND: 1}
+
+
+def test_a_quote_of_redaction_marks_does_not_support_a_finding() -> None:
+    marks = "[PERSONA] y [PERSONA], [REDACTADO:correo] / [Responsable de seguridad]"
+    data = payload()
+    data["dossier"]["documents"][0]["text"] += f" Firmado: {marks}."
+    response = JudgmentResponse.model_validate(
+        {"findings": [finding(documents=[{"ref": "DOC-1", "quote": marks}])]}
+    )
+
+    result = validate_findings(PACK, data, response)
+
+    assert result.findings == []
+    assert result.discards == {DiscardReason.QUOTE_NOT_FOUND: 1}
+
+
+def test_a_short_but_substantive_quote_is_enough() -> None:
+    quote = "exigen doble factor de autenticación"
+    assert quote in POLICY
+
+    result = validate(finding(documents=[{"ref": "DOC-1", "quote": quote}]))
+
+    assert result.discarded == 0 and len(result.findings) == 1
 
 
 @pytest.mark.parametrize(

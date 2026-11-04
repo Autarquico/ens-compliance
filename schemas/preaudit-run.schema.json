@@ -146,19 +146,6 @@
         }
       ],
       "default": null
-    },
-    "temperature": {
-      "anyOf": [
-        {
-          "minimum": 0,
-          "type": "number"
-        },
-        {
-          "type": "null"
-        }
-      ],
-      "default": null,
-      "title": "Temperature"
     }
   },
   "required": [

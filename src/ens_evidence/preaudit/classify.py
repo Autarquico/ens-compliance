@@ -16,6 +16,7 @@ from ens_evidence.models.preaudit import (
     GroupingProposal,
     group_of,
 )
+from ens_evidence.preaudit.pack import Source
 
 ITS_SOURCE = "ITS de Auditoría (BOE-A-2018-4573) §VI.2"
 IC_SOURCE = "CCN-CERT IC-01/19 (octubre 2026)"
@@ -25,10 +26,52 @@ _MENOR_SOURCE = (
     f"{IC_SOURCE} §53, incumplimiento parcial de alguna medida"
 )
 _UNCLASSIFIED_SOURCE = (
-    f"{ITS_SOURCE} e {IC_SOURCE} §53: no hay evidencia objetiva de incumplimiento, solo de falta "
+    f"{ITS_SOURCE} y {IC_SOURCE} §53: no hay evidencia objetiva de incumplimiento, solo de falta "
     "de información; la clasifica una persona"
 )
 GROUPING_SOURCE = f"{IC_SOURCE} §54"
+
+# Definiciones literales de las clases que la capa de juicio puede proponer. Cada `quote` aparece
+# tal cual en su texto oficial (tests/preaudit/test_pack.py lo comprueba contra los fixtures).
+JUDGMENT_CLASSIFICATIONS: dict[Classification, tuple[Source, ...]] = {
+    Classification.NC_MENOR: (
+        Source(
+            document="its-auditoria",
+            reference=f"{ITS_SOURCE}, «No Conformidad Menor»",
+            quote=(
+                "Se documentará una «No Conformidad Menor» ante la ausencia o el fallo en la "
+                "implantación o mantenimiento de uno o más de los requisitos del ENS"
+            ),
+        ),
+        Source(
+            document="ic0119",
+            reference=f"{IC_SOURCE} §53, No Conformidad Menor",
+            quote=(
+                "Ante un incumplimiento parcial de algún artículo del RD 311/2022 y/o el "
+                "incumplimiento parcial de alguna medida/control (o algún requisito de alguna "
+                "medida/control) del Anexo II"
+            ),
+        ),
+    ),
+    Classification.OBSERVACION: (
+        Source(
+            document="its-auditoria",
+            reference=f"{ITS_SOURCE}, Observación",
+            quote=(
+                "Se documentará una Observación cuando se encuentren evidencias de una debilidad, "
+                "una vulnerabilidad o una situación que, sin comprometer cualquier área del "
+                "sistema de gestión definida en el ENS o por la organización, pueda, en la "
+                "actualidad o en el futuro, derivar en un problema."
+            ),
+        ),
+    ),
+}
+
+
+def judgment_classification_source(proposal: Classification) -> str:
+    """La fuente literal de la clase que propone un hallazgo de juicio."""
+    return "; ".join(f"{s.reference}: «{s.quote}»" for s in JUDGMENT_CLASSIFICATIONS[proposal])
+
 
 _SOURCE_BY_PROPOSAL = {
     Classification.NC_MENOR: _MENOR_SOURCE,

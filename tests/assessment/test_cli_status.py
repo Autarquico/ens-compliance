@@ -19,7 +19,7 @@ from ens_evidence.workspace import WorkspaceError
 
 AT = ["--at", NOW.isoformat()]
 PENDING = "Revisión humana pendiente: la capa de juicio de la pre-auditoría no se ha ejecutado"
-NO_PRE_AUDIT = "pre-auditoría no ejecutada: no hay hallazgos registrados"
+NO_PRE_AUDIT = "Pre-auditoría no ejecutada sobre el expediente vigente."
 SECRET = "github.secret_scanning_enabled"
 
 

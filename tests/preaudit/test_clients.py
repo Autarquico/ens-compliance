@@ -1,6 +1,7 @@
 """Clientes de la capa de juicio con respuestas grabadas y CLIs falsas. Nunca hay red real."""
 
 import json
+import os
 import stat
 import sys
 from collections.abc import Callable
@@ -19,7 +20,7 @@ from ens_evidence.preaudit.adapter import (
     parse_response,
     run_judgment,
 )
-from ens_evidence.preaudit.clients._cli import session_env
+from ens_evidence.preaudit.clients._cli import USER_SESSION, find_cli, session_env
 from ens_evidence.preaudit.clients.anthropic import AnthropicProvider
 from ens_evidence.preaudit.clients.claude_code import ClaudeCodeProvider
 from ens_evidence.preaudit.clients.codex import CodexProvider
@@ -111,14 +112,6 @@ def test_anthropic_valid_response() -> None:
     assert body["tools"][0]["input_schema"] == PACK.response_schema
     assert body["tool_choice"] == {"type": "tool", "name": body["tools"][0]["name"]}
     assert "temperature" not in body
-
-
-def test_anthropic_sends_temperature_only_when_configured() -> None:
-    seen, handler = recording(httpx.Response(200, json=anthropic_reply(VALID)))
-
-    judge(anthropic(handler), JudgmentConfig(model="m", temperature=0.0))
-
-    assert json.loads(seen[0].content)["temperature"] == 0.0
 
 
 def test_anthropic_schema_violation_leaves_layer_in_error() -> None:
@@ -213,8 +206,27 @@ def test_base_url_is_normalized_and_used() -> None:
 
     judge(provider)
 
-    assert provider.destination == "https://proxy.example:8443/anthropic"
+    assert provider.destination == "anthropic https://proxy.example:8443/anthropic"
     assert str(seen[0].url) == "https://proxy.example:8443/anthropic/v1/messages"
+
+
+def test_api_destinations_name_the_provider_and_the_base_url() -> None:
+    handler = recording()[1]
+
+    assert anthropic(handler).destination == "anthropic https://api.anthropic.com"
+    assert openai(handler).destination == "openai https://api.openai.com"
+
+
+def test_the_http_client_ignores_proxies_and_ca_from_the_environment(
+    monkeypatch: pytest.MonkeyPatch,
+) -> None:
+    # Con `trust_env`, httpx leería este SSL_CERT_FILE inexistente y fallaría al crearse.
+    monkeypatch.setenv("SSL_CERT_FILE", "/no/existe/ca.pem")
+    monkeypatch.setenv("HTTPS_PROXY", "http://127.0.0.1:9")
+
+    provider = AnthropicProvider(env={"ANTHROPIC_API_KEY": SECRET})
+
+    assert provider.destination == "anthropic https://api.anthropic.com"
 
 
 def test_missing_key_is_a_config_error() -> None:
@@ -328,7 +340,8 @@ mode_file = os.path.join(here, "mode")
 mode = open(mode_file).read() if os.path.exists(mode_file) else "ok"
 stdin = sys.stdin.buffer.read()
 with open(os.path.join(here, "log.json"), "w") as log:
-    record = {"args": args, "cwd_entries": os.listdir("."), "stdin": stdin.decode()}
+    record = {"args": args, "argv0": sys.argv[0], "cwd_entries": os.listdir(".")}
+    record["stdin"] = stdin.decode()
     json.dump(record | {"env": dict(os.environ)}, log)
 if mode == "sleep":
     time.sleep(30)
@@ -375,11 +388,19 @@ def test_claude_code_valid_response(fake_cli: Path) -> None:
     raw = judge(provider)
 
     assert parse_response(raw) is not None
-    assert provider.destination == "claude-code 2.1.317, sesión del usuario (plan contratado)"
+    assert provider.destination.startswith(f"claude-code 2.1.317, {USER_SESSION}; ejecutable ")
     assert provider.requires_shell_warning is False
     call = logged(fake_cli)
     args = call["args"]
     assert args[:3] == ["-p", "--output-format", "json"]
+    assert {
+        "--restricted",
+        "--safe-mode",
+        "--strict-mcp-config",
+        "--disable-slash-commands",
+    } <= set(args)
+    assert "--mcp-config" not in args and "--setting-sources" not in args
+    assert json.loads(args[args.index("--settings") + 1]) == {"disableAllHooks": True}
     assert json.loads(args[args.index("--json-schema") + 1]) == PACK.response_schema
     assert args[args.index("--system-prompt") + 1] == PACK.system_prompt
     assert args[args.index("--tools") + 1] == ""
@@ -396,11 +417,13 @@ def test_codex_valid_response(fake_cli: Path) -> None:
     raw = judge(provider)
 
     assert parse_response(raw) is not None
-    assert provider.destination == "codex 0.160.1, sesión del usuario (plan contratado)"
+    assert provider.destination.startswith(f"codex 0.160.1, {USER_SESSION}; ejecutable ")
     assert provider.requires_shell_warning is True
     call = logged(fake_cli)
     args = call["args"]
     assert args[0] == "exec"
+    assert {"--ignore-user-config", "--ignore-rules"} <= set(args)
+    assert args[args.index("-c") + 1] == "shell_environment_policy.inherit=none"
     assert args[args.index("--sandbox") + 1] == "read-only"
     assert {"--ephemeral", "--skip-git-repo-check"} <= set(args)
     assert args[args.index("--disable") + 1] == "shell_tool"
@@ -464,11 +487,35 @@ def test_cli_missing_from_path(
 
 
 @pytest.mark.parametrize("provider_class", [ClaudeCodeProvider, CodexProvider])
-def test_cli_rejects_temperature(provider_class: Any, fake_cli: Path) -> None:
-    with pytest.raises(ProviderError) as raised:
-        judge(provider_class(), JudgmentConfig(model="m", temperature=0.2))
-    assert raised.value.kind is ProviderErrorKind.CONFIG
-    assert not fake_cli.exists()
+def test_the_cli_destination_names_the_resolved_executable_and_its_digest(
+    provider_class: Any, fake_cli: Path, tmp_path: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    name = "claude" if provider_class is ClaudeCodeProvider else "codex"
+    linked = tmp_path / "linked"
+    linked.mkdir()
+    (linked / name).symlink_to(fake_cli.with_name(name))
+    monkeypatch.setenv("PATH", str(linked))
+
+    provider = provider_class()
+    real = find_cli(name)
+
+    assert real.path == os.path.realpath(fake_cli.with_name(name))
+    assert f"ejecutable {real.path} (sha256 {real.sha256})" in provider.destination
+    assert "ajustes gestionados" in provider.destination or "gestionada" in provider.destination
+    judge(provider)
+    assert logged(fake_cli)["argv0"] == real.path
+
+
+@pytest.mark.parametrize("provider_class", [ClaudeCodeProvider, CodexProvider])
+def test_another_binary_with_the_same_version_is_another_destination(
+    provider_class: Any, fake_cli: Path
+) -> None:
+    before = provider_class().destination
+    name = "claude" if provider_class is ClaudeCodeProvider else "codex"
+    script = fake_cli.with_name(name)
+    script.write_text(script.read_text() + "\n# otro binario\n")
+
+    assert provider_class().destination != before
 
 
 API_CREDENTIALS = {
@@ -504,20 +551,39 @@ def test_cli_providers_use_the_user_session_and_never_an_api_key(
     assert {name for name in env if not name.startswith(("LC_", "__CF"))} <= allowed
     assert env["PATH"] == str(fake_cli.parent) and env["LC_ALL"] == "es_ES.UTF-8"
     assert ("CODEX_HOME" in env) is (provider_class is CodexProvider)
-    assert provider.destination.endswith(", sesión del usuario (plan contratado)")
+    assert f", {USER_SESSION}; " in provider.destination
 
 
-def test_the_session_env_strips_api_keys_even_if_listed_and_keeps_the_plan_session() -> None:
+@pytest.mark.parametrize("provider_class", [ClaudeCodeProvider, CodexProvider])
+def test_the_claude_session_token_reaches_only_claude(
+    provider_class: Any, fake_cli: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    monkeypatch.setenv("CLAUDE_CODE_OAUTH_TOKEN", "sesion-de-claude")
+
+    judge(provider_class())
+
+    env = logged(fake_cli)["env"]
+    assert ("CLAUDE_CODE_OAUTH_TOKEN" in env) is (provider_class is ClaudeCodeProvider)
+
+
+def test_the_session_env_passes_only_the_declared_session_and_strips_api_keys() -> None:
     env = {
         "PATH": "/bin",
         "CLAUDE_CODE_OAUTH_TOKEN": "x",
         "CLAUDE_CODE_USE_BEDROCK": "1",
         "OPENAI_API_KEY": "y",
+        "CODEX_HOME": "/c",
         "LC_CTYPE": "C",
     }
 
-    assert session_env(("CLAUDE_CODE_USE_BEDROCK", "OPENAI_API_KEY"), env) == {
+    assert session_env(("CODEX_HOME",), env) == {
+        "PATH": "/bin",
+        "CODEX_HOME": "/c",
+        "LC_CTYPE": "C",
+    }
+    assert session_env(("CLAUDE_CODE_OAUTH_TOKEN",), env) == {
         "PATH": "/bin",
         "CLAUDE_CODE_OAUTH_TOKEN": "x",
         "LC_CTYPE": "C",
     }
+    assert session_env((), env) == {"PATH": "/bin", "LC_CTYPE": "C"}

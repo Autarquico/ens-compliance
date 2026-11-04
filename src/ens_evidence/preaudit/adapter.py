@@ -5,22 +5,32 @@ minimizados y redactados) y el esquema, y devuelve el texto JSON en bruto. Nada 
 ni se registra: este módulo no escribe logs, y los errores llevan mensajes fijos por tipo de fallo.
 
 Una respuesta que no cumple el esquema deja toda la capa en `ERROR` y sin hallazgos. Una que lo
-cumple pasa por la validación semántica (`validate.py`), que descarta hallazgos uno a uno.
+cumple pierde antes los hallazgos con texto que no se puede mostrar ni guardar tal cual
+(caracteres de control o longitud desmedida) y pasa por la validación semántica (`validate.py`),
+que descarta hallazgos uno a uno.
 """
 
 import json
+import re
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any, Literal, Protocol
+from typing import Any, Protocol
 
-from pydantic import BaseModel, ConfigDict, ValidationError
+from pydantic import ValidationError
 
 from ens_evidence.models.preaudit import Finding, LayerStatus
 from ens_evidence.preaudit.pack import AuditPack
-from ens_evidence.preaudit.validate import validate_findings
+from ens_evidence.preaudit.validate import CitedItem as CitedItem
+from ens_evidence.preaudit.validate import JudgmentResponse, validate_findings
+from ens_evidence.preaudit.validate import ResponseFinding as ResponseFinding
 
 DEFAULT_TIMEOUT_SECONDS = 120.0
 DEFAULT_MAX_TOKENS = 8192
+MAX_REASON_CHARS = 2000
+MAX_QUOTE_CHARS = 1000
+# C0 salvo tabulador y salto de línea, DEL y C1: secuencias que manipularían el terminal de quien
+# revisa (`preaudit show`).
+_CONTROL = re.compile(r"[\x00-\x08\x0b-\x1f\x7f-\x9f]")
 
 
 class ProviderErrorKind(StrEnum):
@@ -45,13 +55,10 @@ class ProviderError(Exception):
 
 @dataclass(frozen=True)
 class JudgmentConfig:
-    """Lo elige quien configura: el modelo no tiene valor por defecto.
-
-    `temperature=None` no envía el parámetro (los modelos que solo admiten el valor por defecto
-    rechazan cualquier otro; las CLIs no lo exponen)."""
+    """Lo elige quien configura: el modelo no tiene valor por defecto. Sin temperatura: los
+    modelos recientes solo admiten la suya y las CLIs no la exponen."""
 
     model: str
-    temperature: float | None = None
     timeout: float = DEFAULT_TIMEOUT_SECONDS
     max_tokens: int = DEFAULT_MAX_TOKENS
 
@@ -60,16 +67,15 @@ class JudgmentConfig:
             raise ProviderError(ProviderErrorKind.CONFIG, "indica el modelo del proveedor")
         if self.timeout <= 0:
             raise ProviderError(ProviderErrorKind.CONFIG, "el timeout debe ser positivo")
-        if self.temperature is not None and self.temperature < 0:
-            raise ProviderError(ProviderErrorKind.CONFIG, "la temperatura no puede ser negativa")
 
 
 class JudgmentProvider(Protocol):
     """Un destino de la capa de juicio.
 
-    `destination` identifica a dónde va el payload (URL base normalizada, o CLI y su versión): va
-    en el consentimiento. `requires_shell_warning` indica que el destino conserva una herramienta
-    de shell que no se puede quitar, y el consentimiento debe avisarlo."""
+    `destination` identifica a dónde va el payload (`<proveedor> <URL base>`, o la CLI con su
+    versión y su ejecutable): va tal cual en el consentimiento. `requires_shell_warning` indica
+    que el destino conserva una herramienta de shell que no se puede quitar, y el consentimiento
+    debe avisarlo."""
 
     @property
     def destination(self) -> str: ...
@@ -82,30 +88,6 @@ class JudgmentProvider(Protocol):
     ) -> str:
         """Texto JSON en bruto de la respuesta, o `ProviderError`."""
         ...
-
-
-# Equivalente pydantic de `audit_pack/v1/response.schema.json` (un test vigila que no derive).
-class _Response(BaseModel):
-    model_config = ConfigDict(extra="forbid", strict=True)
-
-
-class CitedItem(_Response):
-    ref: str
-    quote: str
-
-
-class ResponseFinding(_Response):
-    criterion: str
-    measure: str
-    proposal: Literal["NC_MAYOR", "NC_MENOR", "OBSERVACION"]
-    documents: list[CitedItem]
-    evidence: list[CitedItem]
-    justifications: list[CitedItem]
-    reason: str
-
-
-class JudgmentResponse(_Response):
-    findings: list[ResponseFinding]
 
 
 @dataclass(frozen=True)
@@ -139,10 +121,26 @@ def run_judgment(
     response = parse_response(raw)
     if response is None:
         return JudgmentOutcome(LayerStatus.ERROR, error=SCHEMA_ERROR)
+    displayable = [f for f in response.findings if _displayable(f)]
+    unsafe = len(response.findings) - len(displayable)
     try:
-        validation = validate_findings(pack, json.loads(payload), response)
+        validation = validate_findings(
+            pack, json.loads(payload), response.model_copy(update={"findings": displayable})
+        )
     except ValueError:
         return JudgmentOutcome(LayerStatus.ERROR, error=PAYLOAD_ERROR)
     return JudgmentOutcome(
-        LayerStatus.DONE, findings=tuple(validation.findings), discarded=validation.discarded
+        LayerStatus.DONE,
+        findings=tuple(validation.findings),
+        discarded=validation.discarded + unsafe,
+    )
+
+
+def _displayable(finding: ResponseFinding) -> bool:
+    cited = (*finding.documents, *finding.evidence, *finding.justifications)
+    quotes = [item.quote for item in cited]
+    return (
+        len(finding.reason) <= MAX_REASON_CHARS
+        and all(len(quote) <= MAX_QUOTE_CHARS for quote in quotes)
+        and not any(_CONTROL.search(text) for text in (finding.reason, *quotes))
     )

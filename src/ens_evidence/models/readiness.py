@@ -146,6 +146,8 @@ class Measure(Strict):
 class OpenFinding(Strict):
     id: str
     description: str = ""
+    measure_id: str | None = None
+    """La medida a la que se refiere; None: el bloqueo es general (p. ej., historia rota)."""
 
 
 class ReadinessInput(Strict):
@@ -267,7 +269,8 @@ def evaluate_readiness(data: ReadinessInput) -> ReadinessResult:
         ]
     )
     blockers += [
-        Blocker(kind=BlockerKind.OPEN_FINDING, detail=finding.id) for finding in data.open_findings
+        Blocker(kind=BlockerKind.OPEN_FINDING, measure_id=finding.measure_id, detail=finding.id)
+        for finding in data.open_findings
     ]
     return ReadinessResult(
         readiness=Readiness.NOT_READY if blockers else Readiness.READY,

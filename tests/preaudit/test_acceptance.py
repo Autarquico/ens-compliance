@@ -12,11 +12,12 @@ from datetime import timedelta
 
 import pytest
 from assessment.dossier.stages import AFTER, basic
+from matrix.acceptance_helpers import import_manual_evidence
 
-from ens_evidence.assessment.dossier.sections import PRE_AUDIT_PENDING
+from ens_evidence.cli import JUDGMENT_PENDING
 from ens_evidence.preaudit.adapter import SCHEMA_ERROR
 from ens_evidence.preaudit.findings import FINDING_DETAIL
-from ens_evidence.preaudit.records import DISPOSITIONS_PREFIX
+from ens_evidence.preaudit.records import DISPOSITIONS_PREFIX, scan_runs
 from ens_evidence.preaudit.redact import SECRET
 from ens_evidence.preaudit.service import PREAUDITS_PREFIX, RUNS_PREFIX
 from ens_evidence.workspace import load_settings
@@ -122,17 +123,22 @@ def test_traceable_finding_cites_measure_document_and_evidence(world, contradict
     _, sent = prepare_and_consent(world, dossier)
 
     assert sent.exit_code == 0, sent.output
-    assert "Capa de juicio: DONE, 1 hallazgos, 0 descartados" in sent.output
+    assert "Capa de juicio: DONE, 1 hallazgo, 0 descartados" in sent.output
     assert len(fake.requests) == 1
     shown = world.run(*P, "show", "1")
     assert shown.exit_code == 0, shown.output
     assert f"[NC_MENOR] {MEASURE} — coherencia-politica-evidencia (JUDGMENT)" in shown.output
-    assert f"Cita DOCUMENT: {POLICY_DOCUMENT}" in shown.output
-    assert f"Cita EVIDENCE: {evidence}" in shown.output
+    assert f"Documento: {POLICY_DOCUMENT}" in shown.output
+    assert f"Evidencia: {evidence}" in shown.output
     assert f"«{CONTRADICTION}»" in shown.output
-    assert "Fuente: CCN-CERT IC-01/19, apartado 53" in shown.output
+    assert "Fuente del criterio: CCN-CERT IC-01/19, apartado 53: «" in shown.output
+    assert (
+        "Fuente de la clasificación: ITS de Auditoría (BOE-A-2018-4573) §VI.2, "
+        "«No Conformidad Menor»: «Se documentará una «No Conformidad Menor»"
+    ) in shown.output
     assert "Propuesta; la decide una persona." in shown.output
     assert "no dictamina" in shown.output
+    assert status(world)["pre_audit"].endswith("capa de juicio ejecutada.")
 
 
 # --- Scenario: sin LLM --------------------------------------------------------------------------
@@ -144,11 +150,17 @@ def test_without_a_provider_the_deterministic_layer_completes_and_review_is_pend
     assert ran.exit_code == 0, ran.output
     assert "Capa determinista: DONE" in ran.output
     assert "Capa de juicio: NOT_RUN." in ran.output
-    assert PRE_AUDIT_PENDING in ran.output
+    assert f"Estado: {JUDGMENT_PENDING}." in ran.output
+    assert "pre-auditoría no ejecutada" not in ran.output
     shown = world.run(*P, "show", "1")
-    assert shown.exit_code == 0 and PRE_AUDIT_PENDING in shown.output
+    assert shown.exit_code == 0 and JUDGMENT_PENDING in shown.output
     assert "(JUDGMENT)" not in shown.output
-    assert status(world, AFTER + timedelta(minutes=1))["pending_human_review"] is True
+    checked = status(world, AFTER + timedelta(minutes=1))
+    assert checked["pending_human_review"] is True
+    assert checked["pre_audit"] == (
+        f"Pre-auditoría 1 del {AFTER.isoformat()} sobre el expediente vigente: "
+        "capa determinista ejecutada; capa de juicio no ejecutada."
+    )
 
 
 # --- Scenario: sin secretos ---------------------------------------------------------------------
@@ -194,7 +206,9 @@ def test_a_response_outside_the_schema_is_an_error_and_keeps_the_deterministic_l
     assert "(JUDGMENT)" not in shown.output and "FAVORABLE" not in shown.output
     assert deterministic_lines(shown.output) == deterministic
     assert "Capa determinista: DONE" in shown.output
-    assert status(world)["pending_human_review"] is True
+    checked = status(world)
+    assert checked["pending_human_review"] is True
+    assert checked["pre_audit"].endswith("capa de juicio con error, sin hallazgos.")
 
 
 def deterministic_lines(output: str) -> list[str]:
@@ -317,6 +331,8 @@ def test_codex_without_accepting_the_shell_risk_is_rejected(world, stages, tmp_p
     )
     assert accepted.exit_code == 0, accepted.output
     assert log.read_text() == "called\n"
+    [stored] = scan_runs(world.store).records
+    assert stored.record.run.consent.shell_risk_accepted
 
 
 # --- vigencia -----------------------------------------------------------------------------------
@@ -341,14 +357,31 @@ def test_accepted_still_blocks(world, judged):
     assert blocks(world, finding)
 
 
-@pytest.mark.parametrize("decision", ["resolved", "dismissed"])
-def test_resolved_or_dismissed_unblocks(world, judged, decision):
-    _, evidence, _, finding = judged
+def correction(world, tmp_path) -> str:
+    """Una evidencia nueva, recogida después de la ejecución, que muestra la corrección."""
+    world.at(SENT_AT + timedelta(seconds=30))
+    return import_manual_evidence(world.run, tmp_path, content="Doble factor activado.\n")
 
-    reviewed = decide(world, finding, decision, evidence)
+
+@pytest.mark.parametrize("decision", ["resolved", "dismissed"])
+def test_resolved_or_dismissed_unblocks(world, judged, tmp_path, decision):
+    _, _, _, finding = judged
+
+    reviewed = decide(world, finding, decision, correction(world, tmp_path))
 
     assert reviewed.exit_code == 0, reviewed.output
     assert not blocks(world, finding)
+
+
+def test_resolving_with_the_evidence_the_finding_cites_is_rejected(world, judged):
+    _, evidence, _, finding = judged
+
+    reviewed = decide(world, finding, "resolved", evidence)
+
+    assert reviewed.exit_code == 1, reviewed.output
+    assert "es la que cita el hallazgo" in reviewed.output
+    assert world.store.list(DISPOSITIONS_PREFIX) == []
+    assert blocks(world, finding)
 
 
 def test_a_later_reappearance_reopens(world, judged):
@@ -364,9 +397,9 @@ def test_a_later_reappearance_reopens(world, judged):
     assert not blocks(world, finding, later + timedelta(minutes=1))
 
 
-def test_generate_preaudit_dispose_and_verify(world, judged):
-    dossier, evidence, _, finding = judged
-    assert decide(world, finding, "resolved", evidence).exit_code == 0
+def test_generate_preaudit_dispose_and_verify(world, judged, tmp_path):
+    dossier, _, _, finding = judged
+    assert decide(world, finding, "resolved", correction(world, tmp_path)).exit_code == 0
 
     world.at(CHECKED_AT)
     verified = world.run("assessment", "dossier", "verify", dossier)

@@ -1,13 +1,27 @@
 """Redacción del payload de la pre-auditoría (plan pre-audit, «Cambios r2», punto 7).
 
-`privacy_text` y `find_secrets` detectan; aquí se sustituye. Después se vuelven a pasar los
-mismos detectores sobre el resultado: si queda algo detectable, no se envía. Los errores nombran
-la ruta, nunca el valor.
+`privacy_text` y `find_secrets` detectan; aquí se sustituye. Además, en los textos (evidencias de
+hasta 64 KiB, logs, JSON de collectors) se buscan secretos que esos detectores no ven: codificados
+en base64 o en URL, partidos entre dos líneas, una clave secreta de AWS sin etiqueta y tokens
+largos de aspecto aleatorio. Después se vuelven a pasar todos sobre el resultado: si queda algo
+detectable, no se envía. Los errores nombran la ruta, nunca el valor.
+
+La detección es por patrones: no sustituye a leer el payload antes de consentir.
+
+Los nombres designados se buscan sin distinguir mayúsculas, tildes ni caracteres invisibles, en
+sus formas «Nombre Apellidos», «Nombre Apellido» y «Apellidos, Nombre». El nombre de pila suelto
+no se tapa: taparía cualquier palabra que coincida con él.
 """
 
+import base64
+import binascii
+import math
 import re
+import unicodedata
+from collections import Counter
 from collections.abc import Callable, Collection, Iterator, Mapping
 from typing import Any
+from urllib.parse import unquote
 
 from ens_evidence.matrix.messages import role_label
 from ens_evidence.models.enums import Role
@@ -15,6 +29,7 @@ from ens_evidence.privacy_text import (
     credential_spans,
     dni_nie_spans,
     email_spans,
+    has_credential,
     iban_spans,
     ip_spans,
     phone_spans,
@@ -28,6 +43,15 @@ PERSON = "[PERSONA]"
 _PEM_BEGIN = "-----BEGIN"
 _PEM_END = "-----END"
 _TOKEN = re.compile(r"\S+")
+# Tramos que podrían ser un secreto codificado o aleatorio (alfabetos base64, base64url y URL).
+_CANDIDATE = re.compile(r"[A-Za-z0-9+/_%=-]{24,}")
+_BASE64 = re.compile(r"[A-Za-z0-9+/_-]+={0,2}")
+_AWS_SECRET = re.compile(r"(?<![A-Za-z0-9+/=])[A-Za-z0-9+/]{40}(?![A-Za-z0-9+/=])")
+_RANDOM_MIN_LENGTH = 32
+_RANDOM_MIN_ENTROPY = 4.0
+# Fracción de cambios de clase (mayúscula, minúscula, dígito, otro) entre caracteres vecinos: un
+# token aleatorio base64 ronda 0,6; rutas, identificadores y palabras unidas, 0,25-0,40.
+_RANDOM_MIN_CLASS_CHANGES = 0.45
 
 Designated = Mapping[str, Collection[Role]]
 """Nombre declarado → roles que ocupa esa persona (vacío: se sustituye por `[PERSONA]`)."""
@@ -81,7 +105,9 @@ def leaks(data: Any, fields: Collection[str], designated: Designated) -> list[st
     for path, text in _texts(data, fields):
         errors, warnings = text_problems(text)
         problems += [f"{path}: {problem}" for problem in errors + warnings]
-        if names and names.search(text):
+        if _hidden_secret_spans(text) or _split_secret_lines(text.splitlines()):
+            problems.append(f"{path}: parece un secreto codificado, partido o aleatorio")
+        if names and names[0].search(_fold(text)[0]):
             problems.append(f"{path}: contiene el nombre de una persona designada")
     return problems
 
@@ -123,25 +149,98 @@ def _strings(value: Any, path: str) -> Iterator[tuple[str, str]]:
 
 def _redact_secrets(text: str) -> str:
     """Por línea: se tapan los tokens que parecen secretos; si la línea sigue pareciéndolo, la
-    línea entera. Un bloque PEM se tapa hasta su `-----END`."""
+    línea entera. Un bloque PEM se tapa hasta su `-----END`, y las dos líneas entre las que se
+    parte un secreto, enteras. Después, los secretos codificados o aleatorios."""
+    lines = text.splitlines(keepends=True)
+    split = _split_secret_lines([line.rstrip("\r\n") for line in lines])
     out: list[str] = []
     in_pem = False
-    for line in text.splitlines(keepends=True):
+    for index, line in enumerate(lines):
         body = line.rstrip("\r\n")
         ending = line[len(body) :]
-        if in_pem:
-            in_pem = _PEM_END not in body
+        if in_pem or index in split:
+            in_pem = in_pem and _PEM_END not in body
             out.append(SECRET + ending)
             continue
-        if not find_secrets(body):
-            out.append(line)
-            continue
-        tokens = _TOKEN.sub(lambda m: SECRET if find_secrets(m.group()) else m.group(), body)
-        if find_secrets(tokens):
-            in_pem = _PEM_BEGIN in body and _PEM_END not in body.split(_PEM_BEGIN, 1)[1]
-            tokens = SECRET
-        out.append(tokens + ending)
+        if find_secrets(body):
+            body = _TOKEN.sub(lambda m: SECRET if find_secrets(m.group()) else m.group(), body)
+            if find_secrets(body):
+                original = line.rstrip("\r\n")
+                in_pem = _PEM_BEGIN in original and _PEM_END not in original.split(_PEM_BEGIN, 1)[1]
+                body = SECRET
+        out.append(_replace(body, _hidden_secret_spans(body), SECRET) + ending)
     return "".join(out)
+
+
+def _split_secret_lines(lines: list[str]) -> set[int]:
+    """Índices de las líneas entre cuyo final y el principio de la siguiente hay un secreto que
+    ninguna de las dos muestra por separado."""
+    found: set[int] = set()
+    for index in range(len(lines) - 1):
+        tail = lines[index].rsplit(maxsplit=1)[-1:]
+        head = lines[index + 1].split(maxsplit=1)[:1]
+        if not tail or not head or find_secrets(tail[0]) or find_secrets(head[0]):
+            continue
+        if find_secrets(tail[0] + head[0]):
+            found |= {index, index + 1}
+    return found
+
+
+def _hidden_secret_spans(text: str) -> list[tuple[int, int]]:
+    """Tramos con un secreto que los detectores compartidos no ven tal cual."""
+    spans = [m.span() for m in _AWS_SECRET.finditer(text) if _mixed(m.group())]
+    spans += [m.span() for m in _CANDIDATE.finditer(text) if _hidden_secret(m.group())]
+    return spans
+
+
+def _hidden_secret(token: str) -> bool:
+    if "%" in token and _reveals_secret(unquote(token)):
+        return True
+    return _reveals_secret(_base64_text(token)) or _looks_random(token)
+
+
+def _reveals_secret(text: str | None) -> bool:
+    return text is not None and bool(find_secrets(text) or has_credential(text))
+
+
+def _base64_text(token: str) -> str | None:
+    """El texto que codifica `token` en base64 o base64url, si es UTF-8 imprimible."""
+    if not _BASE64.fullmatch(token):
+        return None
+    padded = token.rstrip("=") + "=" * (-len(token.rstrip("=")) % 4)
+    try:
+        decoded = base64.b64decode(padded.replace("-", "+").replace("_", "/"), validate=True)
+        text = decoded.decode("utf-8")
+    except (binascii.Error, UnicodeDecodeError):
+        return None
+    return text if text.isprintable() else None
+
+
+def _looks_random(token: str) -> bool:
+    core = token.strip("=")
+    if len(core) < _RANDOM_MIN_LENGTH or not _mixed(core):
+        return False
+    counts = Counter(core)
+    entropy = -sum(n / len(core) * math.log2(n / len(core)) for n in counts.values())
+    changes = sum(_class(a) != _class(b) for a, b in zip(core, core[1:], strict=False))
+    return entropy >= _RANDOM_MIN_ENTROPY and changes / (len(core) - 1) >= _RANDOM_MIN_CLASS_CHANGES
+
+
+def _mixed(token: str) -> bool:
+    """Con mayúsculas, minúsculas y dígitos: descarta hex, UUID y palabras."""
+    return (
+        any(c.isupper() for c in token)
+        and any(c.islower() for c in token)
+        and any(c.isdigit() for c in token)
+    )
+
+
+def _class(char: str) -> str:
+    if char.isupper():
+        return "A"
+    if char.islower():
+        return "a"
+    return "0" if char.isdigit() else "."
 
 
 def _replace(text: str, spans: list[tuple[int, int]], mark: str) -> str:
@@ -160,32 +259,71 @@ def _merge(spans: list[tuple[int, int]]) -> list[tuple[int, int]]:
     return merged
 
 
-def _variants(designated: Designated) -> dict[str, set[Role]]:
-    """Formas de citar a cada persona → sus roles: el nombre completo y, si tiene tres palabras
-    o más, nombre y primer apellido («Lucía Navarro Gil» → «Lucía Navarro»)."""
-    variants: dict[str, set[Role]] = {}
+def _fold(text: str) -> tuple[str, list[int]]:
+    """`text` sin tildes ni caracteres de formato (anchura cero…) y en minúsculas, con el índice
+    en `text` de cada carácter del resultado."""
+    folded: list[str] = []
+    origin: list[int] = []
+    for index, char in enumerate(text):
+        if unicodedata.category(char) == "Cf":
+            continue
+        for part in unicodedata.normalize("NFKD", char):
+            if unicodedata.combining(part):
+                continue
+            for lower in part.casefold():
+                folded.append(lower)
+                origin.append(index)
+    return "".join(folded), origin
+
+
+def _variants(designated: Designated) -> dict[tuple[str, ...], set[Role]]:
+    """Formas de citar a cada persona (palabras plegadas; "," separa «Apellidos, Nombre») → sus
+    roles: el nombre completo, nombre y primer apellido si tiene tres palabras o más («Lucía
+    Navarro Gil» → «Lucía Navarro») y apellidos, nombre («Navarro Gil, Lucía»)."""
+    variants: dict[tuple[str, ...], set[Role]] = {}
     for name, held in designated.items():
-        words = name.split()
-        for variant in {" ".join(words), " ".join(words[:2]) if len(words) >= 3 else ""} - {""}:
-            variants.setdefault(variant.casefold(), set()).update(held)
+        words = tuple(_fold(name)[0].split())
+        forms = {words}
+        if len(words) >= 3:
+            forms.add(words[:2])
+        if len(words) >= 2:
+            forms.add((*words[1:], ",", words[0]))
+        for form in forms:
+            variants.setdefault(form, set()).update(held)
     return variants
 
 
-def _names_pattern(designated: Designated) -> re.Pattern[str] | None:
-    """Las variantes, la más larga primero, sin distinguir mayúsculas ni espacios."""
-    variants = sorted(_variants(designated), key=len, reverse=True)
+def _names_pattern(
+    designated: Designated,
+) -> tuple[re.Pattern[str], list[set[Role]]] | None:
+    """Las variantes, la más larga primero, sobre texto plegado (`_fold`) y sin distinguir
+    espacios; el grupo `v<i>` que casa indica los roles `[i]`."""
+    variants = sorted(_variants(designated).items(), key=lambda item: len(item[0]), reverse=True)
     if not variants:
         return None
-    alternatives = "|".join(r"\s+".join(map(re.escape, v.split())) for v in variants)
-    return re.compile(rf"(?<!\w)(?:{alternatives})(?!\w)", re.IGNORECASE)
+    alternatives = "|".join(
+        f"(?P<v{i}>{_form_pattern(form)})" for i, (form, _) in enumerate(variants)
+    )
+    pattern = re.compile(rf"(?<!\w)(?:{alternatives})(?!\w)")
+    return pattern, [roles for _, roles in variants]
+
+
+def _form_pattern(form: tuple[str, ...]) -> str:
+    parts = " ".join(form).split(" , ")
+    return r"\s*,\s*".join(r"\s+".join(map(re.escape, part.split())) for part in parts)
 
 
 def _redact_names(text: str, designated: Designated) -> str:
-    pattern = _names_pattern(designated)
-    if pattern is None:
+    names = _names_pattern(designated)
+    if names is None:
         return text
-    variants = _variants(designated)
-    return pattern.sub(lambda m: _label(variants[" ".join(m.group().split()).casefold()]), text)
+    pattern, roles = names
+    folded, origin = _fold(text)
+    for match in reversed(list(pattern.finditer(folded))):
+        start, end = origin[match.start()], origin[match.end() - 1] + 1
+        label = _label(roles[int(match.lastgroup[1:])])
+        text = text[:start] + label + text[end:]
+    return text
 
 
 def _label(roles: set[Role]) -> str:

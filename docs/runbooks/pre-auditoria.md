@@ -38,10 +38,18 @@ preaudit:
   equipo. La herramienta no guarda tokens.
 - En la caja de Docker ([caja](caja.md)) no hay CLIs ni sesión. Allí solo
   sirven `anthropic` y `openai`.
-- Con `codex` hay un riesgo extra: le quitamos la herramienta de shell, pero
-  le queda una forma de ejecutar comandos que no se puede quitar y podría
-  leer ficheros de tu equipo. Para enviar tendrás que aceptarlo con
-  `--accept-shell-risk`.
+- Con `claude-code` los datos los recibe Anthropic, y con `codex`, OpenAI,
+  con tu plan.
+- Con `claude-code` o `codex`, el destino que consientes nombra el ejecutable
+  (su ruta y su sha256) y lleva un aviso. La CLI se lanza sin tu
+  configuración de usuario: `claude` sin ajustes, hooks, MCP ni CLAUDE.md;
+  `codex` sin `config.toml` ni reglas. Pero los ajustes gestionados por tu
+  organización en ese equipo siguen aplicando (managed settings en `claude`,
+  configuración gestionada en `codex`), y `codex` puede leer el `AGENTS.md`
+  de `CODEX_HOME`. Si cambia el ejecutable, `run` se niega: vuelve a preparar.
+- Con `codex` hay un riesgo extra: este destino conserva una herramienta de
+  shell que no se puede quitar y podría leer ficheros de este equipo. Para
+  enviar tendrás que aceptarlo expresamente con `--accept-shell-risk`.
 
 `--provider` en `prepare` y `run` solo confirma el proveedor de los ajustes.
 No lo cambia: si no coincide, da error.
@@ -54,9 +62,12 @@ ens-evidence preaudit prepare <expediente>
 
 No envía nada. Muestra el payload completo y, al final:
 
-- el destino y el modelo;
+- el destino y el modelo y, con `claude-code` o `codex`, quién recibe los
+  datos;
 - la versión del audit pack;
-- la huella del payload (sha256).
+- la huella del payload (sha256);
+- el aviso de que las personas sin registro no se redactan y, con `codex`, el
+  aviso de la shell.
 
 El payload lleva solo lo que piden los criterios del pack:
 
@@ -111,11 +122,15 @@ ens-evidence preaudit run <expediente> --consent <huella> --by "Lucía Navarro G
 La capa de juicio puede acabar así:
 
 - `DONE`: con sus hallazgos y el número de descartados por no apoyarse en el
-  expediente;
+  expediente. Se descarta, por ejemplo, un hallazgo cuyo fragmento no está
+  literalmente en lo que cita o es demasiado corto para apoyar nada (menos de
+  4 palabras o de 20 caracteres, sin contar las marcas de redacción);
 - `ERROR`: la respuesta no sirve y no deja ningún hallazgo. Sale con 1;
 - `NOT_RUN`: no se pidió.
 
 Con `ERROR` o `NOT_RUN`, el estado sigue siendo «revisión humana pendiente».
+Con `NOT_RUN`, `run` lo dice así: «capa de juicio no ejecutada; revisión
+humana pendiente». La capa determinista sí se ha ejecutado.
 
 ## 4. Lee los hallazgos
 
@@ -125,12 +140,21 @@ ens-evidence preaudit show <número>
 
 Por cada hallazgo:
 
-- la propuesta: `NC_MENOR`, `OBSERVACION` o, en la capa determinista,
-  `SIN_CLASIFICAR`;
-- la medida, el criterio y la capa;
-- el motivo;
+- la propuesta. En la capa de juicio, `NC_MENOR` u `OBSERVACION`. En la
+  determinista, `NC_MENOR` si un check falla y `SIN_CLASIFICAR` en el resto;
+- la medida, el criterio (en la capa determinista, la regla en castellano) y
+  la capa;
+- el motivo. En la capa determinista es el mismo texto que da
+  `assessment status`, con el siguiente paso;
 - las citas: documento, evidencia o sección, con el fragmento literal;
-- la fuente: ITS de Auditoría §VI.2 o IC-01/19 §53;
+- en la capa de juicio, dos fuentes:
+  - la **fuente del criterio**, que dice qué se compara;
+  - la **fuente de la clasificación**, la definición literal de la clase
+    propuesta: para `NC_MENOR`, ITS de Auditoría §VI.2 («No Conformidad
+    Menor») e IC-01/19 §53; para `OBSERVACION`, ITS de Auditoría §VI.2
+    (Observación);
+- en la capa determinista, la fuente de su clasificación: ITS de Auditoría
+  §VI.2 e IC-01/19 §53;
 - el id del hallazgo, que necesitas para disponerlo;
 - su disposición y si bloquea;
 - «Propuesta; la decide una persona».
@@ -140,7 +164,8 @@ menores en varias medidas de `op.acc` dan una propuesta de mayor. Los
 hallazgos originales se conservan. Una persona decide si agrupa.
 
 Los hallazgos `SIN_CLASIFICAR` indican falta de información, no un
-incumplimiento. Los clasificas tú.
+incumplimiento. Los clasificas tú al revisar la medida (`matrix review`), no
+con `preaudit review`, que no admite hallazgos deterministas (ver §5).
 
 ## 5. Dispón los hallazgos de juicio
 
@@ -152,9 +177,12 @@ ens-evidence preaudit review <id> --by "Lucía Navarro Gil" --decision dismissed
 
 - **`accepted`**: lo reconoces, pero todavía no está corregido. **Sigue
   bloqueando.** Úsalo para dejar constancia mientras trabajas en él.
-- **`resolved`**: ya está corregido. Cita la evidencia que lo demuestra
-  (`evidence import` si es manual). La herramienta comprueba que existe y
-  está íntegra.
+- **`resolved`**: ya está corregido. Cita una evidencia **nueva** que
+  muestre la corrección: impórtala primero (`evidence import` si es manual).
+  Tiene que estar recogida después de la ejecución que propuso el hallazgo y
+  no puede ser una de las que el hallazgo cita como prueba. Si no, o si su
+  fecha de recogida está en el futuro, `review` se niega. La herramienta
+  comprueba además que existe y está íntegra.
 - **`dismissed`**: no procede. Explica por qué en `--reason`. El motivo no
   puede llevar secretos ni datos personales.
 
@@ -210,9 +238,20 @@ mano.
   agrupación del §54 o de una persona.
 - Los tests prueban el contrato con respuestas grabadas, no si el modelo
   acierta. La eficacia la mide `audit-benchmark`.
+- La redacción es por patrones: tapa los formatos de secretos y de datos
+  personales que conoce y los nombres que constan en el workspace. Lo que no
+  encaja en ningún patrón sale tal cual. Por eso hay que leer el payload
+  antes de consentir.
 - Las personas que no constan en ningún registro ni en las respuestas de
   org-docs pueden aparecer por su nombre en un documento o una evidencia.
   Revisa el payload.
+- De una persona registrada se tapan su nombre completo y sus variantes
+  («Nombre Apellidos», «Nombre Apellido», «Apellidos, Nombre»), sin
+  distinguir mayúsculas ni tildes. Su nombre de pila suelto no se tapa.
+- No está verificado con las CLIs reales que `claude` con `--restricted` y
+  `--safe-mode` conserve la sesión OAuth del plan, ni que `codex` acepte
+  `shell_environment_policy.inherit=none`. Falta una prueba manual con cada
+  CLI y un prompt de prueba, sin datos.
 - Los detectores también redactan de más: algunos ids pueden salir como
   `[REDACTADO:telefono]`. No es una fuga, pero empobrece las citas.
 - En local los ficheros se guardan con permisos 600. En S3 los protege el

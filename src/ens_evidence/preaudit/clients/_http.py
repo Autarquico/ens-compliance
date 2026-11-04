@@ -1,6 +1,10 @@
 """Transporte común de los clientes de API: solo HTTPS, sin redirecciones, timeout y reintentos
 acotados (2, solo ante 429 y 5xx). La clave vive en las cabeceras del cliente `httpx`: no aparece
-en `repr`, en excepciones ni en logs, y los mensajes de error son fijos por tipo de fallo."""
+en `repr`, en excepciones ni en logs, y los mensajes de error son fijos por tipo de fallo.
+
+`trust_env=False`: ni proxies (`HTTPS_PROXY`, `ALL_PROXY`…) ni CA (`SSL_CERT_FILE`…) del entorno,
+que desviarían la conexión o la confianza TLS sin constar en el destino consentido. Quien necesite
+un intermediario lo configura como URL base, y entonces sí consta."""
 
 import json
 import time
@@ -34,6 +38,11 @@ def normalize_base_url(base_url: str) -> str:
     return f"https://{netloc}{parts.path.rstrip('/')}"
 
 
+def api_destination(name: str, base_url: str) -> str:
+    """Destino al que se liga el consentimiento de un proveedor de API: `<proveedor> <URL base>`."""
+    return f"{name} {normalize_base_url(base_url)}"
+
+
 def api_key(env: Mapping[str, str], name: str) -> str:
     key = env.get(name, "").strip()
     if not key:
@@ -55,6 +64,7 @@ class JsonPoster:
         self._http = httpx.Client(
             headers={**headers, "content-type": "application/json", "user-agent": USER_AGENT},
             follow_redirects=False,
+            trust_env=False,
             transport=transport,
         )
 

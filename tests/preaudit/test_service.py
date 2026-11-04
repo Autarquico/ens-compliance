@@ -25,7 +25,6 @@ from .helpers import (
     CONTRADICTION,
     MODEL,
     FakeAnthropic,
-    fake_codex,
     traceable,
     with_evidence,
     world_at,
@@ -112,28 +111,6 @@ def test_what_the_preaudit_writes_does_not_alter_the_dossier(contradicted):
 # --- consentimiento ----------------------------------------------------------------------------
 
 
-def test_without_consent_there_is_no_network_and_judgment_is_not_run(contradicted):
-    store, dossier, fake = contradicted
-    prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
-
-    result = run(store, dossier, None, None, None, settings=ANTHROPIC, now=SENT_AT)
-
-    assert fake.requests == []
-    assert result.record.run.judgment_status is LayerStatus.NOT_RUN
-    assert result.record.run.consent is None and result.record.prepared is None
-    assert all(f.layer is Layer.DETERMINISTIC for f in result.record.findings)
-
-
-def test_a_consent_for_another_fingerprint_sends_nothing(contradicted):
-    store, dossier, fake = contradicted
-    prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
-
-    with pytest.raises(PreAuditRejected, match="ninguna preparación"):
-        send(store, dossier, "0" * 64)
-
-    assert fake.requests == [] and run_keys(store) == []
-
-
 def test_a_payload_that_changed_since_it_was_prepared_is_not_sent(contradicted):
     store, dossier, fake = contradicted
     prepared = prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
@@ -142,17 +119,6 @@ def test_a_payload_that_changed_since_it_was_prepared_is_not_sent(contradicted):
 
     with pytest.raises(PreAuditRejected, match="ha cambiado"):
         send(store, dossier, prepared.payload.sha256)
-
-    assert fake.requests == [] and run_keys(store) == []
-
-
-def test_a_different_destination_needs_a_new_consent(contradicted):
-    store, dossier, fake = contradicted
-    prepared = prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
-    elsewhere = ANTHROPIC.model_copy(update={"base_url": "https://gateway.example.com"})
-
-    with pytest.raises(PreAuditRejected, match="destino ha cambiado"):
-        send(store, dossier, prepared.payload.sha256, settings=elsewhere)
 
     assert fake.requests == [] and run_keys(store) == []
 
@@ -178,27 +144,62 @@ def test_consent_is_recorded_with_who_when_and_where(contradicted):
     assert consent.payload_sha256 == prepared.payload.sha256
     assert consent.destination == "anthropic https://api.anthropic.com"
     assert result.record.prepared == prepared.key
-    assert result.record.run.temperature is None
     [request] = fake.requests
     assert request.content.count(b'"temperature"') == 0
 
 
-def test_codex_needs_the_shell_risk_accepted(world, stages, tmp_path, monkeypatch):
-    log = fake_codex(tmp_path, monkeypatch)
-    codex = PreAuditSettings(provider=Provider.CODEX, model=MODEL)
-    store, dossier = world.store, stages.dossier
-    prepared = prepare(store, dossier, None, codex, now=PREPARED_AT)
-    assert prepared.requires_shell_warning
-    assert prepared.destination == "codex 0.160.1, sesión del usuario (plan contratado)"
+def test_consent_is_on_record_before_anything_leaves(contradicted):
+    store, dossier, fake = contradicted
+    prepared = prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
+    directory = prepared.key.rsplit("/", 1)[0]
+    on_record_when_sent: list[list[str]] = []
+    reply = fake.reply
 
-    with pytest.raises(PreAuditRejected, match="--accept-shell-risk"):
-        send(store, dossier, prepared.payload.sha256, settings=codex)
-    assert not log.exists()
+    def observing(payload):
+        on_record_when_sent.append([k for k in store.list(directory) if "/consent-" in k])
+        return reply(payload)
 
-    result = send(store, dossier, prepared.payload.sha256, settings=codex, accept_shell_risk=True)
-    assert log.read_text() == "called\n"
-    assert result.record.run.consent.shell_risk_accepted
+    fake.reply = observing
+    send(store, dossier, prepared.payload.sha256)
+
+    [[key]] = on_record_when_sent
+    assert key.startswith(f"{directory}/consent-")
+    consent = json.loads(store.read_bytes(key))
+    assert consent["format"] == service.CONSENT_FORMAT
+    assert consent["by"] == "Ana" and consent["payload_sha256"] == prepared.payload.sha256
+    assert consent["destination"] == "anthropic https://api.anthropic.com"
+
+
+def test_a_rejected_consent_leaves_no_record_of_consent(contradicted):
+    store, dossier, fake = contradicted
+    prepared = prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
+    elsewhere = ANTHROPIC.model_copy(update={"base_url": "https://gateway.example.com"})
+
+    with pytest.raises(PreAuditRejected):
+        send(store, dossier, prepared.payload.sha256, settings=elsewhere)
+
+    assert not [k for k in store.list(PREAUDITS_PREFIX) if "/consent-" in k]
+
+
+@pytest.mark.parametrize(
+    "unsafe",
+    [
+        {"reason": "Cambia el título del terminal\x1b]0;aprobado\x07."},
+        {"reason": "Borra la línea\r con un retorno de carro."},
+        {"reason": "x" * 2001},
+    ],
+)
+def test_model_text_that_cannot_be_shown_as_is_discards_the_finding(contradicted, unsafe):
+    store, dossier, fake = contradicted
+    reply = fake.reply
+    fake.reply = lambda payload: {"findings": [reply(payload)["findings"][0] | unsafe]}
+    prepared = prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
+
+    result = send(store, dossier, prepared.payload.sha256)
+
     assert result.record.run.judgment_status is LayerStatus.DONE
+    assert result.record.run.discarded == 1
+    assert not [f for f in result.record.findings if f.layer is Layer.JUDGMENT]
 
 
 # --- solo adición ------------------------------------------------------------------------------

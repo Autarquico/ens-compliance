@@ -38,6 +38,7 @@ def finding(**over) -> Finding:
         "reason": "La política exige MFA y la evidencia muestra lo contrario.",
         "quote": "se exige doble factor",
         "source": "IC-01/19 §53",
+        "classification_source": "ITS §VI.2",
     } | over
     fields.setdefault("id", finding_id(fields["criterion"], fields["measure"], fields["refs"]))
     return Finding(**fields)
@@ -69,7 +70,6 @@ CONSENT = Consent(by="Ana", at=AT, payload_sha256=SHA, destination="https://api.
 JUDGED = {
     "provider": Provider.ANTHROPIC,
     "model": "m",
-    "temperature": 0.0,
     "consent": CONSENT,
     "judgment_status": LayerStatus.DONE,
 }
@@ -86,10 +86,11 @@ def test_finding_rejects_id_not_derived_from_content():
         finding(id=SHA)
 
 
-def test_judgment_finding_requires_quote_refs_and_a_proposal():
+def test_judgment_finding_requires_quote_refs_a_proposal_and_its_classification_source():
     for over, match in [
         ({"quote": None}, "quote"),
         ({"refs": []}, "reference"),
+        ({"classification_source": None}, "source of its classification"),
         ({"proposal": Classification.SIN_CLASIFICAR}, "must propose"),
     ]:
         with pytest.raises(ValidationError, match=match):
@@ -227,14 +228,6 @@ def test_run_with_judgment_requires_every_engine_field(missing):
         run(**(JUDGED | {missing: None}))
 
 
-def test_temperature_is_optional_and_never_set_for_a_cli():
-    assert run(**(JUDGED | {"temperature": None})).temperature is None
-    cli = JUDGED | {"provider": Provider.CLAUDE_CODE, "temperature": None}
-    assert run(**cli).provider is Provider.CLAUDE_CODE
-    with pytest.raises(ValidationError, match="CLI"):
-        run(**(cli | {"temperature": 0.0}))
-
-
 def test_error_run_still_records_who_consented_and_where():
     failed = JUDGED | {"judgment_status": LayerStatus.ERROR, "judgment_error": "fallo"}
     assert run(**failed).consent == CONSENT
@@ -260,8 +253,6 @@ def test_run_rejects_non_completed_deterministic_layer_and_bad_values():
         run(dossier_sha256="xyz")
     with pytest.raises(ValidationError):
         run(**JUDGED | {"discarded": -1})
-    with pytest.raises(ValidationError):
-        run(**JUDGED | {"temperature": -0.1})
 
 
 def test_run_rejects_unknown_provider():

@@ -279,6 +279,18 @@
         "id": {
           "title": "Id",
           "type": "string"
+        },
+        "measure_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Measure Id"
         }
       },
       "required": [

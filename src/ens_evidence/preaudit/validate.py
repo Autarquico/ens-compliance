@@ -10,11 +10,14 @@ hallazgo se descarta, y se cuenta, si:
 - no cita lo que pide el criterio: al menos un documento y una evidencia (`applicable`), o al
   menos una justificación (`not_applicable_or_compensated`);
 - cita un documento, evidencia o justificación que no está en el payload enlazado a esa medida;
-- un fragmento citado no aparece literalmente en el elemento citado;
+- un fragmento citado no aparece literalmente en el elemento citado, o es demasiado corto para
+  apoyar nada: sin contar las marcas de redacción (`[PERSONA]`, `[REDACTADO:…]`…), menos de
+  `MIN_QUOTE_WORDS` palabras o de `MIN_QUOTE_CHARS` caracteres no blancos;
 - no da motivo, o repite un hallazgo ya aceptado en esta respuesta;
 - su motivo o sus fragmentos contienen un secreto o un dato personal detectable.
 
-La fuente normativa del hallazgo es siempre la del criterio: la respuesta no la elige.
+Las fuentes normativas no las elige la respuesta: el hallazgo cita la del criterio (qué se
+compara) y la de la clase que propone (`classify.JUDGMENT_CLASSIFICATIONS`).
 
 Forma del payload que se lee (la construye `payload.py`; los campos que no se listan se
 ignoran):
@@ -30,21 +33,49 @@ ignoran):
 Una justificación citada es una ref `SECTION` con el id de la justificación.
 """
 
+import re
 from collections import Counter
 from dataclasses import dataclass, field
 from enum import StrEnum
-from typing import TYPE_CHECKING, Any
+from typing import Any, Literal
 
 from pydantic import BaseModel, ConfigDict, ValidationError
 
 from ens_evidence.catalog.load import load_catalog
 from ens_evidence.models.preaudit import Finding, Layer, Ref, RefKind, finding_id
+from ens_evidence.preaudit.classify import judgment_classification_source
 from ens_evidence.preaudit.pack import AuditPack, Criterion, MeasureScope
-from ens_evidence.privacy_text import text_problems
-from ens_evidence.scope.secrets import find_secrets
+from ens_evidence.privacy_text import sensitive_problems
 
-if TYPE_CHECKING:
-    from ens_evidence.preaudit.adapter import CitedItem, JudgmentResponse, ResponseFinding
+
+# Equivalente pydantic de `audit_pack/v1/response.schema.json` (un test vigila que no derive).
+class _Response(BaseModel):
+    model_config = ConfigDict(extra="forbid", strict=True)
+
+
+class CitedItem(_Response):
+    ref: str
+    quote: str
+
+
+class ResponseFinding(_Response):
+    criterion: str
+    measure: str
+    proposal: Literal["NC_MAYOR", "NC_MENOR", "OBSERVACION"]
+    documents: list[CitedItem]
+    evidence: list[CitedItem]
+    justifications: list[CitedItem]
+    reason: str
+
+
+class JudgmentResponse(_Response):
+    findings: list[ResponseFinding]
+
+
+MIN_QUOTE_WORDS = 4
+MIN_QUOTE_CHARS = 20
+_PLACEHOLDER = re.compile(r"\[[^\[\]]*\]")
+_WORD = re.compile(r"[^\W_]+")
 
 
 class DiscardReason(StrEnum):
@@ -90,7 +121,7 @@ class PayloadDossier(_Lenient):
     justifications: list[PayloadJustification] = []
 
 
-class Payload(_Lenient):
+class PayloadView(_Lenient):
     dossier: PayloadDossier
 
 
@@ -109,10 +140,10 @@ class PayloadShapeError(ValueError):
 
 
 def validate_findings(
-    pack: AuditPack, payload: dict[str, Any], response: "JudgmentResponse"
+    pack: AuditPack, payload: dict[str, Any], response: JudgmentResponse
 ) -> Validation:
     try:
-        dossier = Payload.model_validate(payload).dossier
+        dossier = PayloadView.model_validate(payload).dossier
     except ValidationError:
         raise PayloadShapeError("el payload no tiene la forma esperada") from None
     context = _Context(dossier)
@@ -151,7 +182,7 @@ class _Context:
 
 
 def _judge(
-    pack: AuditPack, context: _Context, candidate: "ResponseFinding"
+    pack: AuditPack, context: _Context, candidate: ResponseFinding
 ) -> Finding | DiscardReason:
     criterion = pack.criterion(candidate.criterion)
     if criterion is None:
@@ -178,7 +209,7 @@ def _judge(
 
 
 def _scope_problem(
-    scope: MeasureScope, context: _Context, measure: PayloadMeasure, candidate: "ResponseFinding"
+    scope: MeasureScope, context: _Context, measure: PayloadMeasure, candidate: ResponseFinding
 ) -> DiscardReason | None:
     """La medida es de las que trata el criterio y se cita lo que el criterio pide."""
     if scope is MeasureScope.APPLICABLE:
@@ -197,27 +228,30 @@ def _scope_problem(
 
 
 def _citation_problem(
-    context: _Context, measure: PayloadMeasure, cited: list[tuple[RefKind, "CitedItem"]]
+    context: _Context, measure: PayloadMeasure, cited: list[tuple[RefKind, CitedItem]]
 ) -> DiscardReason | None:
     for kind, item in cited:
         text = context.texts[kind].get(item.ref)
         if text is None or item.ref not in context.linked(measure, kind):
             return DiscardReason.UNLINKED_REF
-        if not item.quote.strip() or item.quote not in text:
+        if not _substantive(item.quote) or item.quote not in text:
             return DiscardReason.QUOTE_NOT_FOUND
     return None
 
 
+def _substantive(quote: str) -> bool:
+    """Lo bastante largo para apoyar un hallazgo una vez quitadas las marcas de redacción."""
+    content = _PLACEHOLDER.sub(" ", quote)
+    words = _WORD.findall(content)
+    return len(words) >= MIN_QUOTE_WORDS and len("".join(content.split())) >= MIN_QUOTE_CHARS
+
+
 def _sensitive(*texts: str) -> bool:
-    for text in texts:
-        errors, warnings = text_problems(text)
-        if errors or warnings or find_secrets(text):
-            return True
-    return False
+    return any(sensitive_problems(text) for text in texts)
 
 
 def _finding(
-    criterion: Criterion, candidate: "ResponseFinding", cited: list[tuple[RefKind, "CitedItem"]]
+    criterion: Criterion, candidate: ResponseFinding, cited: list[tuple[RefKind, CitedItem]]
 ) -> Finding:
     refs = [Ref(kind=kind, id=item.ref) for kind, item in cited]
     return Finding(
@@ -230,4 +264,5 @@ def _finding(
         reason=candidate.reason,
         quote="\n".join(f"{item.ref}: «{item.quote}»" for _, item in cited),
         source=f"{criterion.source.reference}: «{criterion.source.quote}»",
+        classification_source=judgment_classification_source(candidate.proposal),
     )
