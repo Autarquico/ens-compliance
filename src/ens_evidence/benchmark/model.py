@@ -334,6 +334,9 @@ class Compensate(_Mutation):
     measure: MeasureId
     measures: list[str] = Field(min_length=1)
     replaces: list[str] = Field(min_length=1)
+    justification: str = Field(
+        min_length=1, description="Por qué protegen igual o mejor (art. 28.3); va al payload."
+    )
 
 
 class CollectedOverride(_Mutation):

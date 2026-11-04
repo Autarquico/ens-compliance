@@ -8,7 +8,7 @@ from typing import Annotated
 import typer
 
 from ens_evidence.benchmark.access import HoldoutLocked, open_partition
-from ens_evidence.benchmark.build import Build, build_bench_profile, build_case, inspect
+from ens_evidence.benchmark.build import Build, build_bench_profile, inspect
 from ens_evidence.benchmark.cases import (
     BenchError,
     case_paths,
@@ -17,6 +17,7 @@ from ens_evidence.benchmark.cases import (
     validate_bench,
 )
 from ens_evidence.benchmark.model import Partition
+from ens_evidence.benchmark.mutations import build_case
 
 BENCH_DIR = Path("benchmark")
 INVALID = 2
@@ -116,7 +117,8 @@ def _build(root: Path, target: str, destination: Path, measurement: bool) -> Bui
 def _report(build: Build) -> None:
     inspection = inspect(build)
     typer.echo(f"expediente: {inspection.dossier}")
-    typer.echo(f"payload_sha256: {inspection.payload_sha256}")
+    shown = inspection.payload_sha256 or "no aplica (caso solo determinista)"
+    typer.echo(f"payload_sha256: {shown}")
     for problem in inspection.integrity:
         typer.echo(f"integridad: {problem}")
     typer.echo(f"hallazgos deterministas: {len(inspection.findings)}")

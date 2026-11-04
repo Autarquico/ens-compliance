@@ -11,9 +11,9 @@ pre-auditoría y calcula la huella del payload, sin enviar nada.
 """
 
 import hashlib
-import itertools
+import shutil
 from collections.abc import Callable
-from dataclasses import dataclass, field
+from dataclasses import dataclass, field, replace
 from datetime import datetime, timedelta
 from pathlib import Path
 
@@ -28,7 +28,6 @@ from ens_evidence.assessment.dossier.store import load_snapshot, save_markdown, 
 from ens_evidence.benchmark.cases import BenchError, load_profile, profile_files_dir
 from ens_evidence.benchmark.model import (
     ApplicabilityDecision,
-    Case,
     EvidenceSource,
     MatrixRow,
     Person,
@@ -45,7 +44,6 @@ from ens_evidence.checks.engine import OutcomeKind, run_all
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.evidence.importer import (
     EvidenceImportError,
-    IdFactory,
     import_collected,
     import_manual,
 )
@@ -117,15 +115,21 @@ COLLECTOR_VERSION = "benchmark"
 TICK = timedelta(minutes=1)
 
 
-def seeded_ids(seed: str) -> IdFactory:
+@dataclass
+class SeededIds:
     """Ids de evidencia con el formato del producto, derivados de `seed` y de un contador."""
-    counter = itertools.count()
 
-    def next_id(now: datetime) -> str:
-        digest = hashlib.sha256(f"{seed}:{next(counter)}".encode()).hexdigest()
+    seed: str
+    issued: int = 0
+
+    def __call__(self, now: datetime) -> str:
+        digest = hashlib.sha256(f"{self.seed}:{self.issued}".encode()).hexdigest()
+        self.issued += 1
         return f"EV-{now:%Y%m%d}-{digest[:8]}"
 
-    return next_id
+
+def seeded_ids(seed: str) -> SeededIds:
+    return SeededIds(seed)
 
 
 @dataclass
@@ -145,12 +149,18 @@ class Build:
 
     profile: Profile
     files: Path
-    store: LocalStore
-    id_factory: IdFactory
+    root: Path
+    id_factory: SeededIds
     evidence_ids: dict[str, str] = field(default_factory=dict)
     dossier: str | None = None
     documents: FrozenDocuments | None = None
     ticks: int = 0
+    judgment: bool = True
+    """False en un caso solo determinista: su payload no se construye (`inspect`)."""
+
+    @property
+    def store(self) -> LocalStore:
+        return LocalStore(self.root)
 
     def tick(self) -> datetime:
         """El siguiente instante del reloj fijo, un minuto después del anterior."""
@@ -173,6 +183,17 @@ class Build:
     def person(self, person_id: str) -> Person:
         """La persona declarada con ese id (el modelo ya garantiza que existe)."""
         return next(p for p in self.profile.people if p.id == person_id)
+
+    def fork(self, destination: Path) -> "Build":
+        """Una copia del workspace en `destination` que sigue con el mismo reloj y los mismos
+        ids: lo que se haga en ella no toca el original."""
+        shutil.copytree(self.root, destination)
+        return replace(
+            self,
+            root=destination,
+            id_factory=replace(self.id_factory),
+            evidence_ids=dict(self.evidence_ids),
+        )
 
 
 Step = Callable[[Build], None]
@@ -318,6 +339,11 @@ def _orgdocs(build: Build) -> None:
         build_documents(build.store)
     except AnswersInvalid as exc:
         raise BenchError(exc.report.errors()) from None
+    approve_documents(build)
+
+
+def approve_documents(build: Build) -> None:
+    """Cada documento generado, aprobado por el firmante que le da el perfil, con su rol."""
     approvers = {d.ref: d.approved_by for d in build.profile.documents}
     if missing := [name for name in document_names() if name not in approvers]:
         raise BenchError([f"documentos sin firmante en `documents`: {', '.join(missing)}"])
@@ -465,6 +491,23 @@ def _links(build: Build) -> list[tuple[str, CheckLink | ManualEvidenceLink | Mat
 
 
 def _review(build: Build, row: MatrixRow, applicable: bool) -> None:
+    if problems := _try_review(build, row, applicable):
+        raise BenchError([f"{row.measure}: {problem}" for problem in problems])
+
+
+def review_again(build: Build, measure: str) -> bool:
+    """Vuelve a revisar `measure` como dice el perfil. Si el producto no admite esa revisión
+    (p. ej. `COMPLIANT` con una evidencia caducada), no registra nada y la anterior sigue."""
+    plan = plan_obligations(build.store, build.tick())
+    spec = next((r for r in plan.rows if r.measure_id == measure), None) if plan.current else None
+    if spec is None:
+        return False
+    declared = {row.measure: row for row in build.profile.matrix}
+    row = _row_settings(build, measure, declared)
+    return not _try_review(build, row, spec.kind is RowKind.SELECTED)
+
+
+def _try_review(build: Build, row: MatrixRow, applicable: bool) -> tuple[str, ...]:
     reviewer = build.person(row.reviewed_by)
     role = next((r for r in reviewer.roles if r in SELF_ASSESSORS), None)
     if role is None:
@@ -483,8 +526,9 @@ def _review(build: Build, row: MatrixRow, applicable: bool) -> None:
         documents=build.documents,
     )
     if plan.problems:
-        raise BenchError([f"{row.measure}: {problem}" for problem in plan.problems])
+        return plan.problems
     record_review(build.store, plan)
+    return ()
 
 
 def _dossier(build: Build) -> None:
@@ -497,7 +541,7 @@ def _dossier(build: Build) -> None:
     save_markdown(build.store, build.dossier, render_snapshot_md(snapshot))
 
 
-STEPS: tuple[tuple[str, Step], ...] = (
+BASE_STEPS: tuple[tuple[str, Step], ...] = (
     ("alcance", _scope),
     ("categorización", _categorization),
     ("aplicabilidad", _applicability),
@@ -506,8 +550,10 @@ STEPS: tuple[tuple[str, Step], ...] = (
     ("simulacro", _drill),
     ("checks", _checks),
     ("matriz", _matrix),
-    ("expediente", _dossier),
 )
+"""Todo menos la instantánea: el estado sobre el que un caso aplica sus mutaciones."""
+DOSSIER_STEP: tuple[str, Step] = ("expediente", _dossier)
+STEPS: tuple[tuple[str, Step], ...] = (*BASE_STEPS, DOSSIER_STEP)
 
 
 @dataclass(frozen=True)
@@ -515,7 +561,8 @@ class Inspection:
     """Lo que `benchmark build` enseña de un expediente construido; no se envía nada."""
 
     dossier: str
-    payload_sha256: str
+    payload_sha256: str | None
+    """None en un caso solo determinista: no se prepara para juicio."""
     integrity: list[str]
     findings: list[Finding]
 
@@ -528,8 +575,8 @@ def inspect(build: Build) -> Inspection:
     findings = deterministic_findings(
         load_snapshot(build.store, build.dossier), integrity=integrity
     )
-    payload = build_payload(build.store, build.dossier, load_pack())
-    return Inspection(build.dossier, payload.sha256, integrity, findings)
+    payload = build_payload(build.store, build.dossier, load_pack()) if build.judgment else None
+    return Inspection(build.dossier, payload and payload.sha256, integrity, findings)
 
 
 def build_profile(
@@ -548,51 +595,53 @@ def build_profile(
     if destination.exists() and any(destination.iterdir()):
         raise BenchError([f"perfil {profile.id}: el destino no está vacío"])
     destination.mkdir(parents=True, exist_ok=True)
-    build = Build(profile, files, LocalStore(destination), seeded_ids(seed or profile.id))
+    build = Build(profile, files, destination, seeded_ids(seed or profile.id))
     for name, step in steps:
-        try:
-            step(build)
-        except BenchError as exc:
-            raise _failed(profile, name, exc.problems) from None
-        except (
-            Rejected,
-            ScopeApprovalRejected,
-            EvidenceImportError,
-            DocumentApprovalRejected,
-            MatrixRejected,
-            DossierRejected,
-            IncidentRejected,
-        ) as exc:
-            errors = getattr(exc, "errors", None) or [str(exc)]
-            raise _failed(profile, name, errors) from None
-        except ScopeNotApproved as exc:
-            state = exc.status.state.value
-            raise _failed(profile, name, [f"el alcance no está aprobado ({state})"]) from None
-        except CategorizationNotCurrent as exc:
-            state = exc.status.state.value
-            problems = [f"la categorización no está vigente ({state})", *exc.status.errors]
-            raise _failed(profile, name, problems) from None
-        except ValidationError as exc:
-            raise _failed(profile, name, describe_validation(name, exc)) from None
+        run_step(build, name, step)
     return build
 
 
+def run_step(build: Build, name: str, step: Step) -> None:
+    """Ejecuta `step`; un rechazo del producto sale como `BenchError` con el paso y el motivo."""
+    profile = build.profile
+    try:
+        step(build)
+    except BenchError as exc:
+        raise _failed(profile, name, exc.problems) from None
+    except (
+        Rejected,
+        ScopeApprovalRejected,
+        EvidenceImportError,
+        DocumentApprovalRejected,
+        MatrixRejected,
+        DossierRejected,
+        IncidentRejected,
+    ) as exc:
+        errors = getattr(exc, "errors", None) or [str(exc)]
+        raise _failed(profile, name, errors) from None
+    except ScopeNotApproved as exc:
+        state = exc.status.state.value
+        raise _failed(profile, name, [f"el alcance no está aprobado ({state})"]) from None
+    except CategorizationNotCurrent as exc:
+        state = exc.status.state.value
+        problems = [f"la categorización no está vigente ({state})", *exc.status.errors]
+        raise _failed(profile, name, problems) from None
+    except ValidationError as exc:
+        raise _failed(profile, name, describe_validation(name, exc)) from None
+
+
 def build_bench_profile(
-    root: Path, profile_id: str, destination: Path, *, seed: str | None = None
+    root: Path,
+    profile_id: str,
+    destination: Path,
+    *,
+    seed: str | None = None,
+    steps: tuple[tuple[str, Step], ...] = STEPS,
 ) -> Build:
     """Carga `profiles/<profile_id>` de un banco y lo construye."""
     profile = load_profile(root, profile_id)
-    return build_profile(profile, profile_files_dir(root, profile_id), destination, seed=seed)
-
-
-def build_case(root: Path, case: Case, destination: Path) -> Build:
-    """Construye el perfil base de `case` con los ids sembrados por el caso."""
-    key = f"{case.partition.value}/{case.id}"
-    if case.profile is None:
-        raise BenchError([f"{key}: las bases `workspace:` aún no se construyen"])
-    if case.mutations:
-        raise BenchError([f"{key}: mutaciones no implementadas"])
-    return build_bench_profile(root, case.profile, destination, seed=key)
+    files = profile_files_dir(root, profile_id)
+    return build_profile(profile, files, destination, seed=seed, steps=steps)
 
 
 def _failed(profile: Profile, step: str, problems: list[str]) -> BenchError:

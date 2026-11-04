@@ -37,6 +37,12 @@
     "Compensate": {
       "additionalProperties": false,
       "properties": {
+        "justification": {
+          "description": "Por qu\u00e9 protegen igual o mejor (art. 28.3); va al payload.",
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
         "measure": {
           "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
           "title": "Measure",
@@ -68,7 +74,8 @@
         "op",
         "measure",
         "measures",
-        "replaces"
+        "replaces",
+        "justification"
       ],
       "title": "Compensate",
       "type": "object"

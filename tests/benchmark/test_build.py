@@ -310,7 +310,7 @@ def bench_with_case(tmp_path: Path, partition: str, **changes) -> Path:
         "kind": "correct",
     } | changes
     directory = root / "cases" / partition
-    directory.mkdir(parents=True)
+    directory.mkdir(parents=True, exist_ok=True)
     (directory / f"{case['id']}.yaml").write_text(yaml.safe_dump(case), encoding="utf-8")
     return root
 
@@ -346,16 +346,6 @@ def test_build_de_un_caso_siembra_los_ids_con_la_clave_del_caso(mini, tmp_path):
     assert result.exit_code == 0, result.output
     assert "hallazgos deterministas: 0" in result.output
     assert f"expediente: {mini.dossier}" not in result.output
-
-
-def test_un_caso_con_mutaciones_sale_con_2_hasta_que_existan(tmp_path):
-    mutation = {"op": "unlink_document", "ref": "politica-seguridad", "measure": "org.1"}
-    root = bench_with_case(tmp_path, "dev", mutations=[mutation])
-
-    result = bench("dev/correcto", "--cases", str(root))
-
-    assert result.exit_code == 2
-    assert "dev/correcto: mutaciones no implementadas" in result.output
 
 
 def test_la_reservada_exige_measurement_y_lo_anota(tmp_path):

@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: inventario-sustituido
+partition: dev
+profile: mini
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: inventario
+    file: inventario.txt
+defects:
+  - id: inventario-incompleto
+    layer: judgment
+    measure: op.exp.1
+    target: {kind: evidence, alias: inventario}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.exp.1
+      clause: op.exp.1.1
+      quote: detallando su naturaleza e identificando a su responsable
+    rationale: El inventario sustituido es de 2024, lista un solo activo y no nombra responsable.
