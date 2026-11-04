@@ -7,12 +7,14 @@ evento, periodos, tipos de excepción), nunca mensajes de excepción ni el entor
 
 import hashlib
 import json
+import os
 import signal
 import threading
 from collections.abc import Callable, Collection, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Literal, Protocol
 
 from ens_evidence.reports.model import is_day, is_month
@@ -43,13 +45,18 @@ from ens_evidence.workspace.cycle_lock import (
     CycleContext,
     CycleLock,
     acquire_or_wait,
+    resolve_state_dir,
 )
 
 MAX_SLEEP_SECONDS = 60.0
 LATE_AFTER = timedelta(minutes=5)
 LOCK_WAIT_MINUTES = 10.0
+HEARTBEAT_FILE = "scheduler-heartbeat"
+HEARTBEAT_ENV = "ENS_HEARTBEAT_FILE"
+BEAT_EVERY_SECONDS = 60.0
 Key = tuple[JobKind, str]
 Status = Literal["completed", "failed", "busy", "interrupted"]
+Heartbeat = Callable[[], None]
 
 
 @dataclass(frozen=True)
@@ -75,6 +82,54 @@ def config_sha256(cfg: ScheduleConfig) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
+def file_heartbeat(env: Mapping[str, str]) -> Heartbeat:
+    """Latido para el healthcheck del contenedor: renueva la fecha de modificación de un fichero.
+
+    `ENS_HEARTBEAT_FILE` fija su ruta; sin ella, vive en el directorio de estado. En el
+    contenedor apunta a un tmpfs propio de cada contenedor: el latido de una versión anterior
+    no vale para la nueva. Un fallo al escribirlo no para el planificador: el fichero envejece
+    y es el healthcheck quien lo avisa."""
+    configured = env.get(HEARTBEAT_ENV)
+    path = Path(configured) if configured else resolve_state_dir(env) / HEARTBEAT_FILE
+
+    def beat() -> None:
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
+            temporary = path.with_name(f".{path.name}.tmp")
+            temporary.write_text(f"{os.getpid()}\n", encoding="utf-8")
+            os.replace(temporary, path)
+        except OSError:
+            pass
+
+    return beat
+
+
+class BeatingClock:
+    """Reloj que late con cada lectura y con cada tramo de espera.
+
+    El latido sale del mismo hilo que hace el trabajo: si el ciclo se cuelga, deja de latir.
+    Las esperas largas (reintentos de conectores) se parten en tramos de `BEAT_EVERY_SECONDS`.
+    """
+
+    def __init__(self, clock: Clock, heartbeat: Heartbeat) -> None:
+        self._clock = clock
+        self._heartbeat = heartbeat
+
+    def now(self) -> datetime:
+        self._heartbeat()
+        return self._clock.now()
+
+    def sleep(self, seconds: float) -> None:
+        remaining = seconds
+        while True:
+            self._heartbeat()
+            chunk = min(remaining, BEAT_EVERY_SECONDS)
+            self._clock.sleep(chunk)
+            remaining -= chunk
+            if remaining <= 0:
+                return
+
+
 class Scheduler:
     def __init__(
         self,
@@ -85,7 +140,9 @@ class Scheduler:
         stop: threading.Event,
         *,
         log: Callable[[str], None] = print_log,
+        heartbeat: Heartbeat | None = None,
     ) -> None:
+        self._heartbeat = heartbeat
         self._clock = clock
         self._executor = executor
         self._load_config = load_config
@@ -122,6 +179,7 @@ class Scheduler:
             self._event("tick_skipped", reason="reentrant")
             return []
         self._ticking = True
+        self._beat()
         try:
             return self._tick()
         finally:
@@ -145,10 +203,15 @@ class Scheduler:
             if self._stop.is_set() or not self._ready(job, self._clock.now()):
                 continue
             result = self._execute(job, cfg)
+            self._beat()
             executed.append((job, result))
             if result.status == "interrupted":
                 break
         return executed
+
+    def _beat(self) -> None:
+        if self._heartbeat is not None:
+            self._heartbeat()
 
     def _pending(self, now: datetime, cfg: ScheduleConfig) -> list[Job]:
         """Los vencidos del periodo en curso y los que reintentan de un periodo anterior (que
@@ -278,7 +341,9 @@ class CycleExecutor:
         plugins: Plugins | None = None,
         lock_wait_minutes: float = LOCK_WAIT_MINUTES,
         lock_factory: Callable[[Settings, Mapping[str, str]], CycleLock] = CycleLock.for_settings,
+        heartbeat: Heartbeat | None = None,
     ) -> None:
+        self._heartbeat = heartbeat
         self._store = store
         self._settings = settings
         self._env = env
@@ -291,6 +356,7 @@ class CycleExecutor:
         self, job: Job, cfg: ScheduleConfig, trigger: Trigger, *, config_warning: bool = False
     ) -> JobResult:
         lock = self._lock_factory(self._settings, self._env)
+        clock = BeatingClock(self._clock, self._heartbeat) if self._heartbeat else self._clock
         try:
             acquire_or_wait(lock, self._clock, self._lock_wait_minutes)
         except CycleBusy:
@@ -308,7 +374,7 @@ class CycleExecutor:
                 job.kind,
                 job.period,
                 job.due_at,
-                clock=self._clock,
+                clock=clock,
                 cfg=cfg,
                 trigger=trigger,
                 plugins=self._plugins_for(job),

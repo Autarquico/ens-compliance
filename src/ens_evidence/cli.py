@@ -243,6 +243,7 @@ from ens_evidence.scheduling.cycle import run_cycle
 from ens_evidence.scheduling.scheduler import (
     CycleExecutor,
     Scheduler,
+    file_heartbeat,
     render_status,
     scheduler_status,
     stop_on_signals,
@@ -261,8 +262,9 @@ from ens_evidence.scope import (
     revoke_approval,
     scope_status,
 )
+from ens_evidence.scope.edit import ScopeEditRejected, add_asset, parse_field, set_system
 from ens_evidence.scope.messages import describe_validation
-from ens_evidence.scope.models import Deployment
+from ens_evidence.scope.models import AssetType, Deployment
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SCOPE_KEYS, synced_keys
 from ens_evidence.workspace import (
@@ -737,6 +739,66 @@ def inventory_reconcile(
     typer.echo(
         f"{len(report.discrepancies)} discrepancias (informativo; no bloquea la aprobación)."
     )
+
+
+@scope_app.command("add-asset")
+@handled
+def scope_add_asset(
+    ctx: typer.Context,
+    asset_id: Annotated[str, typer.Option("--id", help="Identificador único del activo.")],
+    asset_type: Annotated[AssetType, typer.Option("--type", help="Tipo de activo.")],
+    fields: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--set",
+            help="Campo del activo, campo=valor (repetible; listas separadas por comas).",
+        ),
+    ] = None,
+    planned: Annotated[
+        bool, typer.Option("--planned", help="El activo aún no está desplegado.")
+    ] = False,
+    include: Annotated[bool, typer.Option("--include", help="Inclúyelo en el alcance.")] = False,
+) -> None:
+    """Añade un activo al inventario, sin tocar los demás. No aprueba nada."""
+    values: dict[str, Any] = {
+        "id": asset_id,
+        "type": asset_type.value,
+        "deployment": (Deployment.PLANNED if planned else Deployment.DEPLOYED).value,
+    }
+    try:
+        for item in fields or []:
+            name, separator, value = item.partition("=")
+            if not separator or not name.strip():
+                raise ScopeEditRejected([f"--set {item!r}: usa campo=valor"])
+            values[name.strip()] = parse_field(name.strip(), value)
+        revoked = add_asset(open_workspace(ctx), values, include, datetime.now(UTC))
+    except ScopeEditRejected as exc:
+        typer.echo("No se añade el activo:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Activo {asset_id} añadido{' e incluido en el alcance' if include else ''}.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+    typer.echo("Valida con inventory validate y aprueba con scope approve.")
+
+
+@scope_app.command("set-system")
+@handled
+def scope_set_system(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Option("--name", help="Nombre del sistema.")],
+    description: Annotated[str, typer.Option("--description", help="Descripción del sistema.")],
+) -> None:
+    """Rellena el nombre y la descripción del sistema. No aprueba nada."""
+    try:
+        revoked = set_system(open_workspace(ctx), name, description, datetime.now(UTC))
+    except ScopeEditRejected as exc:
+        typer.echo("No se cambia el sistema:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo("Sistema actualizado.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
 
 
 @scope_app.command("approve")
@@ -2671,12 +2733,14 @@ def scheduler_run(ctx: typer.Context) -> None:
     load_schedule_config(store)
     stop = threading.Event()
     system_clock = SystemClock(stop)
+    heartbeat = file_heartbeat(os.environ)
     scheduler = Scheduler(
         system_clock,
-        CycleExecutor(store, settings, os.environ, system_clock, stop),
+        CycleExecutor(store, settings, os.environ, system_clock, stop, heartbeat=heartbeat),
         lambda: load_schedule_config(store).config,
         workspace_done_periods(store, system_clock),
         stop,
+        heartbeat=heartbeat,
     )
     with stop_on_signals(stop):
         scheduler.run()

@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 27
-prs: []
+prs: [53]
 related_issues: [27]
 depends_on: [repo-foundation, reports-scheduling, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-11-04
 ---
 
 # Caja mínima en Docker Compose

@@ -110,3 +110,4 @@ Los informes están en `evidence/reports/daily/<fecha>/` y
 - **Desplegar** es arrancar el contenedor con `scheduler run`.
 - **Volver atrás** es arrancar la imagen anterior. Los informes y los
   marcadores ya escritos se conservan, y la versión anterior sigue leyéndolos.
+- **Instalar, actualizar y volver atrás la caja:** ver el [runbook de la caja](caja.md).
