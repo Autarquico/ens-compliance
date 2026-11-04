@@ -1,0 +1,41 @@
+# Criterios de la capa de juicio. Cada criterio cita su fuente literal; la cita debe aparecer
+# en el texto oficial (tests/preaudit/test_pack.py lo comprueba contra los fixtures).
+# `allowed_proposals`: lo único que el modelo puede proponer con este criterio. Nunca un dictamen.
+criteria:
+  - id: coherencia-politica-evidencia
+    text: >-
+      La política y la normativa de seguridad declaradas son coherentes con lo que muestran
+      las evidencias de las medidas enlazadas: lo que el documento afirma o exige no se
+      contradice con lo observado.
+    compare: >-
+      Las afirmaciones y exigencias de los documentos de política o normativa frente a las
+      evidencias enlazadas a la misma medida.
+    allowed_proposals: [NC_MENOR, OBSERVACION]
+    source:
+      document: ic0119
+      reference: "CCN-CERT IC-01/19, apartado 53 (No Conformidad Menor)"
+      quote: "se aprecian incoherencias entre requisitos que deberían estar alineados"
+  - id: calidad-documental
+    text: >-
+      El documento que debe respaldar la medida precisa de forma clara los extremos que el
+      anexo II exige que contenga; no basta con que exista.
+    compare: >-
+      El contenido del documento frente a los requisitos de la medida enlazada (por ejemplo,
+      org.1.1 a org.1.5 para la política de seguridad).
+    allowed_proposals: [NC_MENOR, OBSERVACION]
+    source:
+      document: rd311
+      reference: "RD 311/2022, anexo II, apartado 3.1 [org.1]"
+      quote: "se plasmará en un documento en el que, de forma clara, se precise, al menos, lo siguiente"
+  - id: solidez-justificacion-aplicabilidad
+    text: >-
+      Una medida declarada no aplicable, o sustituida por una compensatoria, está justificada
+      documentalmente y la justificación es suficiente para el riesgo sobre los activos.
+    compare: >-
+      La justificación de aplicabilidad o de compensación frente a los activos, los riesgos y
+      la medida del anexo II que se sustituye.
+    allowed_proposals: [NC_MENOR, OBSERVACION]
+    source:
+      document: rd311
+      reference: "RD 311/2022, artículo 28, apartado 3"
+      quote: "se justifique documentalmente que protegen, igual o mejor, del riesgo sobre los activos"
