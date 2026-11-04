@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Caja mínima en Docker Compose
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 27

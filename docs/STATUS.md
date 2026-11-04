@@ -9,15 +9,11 @@
 ## Done esta semana
 
 <!-- pm-sync:done-this-week -->
-- #2 Fundación del repo y modelos
-- #3 Catálogo de medidas del Anexo II
-- #4 Storage de evidencias y copia independiente
 - #5 Collector de GitHub
 - #6 Collector de Cloudflare
 - #7 Collector de Google Workspace
 - #13 Collector de Restic y pruebas de restauración
 - #14 Informes y scheduling
-- #16 Inventario y alcance
 - #17 Categorización, riesgos y aplicabilidad
 - #19 Evidencia de endpoints con script guiado
 - #20 Matriz de cumplimiento por medida
@@ -25,6 +21,7 @@
 - #22 Procedimiento y registro de incidentes
 - #23 Motor de checks y regla de preparación
 - #24 Generación del expediente y sus estados
+- #27 Caja mínima en Docker Compose
 <!-- /pm-sync:done-this-week -->
 
 ---
