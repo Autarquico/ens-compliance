@@ -9,6 +9,8 @@ import pytest
 
 from ens_evidence import chain
 from ens_evidence.assessment.dossier.model import SnapshotInputs
+from ens_evidence.evidence import import_manual, load_manifest_by_id
+from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.models.preaudit import (
     Classification,
     Consent,
@@ -53,8 +55,9 @@ def dossier_at(store, at: datetime, data: bytes = DOSSIER_BYTES) -> str:
     return dossier
 
 
-def judged(proposal=Classification.NC_MENOR, measure="op.mon.1") -> Finding:
+def judged(proposal=Classification.NC_MENOR, measure="op.mon.1", evidence=()) -> Finding:
     refs = [Ref(kind=RefKind.DOCUMENT, id="politica-seguridad")]
+    refs += [Ref(kind=RefKind.EVIDENCE, id=e) for e in evidence]
     criterion = "coherencia-politica-evidencia"
     return Finding(
         id=finding_id(criterion, measure, refs),
@@ -126,20 +129,35 @@ def add_run(store, dossier: str, at: datetime, findings=(), *, judged_status=Lay
     return append(store, RUNS_PREFIX, record)
 
 
+def correction(store, at: datetime) -> str:
+    """Una evidencia real e íntegra recogida en `at`: la que corrige un hallazgo."""
+    data = f"Corrección recogida en {at.isoformat()}.\n".encode()
+    return import_manual(store, data, asset_id="asset-1", submitted_by="Ana", now=at).id
+
+
 def dispose(
-    store, finding: Finding, state: DispositionState, at: datetime, *, covers: int | None = None
+    store,
+    finding: Finding,
+    state: DispositionState,
+    at: datetime,
+    *,
+    covers: int | None = None,
+    evidence: str | None = None,
 ) -> str:
-    """Por defecto cubre la última ejecución que propuso el hallazgo, como `preaudit review`."""
+    """Por defecto cubre la última ejecución que propuso el hallazgo, como `preaudit review`; una
+    `RESOLVED` cita `evidence` o, si no se da, una recogida justo antes de disponer."""
     seq, previous = _last(store, DISPOSITIONS_PREFIX)
     if covers is None:
         covers = findings_view(store, at).state_of(finding.id).last_run_seq
+    if state is DispositionState.RESOLVED and evidence is None:
+        evidence = correction(store, at - timedelta(seconds=1))
     disposition = Disposition(
         finding_id=finding.id,
         covers_run=covers,
         state=state,
         by="Ana",
         at=at,
-        evidence_id="EV-20261001-abcdef12" if state is DispositionState.RESOLVED else None,
+        evidence_id=evidence if state is DispositionState.RESOLVED else None,
         reason="motivo" if state is DispositionState.DISMISSED else None,
     )
     record = DispositionRecord(
@@ -316,6 +334,74 @@ def test_a_disposition_covering_a_run_that_did_not_raise_it_blocks(store):
     dispose(store, finding, DispositionState.RESOLVED, minutes(3), covers=2)
 
     assert broken(blocking(store, minutes(4))[0])
+
+
+# --- evidencia de RESOLVED, comprobada al leer ------------------------------------------------
+
+
+def resolved_with(store, evidence_at: datetime | None = None) -> tuple[Finding, str]:
+    """Un hallazgo propuesto en el minuto 1 y resuelto en el 3 con una evidencia recogida en
+    `evidence_at` (por defecto, el minuto 2)."""
+    dossier = dossier_at(store, T0)
+    finding = judged()
+    add_run(store, dossier, minutes(1), [finding])
+    evidence = correction(store, evidence_at or minutes(2))
+    dispose(store, finding, DispositionState.RESOLVED, minutes(3), evidence=evidence)
+    return finding, evidence
+
+
+def resolution_problems(store, evidence: str) -> list[str]:
+    return [p for p in findings_view(store, minutes(4)).problems if evidence in p]
+
+
+def test_resolved_with_its_evidence_intact_stays_unblocked(store):
+    resolved_with(store)
+
+    assert blocking(store, minutes(4)) == ([], True)
+
+
+def test_deleting_the_evidence_of_a_resolved_finding_blocks(store):
+    finding, evidence = resolved_with(store)
+    (store._root / manifest_key(evidence)).unlink()
+
+    [problem] = resolution_problems(store, evidence)
+    assert finding.id in problem and "ya no se verifica" in problem
+    assert broken(blocking(store, minutes(4))[0])
+
+
+def test_altering_the_evidence_of_a_resolved_finding_blocks(store):
+    finding, evidence = resolved_with(store)
+    store.write_bytes(load_manifest_by_id(store, evidence).artifact.key, b"alterado\n")
+
+    [problem] = resolution_problems(store, evidence)
+    assert finding.id in problem and "ha cambiado" in problem
+    assert broken(blocking(store, minutes(4))[0])
+
+
+def test_a_resolved_evidence_collected_before_the_covered_run_blocks(store):
+    finding, evidence = resolved_with(store, evidence_at=T0)
+
+    [problem] = resolution_problems(store, evidence)
+    assert finding.id in problem and "antes de la ejecución 1" in problem
+    assert broken(blocking(store, minutes(4))[0])
+
+
+def test_a_resolved_evidence_collected_after_the_disposition_blocks(store):
+    finding, evidence = resolved_with(store, evidence_at=minutes(3) + timedelta(seconds=1))
+
+    [problem] = resolution_problems(store, evidence)
+    assert finding.id in problem and "en el futuro" in problem
+
+
+def test_a_resolved_citing_the_evidence_the_finding_cites_blocks(store):
+    dossier = dossier_at(store, T0)
+    proof = correction(store, minutes(2))
+    finding = judged(evidence=[proof])
+    add_run(store, dossier, minutes(1), [finding])
+    dispose(store, finding, DispositionState.RESOLVED, minutes(3), evidence=proof)
+
+    [problem] = resolution_problems(store, proof)
+    assert finding.id in problem and "cita el hallazgo como prueba" in problem
 
 
 # --- juicio ejecutado --------------------------------------------------------------------------

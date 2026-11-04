@@ -200,7 +200,9 @@ con 2 sin escribir.
 
 Una cadena ilegible, alterada, con fechas futuras o con un orden que
 contradice los relojes bloquea con un error visible
-(`preaudit_history_broken`). No se da por cerrado ningún hallazgo.
+(`preaudit_history_broken`). No se da por cerrado ningún hallazgo. Lo mismo
+si la evidencia de un `RESOLVED` ya no existe, no está íntegra o deja de
+cumplir lo que se le exigió al registrarlo: se comprueba en cada lectura.
 
 ### Cableado y expediente
 

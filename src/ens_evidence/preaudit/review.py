@@ -4,8 +4,9 @@ La disposición cubre las apariciones del hallazgo registradas hasta ahora (`cov
 ejecución que lo propuso); si otra posterior lo vuelve a proponer, vuelve a estar abierto.
 `ACCEPTED` reconoce el hallazgo y sigue bloqueando. `RESOLVED` cita una evidencia existente e
 íntegra que lo corrige: distinta de las que cita el hallazgo y recogida después de la última
-ejecución que lo propuso (y no en el futuro). `DISMISSED` lo descarta con un motivo. El nombre y
-el motivo pasan por los detectores de privacidad: no se guarda un secreto ni un dato personal.
+ejecución que lo propuso (y no en el futuro); `findings_view` lo vuelve a comprobar al leer
+(`correction_problems`). `DISMISSED` lo descarta con un motivo. El nombre y el motivo pasan
+por los detectores de privacidad: no se guarda un secreto ni un dato personal.
 Orden de escritura, como en las ejecuciones: comprobar (un rechazo no escribe nada), reservar la
 secuencia, escribir.
 """
@@ -14,17 +15,14 @@ from dataclasses import replace
 from datetime import datetime
 
 from ens_evidence import chain
-from ens_evidence.evidence.layout import is_evidence_id
-from ens_evidence.evidence.manifests import ManifestError, load_manifest_by_id
 from ens_evidence.evidence.verify import verify_one
 from ens_evidence.models.preaudit import (
     NEXT_STATES,
     Disposition,
     DispositionRecord,
     DispositionState,
-    RefKind,
 )
-from ens_evidence.preaudit.findings import FindingState, findings_view
+from ens_evidence.preaudit.findings import FindingState, correction_problems, findings_view
 from ens_evidence.preaudit.records import (
     DISPOSITIONS_PREFIX,
     append,
@@ -70,7 +68,8 @@ def review(
             + ("" if NEXT_STATES[current.state] else " (ya no bloquea)")
         )
     if current is not None and decision is DispositionState.RESOLVED and evidence_id:
-        errors += _correction_problems(store, current, evidence_id, now)
+        why = correction_problems(store, evidence_id, current.finding, current.last_run, now)
+        errors += [NOT_A_CORRECTION.format(why=reason) for reason in why]
     if errors:
         raise ReviewRejected(errors)
     assert current is not None
@@ -115,32 +114,6 @@ def _field_problems(
 
 def _reason_problems(reason: str) -> list[str]:
     return [f"--reason: {problem}; quítalo" for problem in sensitive_problems(reason)]
-
-
-def _correction_problems(
-    store: WorkspaceStore, current: FindingState, evidence_id: str, now: datetime
-) -> list[str]:
-    """`RESOLVED` no se apoya en lo que prueba el incumplimiento: la evidencia no puede ser una
-    de las que cita el hallazgo ni haberse recogido antes de la última ejecución que lo propuso."""
-    cited = {ref.id for ref in current.finding.refs if ref.kind is RefKind.EVIDENCE}
-    if evidence_id in cited:
-        return [NOT_A_CORRECTION.format(why="es la que cita el hallazgo como prueba")]
-    if not is_evidence_id(evidence_id):
-        return []  # `verify_one` ya lo rechaza con su motivo.
-    try:
-        collected = load_manifest_by_id(store, evidence_id).collected_at
-    except ManifestError:
-        return []
-    if collected <= current.last_run.recorded_at:
-        return [
-            NOT_A_CORRECTION.format(
-                why=f"se recogió antes de la ejecución {current.last_run_seq} que propuso el "
-                "hallazgo"
-            )
-        ]
-    if collected > now:
-        return [NOT_A_CORRECTION.format(why="tiene fecha de recogida en el futuro")]
-    return []
 
 
 def _write(

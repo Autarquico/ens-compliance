@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: L
 issue: 25
-prs: []
+prs: [54]
 related_issues: [25]
 depends_on: [assessment-dossier]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-11-04
 ---
 
 # Pre-auditoría y audit pack

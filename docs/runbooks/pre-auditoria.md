@@ -183,7 +183,9 @@ ens-evidence preaudit review <id> --by "Lucía Navarro Gil" --decision dismissed
   Tiene que estar recogida después de la ejecución que propuso el hallazgo y
   no puede ser una de las que el hallazgo cita como prueba. Si no, o si su
   fecha de recogida está en el futuro, `review` se niega. La herramienta
-  comprueba además que existe y está íntegra.
+  comprueba además que existe y está íntegra, y lo vuelve a comprobar en
+  cada evaluación: si esa evidencia se borra o se altera, la preparación se
+  bloquea con `preaudit_history_broken`.
 - **`dismissed`**: no procede. Explica por qué en `--reason`. El motivo no
   puede llevar secretos ni datos personales.
 

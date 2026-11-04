@@ -15,6 +15,10 @@ El orden entre las dos cadenas lo fija `covers_run`; los instantes deben confirm
 contradicen, es un error visible. `preaudit run` y `preaudit review` escriben con el lock del
 ciclo tomado, así que esa contradicción solo puede venir de una manipulación.
 
+Una `RESOLVED` se vuelve a comprobar al leer, no solo al registrarla: su evidencia correctora
+tiene que seguir existiendo e íntegra, recogida después de la ejecución que cubre y distinta de
+las que cita el hallazgo (`correction_problems`). Si se borra o se altera, la historia está rota.
+
 Unas cadenas ilegibles, alteradas o con fechas futuras no se interpretan a medias: bloquean con un
 error visible. También bloquea que falte algo que congeló un expediente (`frozen_problems`).
 
@@ -31,6 +35,9 @@ from datetime import datetime
 
 from ens_evidence import chain
 from ens_evidence.dossier_layout import dossiers_before, matches_content, snapshot_key
+from ens_evidence.evidence.layout import is_evidence_id
+from ens_evidence.evidence.manifests import ManifestError, load_manifest_by_id
+from ens_evidence.evidence.verify import verify_one
 from ens_evidence.models.preaudit import (
     BLOCKING_PROPOSALS,
     NEXT_STATES,
@@ -43,6 +50,7 @@ from ens_evidence.models.preaudit import (
     Layer,
     LayerStatus,
     PreAuditRecord,
+    RefKind,
 )
 from ens_evidence.models.readiness import OpenFinding
 from ens_evidence.preaudit.records import (
@@ -129,7 +137,7 @@ def findings_view(
     disposition_scan = scan_dispositions(store, now=at, known=dispositions)
     problems = [*run_scan.problems, *disposition_scan.problems, *frozen_problems(store, at)]
     proposed = _appearances(run_scan.records)
-    decided, decision_problems = _decisions(disposition_scan.records, proposed)
+    decided, decision_problems = _decisions(store, disposition_scan.records, proposed)
     states = tuple(_state(seen, decided.get(fid, [])) for fid, seen in proposed.items())
     executed, sha_problems = _judgment_executed(store, at, run_scan.records)
     problems += decision_problems + sha_problems
@@ -162,10 +170,13 @@ def _state(seen: list[Appearance], history: list[Disposition]) -> FindingState:
 
 
 def _decisions(
-    records: Iterable[chain.Stored[DispositionRecord]], proposed: dict[str, list[Appearance]]
+    store: WorkspaceStore,
+    records: Iterable[chain.Stored[DispositionRecord]],
+    proposed: dict[str, list[Appearance]],
 ) -> tuple[dict[str, list[Disposition]], list[str]]:
     """Las disposiciones válidas de cada hallazgo, recorriendo la cadena en orden. Una
-    disposición que cubre una ejecución posterior a la anterior parte de `OPEN`."""
+    disposición que cubre una ejecución posterior a la anterior parte de `OPEN`. Una `RESOLVED`
+    válida cuya evidencia ya no prueba la corrección cuenta, pero deja un problema."""
     decided: dict[str, list[Disposition]] = {}
     problems: list[str] = []
     for stored in records:
@@ -194,7 +205,57 @@ def _decisions(
             )
             continue
         history.append(disposition)
+        if disposition.state is DispositionState.RESOLVED:
+            problems += _resolution_problems(store, stored, proposed[disposition.finding_id])
     return decided, problems
+
+
+def _resolution_problems(
+    store: WorkspaceStore, stored: chain.Stored[DispositionRecord], seen: list[Appearance]
+) -> list[str]:
+    """Lo que hoy impide que la evidencia de una `RESOLVED` pruebe la corrección."""
+    disposition = stored.record.disposition
+    evidence_id = disposition.evidence_id or ""
+    covered, finding = next((s, f) for s, f in seen if s.record.seq == disposition.covers_run)
+    prefix = (
+        f"{stored.key}: el hallazgo {disposition.finding_id} se resolvió con la evidencia "
+        f"{evidence_id or '(ninguna)'}, que"
+    )
+    integrity = verify_one(store, evidence_id).problems
+    if integrity:
+        return [f"{prefix} ya no se verifica ({problem})" for problem in integrity]
+    why = correction_problems(
+        store, evidence_id, finding, covered.record, stored.record.recorded_at
+    )
+    return [f"{prefix} {reason}" for reason in why]
+
+
+def correction_problems(
+    store: WorkspaceStore,
+    evidence_id: str,
+    finding: Finding,
+    covered: PreAuditRecord,
+    until: datetime,
+) -> list[str]:
+    """Por qué una evidencia íntegra no prueba que se corrigió `finding` (vacío: lo prueba).
+
+    `RESOLVED` no se apoya en lo que prueba el incumplimiento: la evidencia no puede ser una de
+    las que cita el hallazgo, ni haberse recogido antes de la ejecución `covered` que cubre, ni
+    después de `until` (el instante de la disposición). La integridad la comprueba `verify_one`;
+    aquí, un id o un manifiesto ilegible no añade nada."""
+    if evidence_id in {ref.id for ref in finding.refs if ref.kind is RefKind.EVIDENCE}:
+        return ["es la que cita el hallazgo como prueba"]
+    if not is_evidence_id(evidence_id):
+        return []
+    try:
+        collected = load_manifest_by_id(store, evidence_id).collected_at
+    except ManifestError:
+        return []
+    if collected <= covered.recorded_at:
+        return [f"se recogió antes de la ejecución {covered.seq} que propuso el hallazgo"]
+    if collected > until:
+        return ["tiene fecha de recogida en el futuro"]
+    return []
 
 
 def _order_problems(
