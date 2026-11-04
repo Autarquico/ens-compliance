@@ -1,0 +1,420 @@
+{
+  "$defs": {
+    "Classification": {
+      "enum": [
+        "NC_MAYOR",
+        "NC_MENOR",
+        "OBSERVACION",
+        "SIN_CLASIFICAR"
+      ],
+      "title": "Classification",
+      "type": "string"
+    },
+    "Consent": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "by": {
+          "minLength": 1,
+          "title": "By",
+          "type": "string"
+        },
+        "destination": {
+          "minLength": 1,
+          "title": "Destination",
+          "type": "string"
+        },
+        "payload_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Payload Sha256",
+          "type": "string"
+        },
+        "shell_risk_accepted": {
+          "default": false,
+          "title": "Shell Risk Accepted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "by",
+        "at",
+        "payload_sha256",
+        "destination"
+      ],
+      "title": "Consent",
+      "type": "object"
+    },
+    "DiscardReason": {
+      "description": "Por qu\u00e9 la validaci\u00f3n descarta un hallazgo de juicio (`preaudit/validate.py`).",
+      "enum": [
+        "UNKNOWN_CRITERION",
+        "PROPOSAL_NOT_ALLOWED",
+        "UNKNOWN_MEASURE",
+        "MEASURE_NOT_APPLICABLE",
+        "MEASURE_NOT_JUSTIFIED",
+        "MISSING_CITATION",
+        "UNLINKED_REF",
+        "QUOTE_NOT_FOUND",
+        "EMPTY_REASON",
+        "SENSITIVE_TEXT",
+        "UNDISPLAYABLE_TEXT",
+        "DUPLICATE"
+      ],
+      "title": "DiscardReason",
+      "type": "string"
+    },
+    "Finding": {
+      "additionalProperties": false,
+      "properties": {
+        "classification_source": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Classification Source"
+        },
+        "criterion": {
+          "minLength": 1,
+          "title": "Criterion",
+          "type": "string"
+        },
+        "id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Id",
+          "type": "string"
+        },
+        "layer": {
+          "$ref": "#/$defs/Layer"
+        },
+        "measure": {
+          "minLength": 1,
+          "title": "Measure",
+          "type": "string"
+        },
+        "proposal": {
+          "$ref": "#/$defs/Classification"
+        },
+        "quote": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Quote"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "refs": {
+          "items": {
+            "$ref": "#/$defs/Ref"
+          },
+          "title": "Refs",
+          "type": "array"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "layer",
+        "proposal",
+        "measure",
+        "criterion",
+        "reason",
+        "source"
+      ],
+      "title": "Finding",
+      "type": "object"
+    },
+    "GroupingProposal": {
+      "additionalProperties": false,
+      "description": "Agrupaci\u00f3n derivada, IC-01/19 \u00a754. Conserva los hallazgos originales.",
+      "properties": {
+        "finding_ids": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 2,
+          "title": "Finding Ids",
+          "type": "array"
+        },
+        "justification": {
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
+        "measures": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Measures",
+          "type": "array"
+        },
+        "proposal": {
+          "$ref": "#/$defs/Classification"
+        },
+        "source": {
+          "minLength": 1,
+          "title": "Source",
+          "type": "string"
+        }
+      },
+      "required": [
+        "proposal",
+        "measures",
+        "finding_ids",
+        "justification",
+        "source"
+      ],
+      "title": "GroupingProposal",
+      "type": "object"
+    },
+    "Layer": {
+      "enum": [
+        "DETERMINISTIC",
+        "JUDGMENT"
+      ],
+      "title": "Layer",
+      "type": "string"
+    },
+    "LayerStatus": {
+      "enum": [
+        "NOT_RUN",
+        "DONE",
+        "ERROR"
+      ],
+      "title": "LayerStatus",
+      "type": "string"
+    },
+    "PreAuditRun": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "consent": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Consent"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "deterministic_status": {
+          "$ref": "#/$defs/LayerStatus",
+          "default": "DONE"
+        },
+        "discards": {
+          "additionalProperties": {
+            "minimum": 1,
+            "type": "integer"
+          },
+          "default": {},
+          "propertyNames": {
+            "$ref": "#/$defs/DiscardReason"
+          },
+          "title": "Discards",
+          "type": "object"
+        },
+        "dossier": {
+          "minLength": 1,
+          "title": "Dossier",
+          "type": "string"
+        },
+        "dossier_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Dossier Sha256",
+          "type": "string"
+        },
+        "judgment_error": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Judgment Error"
+        },
+        "judgment_status": {
+          "$ref": "#/$defs/LayerStatus",
+          "default": "NOT_RUN"
+        },
+        "model": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Model"
+        },
+        "pack_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Pack Sha256",
+          "type": "string"
+        },
+        "pack_version": {
+          "minLength": 1,
+          "title": "Pack Version",
+          "type": "string"
+        },
+        "provider": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/Provider"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        }
+      },
+      "required": [
+        "dossier",
+        "dossier_sha256",
+        "pack_version",
+        "pack_sha256",
+        "at"
+      ],
+      "title": "PreAuditRun",
+      "type": "object"
+    },
+    "Provider": {
+      "enum": [
+        "anthropic",
+        "openai",
+        "claude-code",
+        "codex"
+      ],
+      "title": "Provider",
+      "type": "string"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RefKind"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "Ref",
+      "type": "object"
+    },
+    "RefKind": {
+      "enum": [
+        "DOCUMENT",
+        "EVIDENCE",
+        "SECTION"
+      ],
+      "title": "RefKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Un registro de la cadena de ejecuciones, de solo adici\u00f3n (`chain.py`).\n\nLleva la ejecuci\u00f3n y sus hallazgos tal como se aceptaron. Una ejecuci\u00f3n posterior nunca lo\nsustituye ni cierra lo que propuso; la disposici\u00f3n humana va aparte.",
+  "properties": {
+    "findings": {
+      "items": {
+        "$ref": "#/$defs/Finding"
+      },
+      "title": "Findings",
+      "type": "array"
+    },
+    "groupings": {
+      "items": {
+        "$ref": "#/$defs/GroupingProposal"
+      },
+      "title": "Groupings",
+      "type": "array"
+    },
+    "prepared": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Prepared"
+    },
+    "previous_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Sha256"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "run": {
+      "$ref": "#/$defs/PreAuditRun"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "seq",
+    "recorded_at",
+    "run"
+  ],
+  "title": "PreAuditRecord",
+  "type": "object"
+}

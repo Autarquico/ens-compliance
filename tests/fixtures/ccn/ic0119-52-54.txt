@@ -1,0 +1,66 @@
+# CCN-CERT IC-01/19 «Criterios Generales de Auditoría y Certificación», edición octubre 2026, §52-54. Líneas 592-651 de la extracción de texto.
+# Fuente: https://ens.ccn.cni.es/es/docman/documentos-publicos/informes-cocens/75-7-ccn-cert-ic-01-19-criterios-generales-de-auditorias/file (firmada digitalmente por el CCN el 2026-10-13)
+# Descargado: 2026-11-04
+# sha256 del documento completo (PDF): b5a7656e914a663e0707d07eaa5973cf02a78b9ccc9924974431888e45480815
+# Solo para tests de citas literales.
+
+                   básico, tales como la designación, en su caso, de Delegado de Protección de Datos, la existencia
+                   del Registro de Actividades de Tratamiento, etc.
+               51. No obstante, cuando proceda, se observará lo señalado en la Disposición adicional primera de
+                   la Ley Orgánica 3/2018, de 5 de diciembre, de Protección de Datos y Garantía de los Derechos
+                   Digitales.
+               52. Es imperativo calificar adecuadamente, de conformidad con lo señalado en la ITS de Auditoría,
+                   las desviaciones halladas en las auditorías, distinguiendo entre No Conformidades Mayores, No
+                   Conformidades Menores y Observaciones. Adicionalmente, el Informe de Auditoría podrá
+                   contener oportunidades de mejora que, a juicio del auditor, aporten valor a la auditoría y
+                   puedan contribuir a la mejora del sistema de gestión de seguridad de los sistemas de
+                   información concernidos, siempre que sean enunciativas y no se desarrollen exhaustivamente,
+                   de tal forma que pudiera llegar a considerarse consultoría encubierta.
+               53. Sin perjuicio de lo dispuesto en la ITS de Auditoría, la calificación de las desviaciones halladas
+                   se realizará atendiendo a los siguientes criterios:
+                    Se considera la existencia de una No Conformidad Mayor:
+                     • Ante el incumplimiento de un artículo del RD 311/2022 y/o el incumplimiento total de un
+                       conjunto de medidas/controles pertenecientes a un dominio de su Anexo II, en función de
+                       la categorización del sistema.
+
+                     • Cuando existen incumplimientos de carácter legal relacionados con la seguridad de la
+                       información.
+                     • Cuando la desviación afecta significativamente a la capacidad del sistema de información
+                       para atender sus funciones esenciales.
+
+
+
+
+Centro Criptológico Nacional                                                                                            13
+         CCN-CERT IC-01/19     ENS. Criterios Generales de Auditoría y Certificación
+
+
+
+
+                     • Cuando exista una duda razonable de que se haya implementado un control eficaz de
+                       proceso, o que las medidas de seguridad cumplan los requisitos especificados.
+
+                     • Cuando se evidencie un número significativo de no conformidades menores asociadas al
+                       mismo requisito.
+
+                     • Cuando el número de no conformidades menores detectadas impidan deducir la
+                       adecuación del sistema de información de que se trate a los principios básicos y requisitos
+                       mínimos del Esquema Nacional de Seguridad.
+                    Se considera la existencia de una No Conformidad Menor:
+
+                     • Ante un incumplimiento parcial de algún artículo del RD 311/2022 y/o el incumplimiento
+                       parcial de alguna medida/control (o algún requisito de alguna medida/control) del Anexo
+                       II, en función de la categorización del sistema.
+
+                     • Cuando, sin afectar a la capacidad del sistema de protección para lograr los resultados
+                       previstos; los requisitos se pueden satisfacerse de forma manifiestamente mejorable o se
+                       aprecian incoherencias entre requisitos que deberían estar alineados.
+               54. Para facilitar la identificación y el posterior tratamiento de los hallazgos de una auditoría y la
+                   verificación de su solución:
+                     • Será posible agrupar varias No Conformidades menores en una sola No Conformidad
+                       menor, si dichos hallazgos están referidos a una única medida.
+                     • Cuando las No Conformidades menores estén referidas a varias medidas dentro de un
+                       mismo grupo de medidas (por ejemplo: [op.pl.*], [op.acc.*], [op.exp.*], [mp.if.*],
+                       [mp.eq.*], etc.), su posible agrupación se calificará como No Conformidad Mayor.
+                     • No podrán agruparse No Conformidades menores que se refieran a distintos grupos de
+                       medidas, como tampoco podrán agruparse No Conformidades Mayores, en ningún caso.

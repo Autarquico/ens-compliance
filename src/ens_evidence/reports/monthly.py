@@ -16,8 +16,8 @@ import yaml
 from pydantic import ValidationError
 
 from ens_evidence import __version__
-from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY, NO_PRE_AUDIT
-from ens_evidence.assessment.status import assessment_status, count_statuses
+from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY, pre_audit_notice
+from ens_evidence.assessment.status import AssessmentStatus, assessment_status, count_statuses
 from ens_evidence.backup.records import list_runs, run_key
 from ens_evidence.backup.restore_test import RESTORE_TESTS_PREFIX, RestoreTest
 from ens_evidence.categorization.approval import APPROVAL_KEY as CATEGORIZATION_APPROVAL_KEY
@@ -173,11 +173,11 @@ def build_monthly(
     )
     inventory, inventory_ids = _inventory(month)
     restore = _read_restore_tests(month)
-    pending, pending_review = _pending(month, restore)
+    pending, status = _pending(month, restore)
     return MonthlyReport(
         generated_at=generated_at,
         product_version=__version__,
-        notices=_notices(month, pending_review, extra_notices),
+        notices=_notices(month, status, extra_notices),
         period=period,
         window=month.window,
         cycle=cycle,
@@ -196,7 +196,7 @@ def build_monthly(
     )
 
 
-def _notices(month: _Month, pending_review: bool, extra: Sequence[str]) -> list[str]:
+def _notices(month: _Month, status: AssessmentStatus, extra: Sequence[str]) -> list[str]:
     notices = list(extra)
     coverage = month.coverage
     if coverage.partial:
@@ -206,8 +206,8 @@ def _notices(month: _Month, pending_review: bool, extra: Sequence[str]) -> list[
         )
     if month.scan.problems:
         notices.append("Informes diarios ilegibles: " + "; ".join(month.scan.problems) + ".")
-    notices += [HUMAN_REVIEW_PENDING, NO_PRE_AUDIT] if pending_review else [REPORT_NOT_A_REVIEW]
-    return [*notices, NO_CONFORMITY]
+    notices.append(HUMAN_REVIEW_PENDING if status.pending_human_review else REPORT_NOT_A_REVIEW)
+    return [*notices, pre_audit_notice(status.pre_audit), NO_CONFORMITY]
 
 
 def _report_ref(day: Canonical) -> SourceRef:
@@ -564,9 +564,9 @@ def _restore_tests(month: _Month, reading: _RestoreTests | Unavailable) -> Secti
 
 def _pending(
     month: _Month, restore: _RestoreTests | Unavailable
-) -> tuple[Section[Aggregate], bool]:
+) -> tuple[Section[Aggregate], AssessmentStatus]:
     """Estado al día de generación: bloqueos de preparación, documentos sin aprobar y caducidades
-    ya vencidas. Devuelve además si queda revisión humana pendiente."""
+    ya vencidas. Devuelve además el estado del que salen (revisión humana y pre-auditoría)."""
     status = assessment_status(month.store, month.generated_at, month.checks)
     blockers = readiness_blocker_lines(status.result.readiness.blockers)
     blockers += [f"error: {e}" for e in status.result.errors]
@@ -619,7 +619,7 @@ def _pending(
         },
         items=items,
     )
-    return section, status.pending_human_review
+    return section, status
 
 
 def _restore_pending(

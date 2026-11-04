@@ -1,0 +1,37 @@
+# ITS de Auditoría de la Seguridad (Resolución de 27-3-2018), §VI.2 y §VI.3, versión consolidada sin modificaciones. Líneas 150-180 de la extracción de texto.
+# Fuente: https://www.boe.es/buscar/pdf/2018/BOE-A-2018-4573-consolidado.pdf (BOE-A-2018-4573)
+# Descargado: 2026-11-04
+# sha256 del documento completo (PDF): 9964f11f6eab58ae5d644be0889c251f022a6eb6cc71aedfe7d7cee2bbb8c7a5
+# Solo para tests de citas literales.
+
+LEGISLACIÓN CONSOLIDADA
+Página 3
+registros, declaraciones de hechos o cualquier otra información pertinente y verificable en 
+que se basen las conclusiones alcanzadas.
+VI.2 Los hallazgos de no conformidad se clasificarán atendiendo a los siguientes grados:
+– «No Conformidad Menor»: Se documentará una «No Conformidad Menor» ante la 
+ausencia o el fallo en la implantación o mantenimiento de uno o más de los requisitos del 
+ENS, incluyendo cualquier situación que pudiese, en base a una evidencia objetiva, 
+sustentar una duda significativa sobre la conformidad del sistema de información con uno o 
+más de tales requisitos.
+– «No Conformidad Mayor»: Se documentará una «No Conformidad Mayor» cuando se 
+detecten «No Conformidades Menores» en relación con cualquiera de los preceptos 
+contenidos en el RD 3/2010, de 8 de enero, o en el Marco organizativo, o en alguno de los 
+subgrupos que integran el Marco operacional o las Medidas de protección (Planificación, 
+Control de Accesos, Explotación, Servicios Externos, Continuidad del Servicio, 
+Monitorización del Sistema, Protección de las Infraestructuras, Gestión del Personal, 
+Protección de Equipos, Comunicaciones, Soportes de Información, Aplicaciones 
+Informáticas, Información o Servicios) que, evaluadas en su conjunto, puedan implicar el 
+incumplimiento del objetivo del Grupo o Subgrupo considerados.
+Se documentará una Observación cuando se encuentren evidencias de una debilidad, 
+una vulnerabilidad o una situación que, sin comprometer cualquier área del sistema de 
+gestión definida en el ENS o por la organización, pueda, en la actualidad o en el futuro, 
+derivar en un problema.
+VI.3 El dictamen final de la Auditoría de la Seguridad será uno de los tres siguientes:
+– «FAVORABLE»: Cuando no se evidencie ninguna «No Conformidad Mayor» o «No 
+Conformidad Menor».
+– «FAVORABLE CON NO CONFORMIDADES»: Cuando se evidencie cualquier no 
+conformidad, mayor o menor. En este caso, la entidad titular responsable del sistema de 
+información auditado deberá presentar, en el plazo máximo de un mes, un Plan de Acciones 
+Correctivas sobre tales hallazgos de no conformidad a la entidad certificadora para su 
+evaluación.

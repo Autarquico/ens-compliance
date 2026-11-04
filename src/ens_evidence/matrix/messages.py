@@ -14,6 +14,7 @@ from ens_evidence.matrix.obligations import COMPENSATION, RowKind
 from ens_evidence.matrix.policy import source_policy
 from ens_evidence.models.enums import Category, MeasureAssessment, Readiness, Role
 from ens_evidence.models.readiness import Blocker, BlockerKind
+from ens_evidence.preaudit.findings import BROKEN_DETAIL, FINDING_DETAIL
 
 REVIEW_STEP = (
     "matrix review {m} --assessment COMPLIANT|NON_COMPLIANT|REQUIRES_REVIEW "
@@ -149,6 +150,16 @@ BLOCKER_TEXTS: dict[tuple[BlockerKind, str], str] = {
         "el historial de incidente {a} ya no coincide con los registros del incidente (falta, "
         "sobra o se alteró algo). Comprueba: incident verify; vuelve a revisar la medida cuando "
         "se resuelva: matrix review {m}"
+    ),
+    (BlockerKind.OPEN_FINDING, FINDING_DETAIL): (
+        "hallazgo de pre-auditoría {a} sin resolver ni descartar (propuesta; la decide una "
+        "persona). Siguiente paso: importa la evidencia de la corrección y preaudit review ID "
+        "--by NOMBRE --decision resolved --evidence EV-… o --decision dismissed --reason «…»; "
+        "ACCEPTED lo reconoce pero sigue bloqueando"
+    ),
+    (BlockerKind.OPEN_FINDING, BROKEN_DETAIL): (
+        "el registro de pre-auditorías o de sus disposiciones no se verifica ({a} problema(s)): "
+        "no se da por cerrado ningún hallazgo. Detalle: preaudit show NÚMERO"
     ),
     (BlockerKind.MISSING_EVIDENCE, "evidence_no_validity"): (
         "la evidencia {a} no tiene caducidad y la medida no tiene periodicidad. "

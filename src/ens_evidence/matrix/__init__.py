@@ -13,7 +13,6 @@ from ens_evidence.matrix.evaluate import (
     AssessmentResult,
     AssessmentRow,
     FindingsSource,
-    NoFindings,
     StaticFindings,
     assess,
 )
@@ -108,7 +107,6 @@ __all__ = [
     "AssessmentResult",
     "AssessmentRow",
     "FindingsSource",
-    "NoFindings",
     "StaticFindings",
     "assess",
     "COMPENSATION",

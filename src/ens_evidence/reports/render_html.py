@@ -8,7 +8,6 @@ from collections.abc import Callable, Iterable
 from datetime import UTC, datetime, tzinfo
 from html import escape
 
-from ens_evidence.assessment.render import NO_PRE_AUDIT
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.reports.labels import (
     ASSET_TYPE_LABELS,
@@ -238,8 +237,7 @@ def _collection(status: CollectionStatus | None) -> str:
 
 def _notices(notices: list[str]) -> str:
     """Solo lo que dice el modelo."""
-    items = [n[:1].upper() + n[1:] if n == NO_PRE_AUDIT else n for n in notices]
-    return "".join(f'<p class="warn">{esc(n)}</p>' for n in items)
+    return "".join(f'<p class="warn">{esc(n)}</p>' for n in notices)
 
 
 def _document(title: str, report: DailyReport | MonthlyReport, sections: list[str]) -> str:

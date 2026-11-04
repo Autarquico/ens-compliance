@@ -77,6 +77,16 @@ class SnapshotInputs(Strict):
         description="Claves de las ejecuciones de checks que existían al generar; se fijan al "
         "generar y la reproducción ve solo esas.",
     )
+    preaudit_runs: list[str] | None = Field(
+        default=None,
+        description="Claves de las ejecuciones de pre-auditoría que existían al generar; la "
+        "reproducción ve solo esas.",
+    )
+    preaudit_dispositions: list[str] | None = Field(
+        default=None,
+        description="Claves de las disposiciones de hallazgos que existían al generar; la "
+        "reproducción ve solo esas.",
+    )
 
 
 class DossierSnapshot(Strict):

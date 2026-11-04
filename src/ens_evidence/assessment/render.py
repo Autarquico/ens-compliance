@@ -11,14 +11,24 @@ from ens_evidence.matrix.messages import (
     blocker_text,
 )
 from ens_evidence.matrix.status import NO_CHECK_RUN
+from ens_evidence.models.preaudit import LayerStatus, PreAuditRecord
 from ens_evidence.models.readiness import Blocker
 
 HUMAN_REVIEW_PENDING = (
     "Revisión humana pendiente: la capa de juicio de la pre-auditoría no se ha ejecutado; "
     "este estado no sustituye la valoración de una persona."
 )
-NO_PRE_AUDIT = "pre-auditoría no ejecutada: no hay hallazgos registrados"
+NO_PRE_AUDIT = "Pre-auditoría no ejecutada sobre el expediente vigente."
+JUDGMENT_LABELS = {
+    LayerStatus.DONE: "ejecutada",
+    LayerStatus.NOT_RUN: "no ejecutada",
+    LayerStatus.ERROR: "con error, sin hallazgos",
+}
 NO_CONFORMITY = "La herramienta no declara conformidad."
+
+
+def counted(n: int, noun: str) -> str:
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
 
 
 NOT_CONFIGURED = "no configurado (configúralo si usas este conector)"
@@ -27,6 +37,16 @@ NO_MEASURE = "general"
 
 def _counts(summary: ConnectorSummary) -> str:
     return "  ".join(f"{status.value} {n}" for status, n in summary.counts.items())
+
+
+def pre_audit_notice(run: PreAuditRecord | None) -> str:
+    """Si hubo pre-auditoría sobre el expediente vigente, cuándo y qué fue de su capa de juicio."""
+    if run is None:
+        return NO_PRE_AUDIT
+    return (
+        f"Pre-auditoría {run.seq} del {run.recorded_at.isoformat()} sobre el expediente vigente: "
+        f"capa determinista ejecutada; capa de juicio {JUDGMENT_LABELS[run.run.judgment_status]}."
+    )
 
 
 def _connector_line(summary: ConnectorSummary) -> str:
@@ -67,7 +87,8 @@ def render_status_text(status: AssessmentStatus) -> str:
     lines += [f"  {measure}: {text}" for measure, texts in by_measure.items() for text in texts]
     lines += [f"  error: {error}" for error in result.errors]
     if status.pending_human_review:
-        lines += [HUMAN_REVIEW_PENDING, NO_PRE_AUDIT]
+        lines.append(HUMAN_REVIEW_PENDING)
+    lines.append(pre_audit_notice(status.pre_audit))
     lines.append("Fuentes técnicas (última ejecución de cada conector):")
     lines += [_connector_line(s) for s in status.connectors]
     lines.append(NO_CONFORMITY)
@@ -82,7 +103,7 @@ def render_status_json(status: AssessmentStatus) -> str:
         "declaration_state": result.declaration_state.value,
         "readiness": readiness.readiness.value,
         "pending_human_review": status.pending_human_review,
-        "pre_audit": NO_PRE_AUDIT if status.pending_human_review else None,
+        "pre_audit": pre_audit_notice(status.pre_audit),
         "blockers": [
             {
                 "kind": b.kind.value,

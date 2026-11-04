@@ -1,0 +1,185 @@
+{
+  "$defs": {
+    "Consent": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "by": {
+          "minLength": 1,
+          "title": "By",
+          "type": "string"
+        },
+        "destination": {
+          "minLength": 1,
+          "title": "Destination",
+          "type": "string"
+        },
+        "payload_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Payload Sha256",
+          "type": "string"
+        },
+        "shell_risk_accepted": {
+          "default": false,
+          "title": "Shell Risk Accepted",
+          "type": "boolean"
+        }
+      },
+      "required": [
+        "by",
+        "at",
+        "payload_sha256",
+        "destination"
+      ],
+      "title": "Consent",
+      "type": "object"
+    },
+    "DiscardReason": {
+      "description": "Por qu\u00e9 la validaci\u00f3n descarta un hallazgo de juicio (`preaudit/validate.py`).",
+      "enum": [
+        "UNKNOWN_CRITERION",
+        "PROPOSAL_NOT_ALLOWED",
+        "UNKNOWN_MEASURE",
+        "MEASURE_NOT_APPLICABLE",
+        "MEASURE_NOT_JUSTIFIED",
+        "MISSING_CITATION",
+        "UNLINKED_REF",
+        "QUOTE_NOT_FOUND",
+        "EMPTY_REASON",
+        "SENSITIVE_TEXT",
+        "UNDISPLAYABLE_TEXT",
+        "DUPLICATE"
+      ],
+      "title": "DiscardReason",
+      "type": "string"
+    },
+    "LayerStatus": {
+      "enum": [
+        "NOT_RUN",
+        "DONE",
+        "ERROR"
+      ],
+      "title": "LayerStatus",
+      "type": "string"
+    },
+    "Provider": {
+      "enum": [
+        "anthropic",
+        "openai",
+        "claude-code",
+        "codex"
+      ],
+      "title": "Provider",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "consent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Consent"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "deterministic_status": {
+      "$ref": "#/$defs/LayerStatus",
+      "default": "DONE"
+    },
+    "discards": {
+      "additionalProperties": {
+        "minimum": 1,
+        "type": "integer"
+      },
+      "default": {},
+      "propertyNames": {
+        "$ref": "#/$defs/DiscardReason"
+      },
+      "title": "Discards",
+      "type": "object"
+    },
+    "dossier": {
+      "minLength": 1,
+      "title": "Dossier",
+      "type": "string"
+    },
+    "dossier_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Dossier Sha256",
+      "type": "string"
+    },
+    "judgment_error": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Judgment Error"
+    },
+    "judgment_status": {
+      "$ref": "#/$defs/LayerStatus",
+      "default": "NOT_RUN"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "pack_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Pack Sha256",
+      "type": "string"
+    },
+    "pack_version": {
+      "minLength": 1,
+      "title": "Pack Version",
+      "type": "string"
+    },
+    "provider": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Provider"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    }
+  },
+  "required": [
+    "dossier",
+    "dossier_sha256",
+    "pack_version",
+    "pack_sha256",
+    "at"
+  ],
+  "title": "PreAuditRun",
+  "type": "object"
+}

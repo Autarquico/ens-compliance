@@ -470,10 +470,15 @@ def evidence(content: dict) -> list[str]:
 # 9 ----------------------------------------------------------------------------------------------
 
 
+def _sentence(text: str) -> str:
+    """La primera letra en mayúscula sin tocar el resto (ids, instantes, clases)."""
+    return text[:1].upper() + text[1:]
+
+
 def treatment(content: dict) -> list[str]:
     readiness = Readiness(content["readiness"])
     lines = [
-        f"{esc(content['pre_audit']).capitalize()}.",
+        f"{_sentence(esc(content['pre_audit']))}.",
         f"Preparación: {READINESS_LABELS[readiness]}.",
         "",
     ]

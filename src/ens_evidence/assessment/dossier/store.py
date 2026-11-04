@@ -8,7 +8,6 @@ Los errores nombran rutas y claves, nunca valores.
 
 import hashlib
 import json
-import re
 from dataclasses import dataclass
 from typing import Any
 
@@ -17,14 +16,16 @@ from pydantic import ValidationError
 from ens_evidence.assessment.dossier.model import DossierSnapshot
 from ens_evidence.assessment.dossier.privacy import export_problems, secret_problems
 from ens_evidence.assessment.dossier.render import render_snapshot_json
+from ens_evidence.dossier_layout import (
+    ASSESSMENTS_PREFIX,
+    DOSSIER_ID,
+    SNAPSHOT_NAME,
+    matches_content,
+)
 from ens_evidence.matrix.store import instant_stamp
 from ens_evidence.workspace import AlreadyExists, NotFound, NotText, WorkspaceStore
 
-ASSESSMENTS_PREFIX = "evidence/assessments"
-SNAPSHOT_NAME = "dossier.json"
 MARKDOWN_NAME = "dossier.md"
-
-DOSSIER_ID = re.compile(r"\d{8}T\d{12}Z-[0-9a-f]{12}")
 
 
 class DossierUnreadable(Exception):
@@ -72,7 +73,7 @@ def _verified(store: WorkspaceStore, dossier: str) -> tuple[DossierSnapshot, byt
         data = store.read_bytes(key)
     except NotFound:
         raise DossierUnreadable(dossier, [f"{key}: no existe"]) from None
-    if not dossier.endswith(hashlib.sha256(data).hexdigest()[:12]):
+    if not matches_content(dossier, data):
         raise DossierUnreadable(dossier, [f"{key}: el contenido no coincide con la huella del id"])
     try:
         raw = json.loads(data.decode("utf-8"), object_pairs_hook=_no_duplicates)
@@ -129,6 +130,9 @@ def save_markdown(store: WorkspaceStore, dossier: str, markdown: str) -> None:
 
 
 __all__ = [
+    "ASSESSMENTS_PREFIX",
+    "DOSSIER_ID",
+    "SNAPSHOT_NAME",
     "AlreadyExists",
     "DossierUnreadable",
     "NotText",

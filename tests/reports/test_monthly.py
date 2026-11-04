@@ -5,7 +5,7 @@ import pytest
 import yaml
 from checks.acceptance_helpers import make_world
 
-from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY
+from ens_evidence.assessment.render import HUMAN_REVIEW_PENDING, NO_CONFORMITY, NO_PRE_AUDIT
 from ens_evidence.backup.records import BackupRun, dump, run_key
 from ens_evidence.backup.restore_test import RestoreTest, restore_test_key
 from ens_evidence.connectors.config import connector_config_key
@@ -514,6 +514,7 @@ def test_el_mensual_lleva_un_unico_aviso_de_revision_humana(store):
 
     assert HUMAN_REVIEW_PENDING in notices
     assert REPORT_NOT_A_REVIEW not in notices
+    assert NO_PRE_AUDIT in notices
     assert sum("revisión" in n.lower() for n in notices) == 1
 
 

@@ -115,6 +115,38 @@
           "title": "Methodology Version",
           "type": "string"
         },
+        "preaudit_dispositions": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Claves de las disposiciones de hallazgos que exist\u00edan al generar; la reproducci\u00f3n ve solo esas.",
+          "title": "Preaudit Dispositions"
+        },
+        "preaudit_runs": {
+          "anyOf": [
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Claves de las ejecuciones de pre-auditor\u00eda que exist\u00edan al generar; la reproducci\u00f3n ve solo esas.",
+          "title": "Preaudit Runs"
+        },
         "product_version": {
           "minLength": 1,
           "title": "Product Version",

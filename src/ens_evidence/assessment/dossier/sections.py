@@ -25,6 +25,7 @@ from ens_evidence.assessment.dossier.model import (
     SnapshotInputs,
     SourceRef,
 )
+from ens_evidence.assessment.render import JUDGMENT_LABELS, counted
 from ens_evidence.categorization import (
     APPROVAL_KEY as CATEGORIZATION_APPROVAL_KEY,
 )
@@ -39,8 +40,10 @@ from ens_evidence.checks.store import scan_runs
 from ens_evidence.incidents import check_all_incidents
 from ens_evidence.matrix import MATRIX_KEY, MatrixExport
 from ens_evidence.models.enums import Category, Readiness
+from ens_evidence.models.preaudit import Layer, LayerStatus, PreAuditRecord
 from ens_evidence.orgdocs import all_statuses, approved_coverage
 from ens_evidence.orgdocs.keys import ANSWERS_KEY, document_key, meta_key
+from ens_evidence.preaudit.records import scan_runs as scan_preaudit_runs
 from ens_evidence.risk import RiskState, TreatmentPlanFile, risk_status, validate_risk
 from ens_evidence.risk.models import APPROVAL_KEY as RISK_APPROVAL_KEY
 from ens_evidence.risk.models import (
@@ -58,7 +61,12 @@ from ens_evidence.workspace import WorkspaceStore
 CHECK_RUN = "check-run"
 CHECK_EVIDENCE = "check-evidence"
 INCIDENT_RECORD = "incident-record"
+PREAUDIT_RUN = "preaudit-run"
 PRE_AUDIT_PENDING = "pre-auditoría no ejecutada; revisión humana pendiente"
+PRE_AUDIT_UNVERIFIED = (
+    "el registro de pre-auditorías que congeló el expediente no se verifica; revisión humana "
+    "pendiente (ver los bloqueos)"
+)
 CONCLUSIONS_PENDING = (
     "Conclusiones pendientes: las registra el responsable de la seguridad al analizar el informe "
     "(anexo III, 2.1.b) y las eleva al responsable del sistema."
@@ -395,15 +403,44 @@ def treatment(ctx: SectionContext) -> Section:
     errors: list[str] = []
     plan = load_model(ctx.store, TREATMENT_PLAN_KEY, TreatmentPlanFile, errors)
     export = ctx.export
+    pre_audit, run_sources = _frozen_pre_audit(ctx)
     content = {
-        "pre_audit": PRE_AUDIT_PENDING,
+        "pre_audit": pre_audit,
         "readiness": export.readiness.value,
         "open_blockers": [b.model_dump(mode="json") for b in export.blockers],
         "treatment_plan": _dump(plan),
         "treatment_plan_errors": errors,
     }
-    sources = ctx.sources("treatment-plan", [TREATMENT_PLAN_KEY])
+    sources = ctx.sources("treatment-plan", [TREATMENT_PLAN_KEY]) + run_sources
     return _section(9, SectionState.PENDING_HUMAN_REVIEW, sources, content)
+
+
+def _frozen_pre_audit(ctx: SectionContext) -> tuple[str, list[SourceRef]]:
+    """Qué dice la última pre-auditoría que congeló el expediente, y su registro como fuente.
+    Sus hallazgos de juicio sin disponer ya están en `open_blockers` (OPEN_FINDING)."""
+    scan = scan_preaudit_runs(ctx.store, now=ctx.read_at, known=ctx.inputs.preaudit_runs or ())
+    if scan.problems:
+        return PRE_AUDIT_UNVERIFIED, []
+    if not scan.records:
+        return PRE_AUDIT_PENDING, []
+    last = max(scan.records, key=lambda stored: stored.record.seq)
+    return _pre_audit_summary(last.record), ctx.sources(
+        PREAUDIT_RUN, [last.key], last.record.recorded_at
+    )
+
+
+def _pre_audit_summary(record: PreAuditRecord) -> str:
+    executed = record.run
+    judged = [f for f in record.findings if f.layer is Layer.JUDGMENT]
+    judgment = JUDGMENT_LABELS[executed.judgment_status]
+    if executed.judgment_status is LayerStatus.DONE:
+        judgment += f", {counted(len(judged), 'hallazgo')}"
+    return (
+        f"pre-auditoría {record.seq} del {record.recorded_at.isoformat()} sobre el expediente "
+        f"{executed.dossier}: capa determinista ejecutada, "
+        f"{counted(len(record.findings) - len(judged), 'hallazgo')}; capa de juicio {judgment}. "
+        "Cada hallazgo es una propuesta; revisión humana pendiente"
+    )
 
 
 # 10 y 11 ----------------------------------------------------------------------------------------

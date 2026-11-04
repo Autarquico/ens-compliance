@@ -1,0 +1,127 @@
+{
+  "$defs": {
+    "Classification": {
+      "enum": [
+        "NC_MAYOR",
+        "NC_MENOR",
+        "OBSERVACION",
+        "SIN_CLASIFICAR"
+      ],
+      "title": "Classification",
+      "type": "string"
+    },
+    "Layer": {
+      "enum": [
+        "DETERMINISTIC",
+        "JUDGMENT"
+      ],
+      "title": "Layer",
+      "type": "string"
+    },
+    "Ref": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "kind": {
+          "$ref": "#/$defs/RefKind"
+        }
+      },
+      "required": [
+        "kind",
+        "id"
+      ],
+      "title": "Ref",
+      "type": "object"
+    },
+    "RefKind": {
+      "enum": [
+        "DOCUMENT",
+        "EVIDENCE",
+        "SECTION"
+      ],
+      "title": "RefKind",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "classification_source": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Classification Source"
+    },
+    "criterion": {
+      "minLength": 1,
+      "title": "Criterion",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Id",
+      "type": "string"
+    },
+    "layer": {
+      "$ref": "#/$defs/Layer"
+    },
+    "measure": {
+      "minLength": 1,
+      "title": "Measure",
+      "type": "string"
+    },
+    "proposal": {
+      "$ref": "#/$defs/Classification"
+    },
+    "quote": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Quote"
+    },
+    "reason": {
+      "minLength": 1,
+      "title": "Reason",
+      "type": "string"
+    },
+    "refs": {
+      "items": {
+        "$ref": "#/$defs/Ref"
+      },
+      "title": "Refs",
+      "type": "array"
+    },
+    "source": {
+      "minLength": 1,
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "id",
+    "layer",
+    "proposal",
+    "measure",
+    "criterion",
+    "reason",
+    "source"
+  ],
+  "title": "Finding",
+  "type": "object"
+}
