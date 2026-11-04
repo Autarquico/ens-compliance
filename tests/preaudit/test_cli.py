@@ -157,7 +157,7 @@ def test_discards_are_broken_down_by_reason():
     breakdown = discard_breakdown({DiscardReason.QUOTE_NOT_FOUND: 2, DiscardReason.DUPLICATE: 1})
 
     assert breakdown == (
-        " (cita no literal o demasiado corta: 2; duplicado; se queda la clase más grave: 1)"
+        " (cita no literal o demasiado corta: 2; duplicado (se queda la clase más grave): 1)"
     )
     assert "apoyarse en el expediente" not in breakdown
     assert discard_breakdown({}) == ""

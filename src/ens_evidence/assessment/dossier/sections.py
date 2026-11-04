@@ -25,7 +25,7 @@ from ens_evidence.assessment.dossier.model import (
     SnapshotInputs,
     SourceRef,
 )
-from ens_evidence.assessment.render import JUDGMENT_LABELS
+from ens_evidence.assessment.render import JUDGMENT_LABELS, counted
 from ens_evidence.categorization import (
     APPROVAL_KEY as CATEGORIZATION_APPROVAL_KEY,
 )
@@ -424,27 +424,23 @@ def _frozen_pre_audit(ctx: SectionContext) -> tuple[str, list[SourceRef]]:
     if not scan.records:
         return PRE_AUDIT_PENDING, []
     last = max(scan.records, key=lambda stored: stored.record.seq)
-    return pre_audit_summary(last.record), ctx.sources(
+    return _pre_audit_summary(last.record), ctx.sources(
         PREAUDIT_RUN, [last.key], last.record.recorded_at
     )
 
 
-def pre_audit_summary(record: PreAuditRecord) -> str:
+def _pre_audit_summary(record: PreAuditRecord) -> str:
     executed = record.run
     judged = [f for f in record.findings if f.layer is Layer.JUDGMENT]
     judgment = JUDGMENT_LABELS[executed.judgment_status]
     if executed.judgment_status is LayerStatus.DONE:
-        judgment += f", {_counted(len(judged), 'hallazgo')}"
+        judgment += f", {counted(len(judged), 'hallazgo')}"
     return (
         f"pre-auditoría {record.seq} del {record.recorded_at.isoformat()} sobre el expediente "
         f"{executed.dossier}: capa determinista ejecutada, "
-        f"{_counted(len(record.findings) - len(judged), 'hallazgo')}; capa de juicio {judgment}. "
+        f"{counted(len(record.findings) - len(judged), 'hallazgo')}; capa de juicio {judgment}. "
         "Cada hallazgo es una propuesta; revisión humana pendiente"
     )
-
-
-def _counted(n: int, noun: str) -> str:
-    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
 
 
 # 10 y 11 ----------------------------------------------------------------------------------------

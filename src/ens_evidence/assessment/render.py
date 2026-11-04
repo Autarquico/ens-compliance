@@ -27,6 +27,10 @@ JUDGMENT_LABELS = {
 NO_CONFORMITY = "La herramienta no declara conformidad."
 
 
+def counted(n: int, noun: str) -> str:
+    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
+
+
 NOT_CONFIGURED = "no configurado (configúralo si usas este conector)"
 NO_MEASURE = "general"
 

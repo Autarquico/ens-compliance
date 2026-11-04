@@ -75,6 +75,7 @@ from ens_evidence.assessment.dossier.store import (
     save_snapshot,
 )
 from ens_evidence.assessment.dossier.verification import package_required, verification_problems
+from ens_evidence.assessment.render import counted
 from ens_evidence.backup import (
     IMMUTABILITY_PREFIX,
     BackupError,
@@ -3437,7 +3438,7 @@ DISCARD_LABELS = {
     DiscardReason.EMPTY_REASON: "sin motivo",
     DiscardReason.SENSITIVE_TEXT: "texto con un secreto o un dato personal",
     DiscardReason.UNDISPLAYABLE_TEXT: "texto que no se puede mostrar tal cual",
-    DiscardReason.DUPLICATE: "duplicado; se queda la clase más grave",
+    DiscardReason.DUPLICATE: "duplicado (se queda la clase más grave)",
 }
 SHA256_ARG = re.compile(r"[0-9a-f]{64}")
 ProviderOption = Annotated[
@@ -3708,10 +3709,6 @@ def print_dossier_preaudit(view: FindingsView, dossier: str) -> None:
             f"{state.run_seq}): {state.state.value}"
             + ("; bloquea la preparación" if state.blocks else "")
         )
-
-
-def counted(n: int, noun: str) -> str:
-    return f"{n} {noun}" if n == 1 else f"{n} {noun}s"
 
 
 def discard_breakdown(discards: Mapping[DiscardReason, int]) -> str:
