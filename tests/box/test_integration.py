@@ -465,3 +465,58 @@ def test_copia_run_contra_un_repositorio_restic_local_desde_la_imagen_final(box,
     assert backup.returncode == 0, backup.stdout + backup.stderr
     assert "completada" in backup.stdout
     assert "Snapshot" in backup.stdout
+
+
+def test_restart_app_se_niega_si_la_etiqueta_de_la_imagen_ya_no_es_la_registrada(box, installed):
+    labeled, good = box.tags["labeled"], box.tags["good"]
+    registered = run(
+        ["docker", "image", "inspect", "--format", "{{.Id}}", f"ens-evidence:{labeled}"]
+    )
+    before = box.container("app")
+    try:
+        run(["docker", "tag", f"ens-evidence:{good}", f"ens-evidence:{labeled}"], check=True)
+
+        restart = box.sh("restart", "app")
+
+        assert restart.returncode != 0
+        assert "no es la registrada" in restart.stderr
+        assert box.container("app") == before, "no debe recrearse con otra imagen"
+    finally:
+        run(["docker", "tag", registered.stdout.strip(), f"ens-evidence:{labeled}"], check=True)
+
+
+def test_dos_operaciones_a_la_vez_la_segunda_se_niega_sin_cambiar_nada(box, installed):
+    labeled, following = box.tags["labeled"], box.tags["next"]
+    lock = box.clone / ".git" / "ens-box" / f"{box.project}.lock"
+    first = subprocess.Popen(
+        ["sh", "deploy/box.sh", "update", "--no-backup", following],
+        cwd=box.clone,
+        env=box.env(),
+        stdout=subprocess.PIPE,
+        stderr=subprocess.PIPE,
+        text=True,
+    )
+    try:
+        deadline = time.monotonic() + 120
+        while not lock.exists():
+            assert first.poll() is None, "la primera operación terminó sin tomar el lock"
+            assert time.monotonic() < deadline, "la primera operación no tomó el lock"
+            time.sleep(0.05)
+
+        for args in (
+            ("update", "--no-backup", box.tags["crash"]),
+            ("restart", "app"),
+            ("rollback",),
+        ):
+            second = box.sh(*args)
+            assert second.returncode != 0, args
+            assert "otra operación de despliegue" in second.stderr, args
+    finally:
+        out, err = first.communicate(timeout=600)
+
+    assert first.returncode == 0, out + err
+    assert not lock.exists(), "el lock debe soltarse al terminar"
+    registry = box.registry(following)
+    assert registry["current"]["tag"] == following
+    assert registry["previous"]["tag"] == labeled
+    assert registry["attempt"] is None

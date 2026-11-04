@@ -88,6 +88,33 @@ def test_rechaza_un_secreto(fresh):
     assert result.exit_code == 1 and "secreto" in result.stderr
 
 
+def test_add_asset_nombra_el_campo_con_secreto_y_nunca_el_valor(fresh):
+    settings, store = fresh
+    secret = "ghp_" + "A1b2C3d4E5" * 4
+    result = ens(
+        settings, "scope", "add-asset", "--id", "x", "--type", "server", *SERVER,
+        "--set", f"owner={secret}",
+    )  # fmt: skip
+    assert result.exit_code == 1 and "owner" in result.stderr
+    assert secret not in result.stdout + result.stderr
+    assert "id: x" not in store.read_text("scope/assets.yaml")
+
+
+@pytest.mark.parametrize("field", ["name", "description"])
+def test_set_system_rechaza_un_secreto_antes_de_escribir(fresh, field):
+    settings, store = fresh
+    secret = "ghp_" + "A1b2C3d4E5" * 4
+    before = store.read_text("scope/system.yaml")
+    values = {"name": "Autarqui", "description": "SaaS", field: secret}
+    result = ens(
+        settings, "scope", "set-system", "--name", values["name"],
+        "--description", values["description"],
+    )  # fmt: skip
+    assert result.exit_code == 1 and field in result.stderr
+    assert secret not in result.stdout + result.stderr
+    assert store.read_text("scope/system.yaml") == before
+
+
 def test_cambiar_el_alcance_revoca_la_aprobacion(fresh):
     settings, store = fresh
     enrol(settings, "--include")

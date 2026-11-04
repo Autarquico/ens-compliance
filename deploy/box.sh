@@ -28,6 +28,7 @@ STATE_FILE=/data/state/box-deploy.json
 APP_UID=10001
 HEALTH_TIMEOUT=${ENS_BOX_HEALTH_TIMEOUT:-180}
 WORK_DIR=
+LOCK_DIR=
 REL=
 COMMIT=
 RELEASE_FILES="compose.yaml deploy/Caddyfile deploy/box.sh"
@@ -54,7 +55,31 @@ new_work_dir() {
     WORK_DIR=$(mktemp -d)
   fi
 }
-trap cleanup EXIT
+
+# Una sola operación de despliegue por proyecto a la vez. mkdir es atómico y portable; el lock
+# lleva el pid de quien lo tiene y se suelta al salir (también con INT/TERM).
+git_dir() { (cd "$ROOT" && cd "$(git rev-parse --git-dir)" && pwd); }
+
+acquire_lock() {
+  lock="$(git_dir)/ens-box/$PROJECT.lock"
+  mkdir -p "$(dirname "$lock")"
+  if ! mkdir "$lock" 2>/dev/null; then
+    holder=$(cat "$lock/pid" 2>/dev/null || true)
+    if [ -n "$holder" ] && ! kill -0 "$holder" 2>/dev/null; then
+      die "Hay un lock huérfano de una operación (pid $holder) que ya no existe; si estás seguro de que no hay otra en marcha, borra $lock y repite."
+    fi
+    die "Hay otra operación de despliegue en marcha${holder:+ (pid $holder)}; espera a que termine. No se ha cambiado nada."
+  fi
+  LOCK_DIR=$lock
+  printf '%s\n' "$$" >"$LOCK_DIR/pid"
+}
+
+release_lock() {
+  [ -z "$LOCK_DIR" ] || rm -rf "$LOCK_DIR"
+  LOCK_DIR=
+}
+
+trap 'cleanup; release_lock' EXIT
 trap 'exit 130' INT TERM
 
 usage() {
@@ -184,6 +209,8 @@ elif op == "set":
     data[args[0]] = dict(item.split("=", 1) for item in args[1:])
     save(data)
 elif op == "promote":
+    if not data.get("attempt"):
+        sys.exit("no hay un intento que promover; no se cambia el registro")
     data["previous"], data["current"], data["attempt"] = data["current"], data["attempt"], None
     save(data)
 elif op == "rolled-back":
@@ -286,7 +313,7 @@ use_release() {
   [ "${#commit}" -eq 40 ] || [ "${#commit}" -eq 64 ] || die "El commit registrado no es un hash de git: $commit"
   git -C "$ROOT" rev-parse --verify --quiet "$commit^{commit}" >/dev/null ||
     die "El commit registrado $commit no existe en $ROOT (¿git fetch --tags?)."
-  releases="$(cd "$ROOT" && cd "$(git rev-parse --git-dir)" && pwd)/ens-box/releases"
+  releases="$(git_dir)/ens-box/releases"
   REL="$releases/$commit"
   if [ ! -d "$REL" ]; then
     new_work_dir "$releases"
@@ -350,6 +377,7 @@ cmd_install() {
   tag=$1
   valid_tag "$tag" || die "Etiqueta no válida: $tag (esperado vX.Y.Z o vX.Y.Z-rcN)."
   require_tools
+  acquire_lock
   check_secret_files
   resolve_tag "$tag"
   use_release "$COMMIT"
@@ -403,6 +431,7 @@ cmd_update() {
   tag=$1
   valid_tag "$tag" || die "Etiqueta no válida: $tag (esperado vX.Y.Z o vX.Y.Z-rcN)."
   require_tools
+  acquire_lock
   check_secret_files
   require_volume
   current=$(state_get current.tag)
@@ -463,6 +492,7 @@ cmd_update() {
 cmd_rollback() {
   [ $# -eq 0 ] || usage
   require_tools
+  acquire_lock
   check_secret_files
   require_volume
   attempt=$(state_get attempt.tag)
@@ -497,6 +527,7 @@ cmd_restart() {
     *) usage ;;
   esac
   require_tools
+  acquire_lock
   check_secret_files
   require_volume
   current=$(state_get current.tag)
@@ -507,6 +538,12 @@ cmd_restart() {
   compose_sha=$(state_get current.compose_sha256)
   caddyfile_sha=$(state_get current.caddyfile_sha256)
   use_release "$commit" "$compose_sha" "$caddyfile_sha"
+  # La etiqueta de la imagen es mutable: recrear la app exige que siga siendo la registrada.
+  if [ "$service" = app ]; then
+    wanted_id=$(state_get current.image_id)
+    [ "$(image_id "$current")" = "$wanted_id" ] ||
+      die "La imagen local $(image_ref "$current") no es la registrada; no se recrea."
+  fi
   export ENS_VERSION="$current"
   info "Recreando $service con la release $current..."
   dc up -d --no-build --no-deps --force-recreate "$service"

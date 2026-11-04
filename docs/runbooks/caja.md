@@ -140,9 +140,10 @@ Se espera que no llegue contenido de la caja: una redirección al acceso de
 Cloudflare o un 403. Si sale 200 con contenido, quita el hostname del túnel y
 avisa al responsable.
 
-Esta comprobación no se ha ejecutado con una cuenta real de Cloudflare. Tampoco
-se ha probado `cloudflared` en marcha ni su healthcheck. Se verifica en
-`validation-selfassessment`.
+Esta comprobación no se ha ejecutado con una cuenta real de Cloudflare.
+Tampoco están verificados `cloudflared` en marcha ni su healthcheck, ni la
+denegación del acceso desde Internet. Nada de esto se ha comprobado todavía:
+se verifica en `validation-selfassessment`.
 
 ## 5. Inscribir la caja como activo del alcance
 

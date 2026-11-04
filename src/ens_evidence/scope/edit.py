@@ -72,14 +72,21 @@ def _write(store: WorkspaceStore, key: str, data: dict[str, Any]) -> None:
     )
 
 
+def _reject_secrets(key: str, fields: dict[str, Any]) -> None:
+    """Rechaza antes de escribir; nombra el campo, nunca el valor."""
+    if leaked := find_secrets(fields):
+        raise ScopeEditRejected(
+            [f"{key}: {path} parece contener un secreto; quítalo" for path in leaked]
+        )
+
+
 def add_asset(store: WorkspaceStore, fields: dict[str, Any], include: bool, now: datetime) -> bool:
     """Añade un activo (y lo incluye en el alcance si include). True si revocó la aprobación.
 
     Valida el activo con el modelo del inventario; la coherencia global la comprueban
     inventory validate y scope approve.
     """
-    if find_secrets(fields):
-        raise ScopeEditRejected([f"{ASSETS_KEY}: el activo parece contener un secreto"])
+    _reject_secrets(ASSETS_KEY, fields)
     assets = _read(store, ASSETS_KEY)
     current = assets.get("assets") or []
     if fields["id"] in {a.get("id") for a in current if isinstance(a, dict)}:
@@ -96,6 +103,7 @@ def add_asset(store: WorkspaceStore, fields: dict[str, Any], include: bool, now:
 
 def set_system(store: WorkspaceStore, name: str, description: str, now: datetime) -> bool:
     """Rellena nombre y descripción del sistema. True si revocó la aprobación."""
+    _reject_secrets(SYSTEM_KEY, {"name": name, "description": description})
     system = _read(store, SYSTEM_KEY)
     system.update(name=name, description=description)
     _checked(SYSTEM_KEY, SystemScope, system)
