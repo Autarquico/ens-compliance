@@ -42,6 +42,8 @@ from ens_evidence.incidents.model import IncidentStatus
 from ens_evidence.matrix import MATRIX_KEY, CheckResultsSource, ExportRejected, assess, build_export
 from ens_evidence.models.enums import Category
 from ens_evidence.orgdocs.keys import ANSWERS_KEY
+from ens_evidence.preaudit.findings import PreAuditFindings
+from ens_evidence.preaudit.records import DISPOSITIONS_PREFIX, RUNS_PREFIX
 from ens_evidence.privacy_text import has_credential
 from ens_evidence.risk.models import RISK_FILES
 from ens_evidence.scope.inventory import ASSETS_KEY, DEPENDENCIES_KEY, SERVICES_KEY, SYSTEM_KEY
@@ -50,6 +52,7 @@ from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
 from ens_evidence.yaml_unique import safe_load_unique
 
 TEMPORAL_INPUTS = ("generated_at", "evaluated_at", "reference_now")
+FROZEN_KEYS = ("check_runs", "preaudit_runs", "preaudit_dispositions")
 EVIDENCE_SECTION = 8
 TREATMENT_SECTION = 9
 OUTCOME_SECTIONS = (RESULTS_SECTION, EVIDENCE_SECTION, TREATMENT_SECTION)
@@ -107,8 +110,7 @@ def build_snapshot(
     """
     store = ReadOnlyStore(store)
     _require_reproducible(inputs)
-    if inputs.check_runs is None:
-        inputs = inputs.model_copy(update={"check_runs": history_keys(store)})
+    inputs = _frozen_keys(store, inputs)
     opened = open_dossier(store, inputs.evaluated_at)
     declaration = declaration_status(store, inputs.evaluated_at)
     if declaration.declaration is None:
@@ -117,7 +119,8 @@ def build_snapshot(
             + list(declaration.errors)
         )
     source = checks or FrozenCheckResults(inputs.reference_now, inputs.check_runs)
-    evaluation = assess(store, inputs.evaluated_at, checks=source)
+    findings = PreAuditFindings(inputs.preaudit_runs, inputs.preaudit_dispositions)
+    evaluation = assess(store, inputs.evaluated_at, checks=source, findings=findings)
     try:
         export = build_export(store, evaluation, generated_at=inputs.generated_at)
     except ExportRejected as exc:
@@ -133,6 +136,17 @@ def build_snapshot(
     if leaks:
         raise DossierRejected(leaks)
     return snapshot
+
+
+def _frozen_keys(store: WorkspaceStore, inputs: SnapshotInputs) -> SnapshotInputs:
+    """Al generar, fija las claves de los historiales que existen; al reproducir, ya vienen."""
+    keys = {
+        "check_runs": lambda: history_keys(store),
+        "preaudit_runs": lambda: sorted(store.list(RUNS_PREFIX)),
+        "preaudit_dispositions": lambda: sorted(store.list(DISPOSITIONS_PREFIX)),
+    }
+    missing = {name: read() for name, read in keys.items() if getattr(inputs, name) is None}
+    return inputs.model_copy(update=missing) if missing else inputs
 
 
 def _require_reproducible(inputs: SnapshotInputs) -> None:
@@ -199,8 +213,8 @@ def drift_projection(snapshot: DossierSnapshot) -> dict[str, JsonValue]:
     - los incidentes abiertos y los registros de su cadena (la proyección conserva los cerrados);
       abrir o actualizar un incidente no invalida un expediente en curso (plan r2, punto 4);
     - los metadatos temporales de generación (`generated_at`, `evaluated_at`, `reference_now`),
-      las claves de las ejecuciones congeladas (`check_runs`), los instantes de las fuentes y
-      `last_run_at`;
+      las claves congeladas (`check_runs` y las de la pre-auditoría), los instantes de las
+      fuentes y `last_run_at`;
     - las ejecuciones de checks y las evidencias que solo son su entrada;
     - los resultados de evaluación (bloqueos, preparación, `implemented`, `counts`, estados de las
       secciones 7 a 9), que se recalculan: una ejecución nueva y equivalente no deriva, y una
@@ -209,7 +223,8 @@ def drift_projection(snapshot: DossierSnapshot) -> dict[str, JsonValue]:
     document = snapshot.model_dump(mode="json")
     for name in TEMPORAL_INPUTS:
         del document["inputs"][name]
-    del document["inputs"]["check_runs"]
+    for name in FROZEN_KEYS:
+        del document["inputs"][name]
     sections = {s["number"]: s for s in document["sections"]}
     derived = {m["id"] for m in sections[EVIDENCE_SECTION]["content"]["check_inputs"]}
     for section in document["sections"]:

@@ -12,6 +12,7 @@
     }
   },
   "additionalProperties": false,
+  "description": "La decisi\u00f3n sobre un hallazgo. Cubre sus apariciones hasta la ejecuci\u00f3n `covers_run`; si\nuna ejecuci\u00f3n posterior lo vuelve a proponer, esa aparici\u00f3n queda abierta.",
   "properties": {
     "at": {
       "format": "date-time",
@@ -22,6 +23,11 @@
       "minLength": 1,
       "title": "By",
       "type": "string"
+    },
+    "covers_run": {
+      "minimum": 1,
+      "title": "Covers Run",
+      "type": "integer"
     },
     "evidence_id": {
       "anyOf": [
@@ -58,6 +64,7 @@
   },
   "required": [
     "finding_id",
+    "covers_run",
     "state",
     "by",
     "at"

@@ -75,6 +75,7 @@ from ens_evidence.assessment.dossier.store import (
     save_markdown,
     save_snapshot,
 )
+from ens_evidence.assessment.dossier.verification import verification_problems
 from ens_evidence.backup import (
     IMMUTABILITY_PREFIX,
     BackupError,
@@ -192,6 +193,7 @@ from ens_evidence.models.dossier import CorrectiveMeasure
 from ens_evidence.models.enums import Category, CheckStatus, CollectionStatus, DossierState, Role
 from ens_evidence.models.preaudit import (
     PROPOSAL_NOTICE,
+    DispositionState,
     Layer,
     LayerStatus,
     PreAuditRecord,
@@ -214,6 +216,8 @@ from ens_evidence.orgdocs import (
     skeleton,
 )
 from ens_evidence.preaudit import service as preaudit
+from ens_evidence.preaudit.findings import FindingState, FindingsView, findings_view
+from ens_evidence.preaudit.review import ReviewRejected, review
 from ens_evidence.reports.daily import build_daily
 from ens_evidence.reports.model import DailyReport, Unavailable
 from ens_evidence.reports.model import render_json as render_report_json
@@ -3122,6 +3126,7 @@ def dossier_show_status(ctx: typer.Context, dossier: DossierIdArgument) -> None:
         typer.echo(f"Siguiente paso: {status.next_step}", err=True)
     else:
         typer.echo(f"Siguiente paso: {status.next_step}")
+    print_dossier_preaudit(findings_view(store, clock()), dossier)
     prints = status.fingerprints
     for label, value in (
         ("instantánea", prints.snapshot),
@@ -3336,7 +3341,7 @@ def dossier_verify(ctx: typer.Context, dossier: DossierIdArgument) -> None:
     Sale con 1 si los bytes no coinciden o el paquete no se verifica."""
     store = open_workspace(ctx)
     snapshot = load_dossier(store, dossier)
-    problems = preaudit.verification_problems(store, dossier, snapshot)
+    problems = verification_problems(store, dossier, snapshot)
     checked_package = has_package(store, dossier) or snapshot.category is not Category.BASICA
     if problems:
         raise dossier_rejected(f"La verificación de {dossier} ha fallado:", problems)
@@ -3511,6 +3516,9 @@ def preaudit_show(
         stored = preaudit.show(store, run)
     except preaudit.PreAuditRejected as exc:
         raise preaudit_rejected("No se puede mostrar la pre-auditoría:", exc) from None
+    view = findings_view(store, clock())
+    if view.problems:
+        raise dossier_rejected("El registro de disposiciones no se verifica:", list(view.problems))
     record = stored.record
     executed = record.run
     typer.echo(f"Pre-auditoría {record.seq} ({stored.key})")
@@ -3539,6 +3547,8 @@ def preaudit_show(
             for line in finding.quote.splitlines():
                 typer.echo(f"    {line}")
         typer.echo(f"  Fuente: {finding.source}")
+        typer.echo(f"  Id: {finding.id}")
+        typer.echo(f"  {disposition_line(finding.layer, view.state_of(finding.id))}")
         typer.echo(f"  {PROPOSAL_NOTICE[0].upper()}{PROPOSAL_NOTICE[1:]}.")
     for grouping in record.groupings:
         typer.echo("")
@@ -3548,6 +3558,99 @@ def preaudit_show(
         )
     typer.echo("")
     typer.echo(PREAUDIT_FOOTER)
+
+
+DISPOSITION_LABELS = {
+    DispositionState.OPEN: "abierto, sin disponer",
+    DispositionState.ACCEPTED: "reconocido, sigue abierto",
+    DispositionState.RESOLVED: "resuelto",
+    DispositionState.DISMISSED: "descartado",
+}
+
+
+def disposition_line(layer: Layer, state: FindingState | None) -> str:
+    """El estado de un hallazgo como vista derivada: la ejecución que lo propuso no cambia."""
+    if layer is Layer.DETERMINISTIC or state is None:
+        return "Disposición: no se dispone; sus hechos ya bloquean la preparación por sí mismos."
+    line = f"Disposición: {state.state.value} ({DISPOSITION_LABELS[state.state]})"
+    if state.disposition is not None:
+        decided = state.disposition
+        line += f", {decided.by}, {decided.at.isoformat()}"
+        if decided.evidence_id:
+            line += f", evidencia {decided.evidence_id}"
+        if decided.reason:
+            line += f", motivo: {decided.reason}"
+    return line + ("; bloquea la preparación." if state.blocks else "; no bloquea.")
+
+
+class Decision(StrEnum):
+    ACCEPTED = "accepted"
+    RESOLVED = "resolved"
+    DISMISSED = "dismissed"
+
+
+@preaudit_app.command("review")
+@handled
+def preaudit_review(
+    ctx: typer.Context,
+    finding: Annotated[str, typer.Argument(help="Id del hallazgo (ver `preaudit show`).")],
+    by: Annotated[str, typer.Option("--by", help="Quién decide (nombre declarado).")],
+    decision: Annotated[
+        Decision,
+        typer.Option(
+            "--decision",
+            help="accepted (reconocido; sigue bloqueando), resolved (con --evidence) o "
+            "dismissed (con --reason).",
+        ),
+    ],
+    evidence: Annotated[
+        str | None, typer.Option("--evidence", help="Evidencia que lo corrige (EV-…).")
+    ] = None,
+    reason: Annotated[str | None, typer.Option("--reason", help="Motivo de la decisión.")] = None,
+) -> None:
+    """Registra la disposición humana de un hallazgo de juicio (solo adición).
+
+    Solo `resolved` y `dismissed` dejan de bloquear la preparación."""
+    if not SHA256_ARG.fullmatch(finding):
+        raise fail("FINDING: indica el id del hallazgo (64 caracteres hexadecimales).")
+    store = open_workspace(ctx)
+    try:
+        stored, state = review(
+            store,
+            finding,
+            DispositionState(decision.name),
+            by=by,
+            now=clock(),
+            evidence_id=evidence,
+            reason=reason,
+        )
+    except ReviewRejected as exc:
+        raise dossier_rejected("No se registra la disposición:", exc.errors) from None
+    typer.echo(f"{state.state.value} registrado para {finding} por {by} ({stored.key}).")
+    typer.echo(f"Huella del registro: {stored.sha256}")
+    typer.echo(disposition_line(Layer.JUDGMENT, state))
+    typer.echo(DECLARED_NAME_NOTICE)
+    typer.echo(PREAUDIT_FOOTER)
+
+
+def print_dossier_preaudit(view: FindingsView, dossier: str) -> None:
+    """Los hallazgos de juicio propuestos sobre `dossier` y su estado actual. Vista derivada: la
+    instantánea no cambia."""
+    found = [s for s in view.states if s.dossier == dossier]
+    typer.echo("Pre-auditoría (vista derivada; la instantánea no cambia):")
+    if view.problems:
+        typer.echo("  el registro de pre-auditorías no se verifica:", err=True)
+        print_errors(list(view.problems))
+        return
+    if not found:
+        typer.echo("  sin hallazgos de juicio registrados sobre este expediente.")
+    for state in found:
+        finding = state.finding
+        typer.echo(
+            f"  [{finding.proposal.value}] {finding.measure} — {finding.id} (ejecución "
+            f"{state.run_seq}): {state.state.value}"
+            + ("; bloquea la preparación" if state.blocks else "")
+        )
 
 
 def print_preaudit_layers(record: PreAuditRecord) -> None:

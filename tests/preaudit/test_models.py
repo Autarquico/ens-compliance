@@ -134,7 +134,7 @@ def test_finding_rejects_unknown_fields():
 
 
 def disposition(state, **over) -> Disposition:
-    return Disposition(finding_id=SHA, state=state, by="Ana", at=AT, **over)
+    return Disposition(finding_id=SHA, covers_run=1, state=state, by="Ana", at=AT, **over)
 
 
 def test_disposition_valid_combinations():
@@ -162,9 +162,15 @@ def test_disposition_rejects_invalid_combinations(state, over, match):
 
 def test_disposition_requires_person_and_aware_instant():
     with pytest.raises(ValidationError):
-        Disposition(finding_id=SHA, state=DispositionState.OPEN, by="", at=AT)
+        Disposition(finding_id=SHA, covers_run=1, state=DispositionState.OPEN, by="", at=AT)
     with pytest.raises(ValidationError):
-        Disposition(finding_id=SHA, state=DispositionState.OPEN, by="Ana", at=datetime(2026, 1, 1))
+        Disposition(
+            finding_id=SHA,
+            covers_run=1,
+            state=DispositionState.OPEN,
+            by="Ana",
+            at=datetime(2026, 1, 1),
+        )
 
 
 def grouping(proposal, measures, ids=("a", "b")) -> GroupingProposal:

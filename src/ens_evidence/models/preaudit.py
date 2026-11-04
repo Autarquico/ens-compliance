@@ -131,7 +131,11 @@ class Finding(Strict):
 
 
 class Disposition(Strict):
+    """La decisión sobre un hallazgo. Cubre sus apariciones hasta la ejecución `covers_run`; si
+    una ejecución posterior lo vuelve a proponer, esa aparición queda abierta."""
+
     finding_id: str = Field(pattern=SHA256_PATTERN)
+    covers_run: int = Field(ge=1)
     state: DispositionState
     by: str = Field(min_length=1)
     at: AwareDatetime
@@ -147,6 +151,41 @@ class Disposition(Strict):
             raise ValueError("evidence_id is only valid in RESOLVED")
         if self.state is DispositionState.DISMISSED and not self.reason:
             raise ValueError("DISMISSED requires a reason")
+        return self
+
+
+UNBLOCKING = frozenset({DispositionState.RESOLVED, DispositionState.DISMISSED})
+"""Solo estas disposiciones dejan de bloquear; `ACCEPTED` reconoce el hallazgo y sigue abierto."""
+
+NEXT_STATES = {
+    DispositionState.OPEN: frozenset(
+        {DispositionState.ACCEPTED, DispositionState.RESOLVED, DispositionState.DISMISSED}
+    ),
+    DispositionState.ACCEPTED: UNBLOCKING,
+    DispositionState.RESOLVED: frozenset(),
+    DispositionState.DISMISSED: frozenset(),
+}
+
+BLOCKING_PROPOSALS = frozenset({Classification.NC_MAYOR, Classification.NC_MENOR})
+"""Las propuestas de juicio que, sin disponer, bloquean la preparación (`OPEN_FINDING`)."""
+
+
+class DispositionRecord(Strict):
+    """Un registro de la cadena de disposiciones, de solo adición (`chain.py`)."""
+
+    seq: int = Field(ge=1)
+    previous_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    recorded_at: AwareDatetime
+    disposition: Disposition
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        if (self.seq == 1) != (self.previous_sha256 is None):
+            raise ValueError("only the first record has no previous_sha256")
+        if self.disposition.state is DispositionState.OPEN:
+            raise ValueError("a disposition decides; OPEN is the state before any")
+        if self.disposition.at != self.recorded_at:
+            raise ValueError("disposition.at is recorded_at")
         return self
 
 

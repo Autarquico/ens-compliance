@@ -15,7 +15,7 @@ transiciones del expediente:
 3. escribir el registro.
 
 Una ejecución nueva nunca sustituye a otra ni cierra lo que propuso, y una fallida o vacía queda
-registrada como tal. La disposición humana de los hallazgos va aparte (T6b).
+registrada como tal. La disposición humana de los hallazgos va aparte (`review.py`).
 """
 
 import hashlib
@@ -26,19 +26,13 @@ from dataclasses import dataclass
 from datetime import datetime
 
 from ens_evidence import chain
-from ens_evidence.assessment.dossier import build_snapshot, rebuild_and_diff, snapshot_sha256
-from ens_evidence.assessment.dossier.build import DossierRejected
-from ens_evidence.assessment.dossier.derived import markdown_problems, view_problems
-from ens_evidence.assessment.dossier.model import DossierSnapshot
-from ens_evidence.assessment.dossier.package import has_package, verify_package
+from ens_evidence.assessment.dossier import rebuild_and_diff
 from ens_evidence.assessment.dossier.store import (
     DossierUnreadable,
     load_snapshot,
     stored_snapshot_sha256,
 )
-from ens_evidence.assessment.dossier.transitions import scan_transitions
-from ens_evidence.categorization import CategorizationNotCurrent
-from ens_evidence.models.enums import Category
+from ens_evidence.assessment.dossier.verification import verification_problems
 from ens_evidence.models.preaudit import (
     CLI_PROVIDERS,
     Consent,
@@ -68,16 +62,14 @@ from ens_evidence.preaudit.payload import (
     canonical_json,
     describe_destination,
 )
+from ens_evidence.preaudit.records import PREAUDITS_PREFIX, RUNS_PREFIX, RunScan, scan_runs
 from ens_evidence.preaudit.redact import RedactionLeak
 from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.workspace import AlreadyExists, NotFound, PreAuditSettings, WorkspaceStore
 
-PREAUDITS_PREFIX = "evidence/preaudits"
-RUNS_PREFIX = f"{PREAUDITS_PREFIX}/runs"
 PREPARED_NAME = "prepared.json"
 PAYLOAD_NAME = "payload.json"
 PREPARED_FORMAT = "ens-preaudit-prepared/1"
-RUNS_OWNER = "preaudits"
 _PREPARED_KEY = re.compile(
     rf"{PREAUDITS_PREFIX}/\d{{8}}T\d{{12}}Z-[0-9a-f]{{12}}/{re.escape(PREPARED_NAME)}"
 )
@@ -129,28 +121,6 @@ def dossier_problems(store: WorkspaceStore, dossier: str) -> list[str]:
     problems += [
         f"deriva en {section}: {line}" for section, lines in drift.items() for line in lines
     ]
-    return problems
-
-
-def verification_problems(
-    store: WorkspaceStore, dossier: str, snapshot: DossierSnapshot
-) -> list[str]:
-    """Los problemas que informa `assessment dossier verify`."""
-    problems: list[str] = []
-    try:
-        rebuilt = build_snapshot(store, snapshot.inputs)
-    except (DossierRejected, CategorizationNotCurrent) as exc:
-        problems.append(f"no se puede reproducir con las entradas congeladas ({exc})")
-    else:
-        if snapshot_sha256(rebuilt) != stored_snapshot_sha256(store, dossier):
-            problems.append("la reproducción con las entradas congeladas no da los mismos bytes")
-    problems += markdown_problems(store, dossier, snapshot)
-    scan = scan_transitions(store, dossier)
-    problems += scan.problems
-    if not scan.problems:
-        problems += view_problems(store, dossier, snapshot, list(scan.entries))
-    if has_package(store, dossier) or snapshot.category is not Category.BASICA:
-        problems += verify_package(store, dossier).problems
     return problems
 
 
@@ -288,12 +258,6 @@ class Consented:
     client: JudgmentProvider
     config: PreAuditSettings
     consent: Consent
-
-
-@dataclass(frozen=True)
-class RunScan:
-    records: tuple[chain.Stored[PreAuditRecord], ...]
-    problems: tuple[str, ...]
 
 
 @dataclass(frozen=True)
@@ -492,37 +456,6 @@ def _write(store: WorkspaceStore, record: PreAuditRecord) -> str:
 
 
 # --- leer --------------------------------------------------------------------------------------
-
-
-def scan_runs(store: WorkspaceStore, *, now: datetime | None = None) -> RunScan:
-    """La cadena de ejecuciones verificada: reservas y registros uno a uno, sin huecos ni
-    bifurcaciones, enlazados y con la clave que corresponde a su contenido. Una fecha futura
-    respecto a `now` o un `recorded_at` que retrocede también son problemas."""
-    stored, reserved, problems = chain.read_chain(
-        store,
-        RUNS_PREFIX,
-        PreAuditRecord,
-        owner=RUNS_OWNER,
-        owner_of=lambda _record: RUNS_OWNER,
-        owner_label="registro",
-        chain_label="las pre-auditorías",
-    )
-    by_seq = chain.group_by_seq(stored)
-    pairs = chain.linked_pairs(stored, by_seq)
-    problems += chain.sequence_problems(by_seq, reserved)
-    problems += chain.link_problems(pairs)
-    problems += [
-        f"registros {a.record.seq} y {b.record.seq}: recorded_at retrocede"
-        for a, b in pairs
-        if b.record.recorded_at < a.record.recorded_at
-    ]
-    if now is not None:
-        problems += [
-            f"{item.key}: recorded_at está en el futuro"
-            for item in stored
-            if item.record.recorded_at > now
-        ]
-    return RunScan(tuple(stored), tuple(problems))
 
 
 def show(store: WorkspaceStore, seq: int) -> chain.Stored[PreAuditRecord]:

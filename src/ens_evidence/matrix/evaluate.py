@@ -62,6 +62,7 @@ from ens_evidence.models.readiness import (
     measure_blockers,
     unique_blockers,
 )
+from ens_evidence.preaudit.findings import PreAuditFindings
 from ens_evidence.workspace import WorkspaceStore
 
 
@@ -107,7 +108,7 @@ class StaticFindings:
 
 
 class NoFindings(StaticFindings):
-    """Hasta `pre-audit` no hay fuente real: sin hallazgos y sin juicio ejecutado."""
+    """Sin hallazgos y sin juicio ejecutado (tests)."""
 
     def __init__(self) -> None:
         super().__init__((), executed=False)
@@ -434,7 +435,10 @@ def assess(
     documents: OrgDocumentSource | None = None,
     findings: FindingsSource | None = None,
 ) -> AssessmentResult:
-    """Filas, bloqueos de la matriz y `ReadinessResult` en `now`; único punto de integración."""
+    """Filas, bloqueos de la matriz y `ReadinessResult` en `now`; único punto de integración.
+
+    `findings` por defecto: la pre-auditoría registrada (`PreAuditFindings`), así ningún
+    llamante evalúa sin los hallazgos abiertos. El expediente pasa la suya, congelada."""
     plan = plan_obligations(store, now)
     if not plan.current:
         return _not_current(store, plan, now)
@@ -474,7 +478,7 @@ def assess(
         gaps += row_gaps
         errors += review_errors
 
-    open_findings, judgment_executed = (findings or NoFindings()).open_findings(store, now)
+    open_findings, judgment_executed = (findings or PreAuditFindings()).open_findings(store, now)
     readiness = evaluate_readiness(
         ReadinessInput(
             measures=[r.measure for r in rows],

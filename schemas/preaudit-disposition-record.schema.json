@@ -1,0 +1,113 @@
+{
+  "$defs": {
+    "Disposition": {
+      "additionalProperties": false,
+      "description": "La decisi\u00f3n sobre un hallazgo. Cubre sus apariciones hasta la ejecuci\u00f3n `covers_run`; si\nuna ejecuci\u00f3n posterior lo vuelve a proponer, esa aparici\u00f3n queda abierta.",
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "by": {
+          "minLength": 1,
+          "title": "By",
+          "type": "string"
+        },
+        "covers_run": {
+          "minimum": 1,
+          "title": "Covers Run",
+          "type": "integer"
+        },
+        "evidence_id": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Evidence Id"
+        },
+        "finding_id": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Finding Id",
+          "type": "string"
+        },
+        "reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Reason"
+        },
+        "state": {
+          "$ref": "#/$defs/DispositionState"
+        }
+      },
+      "required": [
+        "finding_id",
+        "covers_run",
+        "state",
+        "by",
+        "at"
+      ],
+      "title": "Disposition",
+      "type": "object"
+    },
+    "DispositionState": {
+      "enum": [
+        "OPEN",
+        "ACCEPTED",
+        "RESOLVED",
+        "DISMISSED"
+      ],
+      "title": "DispositionState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Un registro de la cadena de disposiciones, de solo adici\u00f3n (`chain.py`).",
+  "properties": {
+    "disposition": {
+      "$ref": "#/$defs/Disposition"
+    },
+    "previous_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Previous Sha256"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "seq": {
+      "minimum": 1,
+      "title": "Seq",
+      "type": "integer"
+    }
+  },
+  "required": [
+    "seq",
+    "recorded_at",
+    "disposition"
+  ],
+  "title": "DispositionRecord",
+  "type": "object"
+}
