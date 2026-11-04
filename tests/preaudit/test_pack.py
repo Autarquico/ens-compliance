@@ -6,7 +6,7 @@ from pathlib import Path
 import pytest
 
 from ens_evidence.models.preaudit import Classification
-from ens_evidence.preaudit.pack import PACK_V1, PackError, load_pack
+from ens_evidence.preaudit.pack import PACK_V1, MeasureScope, PackError, load_pack
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 SOURCE_FIXTURES = {
@@ -104,7 +104,7 @@ def _schema_nodes(node):
 def test_schema_is_valid_for_strict_structured_outputs():
     schema = load_pack().response_schema
     objects = [n for n in _schema_nodes(schema) if n.get("type") == "object"]
-    assert len(objects) == 4  # raíz, hallazgo, documento y evidencia
+    assert len(objects) == 5  # raíz, hallazgo, documento, evidencia y justificación
     for node in _schema_nodes(schema):
         assert not UNSUPPORTED & node.keys()
     for obj in objects:
@@ -112,8 +112,17 @@ def test_schema_is_valid_for_strict_structured_outputs():
         assert sorted(obj["required"]) == sorted(obj["properties"])
     finding = schema["properties"]["findings"]["items"]
     assert set(finding["properties"]["proposal"]["enum"]) == JUDGMENT_PROPOSALS
-    for key in ("documents", "evidence"):
+    for key in ("documents", "evidence", "justifications"):
         assert finding["properties"][key]["items"]["required"] == ["ref", "quote"]
+
+
+def test_each_criterion_declares_the_measures_it_works_on():
+    scopes = {c.id: c.measure_scope for c in load_pack().criteria}
+    assert scopes == {
+        "coherencia-politica-evidencia": MeasureScope.APPLICABLE,
+        "calidad-documental": MeasureScope.APPLICABLE,
+        "solidez-justificacion-aplicabilidad": MeasureScope.NOT_APPLICABLE_OR_COMPENSATED,
+    }
 
 
 def test_criteria_only_allow_proposals_the_schema_accepts():

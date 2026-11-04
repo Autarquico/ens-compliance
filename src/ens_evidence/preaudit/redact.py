@@ -24,12 +24,13 @@ from ens_evidence.scope.secrets import find_secrets
 
 SECRET = "[REDACTADO:secreto]"
 IP = "[IP]"
+PERSON = "[PERSONA]"
 _PEM_BEGIN = "-----BEGIN"
 _PEM_END = "-----END"
 _TOKEN = re.compile(r"\S+")
 
 Designated = Mapping[str, Collection[Role]]
-"""Nombre declarado → roles que ocupa esa persona."""
+"""Nombre declarado → roles que ocupa esa persona (vacío: se sustituye por `[PERSONA]`)."""
 
 # Orden: la IP antes que el teléfono (una IP no es un teléfono, pero una lista de IP con texto
 # alrededor podría parecerlo una vez rota).
@@ -188,4 +189,6 @@ def _redact_names(text: str, designated: Designated) -> str:
 
 
 def _label(roles: set[Role]) -> str:
+    if not roles:
+        return PERSON
     return "[" + " / ".join(sorted(role_label(role) for role in roles)) + "]"

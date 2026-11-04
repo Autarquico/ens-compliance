@@ -7,6 +7,7 @@ no cuadra con los ficheros (alterado, faltante o sobrante), el pack se rechaza e
 import hashlib
 import json
 from dataclasses import dataclass
+from enum import StrEnum
 from importlib import resources
 from importlib.resources.abc import Traversable
 from typing import Any
@@ -33,10 +34,20 @@ class Source(Strict):
     quote: str
 
 
+class MeasureScope(StrEnum):
+    """Sobre qué medidas trabaja un criterio."""
+
+    APPLICABLE = "applicable"
+    """Medidas aplicables: el hallazgo cita documentos y evidencias enlazados a la medida."""
+    NOT_APPLICABLE_OR_COMPENSATED = "not_applicable_or_compensated"
+    """Medidas no aplicables o compensadas: el hallazgo cita su justificación."""
+
+
 class Criterion(Strict):
     id: str
     text: str
     compare: str
+    measure_scope: MeasureScope
     allowed_proposals: list[Classification]
     source: Source
 

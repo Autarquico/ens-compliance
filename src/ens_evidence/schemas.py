@@ -36,6 +36,7 @@ from ens_evidence.models.preaudit import (
     Disposition,
     Finding,
     GroupingProposal,
+    PreAuditRecord,
     PreAuditRun,
 )
 from ens_evidence.orgdocs.approval import DocumentApproval
@@ -98,6 +99,7 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "preaudit-disposition": Disposition,
     "preaudit-finding": Finding,
     "preaudit-grouping": GroupingProposal,
+    "preaudit-record": PreAuditRecord,
     "preaudit-run": PreAuditRun,
 }
 

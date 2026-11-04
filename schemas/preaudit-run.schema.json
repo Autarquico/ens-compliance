@@ -22,6 +22,11 @@
           "pattern": "^[0-9a-f]{64}$",
           "title": "Payload Sha256",
           "type": "string"
+        },
+        "shell_risk_accepted": {
+          "default": false,
+          "title": "Shell Risk Accepted",
+          "type": "boolean"
         }
       },
       "required": [
@@ -45,7 +50,9 @@
     "Provider": {
       "enum": [
         "anthropic",
-        "openai"
+        "openai",
+        "claude-code",
+        "codex"
       ],
       "title": "Provider",
       "type": "string"
@@ -88,6 +95,19 @@
       "pattern": "^[0-9a-f]{64}$",
       "title": "Dossier Sha256",
       "type": "string"
+    },
+    "judgment_error": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Judgment Error"
     },
     "judgment_status": {
       "$ref": "#/$defs/LayerStatus",

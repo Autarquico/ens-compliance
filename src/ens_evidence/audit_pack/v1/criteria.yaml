@@ -1,6 +1,8 @@
 # Criterios de la capa de juicio. Cada criterio cita su fuente literal; la cita debe aparecer
 # en el texto oficial (tests/preaudit/test_pack.py lo comprueba contra los fixtures).
 # `allowed_proposals`: lo único que el modelo puede proponer con este criterio. Nunca un dictamen.
+# `measure_scope`: `applicable` (cita documentos y evidencias enlazados a la medida) o
+# `not_applicable_or_compensated` (cita la justificación de la medida en `justifications`).
 criteria:
   - id: coherencia-politica-evidencia
     text: >-
@@ -10,6 +12,7 @@ criteria:
     compare: >-
       Las afirmaciones y exigencias de los documentos de política o normativa frente a las
       evidencias enlazadas a la misma medida.
+    measure_scope: applicable
     allowed_proposals: [NC_MENOR, OBSERVACION]
     source:
       document: ic0119
@@ -22,6 +25,7 @@ criteria:
     compare: >-
       El contenido del documento frente a los requisitos de la medida enlazada (por ejemplo,
       org.1.1 a org.1.5 para la política de seguridad).
+    measure_scope: applicable
     allowed_proposals: [NC_MENOR, OBSERVACION]
     source:
       document: rd311
@@ -34,6 +38,7 @@ criteria:
     compare: >-
       La justificación de aplicabilidad o de compensación frente a los activos, los riesgos y
       la medida del anexo II que se sustituye.
+    measure_scope: not_applicable_or_compensated
     allowed_proposals: [NC_MENOR, OBSERVACION]
     source:
       document: rd311

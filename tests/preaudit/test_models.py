@@ -215,14 +215,30 @@ def test_run_with_judgment_records_provider_and_consent():
     assert run(**JUDGED, discarded=2).discarded == 2
 
 
-@pytest.mark.parametrize("missing", ["provider", "model", "temperature", "consent"])
+@pytest.mark.parametrize("missing", ["provider", "model", "consent"])
 def test_run_with_judgment_requires_every_engine_field(missing):
     with pytest.raises(ValidationError, match="requires"):
         run(**(JUDGED | {missing: None}))
 
 
+def test_temperature_is_optional_and_never_set_for_a_cli():
+    assert run(**(JUDGED | {"temperature": None})).temperature is None
+    cli = JUDGED | {"provider": Provider.CLAUDE_CODE, "temperature": None}
+    assert run(**cli).provider is Provider.CLAUDE_CODE
+    with pytest.raises(ValidationError, match="CLI"):
+        run(**(cli | {"temperature": 0.0}))
+
+
 def test_error_run_still_records_who_consented_and_where():
-    assert run(**(JUDGED | {"judgment_status": LayerStatus.ERROR})).consent == CONSENT
+    failed = JUDGED | {"judgment_status": LayerStatus.ERROR, "judgment_error": "fallo"}
+    assert run(**failed).consent == CONSENT
+
+
+def test_judgment_error_goes_only_with_an_error_layer():
+    with pytest.raises(ValidationError, match="judgment_error"):
+        run(**(JUDGED | {"judgment_status": LayerStatus.ERROR}))
+    with pytest.raises(ValidationError, match="judgment_error"):
+        run(**(JUDGED | {"judgment_error": "fallo"}))
 
 
 def test_run_not_run_rejects_provider_consent_and_discards():

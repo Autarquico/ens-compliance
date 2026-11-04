@@ -22,6 +22,10 @@ PACK = load_pack()
 POLICY = "Todas las cuentas de administración exigen doble factor de autenticación."
 REPORT = "Cuentas de administración sin doble factor: 3 de 5."
 LOG = "Revisión trimestral de accesos completada."
+NOT_SELECTED = "No hay desarrollo propio: no aplica la medida."
+NOT_SELECTED_ID = "justification:not_selected:org.2"
+COMPENSATED = "Se sustituye el segundo factor por certificados de cliente."
+COMPENSATED_ID = "justification:compensation:op.acc.1:op.acc.1.r1"
 
 
 def payload() -> dict[str, Any]:
@@ -45,6 +49,10 @@ def payload() -> dict[str, Any]:
                 {"ref": "EV-1", "text": f"Informe del proveedor de identidad. {REPORT}"},
                 {"ref": "EV-2", "text": LOG},
             ],
+            "justifications": [
+                {"id": NOT_SELECTED_ID, "measure": "org.2", "justification": NOT_SELECTED},
+                {"id": COMPENSATED_ID, "measure": "op.acc.1", "justification": COMPENSATED},
+            ],
         },
     }
 
@@ -56,7 +64,21 @@ def finding(**overrides: Any) -> dict[str, Any]:
         "proposal": "NC_MENOR",
         "documents": [{"ref": "DOC-1", "quote": POLICY}],
         "evidence": [{"ref": "EV-1", "quote": REPORT}],
+        "justifications": [],
         "reason": "La política exige doble factor y la evidencia muestra cuentas sin él.",
+    }
+    return base | overrides
+
+
+def justification_finding(**overrides: Any) -> dict[str, Any]:
+    base = {
+        "criterion": "solidez-justificacion-aplicabilidad",
+        "measure": "org.2",
+        "proposal": "OBSERVACION",
+        "documents": [],
+        "evidence": [],
+        "justifications": [{"ref": NOT_SELECTED_ID, "quote": NOT_SELECTED}],
+        "reason": "La justificación no explica el riesgo sobre los activos.",
     }
     return base | overrides
 
@@ -102,12 +124,68 @@ def test_traceable_finding_cites_measure_document_and_evidence() -> None:
         ({"reason": " "}, DiscardReason.EMPTY_REASON),
         ({"reason": "Escribir a ana.garcia@example.com"}, DiscardReason.SENSITIVE_TEXT),
         ({"reason": "Clave ghp_abcdefghijklmnopqrstuvwxyz0123"}, DiscardReason.SENSITIVE_TEXT),
+        (
+            {"justifications": [{"ref": COMPENSATED_ID, "quote": COMPENSATED}]},
+            DiscardReason.UNLINKED_REF,
+        ),
     ],
 )
 def test_unsupported_findings_are_discarded_and_counted(
     overrides: dict[str, Any], reason: DiscardReason
 ) -> None:
     result = validate(finding(), finding(**overrides))
+
+    assert len(result.findings) == 1
+    assert result.discards == {reason: 1}
+
+
+def test_a_justification_finding_cites_the_justification_of_a_non_applicable_measure() -> None:
+    result = validate(justification_finding())
+
+    assert result.discarded == 0
+    [accepted] = result.findings
+    assert accepted.measure == "org.2"
+    assert [(r.kind, r.id) for r in accepted.refs] == [(RefKind.SECTION, NOT_SELECTED_ID)]
+    assert NOT_SELECTED in accepted.quote
+
+
+def test_a_justification_finding_may_cite_a_compensated_applicable_measure() -> None:
+    compensated = justification_finding(
+        measure="op.acc.1",
+        justifications=[{"ref": COMPENSATED_ID, "quote": COMPENSATED}],
+        evidence=[{"ref": "EV-1", "quote": REPORT}],
+    )
+
+    result = validate(compensated)
+
+    assert result.discarded == 0
+    assert {r.kind for r in result.findings[0].refs} == {RefKind.SECTION, RefKind.EVIDENCE}
+
+
+@pytest.mark.parametrize(
+    ("overrides", "reason"),
+    [
+        ({"measure": "op.exp.8"}, DiscardReason.MEASURE_NOT_JUSTIFIED),
+        ({"justifications": []}, DiscardReason.MISSING_CITATION),
+        (
+            {"justifications": [{"ref": COMPENSATED_ID, "quote": COMPENSATED}]},
+            DiscardReason.UNLINKED_REF,
+        ),
+        (
+            {"justifications": [{"ref": "justification:inventada:org.2", "quote": NOT_SELECTED}]},
+            DiscardReason.UNLINKED_REF,
+        ),
+        (
+            {"justifications": [{"ref": NOT_SELECTED_ID, "quote": "Aplica parcialmente."}]},
+            DiscardReason.QUOTE_NOT_FOUND,
+        ),
+        ({"evidence": [{"ref": "EV-2", "quote": LOG}]}, DiscardReason.UNLINKED_REF),
+    ],
+)
+def test_unsupported_justification_findings_are_discarded(
+    overrides: dict[str, Any], reason: DiscardReason
+) -> None:
+    result = validate(justification_finding(), justification_finding(**overrides))
 
     assert len(result.findings) == 1
     assert result.discards == {reason: 1}

@@ -31,14 +31,22 @@ Cada hallazgo debe indicar:
 - `criterion`: el id de un criterio de `criteria`;
 - `measure`: el id de la medida del catálogo a la que se refiere;
 - `proposal`: una de las propuestas que el criterio permite (`allowed_proposals`);
-- `documents`: al menos un documento del expediente, con su `ref` y un `quote` copiado
+- `documents`: documentos del expediente, cada uno con su `ref` y un `quote` copiado
   literalmente de ese documento;
-- `evidence`: al menos una evidencia del expediente, con su `ref` y un `quote` copiado
+- `evidence`: evidencias del expediente, cada una con su `ref` y un `quote` copiado
   literalmente de esa evidencia;
+- `justifications`: justificaciones de aplicabilidad o de compensación de `justifications`,
+  cada una con su `id` como `ref` y un `quote` copiado literalmente de su texto;
 - `reason`: por qué el fragmento incumple el criterio, en una o dos frases.
 
-Los `quote` son copias exactas, sin parafrasear, sin traducir y sin completar. Los documentos y
-evidencias citados deben estar enlazados a la medida citada en los datos.
+Qué se cita depende del `measure_scope` del criterio:
+- `applicable`: la medida es aplicable; cita al menos un documento y al menos una evidencia
+  enlazados a esa medida en los datos, y deja `justifications` vacío;
+- `not_applicable_or_compensated`: la medida está declarada no aplicable o compensada; cita al
+  menos una justificación de esa medida. Los documentos y evidencias son opcionales y, si los
+  citas, deben estar enlazados a esa medida.
+
+Los `quote` son copias exactas, sin parafrasear, sin traducir y sin completar.
 
 ## Salida
 

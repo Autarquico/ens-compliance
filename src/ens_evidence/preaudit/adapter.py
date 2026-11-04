@@ -100,6 +100,7 @@ class ResponseFinding(_Response):
     proposal: Literal["NC_MAYOR", "NC_MENOR", "OBSERVACION"]
     documents: list[CitedItem]
     evidence: list[CitedItem]
+    justifications: list[CitedItem]
     reason: str
 
 

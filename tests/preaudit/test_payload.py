@@ -9,7 +9,7 @@ from datetime import timedelta
 import pytest
 from assessment.dossier.stages import AFTER, ID, basic, restore, run_at
 from assessment.dossier.transition_helpers import DIRECTION, SECURITY_OFFICER, SYSTEM_OWNER
-from matrix.acceptance_helpers import import_manual_evidence, link
+from matrix.acceptance_helpers import ASSET, EVIDENCE_ID, import_manual_evidence, link
 
 from ens_evidence.assessment.dossier.store import stored_snapshot_sha256
 from ens_evidence.preaudit import payload as payload_module
@@ -22,7 +22,7 @@ from ens_evidence.preaudit.payload import (
     canonical_json,
     describe_destination,
 )
-from ens_evidence.preaudit.redact import SECRET, RedactionLeak
+from ens_evidence.preaudit.redact import PERSON, SECRET, RedactionLeak
 from ens_evidence.preaudit.validate import Payload as ValidatedShape
 from ens_evidence.workspace import LocalStore
 
@@ -83,7 +83,38 @@ def test_designated_names_become_their_roles(generated):
     designation = document(built.data, "designacion-responsables")["text"]
     assert "[responsable de la seguridad]" in designation
     assert "[responsable del sistema]" in designation
-    assert "[dirección]" in designation
+    # Quien firma por la dirección también es responsable de la información: van los dos roles.
+    assert "[dirección / responsable de la información]" in designation
+
+
+def test_a_person_without_a_designation_role_takes_the_role_declared_in_the_answers(generated):
+    """Raúl Campos Vidal no firma ni aprueba nada: solo es responsable del servicio."""
+    _, _, built = generated
+
+    assert "Raúl Campos" not in built.canonical.decode()
+    designation = document(built.data, "designacion-responsables")["text"]
+    assert "[responsable del servicio]" in designation
+
+
+def test_a_person_declared_only_in_a_workspace_record_becomes_persona(world, tmp_path):
+    """Quien importa una evidencia no tiene rol ni está designada: su nombre se tapa igual."""
+    world.at(AFTER - timedelta(minutes=5))
+    artifact = tmp_path / "acta.txt"
+    artifact.write_text("Acta de la revisión de accesos. Revisado por Elena Ortega.\n")
+    imported = world.run(
+        *("evidence", "import", str(artifact), "--source", "manual"),
+        *("--asset", ASSET, "--by", "Elena Ortega"),
+        *("--valid-until", (AFTER + timedelta(days=365)).isoformat()),
+    )
+    assert imported.exit_code == 0, imported.output
+    evidence = EVIDENCE_ID.search(imported.output).group()
+    link(world.run, LOG_MEASURE, "evidence", evidence, "base")
+    dossier = regenerate(world)
+
+    built = build_payload(world.store, dossier, PACK)
+
+    item = next(e for e in built.data["dossier"]["evidence"] if e["ref"] == evidence)
+    assert item["text"] == f"Acta de la revisión de accesos. Revisado por {PERSON}.\n"
 
 
 def test_no_email_or_phone_survives(generated):

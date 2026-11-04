@@ -17,6 +17,7 @@ from ens_evidence.workspace.local import LocalStore
 from ens_evidence.workspace.s3 import S3Store
 from ens_evidence.workspace.settings import (
     BackupSettings,
+    PreAuditSettings,
     Settings,
     is_inside_product,
     load_settings,
@@ -27,6 +28,7 @@ from ens_evidence.workspace.store import WorkspaceStore
 __all__ = [
     "AccessDenied",
     "BackupSettings",
+    "PreAuditSettings",
     "AlreadyExists",
     "ConditionalWriteUnsupported",
     "InvalidKey",

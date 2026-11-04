@@ -9,6 +9,11 @@ Sin red. Contiene solo:
 - las evidencias enlazadas a medidas aplicables: metadatos y, si es texto, su contenido;
 - los enlaces medida↔documento↔evidencia.
 
+Toda persona declarada en el workspace se sustituye por su rol o, si no tiene, por `[PERSONA]`:
+las de las respuestas de org-docs (responsables y lista de personas), las que el expediente
+registra con un rol y las que firman cualquier registro (aprobaciones, evidencias, incidentes,
+transiciones del expediente).
+
 Cada elemento lleva un id estable (`id` o `ref`), que es lo que citan los hallazgos. Todo lo
 que viene del expediente va dentro de `dossier`, marcado como no confiable. El JSON es canónico
 y su sha256 es la huella que liga el consentimiento (plan pre-audit, «Cambios r2», 6-8).
@@ -18,8 +23,11 @@ import hashlib
 import json
 import re
 from collections import defaultdict
+from collections.abc import Iterator
 from dataclasses import dataclass
 from typing import Any
+
+import yaml
 
 from ens_evidence.applicability.declaration import Declaration
 from ens_evidence.approvals import safe_load_unique
@@ -29,8 +37,8 @@ from ens_evidence.evidence.layout import artifact_key
 from ens_evidence.matrix.obligations import RowKind
 from ens_evidence.matrix.render import ExportedLink, ExportedRow, MatrixExport
 from ens_evidence.models.enums import Role
-from ens_evidence.models.preaudit import Provider
-from ens_evidence.orgdocs.answers import validate_answers
+from ens_evidence.models.preaudit import CLI_PROVIDERS, Provider
+from ens_evidence.orgdocs.answers import declared_people, validate_answers
 from ens_evidence.orgdocs.approval import ROLE_QUESTION
 from ens_evidence.orgdocs.keys import ANSWERS_KEY, document_key
 from ens_evidence.orgdocs.template import load_templates
@@ -51,10 +59,34 @@ TEXT_FIELDS = frozenset(
     {"name", "justification", "compensating_measures", "asset_type", "source", "text"}
 )
 EVIDENCE_TEXT_MAX_BYTES = 64 * 1024
-CLI_PROVIDERS = ("claude-code", "codex")
 EVIDENCE_SECTION = 8
 DECLARATION_SECTION = 5
 _CLI_VERSION = re.compile(r"[0-9A-Za-z][0-9A-Za-z.+-]*")
+ANSWER_ROLES = {
+    **{question: role for role, question in ROLE_QUESTION.items()},
+    "resp_informacion": Role.INFORMATION_OWNER,
+    "resp_servicio": Role.SERVICE_OWNER,
+}
+"""Pregunta de org-docs → rol de quien la ocupa."""
+PERSON_FIELDS = frozenset(
+    {
+        "accepted_by",
+        "actor",
+        "approved_by",
+        "by",
+        "elevated_to",
+        "reviewed_by",
+        "reviewer",
+        "submitted_by",
+        "valued_by",
+    }
+)
+"""Claves con las que los registros del workspace guardan a la persona que declara o firma."""
+REGISTRY_SUFFIXES = (".yaml", ".yml", ".json")
+NOT_REGISTRIES = ("evidence/raw/", "evidence/preaudits/")
+# Un nombre: palabras de letras unidas por espacio, guion, punto o apóstrofo. Deja fuera
+# `collector:github` y cualquier valor con dígitos.
+_NAME = re.compile(r"[^\W\d_]+(?:[ .'’-]+[^\W\d_]+)*")
 
 
 class PayloadError(ValueError):
@@ -92,7 +124,7 @@ def build_payload(store: WorkspaceStore, dossier: str, pack: AuditPack) -> Paylo
         "evidence": evidence,
         "links": links,
     }
-    designated = _designated(files, export, snapshot, statuses)
+    designated = _people(store, files, export, snapshot, statuses)
     data = {
         "format": FORMAT,
         "dossier_ref": {
@@ -342,11 +374,16 @@ def _artifact_text(data: bytes) -> tuple[str, str]:
         return "binary", ""
 
 
-def _designated(
-    files: _Files, export: MatrixExport, snapshot: DossierSnapshot, statuses: dict[str, dict]
+def _people(
+    store: WorkspaceStore,
+    files: _Files,
+    export: MatrixExport,
+    snapshot: DossierSnapshot,
+    statuses: dict[str, dict],
 ) -> Designated:
-    """Personas con rol: las declaradas en las respuestas de org-docs y las que el expediente
-    registra junto a un rol (responsables de medida, firmantes y revisores)."""
+    """Personas declaradas y sus roles: las de las respuestas de org-docs, las que el expediente
+    registra junto a un rol (responsables de medida, firmantes y revisores) y, sin rol, las que
+    firman los registros del workspace."""
     people: dict[str, set[Role]] = defaultdict(set)
     if files.cited(ANSWERS_KEY):
         try:
@@ -354,9 +391,13 @@ def _designated(
         except (ValueError, UnicodeDecodeError):
             raise PayloadError([f"{ANSWERS_KEY}: no se puede leer"]) from None
         values = validate_answers(raw, load_templates()).values
-        for role, question in ROLE_QUESTION.items():
+        for question, role in ANSWER_ROLES.items():
             if isinstance(holder := values.get(question), str) and holder.strip():
                 people[holder].add(role)
+        for name in declared_people(values):
+            people[name]  # noqa: B018 - sin rol: se sustituye por [PERSONA]
+    for name in _registry_people(store):
+        people[name]  # noqa: B018 - sin rol: se sustituye por [PERSONA]
     for row in export.rows:
         if row.owner is not None:
             people[row.owner.name].add(row.owner.role)
@@ -368,3 +409,31 @@ def _designated(
         if approval := status.get("approval"):
             people[approval["approved_by"]].add(Role(approval["role"]))
     return people
+
+
+def _registry_people(store: WorkspaceStore) -> set[str]:
+    """Los nombres de `PERSON_FIELDS` en los registros YAML y JSON del workspace. Lo ilegible se
+    salta: aquí solo se buscan nombres que tapar, y su integridad la comprueba cada dominio."""
+    names: set[str] = set()
+    for key in store.list(""):
+        if not key.endswith(REGISTRY_SUFFIXES) or key.startswith(NOT_REGISTRIES):
+            continue
+        try:
+            text = store.read_bytes(key).decode("utf-8")
+            data = json.loads(text) if key.endswith(".json") else yaml.safe_load(text)
+        except (ValueError, UnicodeDecodeError, yaml.YAMLError):
+            continue
+        names.update(name for name in _person_values(data) if _NAME.fullmatch(name.strip()))
+    return {name.strip() for name in names}
+
+
+def _person_values(data: object) -> Iterator[str]:
+    if isinstance(data, dict):
+        for key, value in data.items():
+            if key in PERSON_FIELDS and isinstance(value, str):
+                yield value
+            else:
+                yield from _person_values(value)
+    elif isinstance(data, list):
+        for item in data:
+            yield from _person_values(item)

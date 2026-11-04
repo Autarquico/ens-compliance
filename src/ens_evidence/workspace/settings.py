@@ -9,8 +9,9 @@ from typing import Any, Literal
 from urllib.parse import urlsplit
 
 import yaml
-from pydantic import BaseModel, ConfigDict, ValidationError, field_validator, model_validator
+from pydantic import BaseModel, ConfigDict, Field, ValidationError, field_validator, model_validator
 
+from ens_evidence.models.preaudit import CLI_PROVIDERS, Provider
 from ens_evidence.workspace.errors import SettingsError
 
 PRODUCT_NAME = "ens-evidence"
@@ -88,9 +89,37 @@ class BackupSettings(_Strict):
         return value
 
 
+class PreAuditSettings(_Strict):
+    """Destino de la capa de juicio. El modelo no tiene valor por defecto; las claves, solo por
+    entorno (`ANTHROPIC_API_KEY`, `OPENAI_API_KEY`); las CLIs usan la sesión de quien ejecuta."""
+
+    provider: Provider
+    model: str
+    base_url: str | None = None
+    timeout: float = Field(default=120.0, gt=0)
+
+    @field_validator("model")
+    @classmethod
+    def _model_not_empty(cls, value: str) -> str:
+        if not value.strip():
+            raise ValueError("indica el modelo; no hay valor por defecto")
+        return value.strip()
+
+    @model_validator(mode="after")
+    def _base_url_only_for_apis(self) -> "PreAuditSettings":
+        if self.base_url is None:
+            return self
+        if self.provider in CLI_PROVIDERS:
+            raise ValueError(f"base_url no aplica a {self.provider.value}, que usa su CLI")
+        if urlsplit(self.base_url).scheme != "https":
+            raise ValueError("base_url exige https")
+        return self
+
+
 class Settings(_Strict):
     workspace: WorkspaceSettings
     backup: BackupSettings | None = None
+    preaudit: PreAuditSettings | None = None
 
 
 def resolve_settings_path(

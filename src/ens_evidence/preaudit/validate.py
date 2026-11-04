@@ -4,9 +4,12 @@ Recibe una respuesta que ya cumple el esquema y decide, hallazgo a hallazgo, si 
 hallazgo se descarta, y se cuenta, si:
 
 - su criterio no está en el pack, o su propuesta no está en las `allowed_proposals` del criterio;
-- su medida no está en el catálogo, no está en el payload o no es aplicable;
-- no cita al menos un documento y al menos una evidencia;
-- cita un documento o evidencia que no está en el payload enlazado a esa medida;
+- su medida no está en el catálogo o no está en el payload;
+- su medida no es de las que trata el criterio (`measure_scope`): aplicable, o bien no aplicable o
+  compensada (con una justificación en el payload);
+- no cita lo que pide el criterio: al menos un documento y una evidencia (`applicable`), o al
+  menos una justificación (`not_applicable_or_compensated`);
+- cita un documento, evidencia o justificación que no está en el payload enlazado a esa medida;
 - un fragmento citado no aparece literalmente en el elemento citado;
 - no da motivo, o repite un hallazgo ya aceptado en esta respuesta;
 - su motivo o sus fragmentos contienen un secreto o un dato personal detectable.
@@ -20,7 +23,11 @@ ignoran):
         "measures":  [{"id": "org.1", "applicable": true,
                        "documents": ["<ref>", ...], "evidence": ["<ref>", ...]}],
         "documents": [{"ref": "<ref>", "text": "<texto redactado>"}],
-        "evidence":  [{"ref": "<ref>", "text": "<texto redactado>"}]}}
+        "evidence":  [{"ref": "<ref>", "text": "<texto redactado>"}],
+        "justifications": [{"id": "justification:<tipo>:<medida>[:…]", "measure": "<medida>",
+                            "justification": "<texto redactado>"}]}}
+
+Una justificación citada es una ref `SECTION` con el id de la justificación.
 """
 
 from collections import Counter
@@ -32,7 +39,7 @@ from pydantic import BaseModel, ConfigDict, ValidationError
 
 from ens_evidence.catalog.load import load_catalog
 from ens_evidence.models.preaudit import Finding, Layer, Ref, RefKind, finding_id
-from ens_evidence.preaudit.pack import AuditPack, Criterion
+from ens_evidence.preaudit.pack import AuditPack, Criterion, MeasureScope
 from ens_evidence.privacy_text import text_problems
 from ens_evidence.scope.secrets import find_secrets
 
@@ -45,6 +52,7 @@ class DiscardReason(StrEnum):
     PROPOSAL_NOT_ALLOWED = "PROPOSAL_NOT_ALLOWED"
     UNKNOWN_MEASURE = "UNKNOWN_MEASURE"
     MEASURE_NOT_APPLICABLE = "MEASURE_NOT_APPLICABLE"
+    MEASURE_NOT_JUSTIFIED = "MEASURE_NOT_JUSTIFIED"
     MISSING_CITATION = "MISSING_CITATION"
     UNLINKED_REF = "UNLINKED_REF"
     QUOTE_NOT_FOUND = "QUOTE_NOT_FOUND"
@@ -69,10 +77,17 @@ class PayloadItem(_Lenient):
     text: str
 
 
+class PayloadJustification(_Lenient):
+    id: str
+    measure: str
+    justification: str
+
+
 class PayloadDossier(_Lenient):
     measures: list[PayloadMeasure]
     documents: list[PayloadItem] = []
     evidence: list[PayloadItem] = []
+    justifications: list[PayloadJustification] = []
 
 
 class Payload(_Lenient):
@@ -119,10 +134,20 @@ class _Context:
         self.texts = {
             RefKind.DOCUMENT: {d.ref: d.text for d in dossier.documents},
             RefKind.EVIDENCE: {e.ref: e.text for e in dossier.evidence},
+            RefKind.SECTION: {j.id: j.justification for j in dossier.justifications},
         }
+        self.justified: dict[str, set[str]] = {}
+        for item in dossier.justifications:
+            self.justified.setdefault(item.measure, set()).add(item.id)
 
     def linked(self, measure: PayloadMeasure, kind: RefKind) -> set[str]:
-        return set(measure.documents if kind is RefKind.DOCUMENT else measure.evidence)
+        match kind:
+            case RefKind.DOCUMENT:
+                return set(measure.documents)
+            case RefKind.EVIDENCE:
+                return set(measure.evidence)
+            case RefKind.SECTION:
+                return self.justified.get(measure.id, set())
 
 
 def _judge(
@@ -136,13 +161,13 @@ def _judge(
     measure = context.measures.get(candidate.measure)
     if measure is None or load_catalog().get(candidate.measure) is None:
         return DiscardReason.UNKNOWN_MEASURE
-    if not measure.applicable:
-        return DiscardReason.MEASURE_NOT_APPLICABLE
-    if not candidate.documents or not candidate.evidence:
-        return DiscardReason.MISSING_CITATION
-    cited = [(RefKind.DOCUMENT, d) for d in candidate.documents] + [
-        (RefKind.EVIDENCE, e) for e in candidate.evidence
-    ]
+    if problem := _scope_problem(criterion.measure_scope, context, measure, candidate):
+        return problem
+    cited = (
+        [(RefKind.DOCUMENT, d) for d in candidate.documents]
+        + [(RefKind.EVIDENCE, e) for e in candidate.evidence]
+        + [(RefKind.SECTION, j) for j in candidate.justifications]
+    )
     if problem := _citation_problem(context, measure, cited):
         return problem
     if not candidate.reason.strip():
@@ -150,6 +175,25 @@ def _judge(
     if _sensitive(candidate.reason, *(item.quote for _, item in cited)):
         return DiscardReason.SENSITIVE_TEXT
     return _finding(criterion, candidate, cited)
+
+
+def _scope_problem(
+    scope: MeasureScope, context: _Context, measure: PayloadMeasure, candidate: "ResponseFinding"
+) -> DiscardReason | None:
+    """La medida es de las que trata el criterio y se cita lo que el criterio pide."""
+    if scope is MeasureScope.APPLICABLE:
+        if not measure.applicable:
+            return DiscardReason.MEASURE_NOT_APPLICABLE
+        if not candidate.documents or not candidate.evidence:
+            return DiscardReason.MISSING_CITATION
+        if candidate.justifications:
+            return DiscardReason.UNLINKED_REF
+        return None
+    if measure.id not in context.justified:
+        return DiscardReason.MEASURE_NOT_JUSTIFIED
+    if not candidate.justifications:
+        return DiscardReason.MISSING_CITATION
+    return None
 
 
 def _citation_problem(

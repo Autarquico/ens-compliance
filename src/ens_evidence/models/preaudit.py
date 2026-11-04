@@ -42,6 +42,12 @@ class DispositionState(StrEnum):
 class Provider(StrEnum):
     ANTHROPIC = "anthropic"
     OPENAI = "openai"
+    CLAUDE_CODE = "claude-code"
+    CODEX = "codex"
+
+
+CLI_PROVIDERS = frozenset({Provider.CLAUDE_CODE, Provider.CODEX})
+"""Destinos que usan la CLI y la sesión de quien ejecuta: no admiten temperatura."""
 
 
 class RefKind(StrEnum):
@@ -177,6 +183,8 @@ class Consent(Strict):
     at: AwareDatetime
     payload_sha256: str = Field(pattern=SHA256_PATTERN)
     destination: str = Field(min_length=1)
+    shell_risk_accepted: bool = False
+    """El destino conserva una herramienta de shell y quien consiente lo aceptó expresamente."""
 
 
 class PreAuditRun(Strict):
@@ -191,6 +199,7 @@ class PreAuditRun(Strict):
     consent: Consent | None = None
     deterministic_status: LayerStatus = LayerStatus.DONE
     judgment_status: LayerStatus = LayerStatus.NOT_RUN
+    judgment_error: str | None = Field(default=None, min_length=1)
     discarded: int = Field(default=0, ge=0)
 
     @model_validator(mode="after")
@@ -204,8 +213,46 @@ class PreAuditRun(Strict):
             if self.discarded:
                 raise ValueError("NOT_RUN judgment has nothing to discard")
         else:
-            if self.provider is None or self.model is None or self.temperature is None:
-                raise ValueError("judgment requires provider, model and temperature")
+            if self.provider is None or self.model is None:
+                raise ValueError("judgment requires provider and model")
             if self.consent is None:
                 raise ValueError("judgment requires consent")
+        if self.provider in CLI_PROVIDERS and self.temperature is not None:
+            raise ValueError("a CLI provider takes no temperature")
+        if (self.judgment_error is not None) != (self.judgment_status is LayerStatus.ERROR):
+            raise ValueError("judgment_error goes with, and only with, an ERROR judgment")
+        if self.judgment_status is LayerStatus.ERROR and self.discarded:
+            raise ValueError("an ERROR judgment keeps nothing, so it discards nothing")
+        return self
+
+
+class PreAuditRecord(Strict):
+    """Un registro de la cadena de ejecuciones, de solo adición (`chain.py`).
+
+    Lleva la ejecución y sus hallazgos tal como se aceptaron. Una ejecución posterior nunca lo
+    sustituye ni cierra lo que propuso; la disposición humana va aparte."""
+
+    seq: int = Field(ge=1)
+    previous_sha256: str | None = Field(default=None, pattern=SHA256_PATTERN)
+    recorded_at: AwareDatetime
+    prepared: str | None = Field(default=None, min_length=1)
+    """Clave de `prepared.json` al que se ligó el consentimiento; None si no se envió nada."""
+    run: PreAuditRun
+    findings: list[Finding] = Field(default_factory=list)
+    groupings: list[GroupingProposal] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        if (self.prepared is None) != (self.run.consent is None):
+            raise ValueError("a prepared payload goes with, and only with, a consent")
+        judged = [f for f in self.findings if f.layer is Layer.JUDGMENT]
+        if judged and self.run.judgment_status is not LayerStatus.DONE:
+            raise ValueError("only a DONE judgment layer carries judgment findings")
+        if len({f.id for f in self.findings}) != len(self.findings):
+            raise ValueError("finding ids must be unique")
+        known = {f.id for f in self.findings}
+        if any(not set(g.finding_ids) <= known for g in self.groupings):
+            raise ValueError("a grouping refers to findings of this run")
+        if self.run.at > self.recorded_at:
+            raise ValueError("run.at is after recorded_at")
         return self

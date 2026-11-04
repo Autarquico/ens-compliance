@@ -16,6 +16,7 @@
           "proposal",
           "documents",
           "evidence",
+          "justifications",
           "reason"
         ],
         "properties": {
@@ -53,6 +54,25 @@
             }
           },
           "evidence": {
+            "type": "array",
+            "items": {
+              "type": "object",
+              "additionalProperties": false,
+              "required": [
+                "ref",
+                "quote"
+              ],
+              "properties": {
+                "ref": {
+                  "type": "string"
+                },
+                "quote": {
+                  "type": "string"
+                }
+              }
+            }
+          },
+          "justifications": {
             "type": "array",
             "items": {
               "type": "object",

@@ -6,6 +6,7 @@ import pytest
 from ens_evidence.models.enums import Role
 from ens_evidence.preaudit.redact import (
     IP,
+    PERSON,
     SECRET,
     RedactionLeak,
     leaks,
@@ -140,3 +141,11 @@ def test_redacted_output_passes_the_check():
     data = {"text": LOG + f"Contacto: ana@example.com, {OFFICER}, 612 345 678"}
 
     require_clean(redact_fields(data, {"text"}, DESIGNATED), {"text"}, DESIGNATED)
+
+
+def test_a_declared_person_without_a_role_becomes_persona():
+    people = {**DESIGNATED, "Elena Ortega": []}
+
+    redacted = redact_text("Revisado por Elena Ortega y por Lucía Navarro.", people)
+
+    assert redacted == f"Revisado por {PERSON} y por [responsable de la seguridad]."
