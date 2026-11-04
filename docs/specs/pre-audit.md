@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Pre-auditoría y audit pack
 type: task
-status: active
+status: shipped
 priority: P0
 size: L
 issue: 25

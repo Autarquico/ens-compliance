@@ -21,6 +21,7 @@
 - #22 Procedimiento y registro de incidentes
 - #23 Motor de checks y regla de preparación
 - #24 Generación del expediente y sus estados
+- #25 Pre-auditoría y audit pack
 - #27 Caja mínima en Docker Compose
 <!-- /pm-sync:done-this-week -->
 
