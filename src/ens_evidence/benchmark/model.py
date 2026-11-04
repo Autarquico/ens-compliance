@@ -90,6 +90,10 @@ class ProfileEvidence(Strict):
     alias: Slug
     file: RelativePath
     source: EvidenceSource
+    asset: Slug | None = Field(
+        default=None,
+        description="Activo del alcance de una evidencia manual; la recogida lo trae en su JSON.",
+    )
     valid_until: AwareDatetime | None = None
     links: list[EvidenceLink] = Field(min_length=1)
 
@@ -119,6 +123,15 @@ class Profile(Strict):
     categorization: dict[Dimension, SecurityLevel] = Field(min_length=1)
     people: list[Person] = Field(min_length=1)
     applicability: list[ApplicabilityDecision] = Field(default_factory=list)
+    reinforcements: dict[MeasureId, Annotated[list[str], Field(min_length=1)]] = Field(
+        default_factory=dict,
+        description="Refuerzo elegido de cada grupo alternativo de las medidas aplicables.",
+    )
+    not_required_justification: str | None = Field(
+        default=None,
+        min_length=1,
+        description="Justificación de no aplicar lo no exigido por el anexo II y no decidido aquí.",
+    )
     documents: list[OrgDocument] = Field(default_factory=list)
     evidence: list[ProfileEvidence] = Field(default_factory=list)
     document_links: list[DocumentLink] = Field(default_factory=list)
@@ -148,6 +161,7 @@ class Profile(Strict):
     def measures(self) -> set[str]:
         return {
             *(a.measure for a in self.applicability),
+            *self.reinforcements,
             *(link.measure for e in self.evidence for link in e.links),
             *(link.measure for link in self.document_links),
             *(m.measure for m in self.matrix),

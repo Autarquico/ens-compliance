@@ -1,0 +1,37 @@
+assets:
+  - id: lap-ana
+    type: laptop
+    deployment: deployed
+    hostname: lap-ana.asesoria.example
+    os: macOS 15
+    owner: Ana Prueba
+    encrypted: true
+    usage: Gestión de nóminas de clientes
+  - id: srv-nominas
+    type: server
+    deployment: deployed
+    hostname: srv-nominas.asesoria.example
+    function: Aplicación de nóminas
+    os: Debian 12
+    environment: producción
+    location: Oficina, Teruel
+  - id: app-nominas
+    type: application
+    deployment: deployed
+    service: Nóminas
+    domain: nominas.asesoria.example
+    repo: asesoria-ficticia/nominas
+    database: db-nominas
+  - id: db-nominas
+    type: database
+    deployment: deployed
+    engine: PostgreSQL 16
+    location: srv-nominas
+    data: Nóminas y datos de clientes
+    backup: Diaria
+  - id: gh-asesoria
+    type: code_hosting
+    deployment: deployed
+    account: asesoria-ficticia
+    repos: [nominas]
+    actions: Compilación y despliegue

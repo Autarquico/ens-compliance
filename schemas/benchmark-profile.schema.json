@@ -224,6 +224,20 @@
           "title": "Alias",
           "type": "string"
         },
+        "asset": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Activo del alcance de una evidencia manual; la recogida lo trae en su JSON.",
+          "title": "Asset"
+        },
         "file": {
           "title": "File",
           "type": "string"
@@ -352,6 +366,20 @@
       "title": "Matrix",
       "type": "array"
     },
+    "not_required_justification": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Justificaci\u00f3n de no aplicar lo no exigido por el anexo II y no decidido aqu\u00ed.",
+      "title": "Not Required Justification"
+    },
     "people": {
       "items": {
         "$ref": "#/$defs/Person"
@@ -359,6 +387,20 @@
       "minItems": 1,
       "title": "People",
       "type": "array"
+    },
+    "reinforcements": {
+      "description": "Refuerzo elegido de cada grupo alternativo de las medidas aplicables.",
+      "patternProperties": {
+        "^[a-z]+(\\.[a-z0-9]+)+$": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "title": "Reinforcements",
+      "type": "object"
     },
     "title": {
       "minLength": 1,

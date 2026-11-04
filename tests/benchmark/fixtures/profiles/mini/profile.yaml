@@ -1,0 +1,40 @@
+format: ens-benchmark-profile/1
+fictional: true
+id: mini
+title: Asesoría Ficticia (perfil mínimo de pruebas)
+clock:
+  start: "2026-10-01T09:00:00+00:00"
+categorization: {C: BAJO, I: BAJO, T: BAJO, A: BAJO, D: BAJO}
+people:
+  - id: ana
+    name: Ana Prueba
+    roles: [security_officer]
+  - id: bruno
+    name: Bruno Ensayo
+    roles: [system_owner, information_owner, service_owner]
+  - id: carla
+    name: Carla Muestra
+    roles: [management]
+applicability:
+  - measure: op.cont.2
+    applicable: true
+    justification: Seleccionada como adicional por la dependencia del servicio de nóminas.
+reinforcements:
+  op.acc.5: [R1]
+  op.acc.6: [R1]
+  mp.s.2: [R1]
+not_required_justification: >-
+  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos no la pide.
+evidence:
+  - alias: inventario
+    file: evidence/inventario.txt
+    source: manual
+    asset: srv-nominas
+    valid_until: "2027-10-01T00:00:00+00:00"
+    links:
+      - {measure: op.exp.1, covers: [base]}
+  - alias: github
+    file: collected/github.json
+    source: collected
+    links:
+      - {measure: op.exp.1, covers: [base]}
