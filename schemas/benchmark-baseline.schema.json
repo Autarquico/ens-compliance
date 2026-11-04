@@ -1,0 +1,209 @@
+{
+  "$defs": {
+    "BaselineEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "detected": {
+          "description": "Defectos detectados, `<partici\u00f3n>/<caso>#<defecto>`.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Detected",
+          "type": "array"
+        },
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        },
+        "totals": {
+          "$ref": "#/$defs/Totals"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "detected",
+        "totals"
+      ],
+      "title": "BaselineEntry",
+      "type": "object"
+    },
+    "Provider": {
+      "enum": [
+        "anthropic",
+        "openai",
+        "claude-code",
+        "codex"
+      ],
+      "title": "Provider",
+      "type": "string"
+    },
+    "Rate": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "value": {
+          "description": "0 si el denominador es 0; se informa aparte.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "numerator",
+        "denominator",
+        "value"
+      ],
+      "title": "Rate",
+      "type": "object"
+    },
+    "Retired": {
+      "additionalProperties": false,
+      "description": "Migraci\u00f3n expl\u00edcita: un caso o un defecto que sale del inventario.",
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "reason"
+      ],
+      "title": "Retired",
+      "type": "object"
+    },
+    "Totals": {
+      "additionalProperties": false,
+      "properties": {
+        "correct_with_false_alarms": {
+          "$ref": "#/$defs/Rate",
+          "description": "Tasa B: expedientes correctos con alguna falsa alarma / correctos."
+        },
+        "correct_with_false_alarms_by_repetition": {
+          "description": "Tasa B de cada repetici\u00f3n; la de arriba es su mediana.",
+          "items": {
+            "$ref": "#/$defs/Rate"
+          },
+          "title": "Correct With False Alarms By Repetition",
+          "type": "array"
+        },
+        "deterministic": {
+          "$ref": "#/$defs/Rate"
+        },
+        "deterministic_unmatched": {
+          "default": 0,
+          "description": "Hallazgos deterministas sin casar: fallo de puerta.",
+          "minimum": 0,
+          "title": "Deterministic Unmatched",
+          "type": "integer"
+        },
+        "false_alarms": {
+          "$ref": "#/$defs/Rate",
+          "description": "Tasa A: falsas alarmas de juicio / emitidos."
+        },
+        "false_alarms_by_repetition": {
+          "description": "Tasa A de cada repetici\u00f3n; `false_alarms` es su mediana.",
+          "items": {
+            "$ref": "#/$defs/Rate"
+          },
+          "title": "False Alarms By Repetition",
+          "type": "array"
+        },
+        "judgment": {
+          "$ref": "#/$defs/Rate"
+        },
+        "zero_emitted_repetitions": {
+          "description": "Repeticiones sin hallazgos de juicio emitidos: su tasa A es 0.",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Zero Emitted Repetitions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "deterministic",
+        "judgment",
+        "false_alarms",
+        "correct_with_false_alarms"
+      ],
+      "title": "Totals",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/BaselineEntry"
+      },
+      "title": "Entries",
+      "type": "array"
+    },
+    "format": {
+      "const": "ens-benchmark-baseline/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "inventory": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "description": "Huella de cada caso y defecto del banco.",
+      "title": "Inventory",
+      "type": "object"
+    },
+    "pack_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Pack Sha256",
+      "type": "string"
+    },
+    "partition": {
+      "const": "dev",
+      "default": "dev",
+      "title": "Partition",
+      "type": "string"
+    },
+    "retired": {
+      "items": {
+        "$ref": "#/$defs/Retired"
+      },
+      "title": "Retired",
+      "type": "array"
+    },
+    "written_at": {
+      "format": "date-time",
+      "title": "Written At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "written_at",
+    "pack_sha256"
+  ],
+  "title": "Baseline",
+  "type": "object"
+}

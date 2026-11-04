@@ -24,7 +24,7 @@ registrada como tal. La disposición humana de los hallazgos va aparte (`review.
 import hashlib
 import json
 import re
-from collections.abc import Mapping
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -94,6 +94,9 @@ SHELL_RISK = (
 )
 
 
+ClientFactory = Callable[[Provider, PreAuditSettings], JudgmentProvider]
+
+
 class PreAuditRejected(Exception):
     """No se escribe ni se envía nada; `errors` dice por qué (rutas y tipos, nunca valores)."""
 
@@ -158,13 +161,14 @@ def prepare(
     settings: PreAuditSettings | None,
     *,
     now: datetime,
+    client_factory: ClientFactory | None = None,
 ) -> Prepared:
     """Guarda el payload y lo que liga el consentimiento. No envía nada."""
     config, chosen = resolve_config(provider, settings)
     _require_sound(store, dossier)
     pack = _pack()
     payload = _payload(store, dossier, pack)
-    destination, shell = _destination(chosen, config)
+    destination, shell = _destination(chosen, config, client_factory)
     directory = f"{PREAUDITS_PREFIX}/{chain.instant_stamp(now)}-{payload.sha256[:12]}"
     prepared = {
         "format": PREPARED_FORMAT,
@@ -232,10 +236,12 @@ def _payload(store: WorkspaceStore, dossier: str, pack: AuditPack) -> Payload:
         raise PreAuditRejected(["no se puede preparar el envío", *exc.problems]) from None
 
 
-def _destination(provider: Provider, config: PreAuditSettings) -> tuple[str, bool]:
+def _destination(
+    provider: Provider, config: PreAuditSettings, client_factory: ClientFactory | None
+) -> tuple[str, bool]:
     """(destino descrito, aviso de shell). Para una API basta la URL: no hace falta la clave."""
     if provider in CLI_PROVIDERS:
-        client = _client(provider, config)
+        client = _client(provider, config, client_factory)
         return client.destination, client.requires_shell_warning
     base_url = config.base_url or DEFAULT_BASE_URL[provider]
     try:
@@ -244,9 +250,12 @@ def _destination(provider: Provider, config: PreAuditSettings) -> tuple[str, boo
         raise PreAuditRejected([f"{provider.value}: {error.message}"]) from None
 
 
-def _client(provider: Provider, config: PreAuditSettings) -> JudgmentProvider:
+def _client(
+    provider: Provider, config: PreAuditSettings, client_factory: ClientFactory | None
+) -> JudgmentProvider:
+    """Sin fábrica, `default_client`, resuelto al llamar."""
     try:
-        return default_client(provider, config)
+        return (client_factory or default_client)(provider, config)
     except ProviderError as error:
         raise PreAuditRejected([error.message]) from None
 
@@ -281,6 +290,7 @@ def run(
     settings: PreAuditSettings | None,
     now: datetime,
     accept_shell_risk: bool = False,
+    client_factory: ClientFactory | None = None,
 ) -> RunResult:
     """Ejecuta la pre-auditoría de `dossier`. Sin `consent_sha256` no hay red: solo la capa
     determinista. `PreAuditRejected` si no se puede registrar o si el consentimiento no liga."""
@@ -308,6 +318,7 @@ def run(
             now=now,
             integrity=integrity,
             accept_shell_risk=accept_shell_risk,
+            client_factory=client_factory,
         )
     findings = deterministic_findings(snapshot, integrity=integrity)
     outcome = JudgmentOutcome(LayerStatus.NOT_RUN)
@@ -332,6 +343,7 @@ def _consented(
     now: datetime,
     integrity: list[str],
     accept_shell_risk: bool,
+    client_factory: ClientFactory | None,
 ) -> Consented:
     """Todo lo que liga el consentimiento, comprobado antes de abrir ninguna conexión."""
     if by is None:
@@ -363,7 +375,7 @@ def _consented(
         raise PreAuditRejected(
             ["lo que se enviaría ha cambiado desde la preparación; vuelve a preparar y a consentir"]
         )
-    client = _client(chosen, config)
+    client = _client(chosen, config, client_factory)
     destination = client.destination
     if destination != prepared["destination"]:
         raise PreAuditRejected(

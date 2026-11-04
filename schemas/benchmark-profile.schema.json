@@ -1,0 +1,380 @@
+{
+  "$defs": {
+    "ApplicabilityDecision": {
+      "additionalProperties": false,
+      "description": "Decisi\u00f3n que difiere de la propuesta de la herramienta, con su justificaci\u00f3n.",
+      "properties": {
+        "applicable": {
+          "title": "Applicable",
+          "type": "boolean"
+        },
+        "justification": {
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "applicable",
+        "justification"
+      ],
+      "title": "ApplicabilityDecision",
+      "type": "object"
+    },
+    "Clock": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start"
+      ],
+      "title": "Clock",
+      "type": "object"
+    },
+    "Dimension": {
+      "enum": [
+        "C",
+        "I",
+        "T",
+        "A",
+        "D"
+      ],
+      "title": "Dimension",
+      "type": "string"
+    },
+    "DocumentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "covers": {
+          "items": {
+            "pattern": "^(base|compensation|R[0-9]+|[a-z]+(\\.[a-z0-9]+)+)$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Covers",
+          "type": "array"
+        },
+        "document": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Document",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "document",
+        "covers"
+      ],
+      "title": "DocumentLink",
+      "type": "object"
+    },
+    "EvidenceLink": {
+      "additionalProperties": false,
+      "properties": {
+        "covers": {
+          "items": {
+            "pattern": "^(base|compensation|R[0-9]+|[a-z]+(\\.[a-z0-9]+)+)$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Covers",
+          "type": "array"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "covers"
+      ],
+      "title": "EvidenceLink",
+      "type": "object"
+    },
+    "EvidenceSource": {
+      "enum": [
+        "manual",
+        "collected"
+      ],
+      "title": "EvidenceSource",
+      "type": "string"
+    },
+    "MatrixRow": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment": {
+          "$ref": "#/$defs/MeasureAssessment"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "owner": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Owner",
+          "type": "string"
+        },
+        "review_every_days": {
+          "maximum": 365,
+          "minimum": 1,
+          "title": "Review Every Days",
+          "type": "integer"
+        },
+        "reviewed_by": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Reviewed By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "owner",
+        "review_every_days",
+        "reviewed_by",
+        "assessment"
+      ],
+      "title": "MatrixRow",
+      "type": "object"
+    },
+    "MeasureAssessment": {
+      "enum": [
+        "COMPLIANT",
+        "NON_COMPLIANT",
+        "REQUIRES_REVIEW",
+        "NOT_ASSESSED"
+      ],
+      "title": "MeasureAssessment",
+      "type": "string"
+    },
+    "OrgDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "approved_by": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Approved By",
+          "type": "string"
+        },
+        "ref": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "approved_by"
+      ],
+      "title": "OrgDocument",
+      "type": "object"
+    },
+    "Person": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/Role"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "roles"
+      ],
+      "title": "Person",
+      "type": "object"
+    },
+    "ProfileEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/EvidenceLink"
+          },
+          "minItems": 1,
+          "title": "Links",
+          "type": "array"
+        },
+        "source": {
+          "$ref": "#/$defs/EvidenceSource"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        }
+      },
+      "required": [
+        "alias",
+        "file",
+        "source",
+        "links"
+      ],
+      "title": "ProfileEvidence",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "management",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "SecurityLevel": {
+      "enum": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "title": "SecurityLevel",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Pyme ficticia completa y correcta: con la capa determinista, cero hallazgos.",
+  "properties": {
+    "applicability": {
+      "items": {
+        "$ref": "#/$defs/ApplicabilityDecision"
+      },
+      "title": "Applicability",
+      "type": "array"
+    },
+    "categorization": {
+      "additionalProperties": {
+        "$ref": "#/$defs/SecurityLevel"
+      },
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/Dimension"
+      },
+      "title": "Categorization",
+      "type": "object"
+    },
+    "clock": {
+      "$ref": "#/$defs/Clock"
+    },
+    "document_links": {
+      "items": {
+        "$ref": "#/$defs/DocumentLink"
+      },
+      "title": "Document Links",
+      "type": "array"
+    },
+    "documents": {
+      "items": {
+        "$ref": "#/$defs/OrgDocument"
+      },
+      "title": "Documents",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/ProfileEvidence"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "fictional": {
+      "const": true,
+      "title": "Fictional",
+      "type": "boolean"
+    },
+    "format": {
+      "const": "ens-benchmark-profile/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "matrix": {
+      "items": {
+        "$ref": "#/$defs/MatrixRow"
+      },
+      "title": "Matrix",
+      "type": "array"
+    },
+    "people": {
+      "items": {
+        "$ref": "#/$defs/Person"
+      },
+      "minItems": 1,
+      "title": "People",
+      "type": "array"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "fictional",
+    "id",
+    "title",
+    "clock",
+    "categorization",
+    "people"
+  ],
+  "title": "Profile",
+  "type": "object"
+}

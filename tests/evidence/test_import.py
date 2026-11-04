@@ -10,7 +10,7 @@ from ens_evidence.evidence import (
     load_manifest_by_id,
     verify_all,
 )
-from ens_evidence.evidence.layout import artifact_key, sha256_hex
+from ens_evidence.evidence.layout import artifact_key, is_evidence_id, sha256_hex
 from ens_evidence.models import EvidenceManifest, Provenance, ProvenanceKind
 from ens_evidence.models.contracts import Artifact
 
@@ -64,28 +64,34 @@ def test_artefacto_existente_con_contenido_distinto_aborta_sin_crear_manifiesto(
     assert store.list("evidence/manifests") == []
 
 
-def test_si_el_id_choca_con_un_manifiesto_existente_reintenta_con_otro(store, monkeypatch):
+def test_si_el_id_choca_con_un_manifiesto_existente_reintenta_con_otro_de_la_misma_fuente(store):
     ids = iter(["EV-20260601-aaaaaaaa", "EV-20260601-aaaaaaaa", "EV-20260601-bbbbbbbb"])
-    monkeypatch.setattr("ens_evidence.evidence.importer.new_evidence_id", lambda now: next(ids))
-    first = importar(store, b"uno")
+    first = importar(store, b"uno", id_factory=lambda now: next(ids))
 
-    second = importar(store, b"dos")
+    second = importar(store, b"dos", id_factory=lambda now: next(ids))
 
     assert (first.id, second.id) == ("EV-20260601-aaaaaaaa", "EV-20260601-bbbbbbbb")
     assert load_manifest_by_id(store, first.id).artifact.sha256 == sha256_hex(b"uno")
 
 
-def test_si_todos_los_ids_chocan_falla_e_informa_del_huerfano(store, monkeypatch):
-    monkeypatch.setattr(
-        "ens_evidence.evidence.importer.new_evidence_id", lambda now: "EV-20260601-aaaaaaaa"
-    )
-    importar(store, b"uno")
+def test_si_todos_los_ids_chocan_falla_e_informa_del_huerfano(store):
+    def always_the_same(now):
+        return "EV-20260601-aaaaaaaa"
+
+    importar(store, b"uno", id_factory=always_the_same)
 
     with pytest.raises(EvidenceImportError, match="huérfano"):
-        importar(store, b"dos")
+        importar(store, b"dos", id_factory=always_the_same)
 
     assert len(list_manifests(store).manifests) == 1
     assert not verify_all(store).ok
+
+
+def test_por_defecto_los_ids_son_aleatorios_con_la_fecha_y_el_patron_de_evidencia(store):
+    ids = {importar(store).id for _ in range(20)}
+
+    assert len(ids) == 20
+    assert all(is_evidence_id(i) and i.startswith("EV-20260601-") for i in ids)
 
 
 def test_valid_until_debe_ser_posterior_a_collected_at(store):

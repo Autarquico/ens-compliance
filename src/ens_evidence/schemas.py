@@ -10,6 +10,14 @@ from ens_evidence.assessment.dossier.model import DossierSnapshot
 from ens_evidence.assessment.dossier.view import TransitionRecord
 from ens_evidence.backup.records import BackupRun, ImmutabilityCheck, IntegrityCheck, RestoreRecord
 from ens_evidence.backup.restore_test import RestoreTest, RestoreTestDeclaration
+from ens_evidence.benchmark.model import (
+    Baseline,
+    BenchmarkResult,
+    Case,
+    Measurement,
+    Profile,
+    Recording,
+)
 from ens_evidence.catalog import MeasureCard
 from ens_evidence.catalog.controls import MeasuresFile
 from ens_evidence.categorization import CategorizationApproval, CategorizationFile
@@ -57,6 +65,12 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "applicability-declaration": Declaration,
     "applicability-review": ApplicabilityReview,
     "backup-run": BackupRun,
+    "benchmark-baseline": Baseline,
+    "benchmark-case": Case,
+    "benchmark-measurement": Measurement,
+    "benchmark-profile": Profile,
+    "benchmark-recording": Recording,
+    "benchmark-result": BenchmarkResult,
     "backup-check": IntegrityCheck,
     "backup-restore": RestoreRecord,
     "backup-restore-test": RestoreTest,
