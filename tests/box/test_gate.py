@@ -301,6 +301,61 @@ def test_box_sh_se_niega_a_usar_un_env_que_es_un_enlace_colgante(clone_with_dock
     assert "enlace simbólico" in result.stderr
 
 
+def registry_stub(tmp_path, commit):
+    """Un `docker` que contesta como el volumen de datos, con `current.commit` dado."""
+    stub = tmp_path / "bin" / "docker"
+    stub.write_text(
+        "#!/bin/sh\n"
+        'case "$1" in\n'
+        "  run) for last; do :; done\n"
+        '    case "$last" in\n'
+        "      current.tag) echo v1.0.0 ;;\n"
+        f"      current.commit) printf '%s\\n' '{commit}' ;;\n"
+        "      *) echo ;;\n"
+        "    esac ;;\n"
+        "esac\n"
+        "exit 0\n"
+    )
+    stub.chmod(0o755)
+
+
+@pytest.mark.parametrize(
+    ("commit", "message"),
+    [
+        ("--output=/tmp/x", "no es un hash de git"),
+        ("../../etc", "no es un hash de git"),
+        ("ABCDEF" + "0" * 34, "no es un hash de git"),
+        ("abc123", "no es un hash de git"),
+        ("0" * 40, "no existe"),
+    ],
+)
+def test_box_sh_no_pasa_a_git_un_commit_del_registro_que_no_es_un_hash(
+    clone_with_docker_stub, tmp_path, commit, message
+):
+    root, env = clone_with_docker_stub
+    registry_stub(tmp_path, commit)
+
+    result = run_status(root, env)
+
+    assert result.returncode != 0
+    assert message in result.stderr
+
+
+@pytest.mark.parametrize("service", ["postgres", "app caddy"])
+def test_box_sh_restart_rechaza_un_servicio_desconocido(clone_with_docker_stub, service):
+    root, env = clone_with_docker_stub
+
+    result = subprocess.run(
+        ["sh", str(root / "deploy" / "box.sh"), "restart", *service.split()],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
+    assert "uso:" in result.stderr
+
+
 def test_box_sh_no_activa_la_traza_de_shell():
     text = BOX_SH.read_text(encoding="utf-8")
     assert not re.search(r"^\s*set\s+-\w*x", text, re.MULTILINE)

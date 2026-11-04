@@ -1,7 +1,7 @@
 """Edición mínima del alcance: añadir un activo y rellenar el sistema, sin tocar la aprobación."""
 
 from datetime import datetime
-from typing import Any
+from typing import Any, get_args, get_origin
 
 import yaml
 from pydantic import BaseModel, ValidationError
@@ -24,16 +24,23 @@ class ScopeEditRejected(Exception):
         self.errors = errors
 
 
+def _admits(annotation: Any, target: type) -> bool:
+    """True si la anotación es `target`, `target[...]` o una unión que lo incluya."""
+    if annotation is target or get_origin(annotation) is target:
+        return True
+    return any(_admits(arg, target) for arg in get_args(annotation))
+
+
 def parse_field(name: str, value: str) -> Any:
     """Convierte el texto de la línea de órdenes al tipo del campo del activo."""
     field = Asset.model_fields.get(name)
-    kind = str(field.annotation) if field else ""
-    if "bool" in kind:
+    annotation = field.annotation if field else None
+    if _admits(annotation, bool):
         lowered = value.strip().lower()
         if lowered not in _TRUE | _FALSE:
             raise ScopeEditRejected([f"{name}: indica true o false"])
         return lowered in _TRUE
-    if "list" in kind:
+    if _admits(annotation, list):
         return [item.strip() for item in value.split(",") if item.strip()]
     return value
 

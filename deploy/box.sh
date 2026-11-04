@@ -4,12 +4,15 @@
 #   deploy/box.sh install <vX.Y.Z>
 #   deploy/box.sh update [--no-backup] <vX.Y.Z>
 #   deploy/box.sh rollback
+#   deploy/box.sh restart [app|caddy|cloudflared]
 #   deploy/box.sh status
 #
 # Lo ejecuta una persona con Docker en la VM, desde un clon del repositorio con la etiqueta
 # desplegada (git checkout <tag>). La imagen, compose.yaml y el Caddyfile salen de `git archive`
 # del commit al que apunta refs/tags/<tag>, nunca del árbol de trabajo; este script tiene que ser
 # idéntico al de la etiqueta. Se guardan en <git-dir>/ens-box/releases/<commit>.
+# Para recrear un servicio (credenciales nuevas) usa `restart`, no `docker compose up`: este
+# último usaría el compose.yaml del clon y no el de la release fijada.
 # Nunca borra volúmenes ni imágenes y nunca revierte sola.
 #
 # ENS_BOX_PROJECT cambia el nombre del proyecto Compose y del volumen (solo para pruebas).
@@ -55,7 +58,7 @@ trap cleanup EXIT
 trap 'exit 130' INT TERM
 
 usage() {
-  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | status"
+  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared] | status"
 }
 
 # --- comprobaciones ------------------------------------------------------------------------
@@ -252,10 +255,14 @@ wait_healthy() {
   return 1
 }
 
-verify_running() {
+verify_running_app() {
   wait_healthy app || return 1
-  wait_healthy caddy || return 1
   dc exec -T app ens-evidence scheduler status >/dev/null || return 1
+}
+
+verify_running() {
+  verify_running_app || return 1
+  wait_healthy caddy || return 1
 }
 
 # --- release y construcción -----------------------------------------------------------------
@@ -272,6 +279,13 @@ resolve_tag() {
 # sha256 registrados de compose.yaml y del Caddyfile.
 use_release() {
   commit=$1
+  # El commit puede venir del registro, que está en un volumen escribible por la app.
+  case $commit in
+    '' | *[!0-9a-f]*) die "El commit registrado no es un hash de git: $commit" ;;
+  esac
+  [ "${#commit}" -eq 40 ] || [ "${#commit}" -eq 64 ] || die "El commit registrado no es un hash de git: $commit"
+  git -C "$ROOT" rev-parse --verify --quiet "$commit^{commit}" >/dev/null ||
+    die "El commit registrado $commit no existe en $ROOT (¿git fetch --tags?)."
   releases="$(cd "$ROOT" && cd "$(git rev-parse --git-dir)" && pwd)/ens-box/releases"
   REL="$releases/$commit"
   if [ ! -d "$REL" ]; then
@@ -302,13 +316,14 @@ require_script_from_release() {
 
 build_image() {
   tag=$1
+  commit=$2
   new_work_dir
-  git -C "$ROOT" archive --format=tar -o "$WORK_DIR/source.tar" "$COMMIT" ||
-    die "No se puede extraer $COMMIT de git."
+  git -C "$ROOT" archive --format=tar -o "$WORK_DIR/source.tar" "$commit" ||
+    die "No se puede extraer $commit de git."
   mkdir "$WORK_DIR/source"
   tar -x -f "$WORK_DIR/source.tar" -C "$WORK_DIR/source"
-  info "Construyendo $(image_ref "$tag") desde $tag ($COMMIT)..."
-  docker build --label "org.opencontainers.image.revision=$COMMIT" \
+  info "Construyendo $(image_ref "$tag") desde $tag ($commit)..."
+  docker build --label "org.opencontainers.image.revision=$commit" \
     --label "org.opencontainers.image.version=$tag" -t "$(image_ref "$tag")" "$WORK_DIR/source"
   cleanup
 }
@@ -347,7 +362,7 @@ cmd_install() {
     [ -z "$installed" ] || die "Ya hay una caja instalada ($installed); usa update."
   fi
 
-  build_image "$tag"
+  build_image "$tag" "$COMMIT"
 
   # La primera vez que se monta el volumen lo crea la imagen de la app con el propietario 10001.
   in_app sh -c 'test -w /data' ||
@@ -399,7 +414,6 @@ cmd_update() {
   new_commit=$COMMIT
   use_release "$new_commit"
   require_script_from_release "$tag"
-  new_release=$REL
 
   # La copia previa y la lectura de ajustes se hacen con la versión que corre ahora.
   current_commit=$(state_get current.commit)
@@ -430,9 +444,8 @@ cmd_update() {
       [ ! -e "$f" ] || cp -p "$f" "$d"/
     done' sh "$stamp" || die "No se pudo hacer la copia local previa a /data/state/pre-update-$stamp; no se actualiza."
 
-  COMMIT=$new_commit
-  build_image "$tag"
-  REL=$new_release
+  build_image "$tag" "$new_commit"
+  use_release "$new_commit"
   # shellcheck disable=SC2046 # record_args emite clave=valor sin espacios
   state set attempt $(record_args "$tag" "$new_commit" "$backup")
   export ENS_VERSION="$tag"
@@ -473,6 +486,47 @@ cmd_rollback() {
   print_status
 }
 
+# Recrea un servicio con la release registrada como actual (compose.yaml y Caddyfile con los
+# sha256 del registro), nunca con los ficheros del clon.
+cmd_restart() {
+  [ $# -le 1 ] || usage
+  service=${1:-app}
+  case $service in
+    app | caddy) ;;
+    cloudflared) [ -e "$TUNNEL_ENV_FILE" ] || die "cloudflared necesita $TUNNEL_ENV_FILE (perfil tunnel)." ;;
+    *) usage ;;
+  esac
+  require_tools
+  check_secret_files
+  require_volume
+  current=$(state_get current.tag)
+  [ -n "$current" ] || die "No hay caja instalada; usa install."
+  [ -z "$(state_get attempt.tag)" ] ||
+    die "Hay una actualización sin completar; no se sabe qué versión debe correr. Usa rollback."
+  commit=$(state_get current.commit)
+  compose_sha=$(state_get current.compose_sha256)
+  caddyfile_sha=$(state_get current.caddyfile_sha256)
+  use_release "$commit" "$compose_sha" "$caddyfile_sha"
+  export ENS_VERSION="$current"
+  info "Recreando $service con la release $current..."
+  dc up -d --no-build --no-deps --force-recreate "$service"
+  case $service in
+    app) verify_running_app ;;
+    *) wait_healthy "$service" ;;
+  esac || die "$service no está sano tras recrearlo; revisa: docker compose -p $PROJECT logs $service"
+  info "Recreado: $service ($current)"
+}
+
+# Avisa de los contenedores que no se crearon con el compose.yaml de la release en uso.
+warn_foreign_compose() {
+  for container in $(dc ps -q 2>/dev/null || true); do
+    files=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$container")
+    [ "$files" = "$REL/compose.yaml" ] && continue
+    name=$(docker inspect --format '{{.Name}}' "$container")
+    warn "$name no se creó con $REL/compose.yaml (etiqueta: ${files:-vacía}); recréalo con deploy/box.sh restart."
+  done
+}
+
 cmd_status() {
   [ $# -eq 0 ] || usage
   require_tools
@@ -490,6 +544,7 @@ cmd_status() {
     warn "Actualización a $attempt sin completar; la versión registrada es $current. Para volver: deploy/box.sh rollback"
   fi
   print_status
+  [ -n "$attempt" ] || warn_foreign_compose
   if [ -z "$attempt" ] && [ -n "$(dc ps -q app 2>/dev/null)" ]; then
     info ""
     dc exec -T app ens-evidence scheduler status || warn "scheduler status falló."
@@ -503,6 +558,7 @@ case "$command" in
   install) cmd_install "$@" ;;
   update) cmd_update "$@" ;;
   rollback) cmd_rollback "$@" ;;
+  restart) cmd_restart "$@" ;;
   status) cmd_status "$@" ;;
   *) usage ;;
 esac

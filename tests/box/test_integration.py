@@ -333,6 +333,63 @@ def test_rollback_vuelve_a_la_release_registrada_no_al_arbol_de_trabajo(box, ins
     assert update.returncode == 0, update.stdout + update.stderr
 
 
+CONFIG_FILES = '{{index .Config.Labels "com.docker.compose.project.config_files"}}'
+
+
+def release_compose(box, tag):
+    """El compose.yaml guardado de la release registrada para `tag`."""
+    commit = box.registry(tag)["current"]["commit"]
+    return box.clone / ".git" / "ens-box" / "releases" / commit / "compose.yaml"
+
+
+def config_files(box, service):
+    return Path(box.inspect(service, CONFIG_FILES)).resolve()
+
+
+def test_restart_recrea_app_con_el_compose_de_la_release_no_con_el_del_clon(box, installed):
+    labeled = box.tags["labeled"]
+    before = box.container("app")
+
+    restart = box.sh("restart", "app", ENS_BOX_HEALTH_TIMEOUT="120")
+
+    assert restart.returncode == 0, restart.stdout + restart.stderr
+    assert box.container("app") != before, "restart debe recrear el contenedor"
+    assert config_files(box, "app") == release_compose(box, labeled).resolve()
+    assert box.inspect("app", '{{index .Config.Labels "ens.test.source"}}') == "tag"
+    assert "no se creó con" not in box.sh("status").stderr
+
+
+def test_restart_cloudflared_se_niega_si_no_hay_tunel_configurado(box, installed):
+    tunnel = box.sh("restart", "cloudflared")
+
+    assert tunnel.returncode != 0
+    assert "tunnel.env" in tunnel.stderr
+
+
+def test_status_avisa_si_un_contenedor_no_se_creo_con_el_compose_de_la_release(box, installed):
+    labeled = box.tags["labeled"]
+    clone_compose = (box.clone / "compose.yaml").resolve()
+    assert clone_compose != release_compose(box, labeled).resolve()
+    recreated = run(
+        ["docker", "compose", "-p", box.project, "-f", str(clone_compose)]
+        + ["up", "-d", "--no-build", "--no-deps", "--force-recreate", "app"],
+        cwd=box.clone,
+        env=box.env(ENS_VERSION=labeled, ENS_ENV_FILE=str(box.clone / "deploy" / ".env")),
+    )
+    assert recreated.returncode == 0, recreated.stdout + recreated.stderr
+    assert config_files(box, "app") == clone_compose
+
+    status = box.sh("status")
+
+    assert status.returncode == 0, status.stdout + status.stderr
+    assert "no se creó con" in status.stderr
+    assert f"{box.project}-app" in status.stderr
+    assert "deploy/box.sh restart" in status.stderr
+    assert box.sh("restart", "app", ENS_BOX_HEALTH_TIMEOUT="120").returncode == 0
+    assert config_files(box, "app") == release_compose(box, labeled).resolve()
+    assert "no se creó con" not in box.sh("status").stderr
+
+
 def test_update_se_niega_si_el_script_no_es_el_de_la_etiqueta(box, installed):
     script = box.clone / "deploy" / "box.sh"
     original = script.read_text(encoding="utf-8")

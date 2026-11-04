@@ -6,6 +6,7 @@ from typer.testing import CliRunner
 
 from ens_evidence.cli import app
 from ens_evidence.scope import ScopeState, load_inventory, scope_status
+from ens_evidence.scope.edit import ScopeEditRejected, parse_field
 from ens_evidence.workspace import LocalStore
 
 runner = CliRunner()
@@ -108,3 +109,24 @@ def test_conserva_los_activos_anteriores_y_escribe_yaml_de_bloque(fresh):
     data = yaml.safe_load(store.read_text("scope/assets.yaml"))
     assert [a["id"] for a in data["assets"]] == ["srv-caja", "portatil"]
     assert data["assets"][1]["encrypted"] is True
+
+
+@pytest.mark.parametrize(
+    ("name", "text", "expected"),
+    [
+        ("encrypted", "true", True),
+        ("encrypted", " Sí ", True),
+        ("mfa", "no", False),
+        ("repos", "a, b,,c", ["a", "b", "c"]),
+        ("zones", "una", ["una"]),
+        ("os", "Debian, 13 (bool list)", "Debian, 13 (bool list)"),
+        ("campo_desconocido", "true", "true"),
+    ],
+)
+def test_parse_field_convierte_segun_el_tipo_del_campo(name, text, expected):
+    assert parse_field(name, text) == expected
+
+
+def test_parse_field_rechaza_un_booleano_que_no_lo_es():
+    with pytest.raises(ScopeEditRejected, match="indica true o false"):
+        parse_field("encrypted", "quizá")

@@ -29,11 +29,12 @@ services:
     healthcheck:
       # El latido (ENS_HEARTBEAT_FILE) lo renueva el bucle del scheduler en cada vuelta y,
       # durante un ciclo, el propio ciclo entre etapas, entre conectores y en cada espera
-      # (BeatingClock en scheduling/scheduler.py), siempre desde el mismo hilo: si el ciclo se cuelga, el latido envejece. Lo que no late son las
-      # operaciones largas e indivisibles (checks, informes, copia). Umbral: el máximo entre
-      # 15 min y el timeout por conector (collect.timeout_minutes, 15 por defecto) más 5 min
-      # de margen = 1200 s. Si subes ese timeout en reports/schedule.yaml, sube el umbral a
-      # timeout_minutes * 60 + 300 en la línea de abajo.
+      # (BeatingClock en scheduling/scheduler.py), siempre desde el mismo hilo: si el ciclo se
+      # cuelga, el latido envejece. Lo que no late son las operaciones largas e indivisibles
+      # (checks, informes, copia). Umbral: el máximo entre 15 min y el timeout por conector
+      # (collect.timeout_minutes, 15 por defecto) más 5 min de margen = 1200 s. Si subes ese
+      # timeout en reports/schedule.yaml, sube el umbral a timeout_minutes * 60 + 300 en la
+      # línea de abajo.
       test:
         - CMD
         - python

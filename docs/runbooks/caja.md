@@ -73,11 +73,19 @@ chmod 600 deploy/.env deploy/tunnel.env
 Descomenta y rellena en `deploy/.env` solo lo que uses. Una variable vacía no
 equivale a una ausente. Los nombres están en `deploy/.env.example`.
 
-Después de cambiar un fichero, reinicia el servicio que lo lee:
+Después de cambiar un fichero, recrea el servicio que lo lee:
 
 ```bash
-ENS_VERSION=v0.1.0 docker compose -p ens-box up -d --force-recreate app
+deploy/box.sh restart app        # también: caddy, cloudflared
 ```
+
+`restart` recrea el servicio con el `compose.yaml` y el `Caddyfile` de la
+release registrada como actual (comprueba sus sha256) y espera a que esté sano.
+No uses `docker compose up` para recrear o arrancar servicios: usaría el
+`compose.yaml` del clon, que puede estar en otra etiqueta o tener ediciones, y
+la caja correría con una definición distinta de la registrada. `box.sh status`
+avisa si algún contenedor se creó así. `docker compose logs`, `exec` y `ps` solo
+leen y se pueden usar.
 
 `box.sh` se niega a seguir si un fichero de secretos es de otro usuario, es un
 enlace o lo pueden leer otros. Nunca pongas credenciales en `compose.yaml`, en
@@ -111,11 +119,11 @@ Sin salir de la caja, desde la red `edge` y sin imágenes de terceros:
 
 ```bash
 for ruta in / /agent/enroll '/admin?token=prueba'; do
-  docker compose -p ens-box exec -T caddy wget -S -O /dev/null "http://127.0.0.1:8080$ruta" 2>&1 | grep 'HTTP/'
+  docker compose -p ens-box exec -T caddy wget -S -O /dev/null "http://127.0.0.1:8080$ruta" 2>&1 | grep '^  HTTP/'
 done
 ```
 
-Se espera `HTTP/1.1 403 Forbidden` las tres veces. En `docker compose -p
+Se espera `HTTP/1.1 403 Forbidden` una vez por ruta (tres líneas). En `docker compose -p
 ens-box logs caddy` la petición queda con la ruta (`/admin`) pero sin la query
 ni las cabeceras.
 
@@ -174,7 +182,8 @@ Notas:
 
 - `--type server` pide `hostname`, `function`, `os`, `environment` y
   `location`; si falta alguno, el comando lo dice y no cambia nada. Para otros
-  tipos mira `src/ens_evidence/scope/models.py`, o `ens scope add-asset --help`.
+  tipos lánzalo solo con `--id` y `--type`: el error enumera los campos que
+  faltan.
 - `--set` admite los campos del activo; las listas van separadas por comas y
   los booleanos son `true` o `false`.
 - Sin `--include` el activo queda sin decidir y `inventory validate` lo dice:
@@ -210,7 +219,7 @@ El repositorio no admite credenciales ni parámetros en la URL.
 **2. Las credenciales, en `deploy/.env`** (modo 600, solo las lee `app`):
 `ENS_BACKUP_RESTIC_PASSWORD`, `ENS_BACKUP_AWS_ACCESS_KEY_ID` y
 `ENS_BACKUP_AWS_SECRET_ACCESS_KEY`, distintas de las del workspace. Después,
-recrea `app` (sección 3) para que las lea.
+recrea `app` con `deploy/box.sh restart app` (sección 3) para que las lea.
 
 Con eso, crea el repositorio (una vez) y lanza la primera copia:
 
@@ -275,7 +284,8 @@ deploy/box.sh rollback
   nada.
 - Usa el `compose.yaml` y el `Caddyfile` guardados de esa versión en
   `.git/ens-box/releases/<commit>/` y se niega si no coinciden con los
-  registrados. Ejecútalo con el script de esa versión: `git checkout <etiqueta>`.
+  registrados. No hace falta cambiar de etiqueta antes. Después, deja el clon
+  en la versión que corre: `git checkout <etiqueta a la que se volvió>`.
 
 El registro está en `/data/state/box-deploy.json` y lleva, para `current`,
 `previous`, `attempt` (actualización en curso o fallida) y `failed`: la
@@ -301,9 +311,15 @@ docker compose -p ens-box logs app
 ```
 
 La app está sana mientras el scheduler siga latiendo. El bucle escribe un
-latido en `/data/state/scheduler-heartbeat` y el healthcheck comprueba que es
-reciente (el umbral está en `compose.yaml`, servicio `app`). Si el latido
-envejece, el contenedor pasa a `unhealthy`.
+latido en `/tmp/scheduler-heartbeat`, en el tmpfs del contenedor `app` (no en el
+volumen: se pierde al recrearlo y una versión nueva no hereda el de la
+anterior), y el healthcheck comprueba que es reciente (el umbral está en
+`compose.yaml`, servicio `app`). Si el latido envejece, el contenedor pasa a
+`unhealthy`. Para ver cuándo latió por última vez:
+
+```bash
+docker compose -p ens-box exec app stat -c %y /tmp/scheduler-heartbeat
+```
 
 - Un fallo de un conector no es un fallo del servicio: sale en el informe, no
   en el healthcheck.

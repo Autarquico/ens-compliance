@@ -42,7 +42,7 @@ def test_cada_vuelta_del_bucle_late():
     assert len(beats) >= 3
 
 
-def test_sin_latido_configurado_el_planificador_arranca_y_termina():
+def test_sin_latido_configurado_el_planificador_termina_sin_error():
     clock, stop = FakeClock(START), threading.Event()
     stop.set()
 
@@ -54,8 +54,6 @@ def test_sin_latido_configurado_el_planificador_arranca_y_termina():
         stop,
         log=lambda line: None,
     ).run()
-
-    assert stop.is_set()
 
 
 def test_cada_latido_renueva_la_fecha_de_modificacion_del_fichero_de_estado(tmp_path):

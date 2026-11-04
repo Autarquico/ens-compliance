@@ -98,13 +98,16 @@ debe poder deshacerse sin perder evidencias. Procedimientos:
 
 ### Latido
 
-- El bucle del scheduler escribe `/data/state/scheduler-heartbeat` al
-  empezar cada vuelta y tras cada trabajo, de forma atómica. Si no puede
-  escribirlo, el scheduler sigue y el fichero envejece.
+- El bucle del scheduler escribe `/tmp/scheduler-heartbeat` (tmpfs del
+  contenedor) al empezar cada vuelta, entre etapas y entre conectores, de forma
+  atómica. Si no puede escribirlo, el scheduler sigue y el fichero envejece.
 - El healthcheck de `app` comprueba que el latido es reciente; el umbral vive
   en `compose.yaml`.
 - Un fallo de conectores no es un fallo del servicio: se ve en el informe.
 - `restart: unless-stopped`. Nada reinicia un contenedor `unhealthy`.
+- Para recrear un servicio se usa `deploy/box.sh restart <servicio>`, nunca
+  `docker compose` a mano: así se usa el `compose.yaml` de la release fijada.
+  `box.sh status` avisa si un contenedor se creó con otro.
 
 ### Fuera de la caja de v0.1
 
