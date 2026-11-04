@@ -18,8 +18,25 @@ from ens_evidence.benchmark.cases import (
 )
 from ens_evidence.benchmark.model import Partition
 from ens_evidence.benchmark.mutations import build_case
+from ens_evidence.benchmark.recordings import (
+    BenchCase,
+    PreparedPartition,
+    RecordingRefused,
+    load_judgment_cases,
+    prepare_cases,
+    record_case,
+    recording_path,
+    write_recording,
+)
+from ens_evidence.benchmark.replay import Recorder
+from ens_evidence.models.preaudit import Provider
+from ens_evidence.preaudit import service
+from ens_evidence.preaudit.pack import PackError, load_pack
+from ens_evidence.privacy_text import check_declared_name
+from ens_evidence.workspace import PreAuditSettings
 
 BENCH_DIR = Path("benchmark")
+REFUSED = 1
 INVALID = 2
 
 app = typer.Typer(
@@ -34,6 +51,10 @@ PartitionOption = Annotated[Partition, typer.Option("--partition", help="Partici
 MeasurementOption = Annotated[
     bool,
     typer.Option("--measurement", help="Necesario para la reservada; queda anotado."),
+]
+ProviderOption = Annotated[Provider, typer.Option("--provider", help="Destino de juicio.")]
+ModelOption = Annotated[
+    str, typer.Option("--model", help="Modelo configurado; sin valor por defecto.")
 ]
 
 
@@ -124,3 +145,174 @@ def _report(build: Build) -> None:
     typer.echo(f"hallazgos deterministas: {len(inspection.findings)}")
     for finding in inspection.findings:
         typer.echo(f"  {finding.criterion} {finding.measure}: {finding.reason}")
+
+
+@app.command("prepare")
+def prepare(
+    provider: ProviderOption,
+    model: ModelOption,
+    partition: PartitionOption = Partition.DEV,
+    cases: CasesOption = BENCH_DIR,
+    measurement: MeasurementOption = False,
+) -> None:
+    """Construye y prepara cada caso de juicio de la partición, sin red. Imprime la huella del
+    payload de cada caso y la huella combinada que `record --consent` debe repetir."""
+    settings, judged = _recordable(cases, partition, provider, model, "prepare", measurement)
+    with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
+        prepared = _prepare(cases, judged, settings, Path(scratch), None)
+    typer.echo(f"destino: {prepared.destination}")
+    if prepared.requires_shell_warning:
+        typer.echo(f"aviso: {service.SHELL_RISK}")
+    for case in prepared.cases:
+        typer.echo(f"{case.bench.case.key}  {case.prepared.payload.sha256}")
+    typer.echo(f"huella combinada (sha256): {prepared.fingerprint}")
+    typer.echo(
+        f"Para grabar: ens-evidence benchmark record --partition {partition} "
+        f"--provider {provider} --model {settings.model} --consent {prepared.fingerprint} "
+        "--by <nombre>"
+    )
+
+
+@app.command("record")
+def record(
+    provider: ProviderOption,
+    model: ModelOption,
+    consent: Annotated[
+        str, typer.Option("--consent", help="Huella combinada que imprimió `prepare`.")
+    ],
+    by: Annotated[str, typer.Option("--by", help="Quién consiente el envío (nombre declarado).")],
+    partition: PartitionOption = Partition.DEV,
+    repetitions: Annotated[int, typer.Option("--repetitions", min=1, help="Envíos por caso.")] = 3,
+    accept_shell_risk: Annotated[
+        bool,
+        typer.Option("--accept-shell-risk", help="Necesario si el destino conserva una shell."),
+    ] = False,
+    replace: Annotated[
+        bool, typer.Option("--replace", help="Sustituye las grabaciones que ya existan.")
+    ] = False,
+    cases: CasesOption = BENCH_DIR,
+    measurement: MeasurementOption = False,
+) -> None:
+    """Envía de verdad cada caso de juicio por la pre-auditoría (`--repetitions` veces) y graba
+    lo que devuelve el proveedor. Sin la huella combinada de `prepare` no envía nada. Sale con 1
+    si se rechaza el envío o una grabación, y con 2 si la entrada no vale."""
+    if errors := check_declared_name(by):
+        raise _fail("\n".join(f"Error: {e}" for e in errors))
+    settings, judged = _recordable(cases, partition, provider, model, "record", measurement)
+    if not replace and (existing := _existing(cases, judged, settings)):
+        raise _fail(f"Error: ya grabado: {', '.join(existing)}; usa --replace", REFUSED)
+    recorder = Recorder()
+    with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
+        prepared = _prepare(cases, judged, settings, Path(scratch), recorder)
+        if prepared.fingerprint != consent:
+            raise _fail(
+                "Error: la huella no coincide con lo que se enviaría; ejecuta `benchmark "
+                "prepare` y revisa. No se ha enviado nada",
+                REFUSED,
+            )
+        if prepared.requires_shell_warning and not accept_shell_risk:
+            raise _fail(f"Error: {service.SHELL_RISK}. No se ha enviado nada", REFUSED)
+        refused = _record_all(
+            cases, prepared, settings, by, repetitions, recorder, replace, accept_shell_risk
+        )
+    if refused:
+        raise _fail(f"{refused} grabaciones no se escribieron", REFUSED)
+
+
+def _recordable(
+    root: Path,
+    partition: Partition,
+    provider: Provider,
+    model: str,
+    action: str,
+    measurement: bool,
+) -> tuple[PreAuditSettings, list[BenchCase]]:
+    if not root.is_dir():
+        raise _fail(f"Error: no existe el banco {root}")
+    if not model.strip():
+        raise _fail("Error: --model: indica el modelo; no hay valor por defecto")
+    settings = PreAuditSettings(provider=provider, model=model)
+    try:
+        pack_sha256 = load_pack().sha256
+    except PackError as exc:
+        raise _fail(f"Error: el audit pack no es íntegro: {exc}") from None
+    try:
+        open_partition(
+            root,
+            partition,
+            action=action,
+            measurement=measurement,
+            now=clock(),
+            pack_sha256=pack_sha256,
+            provider=provider,
+            model=settings.model,
+        )
+        judged, skipped = load_judgment_cases(root, partition)
+    except HoldoutLocked as exc:
+        raise _fail(f"Error: {exc}") from None
+    except BenchError as exc:
+        raise _fail("\n".join(exc.problems)) from None
+    if skipped:
+        typer.echo(f"solo deterministas, sin juicio que grabar: {', '.join(skipped)}")
+    return settings, judged
+
+
+def _existing(root: Path, judged: list[BenchCase], settings: PreAuditSettings) -> list[str]:
+    return [
+        bench.case.key
+        for bench in judged
+        if recording_path(root, bench.case.key, settings.provider, settings.model).exists()
+    ]
+
+
+def _prepare(
+    root: Path,
+    judged: list[BenchCase],
+    settings: PreAuditSettings,
+    scratch: Path,
+    recorder: Recorder | None,
+) -> PreparedPartition:
+    try:
+        return prepare_cases(root, judged, settings, scratch, client_factory=recorder)
+    except BenchError as exc:
+        raise _fail("\n".join(exc.problems)) from None
+    except service.PreAuditRejected as exc:
+        raise _fail("\n".join(f"Error: {e}" for e in exc.errors)) from None
+
+
+def _record_all(
+    root: Path,
+    prepared: PreparedPartition,
+    settings: PreAuditSettings,
+    by: str,
+    repetitions: int,
+    recorder: Recorder,
+    replace: bool,
+    accept_shell_risk: bool,
+) -> int:
+    """Graba caso a caso; lo ya escrito se queda aunque otro caso se rechace. Devuelve cuántas
+    grabaciones no se escribieron."""
+    refused = 0
+    for case in prepared.cases:
+        key = case.bench.case.key
+        try:
+            recording = record_case(
+                case,
+                settings,
+                by=by,
+                repetitions=repetitions,
+                accept_shell_risk=accept_shell_risk,
+                recorder=recorder,
+                clock=clock,
+            )
+            path = write_recording(root, recording, replace=replace)
+        except service.PreAuditRejected as exc:
+            raise _fail("\n".join(f"Error: {key}: {e}" for e in exc.errors), REFUSED) from None
+        except RecordingRefused as exc:
+            refused += 1
+            for problem in exc.problems:
+                typer.echo(f"no se graba: {problem}", err=True)
+            continue
+        outcomes = ", ".join(r.outcome.value for r in recording.repetitions)
+        typer.echo(f"{key}: {path.relative_to(root).as_posix()} ({outcomes})")
+    return refused
