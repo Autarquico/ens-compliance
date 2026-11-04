@@ -118,6 +118,9 @@ debe poder deshacerse sin perder evidencias. Procedimientos:
 
 ## Consecuencias
 
+- El lock de `box.sh` vive en el directorio Git del clon: impide dos
+  operaciones a la vez desde el mismo clon, no desde dos clones distintos sobre
+  la misma caja. Cada caja se opera desde un único clon.
 - Construir en la VM exige acceso al clon con sus etiquetas, a Docker Hub, a
   GitHub (restic) y a PyPI durante el build.
 - Una caja sin registro depende de que la imagen anterior siga en local. Si se

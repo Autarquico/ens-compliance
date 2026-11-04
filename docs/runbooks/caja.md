@@ -242,6 +242,9 @@ Sin `backup init`, el repositorio no existe y `backup run` falla.
 
 ## 7. Actualizar
 
+Opera la caja siempre desde el mismo clon: `box.sh` impide dos operaciones a la
+vez desde ese clon, pero no desde dos clones distintos.
+
 ```bash
 git fetch --tags
 git checkout v0.1.1
