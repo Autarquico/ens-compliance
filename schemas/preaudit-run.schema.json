@@ -1,0 +1,153 @@
+{
+  "$defs": {
+    "Consent": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "by": {
+          "minLength": 1,
+          "title": "By",
+          "type": "string"
+        },
+        "destination": {
+          "minLength": 1,
+          "title": "Destination",
+          "type": "string"
+        },
+        "payload_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Payload Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "by",
+        "at",
+        "payload_sha256",
+        "destination"
+      ],
+      "title": "Consent",
+      "type": "object"
+    },
+    "LayerStatus": {
+      "enum": [
+        "NOT_RUN",
+        "DONE",
+        "ERROR"
+      ],
+      "title": "LayerStatus",
+      "type": "string"
+    },
+    "Provider": {
+      "enum": [
+        "anthropic",
+        "openai"
+      ],
+      "title": "Provider",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "consent": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Consent"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "deterministic_status": {
+      "$ref": "#/$defs/LayerStatus",
+      "default": "DONE"
+    },
+    "discarded": {
+      "default": 0,
+      "minimum": 0,
+      "title": "Discarded",
+      "type": "integer"
+    },
+    "dossier": {
+      "minLength": 1,
+      "title": "Dossier",
+      "type": "string"
+    },
+    "dossier_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Dossier Sha256",
+      "type": "string"
+    },
+    "judgment_status": {
+      "$ref": "#/$defs/LayerStatus",
+      "default": "NOT_RUN"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "pack_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Pack Sha256",
+      "type": "string"
+    },
+    "pack_version": {
+      "minLength": 1,
+      "title": "Pack Version",
+      "type": "string"
+    },
+    "provider": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Provider"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "temperature": {
+      "anyOf": [
+        {
+          "minimum": 0,
+          "type": "number"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Temperature"
+    }
+  },
+  "required": [
+    "dossier",
+    "dossier_sha256",
+    "pack_version",
+    "pack_sha256",
+    "at"
+  ],
+  "title": "PreAuditRun",
+  "type": "object"
+}

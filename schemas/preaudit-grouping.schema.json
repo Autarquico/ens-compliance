@@ -1,0 +1,56 @@
+{
+  "$defs": {
+    "Classification": {
+      "enum": [
+        "NC_MAYOR",
+        "NC_MENOR",
+        "OBSERVACION",
+        "SIN_CLASIFICAR"
+      ],
+      "title": "Classification",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Agrupaci\u00f3n derivada, IC-01/19 \u00a754. Conserva los hallazgos originales.",
+  "properties": {
+    "finding_ids": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 2,
+      "title": "Finding Ids",
+      "type": "array"
+    },
+    "justification": {
+      "minLength": 1,
+      "title": "Justification",
+      "type": "string"
+    },
+    "measures": {
+      "items": {
+        "type": "string"
+      },
+      "minItems": 1,
+      "title": "Measures",
+      "type": "array"
+    },
+    "proposal": {
+      "$ref": "#/$defs/Classification"
+    },
+    "source": {
+      "minLength": 1,
+      "title": "Source",
+      "type": "string"
+    }
+  },
+  "required": [
+    "proposal",
+    "measures",
+    "finding_ids",
+    "justification",
+    "source"
+  ],
+  "title": "GroupingProposal",
+  "type": "object"
+}

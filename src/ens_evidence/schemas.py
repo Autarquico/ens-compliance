@@ -32,6 +32,12 @@ from ens_evidence.models import (
     ReadinessResult,
     Review,
 )
+from ens_evidence.models.preaudit import (
+    Disposition,
+    Finding,
+    GroupingProposal,
+    PreAuditRun,
+)
 from ens_evidence.orgdocs.approval import DocumentApproval
 from ens_evidence.orgdocs.meta import DocumentMeta
 from ens_evidence.reports.model import CycleStage, DailyReport, MonthlyReport
@@ -89,6 +95,10 @@ CONTRACTS: dict[str, type[BaseModel]] = {
     "observed-hosts": ObservedHosts,
     "org-document-meta": DocumentMeta,
     "org-document-approval": DocumentApproval,
+    "preaudit-disposition": Disposition,
+    "preaudit-finding": Finding,
+    "preaudit-grouping": GroupingProposal,
+    "preaudit-run": PreAuditRun,
 }
 
 

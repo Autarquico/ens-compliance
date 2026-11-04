@@ -1,0 +1,67 @@
+{
+  "$defs": {
+    "DispositionState": {
+      "enum": [
+        "OPEN",
+        "ACCEPTED",
+        "RESOLVED",
+        "DISMISSED"
+      ],
+      "title": "DispositionState",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "by": {
+      "minLength": 1,
+      "title": "By",
+      "type": "string"
+    },
+    "evidence_id": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Evidence Id"
+    },
+    "finding_id": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Finding Id",
+      "type": "string"
+    },
+    "reason": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Reason"
+    },
+    "state": {
+      "$ref": "#/$defs/DispositionState"
+    }
+  },
+  "required": [
+    "finding_id",
+    "state",
+    "by",
+    "at"
+  ],
+  "title": "Disposition",
+  "type": "object"
+}

@@ -1,0 +1,211 @@
+"""Pre-auditoría: hallazgos propuestos, ejecución y disposición humana (ADR 0002).
+
+Todo hallazgo es una propuesta; la decide una persona. Nunca es un dictamen.
+"""
+
+import hashlib
+from enum import StrEnum
+from typing import Self
+
+from pydantic import AwareDatetime, Field, model_validator
+
+from ens_evidence.models.contracts import SHA256_PATTERN, Strict
+
+PROPOSAL_NOTICE = "propuesta; la decide una persona"
+
+
+class Layer(StrEnum):
+    DETERMINISTIC = "DETERMINISTIC"
+    JUDGMENT = "JUDGMENT"
+
+
+class Classification(StrEnum):
+    NC_MAYOR = "NC_MAYOR"
+    NC_MENOR = "NC_MENOR"
+    OBSERVACION = "OBSERVACION"
+    SIN_CLASIFICAR = "SIN_CLASIFICAR"
+
+
+class LayerStatus(StrEnum):
+    NOT_RUN = "NOT_RUN"
+    DONE = "DONE"
+    ERROR = "ERROR"
+
+
+class DispositionState(StrEnum):
+    OPEN = "OPEN"
+    ACCEPTED = "ACCEPTED"
+    RESOLVED = "RESOLVED"
+    DISMISSED = "DISMISSED"
+
+
+class Provider(StrEnum):
+    ANTHROPIC = "anthropic"
+    OPENAI = "openai"
+
+
+class RefKind(StrEnum):
+    DOCUMENT = "DOCUMENT"
+    EVIDENCE = "EVIDENCE"
+    SECTION = "SECTION"
+
+
+class DeterministicRule(StrEnum):
+    CHECK_FAIL = "CHECK_FAIL"
+    EVIDENCE_MISSING = "EVIDENCE_MISSING"
+    EVIDENCE_EXPIRED = "EVIDENCE_EXPIRED"
+    CHECK_UNKNOWN = "CHECK_UNKNOWN"
+    HASH_MISMATCH = "HASH_MISMATCH"
+    DOSSIER_INTEGRITY = "DOSSIER_INTEGRITY"
+
+
+# Tabla de decisión de la capa determinista (plan, «Cambios r2», punto 4).
+DETERMINISTIC_PROPOSAL = {
+    DeterministicRule.CHECK_FAIL: Classification.NC_MENOR,
+    DeterministicRule.EVIDENCE_MISSING: Classification.SIN_CLASIFICAR,
+    DeterministicRule.EVIDENCE_EXPIRED: Classification.SIN_CLASIFICAR,
+    DeterministicRule.CHECK_UNKNOWN: Classification.SIN_CLASIFICAR,
+    DeterministicRule.HASH_MISMATCH: Classification.SIN_CLASIFICAR,
+    DeterministicRule.DOSSIER_INTEGRITY: Classification.SIN_CLASIFICAR,
+}
+
+
+class Ref(Strict):
+    kind: RefKind
+    id: str = Field(min_length=1)
+
+
+def group_of(measure: str) -> str:
+    """Grupo del catálogo: `op.pl.1` → `op.pl`, `org.1` → `org`."""
+    return measure.rsplit(".", 1)[0]
+
+
+def finding_id(criterion: str, measure: str, refs: list[Ref]) -> str:
+    """Id estable: mismo criterio, medida y refs (sin importar el orden) → mismo id."""
+    parts = [criterion, measure, *sorted(f"{ref.kind}:{ref.id}" for ref in refs)]
+    return hashlib.sha256("\n".join(parts).encode()).hexdigest()
+
+
+class Finding(Strict):
+    id: str = Field(pattern=SHA256_PATTERN)
+    layer: Layer
+    proposal: Classification
+    measure: str = Field(min_length=1)
+    refs: list[Ref] = Field(default_factory=list)
+    criterion: str = Field(min_length=1)
+    reason: str = Field(min_length=1)
+    quote: str | None = None
+    source: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        if self.id != finding_id(self.criterion, self.measure, self.refs):
+            raise ValueError("id must derive from criterion, measure and refs")
+        if self.layer is Layer.DETERMINISTIC:
+            self._check_deterministic()
+        else:
+            self._check_judgment()
+        return self
+
+    def _check_deterministic(self) -> None:
+        try:
+            rule = DeterministicRule(self.criterion)
+        except ValueError:
+            raise ValueError(f"unknown deterministic rule: {self.criterion}") from None
+        if self.proposal is not DETERMINISTIC_PROPOSAL[rule]:
+            raise ValueError(f"{rule} must be proposed as {DETERMINISTIC_PROPOSAL[rule]}")
+
+    def _check_judgment(self) -> None:
+        if self.proposal is Classification.SIN_CLASIFICAR:
+            raise ValueError("a judgment finding must propose NC_MAYOR, NC_MENOR or OBSERVACION")
+        if not self.quote:
+            raise ValueError("a judgment finding must quote its source")
+        if not self.refs:
+            raise ValueError("a judgment finding must cite at least one reference")
+
+
+class Disposition(Strict):
+    finding_id: str = Field(pattern=SHA256_PATTERN)
+    state: DispositionState
+    by: str = Field(min_length=1)
+    at: AwareDatetime
+    evidence_id: str | None = None
+    reason: str | None = None
+
+    @model_validator(mode="after")
+    def _state_fields(self) -> Self:
+        resolved = self.state is DispositionState.RESOLVED
+        if resolved and not self.evidence_id:
+            raise ValueError("RESOLVED requires evidence_id")
+        if not resolved and self.evidence_id is not None:
+            raise ValueError("evidence_id is only valid in RESOLVED")
+        if self.state is DispositionState.DISMISSED and not self.reason:
+            raise ValueError("DISMISSED requires a reason")
+        return self
+
+
+class GroupingProposal(Strict):
+    """Agrupación derivada, IC-01/19 §54. Conserva los hallazgos originales."""
+
+    proposal: Classification
+    measures: list[str] = Field(min_length=1)
+    finding_ids: list[str] = Field(min_length=2)
+    justification: str = Field(min_length=1)
+    source: str = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def _follows_section_54(self) -> Self:
+        if len(set(self.finding_ids)) != len(self.finding_ids):
+            raise ValueError("finding_ids must be unique")
+        if len(set(self.measures)) != len(self.measures):
+            raise ValueError("measures must be unique")
+        if self.proposal is Classification.NC_MENOR:
+            if len(self.measures) != 1:
+                raise ValueError("NC_MENOR grouping refers to a single measure")
+        elif self.proposal is Classification.NC_MAYOR:
+            if len(self.measures) < 2:
+                raise ValueError("NC_MAYOR grouping refers to several measures")
+            if len({group_of(m) for m in self.measures}) != 1:
+                raise ValueError("measures from different groups cannot be grouped")
+        else:
+            raise ValueError("grouping proposes NC_MENOR or NC_MAYOR")
+        return self
+
+
+class Consent(Strict):
+    by: str = Field(min_length=1)
+    at: AwareDatetime
+    payload_sha256: str = Field(pattern=SHA256_PATTERN)
+    destination: str = Field(min_length=1)
+
+
+class PreAuditRun(Strict):
+    dossier: str = Field(min_length=1)
+    dossier_sha256: str = Field(pattern=SHA256_PATTERN)
+    pack_version: str = Field(min_length=1)
+    pack_sha256: str = Field(pattern=SHA256_PATTERN)
+    at: AwareDatetime
+    provider: Provider | None = None
+    model: str | None = Field(default=None, min_length=1)
+    temperature: float | None = Field(default=None, ge=0)
+    consent: Consent | None = None
+    deterministic_status: LayerStatus = LayerStatus.DONE
+    judgment_status: LayerStatus = LayerStatus.NOT_RUN
+    discarded: int = Field(default=0, ge=0)
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        if self.deterministic_status is not LayerStatus.DONE:
+            raise ValueError("the deterministic layer always completes")
+        engine = (self.provider, self.model, self.temperature)
+        if self.judgment_status is LayerStatus.NOT_RUN:
+            if any(v is not None for v in (*engine, self.consent)):
+                raise ValueError("NOT_RUN judgment carries no provider, model or consent")
+            if self.discarded:
+                raise ValueError("NOT_RUN judgment has nothing to discard")
+        else:
+            if self.provider is None or self.model is None or self.temperature is None:
+                raise ValueError("judgment requires provider, model and temperature")
+            if self.consent is None:
+                raise ValueError("judgment requires consent")
+        return self
