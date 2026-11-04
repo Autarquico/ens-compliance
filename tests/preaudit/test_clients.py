@@ -19,6 +19,7 @@ from ens_evidence.preaudit.adapter import (
     parse_response,
     run_judgment,
 )
+from ens_evidence.preaudit.clients._cli import session_env
 from ens_evidence.preaudit.clients.anthropic import AnthropicProvider
 from ens_evidence.preaudit.clients.claude_code import ClaudeCodeProvider
 from ens_evidence.preaudit.clients.codex import CodexProvider
@@ -321,10 +322,14 @@ args = sys.argv[1:]
 if args == ["--version"]:
     print({"claude": "2.1.317 (Claude Code)", "codex": "codex-cli 0.160.1"}[name])
     sys.exit(0)
-mode = os.environ.get("FAKE_MODE", "ok")
+# El subprocess recibe un entorno mínimo: el modo y el registro van junto al script.
+here = os.path.dirname(os.path.abspath(sys.argv[0]))
+mode_file = os.path.join(here, "mode")
+mode = open(mode_file).read() if os.path.exists(mode_file) else "ok"
 stdin = sys.stdin.buffer.read()
-with open(os.environ["FAKE_LOG"], "w") as log:
-    json.dump({"args": args, "cwd_entries": os.listdir("."), "stdin": stdin.decode()}, log)
+with open(os.path.join(here, "log.json"), "w") as log:
+    record = {"args": args, "cwd_entries": os.listdir("."), "stdin": stdin.decode()}
+    json.dump(record | {"env": dict(os.environ)}, log)
 if mode == "sleep":
     time.sleep(30)
 if mode == "fail":
@@ -352,14 +357,16 @@ def fake_cli(tmp_path: Path, monkeypatch: pytest.MonkeyPatch) -> Path:
         script = bin_dir / name
         script.write_text(f"#!{sys.executable}\n{FAKE_CLI}")
         script.chmod(script.stat().st_mode | stat.S_IXUSR)
-    log = tmp_path / "log.json"
     monkeypatch.setenv("PATH", str(bin_dir))
-    monkeypatch.setenv("FAKE_LOG", str(log))
-    return log
+    return bin_dir / "log.json"
 
 
 def logged(log: Path) -> dict[str, Any]:
     return json.loads(log.read_text())
+
+
+def fake_mode(log: Path, mode: str) -> None:
+    log.with_name("mode").write_text(mode)
 
 
 def test_claude_code_valid_response(fake_cli: Path) -> None:
@@ -368,7 +375,7 @@ def test_claude_code_valid_response(fake_cli: Path) -> None:
     raw = judge(provider)
 
     assert parse_response(raw) is not None
-    assert provider.destination == "claude-code 2.1.317"
+    assert provider.destination == "claude-code 2.1.317, sesión del usuario (plan contratado)"
     assert provider.requires_shell_warning is False
     call = logged(fake_cli)
     args = call["args"]
@@ -389,7 +396,7 @@ def test_codex_valid_response(fake_cli: Path) -> None:
     raw = judge(provider)
 
     assert parse_response(raw) is not None
-    assert provider.destination == "codex 0.160.1"
+    assert provider.destination == "codex 0.160.1, sesión del usuario (plan contratado)"
     assert provider.requires_shell_warning is True
     call = logged(fake_cli)
     args = call["args"]
@@ -407,7 +414,7 @@ def test_codex_valid_response(fake_cli: Path) -> None:
 def test_cli_schema_violation_leaves_layer_in_error(
     provider_class: Any, fake_cli: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("FAKE_MODE", "invalid")
+    fake_mode(fake_cli, "invalid")
 
     outcome = run_judgment(provider_class(), PACK, PAYLOAD, CONFIG)
 
@@ -417,7 +424,7 @@ def test_cli_schema_violation_leaves_layer_in_error(
 def test_claude_code_without_structured_output_is_an_error(
     fake_cli: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("FAKE_MODE", "no_structured")
+    fake_mode(fake_cli, "no_structured")
 
     with pytest.raises(ProviderError) as raised:
         judge(ClaudeCodeProvider())
@@ -428,7 +435,7 @@ def test_claude_code_without_structured_output_is_an_error(
 def test_cli_failure_does_not_leak_stderr(
     provider_class: Any, fake_cli: Path, monkeypatch: pytest.MonkeyPatch
 ) -> None:
-    monkeypatch.setenv("FAKE_MODE", "fail")
+    fake_mode(fake_cli, "fail")
 
     with pytest.raises(ProviderError) as raised:
         judge(provider_class())
@@ -437,7 +444,7 @@ def test_cli_failure_does_not_leak_stderr(
 
 @pytest.mark.parametrize("provider_class", [ClaudeCodeProvider, CodexProvider])
 def test_cli_timeout(provider_class: Any, fake_cli: Path, monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setenv("FAKE_MODE", "sleep")
+    fake_mode(fake_cli, "sleep")
 
     with pytest.raises(ProviderError) as raised:
         judge(provider_class(), JudgmentConfig(model="m", timeout=0.5))
@@ -462,3 +469,55 @@ def test_cli_rejects_temperature(provider_class: Any, fake_cli: Path) -> None:
         judge(provider_class(), JudgmentConfig(model="m", temperature=0.2))
     assert raised.value.kind is ProviderErrorKind.CONFIG
     assert not fake_cli.exists()
+
+
+API_CREDENTIALS = {
+    "ANTHROPIC_API_KEY": "sk-ant-nunca",
+    "ANTHROPIC_AUTH_TOKEN": "token-nunca",
+    "ANTHROPIC_BASE_URL": "https://gateway.example.com",
+    "CLAUDE_CODE_USE_BEDROCK": "1",
+    "CLAUDE_CODE_USE_VERTEX": "1",
+    "OPENAI_API_KEY": "sk-nunca",
+    "OPENAI_BASE_URL": "https://gateway.example.com/v1",
+    "AWS_SECRET_ACCESS_KEY": "nunca",
+}
+SESSION_ONLY = {"PATH", "HOME", "LANG", "LC_ALL", "TMPDIR"}
+
+
+@pytest.mark.parametrize(
+    ("provider_class", "allowed"),
+    [(ClaudeCodeProvider, SESSION_ONLY), (CodexProvider, SESSION_ONLY | {"CODEX_HOME"})],
+)
+def test_cli_providers_use_the_user_session_and_never_an_api_key(
+    provider_class: Any, allowed: set[str], fake_cli: Path, monkeypatch: pytest.MonkeyPatch
+) -> None:
+    for name, value in API_CREDENTIALS.items():
+        monkeypatch.setenv(name, value)
+    monkeypatch.setenv("LC_ALL", "es_ES.UTF-8")
+    monkeypatch.setenv("CODEX_HOME", str(fake_cli.parent))
+
+    provider = provider_class()
+    judge(provider)
+
+    env = logged(fake_cli)["env"]
+    assert not set(API_CREDENTIALS) & set(env)
+    assert {name for name in env if not name.startswith(("LC_", "__CF"))} <= allowed
+    assert env["PATH"] == str(fake_cli.parent) and env["LC_ALL"] == "es_ES.UTF-8"
+    assert ("CODEX_HOME" in env) is (provider_class is CodexProvider)
+    assert provider.destination.endswith(", sesión del usuario (plan contratado)")
+
+
+def test_the_session_env_strips_api_keys_even_if_listed_and_keeps_the_plan_session() -> None:
+    env = {
+        "PATH": "/bin",
+        "CLAUDE_CODE_OAUTH_TOKEN": "x",
+        "CLAUDE_CODE_USE_BEDROCK": "1",
+        "OPENAI_API_KEY": "y",
+        "LC_CTYPE": "C",
+    }
+
+    assert session_env(("CLAUDE_CODE_USE_BEDROCK", "OPENAI_API_KEY"), env) == {
+        "PATH": "/bin",
+        "CLAUDE_CODE_OAUTH_TOKEN": "x",
+        "LC_CTYPE": "C",
+    }

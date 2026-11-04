@@ -9,7 +9,8 @@ bloqueando. Los hallazgos deterministas no bloquean aquí: sus hechos ya bloquea
 Una disposición cubre las apariciones del hallazgo hasta la ejecución `covers_run`. Si una
 ejecución posterior lo vuelve a proponer, el hallazgo vuelve a estar `OPEN` hasta que una persona
 lo disponga de nuevo. El orden entre las dos cadenas lo fija `covers_run`; los instantes deben
-confirmarlo: si lo contradicen, es un error visible.
+confirmarlo: si lo contradicen, es un error visible. `preaudit run` y `preaudit review` escriben
+con el lock del ciclo tomado, así que esa contradicción solo puede venir de una manipulación.
 
 Unas cadenas ilegibles, alteradas o con fechas futuras no se interpretan a medias: bloquean con un
 error visible.

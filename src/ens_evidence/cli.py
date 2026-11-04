@@ -3470,22 +3470,24 @@ def preaudit_run(
 ) -> None:
     """Ejecuta la pre-auditoría: la capa determinista siempre; la de juicio solo con `--consent`.
 
-    Sale con 1 si se rechaza o si la capa de juicio termina en ERROR."""
+    Toma el lock del ciclo durante toda la operación. Sale con 1 si se rechaza o si la capa de
+    juicio termina en ERROR, y con 2 si hay un ciclo en curso."""
     if consent is not None and not SHA256_ARG.fullmatch(consent):
         raise fail("--consent: indica la huella sha256 (64 caracteres hexadecimales).")
     settings = resolved_settings(ctx)
     store = open_store(settings)
     try:
-        result = preaudit.run(
-            store,
-            dossier,
-            provider,
-            consent,
-            by,
-            settings=settings.preaudit,
-            now=clock(),
-            accept_shell_risk=accept_shell_risk,
-        )
+        with exclusive_cycle(settings):
+            result = preaudit.run(
+                store,
+                dossier,
+                provider,
+                consent,
+                by,
+                settings=settings.preaudit,
+                now=clock(),
+                accept_shell_risk=accept_shell_risk,
+            )
     except preaudit.PreAuditUnconfigured as exc:
         raise fail(f"Error: {exc}") from None
     except preaudit.PreAuditRejected as exc:
@@ -3610,20 +3612,23 @@ def preaudit_review(
 ) -> None:
     """Registra la disposición humana de un hallazgo de juicio (solo adición).
 
-    Solo `resolved` y `dismissed` dejan de bloquear la preparación."""
+    Solo `resolved` y `dismissed` dejan de bloquear la preparación. Toma el lock del ciclo; con
+    un ciclo en curso sale con 2 sin escribir nada."""
     if not SHA256_ARG.fullmatch(finding):
         raise fail("FINDING: indica el id del hallazgo (64 caracteres hexadecimales).")
-    store = open_workspace(ctx)
+    settings = resolved_settings(ctx)
+    store = open_store(settings)
     try:
-        stored, state = review(
-            store,
-            finding,
-            DispositionState(decision.name),
-            by=by,
-            now=clock(),
-            evidence_id=evidence,
-            reason=reason,
-        )
+        with exclusive_cycle(settings):
+            stored, state = review(
+                store,
+                finding,
+                DispositionState(decision.name),
+                by=by,
+                now=clock(),
+                evidence_id=evidence,
+                reason=reason,
+            )
     except ReviewRejected as exc:
         raise dossier_rejected("No se registra la disposición:", exc.errors) from None
     typer.echo(f"{state.state.value} registrado para {finding} por {by} ({stored.key}).")

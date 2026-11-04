@@ -189,7 +189,7 @@ def test_codex_needs_the_shell_risk_accepted(world, stages, tmp_path, monkeypatc
     store, dossier = world.store, stages.dossier
     prepared = prepare(store, dossier, None, codex, now=PREPARED_AT)
     assert prepared.requires_shell_warning
-    assert prepared.destination == "codex 0.160.1"
+    assert prepared.destination == "codex 0.160.1, sesión del usuario (plan contratado)"
 
     with pytest.raises(PreAuditRejected, match="--accept-shell-risk"):
         send(store, dossier, prepared.payload.sha256, settings=codex)

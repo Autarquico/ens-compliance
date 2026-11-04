@@ -43,6 +43,7 @@ from ens_evidence.orgdocs.approval import ROLE_QUESTION
 from ens_evidence.orgdocs.keys import ANSWERS_KEY, document_key
 from ens_evidence.orgdocs.template import load_templates
 from ens_evidence.preaudit.adapter import ProviderError
+from ens_evidence.preaudit.clients._cli import cli_destination
 from ens_evidence.preaudit.clients._http import normalize_base_url
 from ens_evidence.preaudit.pack import AuditPack
 from ens_evidence.preaudit.redact import Designated, redact_fields, require_clean
@@ -153,13 +154,14 @@ def describe_destination(
     provider: str, *, base_url: str | None = None, cli_version: str | None = None
 ) -> str:
     """Destino normalizado al que se liga el consentimiento: `<proveedor> <base_url>` para una
-    API, `<cli> <versión>` para una CLI. ValueError si no se puede describir."""
+    API, `<cli> <versión>, sesión del usuario (plan contratado)` para una CLI. ValueError si no se
+    puede describir."""
     name = provider.strip().lower()
     if name in CLI_PROVIDERS:
         version = (cli_version or "").strip()
         if base_url is not None or not _CLI_VERSION.fullmatch(version):
             raise ValueError(f"{name}: indica solo la versión de la CLI")
-        return f"{name} {version}"
+        return cli_destination(name, version)
     if name not in {p.value for p in Provider}:
         raise ValueError(f"proveedor desconocido: {name}")
     if base_url is None or cli_version is not None:

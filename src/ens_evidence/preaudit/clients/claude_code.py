@@ -10,7 +10,13 @@ from pathlib import Path
 from typing import Any
 
 from ens_evidence.preaudit.adapter import JudgmentConfig, ProviderError, ProviderErrorKind
-from ens_evidence.preaudit.clients._cli import cli_version, find_cli, reject_temperature, run_cli
+from ens_evidence.preaudit.clients._cli import (
+    cli_destination,
+    cli_version,
+    find_cli,
+    reject_temperature,
+    run_cli,
+)
 
 CLI = "claude"
 NAME = "claude-code"
@@ -28,7 +34,7 @@ class ClaudeCodeProvider:
 
     @property
     def destination(self) -> str:
-        return f"{NAME} {self.version}"
+        return cli_destination(NAME, self.version)
 
     def judge(
         self, system_prompt: str, payload: bytes, schema: dict[str, Any], config: JudgmentConfig

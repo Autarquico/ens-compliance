@@ -277,8 +277,16 @@ def test_the_semantic_validator_reads_this_shape(generated):
             {"base_url": "https://gw.example.com:8443/v1/"},
             "openai https://gw.example.com:8443/v1",
         ),
-        ("claude-code", {"cli_version": " 2.1.317 "}, "claude-code 2.1.317"),
-        ("codex", {"cli_version": "0.160.1"}, "codex 0.160.1"),
+        (
+            "claude-code",
+            {"cli_version": " 2.1.317 "},
+            "claude-code 2.1.317, sesión del usuario (plan contratado)",
+        ),
+        (
+            "codex",
+            {"cli_version": "0.160.1"},
+            "codex 0.160.1, sesión del usuario (plan contratado)",
+        ),
     ],
 )
 def test_destination_is_normalized(provider, kwargs, expected):

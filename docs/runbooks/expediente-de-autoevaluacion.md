@@ -67,8 +67,10 @@ ens-evidence assessment dossier analyze <id> --by "Lucía Navarro Gil" \
   sistema (2.1.b), aunque no haya medidas correctoras. La herramienta no
   envía nada: `--elevated` confirma que lo has hecho tú.
 - `--manual-judgment-review` confirma que una persona ha revisado lo que la
-  herramienta no puede valorar sola. Mientras no exista la pre-auditoría, sin
-  esta confirmación no se puede declarar: en BÁSICA `analyze` la exige.
+  herramienta no puede valorar sola. Sin esta confirmación no se puede
+  declarar: en BÁSICA `analyze` la exige. La
+  [pre-auditoría](pre-auditoria.md) propone hallazgos que ayudan en esa
+  revisión, pero no la sustituye: la confirmación sigue siendo obligatoria.
   El análisis no se puede repetir.
 
 ## 4. Declaración (solo BÁSICA)

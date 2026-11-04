@@ -137,7 +137,8 @@ if args == ["--version"]:
     print("codex-cli 0.160.1")
     sys.exit(0)
 sys.stdin.buffer.read()
-with open(os.environ["FAKE_LOG"], "a") as log:
+here = os.path.dirname(os.path.abspath(sys.argv[0]))
+with open(os.path.join(here, "codex.log"), "a") as log:
     log.write("called\\n")
 out = args[args.index("-o") + 1]
 with open(out, "w") as f:
@@ -152,7 +153,5 @@ def fake_codex(tmp_path: Path, monkeypatch) -> Path:
     script = bin_dir / "codex"
     script.write_text(f"#!{sys.executable}\n{FAKE_CODEX}")
     script.chmod(script.stat().st_mode | stat.S_IXUSR)
-    log = tmp_path / "codex.log"
     monkeypatch.setenv("PATH", str(bin_dir))
-    monkeypatch.setenv("FAKE_LOG", str(log))
-    return log
+    return bin_dir / "codex.log"

@@ -18,10 +18,18 @@ from pathlib import Path
 from typing import Any
 
 from ens_evidence.preaudit.adapter import JudgmentConfig, ProviderError, ProviderErrorKind
-from ens_evidence.preaudit.clients._cli import cli_version, find_cli, reject_temperature, run_cli
+from ens_evidence.preaudit.clients._cli import (
+    cli_destination,
+    cli_version,
+    find_cli,
+    reject_temperature,
+    run_cli,
+)
 
 CLI = "codex"
 NAME = "codex"
+# Dónde guarda codex su sesión, si no es `~/.codex`.
+SESSION_ENV = ("CODEX_HOME",)
 # Funciones que dan acceso fuera del mensaje; todas aceptan `--disable` en 0.160.1.
 DISABLED_FEATURES = (
     "shell_tool",
@@ -40,14 +48,14 @@ class CodexProvider:
 
     def __init__(self) -> None:
         self._executable = find_cli(CLI)
-        self.version = cli_version(self._executable)
+        self.version = cli_version(self._executable, SESSION_ENV)
 
     def __repr__(self) -> str:
         return f"CodexProvider({self.destination!r})"
 
     @property
     def destination(self) -> str:
-        return f"{NAME} {self.version}"
+        return cli_destination(NAME, self.version)
 
     def judge(
         self, system_prompt: str, payload: bytes, schema: dict[str, Any], config: JudgmentConfig
@@ -73,7 +81,7 @@ class CodexProvider:
                 "--",
                 system_prompt,
             ]  # fmt: skip
-            run_cli(args, payload, Path(workdir), config.timeout)
+            run_cli(args, payload, Path(workdir), config.timeout, SESSION_ENV)
             try:
                 return output_file.read_text(encoding="utf-8")
             except (OSError, UnicodeDecodeError):
