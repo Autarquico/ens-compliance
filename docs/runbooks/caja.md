@@ -106,10 +106,11 @@ camino listo y comprobar que no se ve nada desde fuera.
    `http://caddy:8080`.
 4. Crea una aplicación de Access para ese hostname, con una política que
    permita solo a las personas autorizadas.
-5. Aplica el cambio. Con `deploy/tunnel.env` presente, `box.sh` activa el
-   perfil `tunnel` y arranca `cloudflared`:
+5. Arranca `cloudflared`. Con `deploy/tunnel.env` presente, `box.sh` activa el
+   perfil `tunnel`; `status` muestra si quedó en marcha:
 
 ```bash
+deploy/box.sh restart cloudflared
 deploy/box.sh status
 ```
 

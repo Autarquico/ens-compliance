@@ -523,7 +523,8 @@ warn_foreign_compose() {
     files=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.project.config_files"}}' "$container")
     [ "$files" = "$REL/compose.yaml" ] && continue
     name=$(docker inspect --format '{{.Name}}' "$container")
-    warn "$name no se creó con $REL/compose.yaml (etiqueta: ${files:-vacía}); recréalo con deploy/box.sh restart."
+    service=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.service"}}' "$container")
+    warn "$name no se creó con $REL/compose.yaml (etiqueta: ${files:-vacía}); recréalo con deploy/box.sh restart $service."
   done
 }
 
