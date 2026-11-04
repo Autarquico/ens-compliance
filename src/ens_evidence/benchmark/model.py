@@ -79,6 +79,11 @@ class OrgDocument(Strict):
 class EvidenceLink(Strict):
     measure: MeasureId
     covers: Covers
+    check: str | None = Field(
+        default=None,
+        min_length=1,
+        description="En una recogida, el check que la valora: la recogida cuenta por su check.",
+    )
 
 
 class EvidenceSource(StrEnum):
@@ -98,6 +103,19 @@ class ProfileEvidence(Strict):
     links: list[EvidenceLink] = Field(min_length=1)
 
 
+class IncidentDrill(Strict):
+    """Un simulacro de incidente (`incident new --simulated`, una actuación de emergencia y el
+    cierre). Su historial es la evidencia que admite `op.exp.9`."""
+
+    alias: Slug
+    by: Slug
+    title: str = Field(min_length=1)
+    action: str = Field(min_length=1)
+    conclusion: str = Field(min_length=1)
+    auditable_events_detail: str = Field(min_length=1)
+    links: list[EvidenceLink] = Field(min_length=1)
+
+
 class DocumentLink(Strict):
     measure: MeasureId
     document: Slug
@@ -110,6 +128,17 @@ class MatrixRow(Strict):
     review_every_days: int = Field(ge=1, le=MAX_REVIEW_EVERY_DAYS)
     reviewed_by: Slug
     assessment: MeasureAssessment
+    conclusion: str | None = Field(default=None, min_length=1)
+
+
+class MatrixDefaults(Strict):
+    """Responsable, periodicidad y revisión de las medidas sin fila propia en `matrix`. Una
+    medida aplicable sin fila se revisa como `COMPLIANT`; una no aplicable confirma la decisión."""
+
+    owner: Slug
+    review_every_days: int = Field(ge=1, le=MAX_REVIEW_EVERY_DAYS)
+    reviewed_by: Slug
+    conclusion: str = Field(min_length=1)
 
 
 class Profile(Strict):
@@ -134,15 +163,17 @@ class Profile(Strict):
     )
     documents: list[OrgDocument] = Field(default_factory=list)
     evidence: list[ProfileEvidence] = Field(default_factory=list)
+    incident_drill: IncidentDrill | None = None
     document_links: list[DocumentLink] = Field(default_factory=list)
     matrix: list[MatrixRow] = Field(default_factory=list)
+    matrix_defaults: MatrixDefaults | None = None
 
     @model_validator(mode="after")
     def _consistent(self) -> Self:
         for kind, ids in (
             ("persona", [p.id for p in self.people]),
             ("documento", [d.ref for d in self.documents]),
-            ("evidencia", [e.alias for e in self.evidence]),
+            ("evidencia", [e.alias for e in self.evidence] + self._drill_alias()),
             ("decisión de aplicabilidad", [a.measure for a in self.applicability]),
             ("fila de la matriz", [m.measure for m in self.matrix]),
         ):
@@ -150,7 +181,9 @@ class Profile(Strict):
                 raise ValueError(f"{kind} repetida: {', '.join(repeated)}")
         people = {p.id for p in self.people}
         named = [d.approved_by for d in self.documents]
-        named += [n for m in self.matrix for n in (m.owner, m.reviewed_by)]
+        named += [self.incident_drill.by] if self.incident_drill else []
+        rows = [*self.matrix, *([self.matrix_defaults] if self.matrix_defaults else [])]
+        named += [n for m in rows for n in (m.owner, m.reviewed_by)]
         if unknown := sorted(set(named) - people):
             raise ValueError(f"personas no declaradas: {', '.join(unknown)}")
         documents = {d.ref for d in self.documents}
@@ -158,8 +191,13 @@ class Profile(Strict):
             raise ValueError(f"documentos no declarados: {', '.join(unknown)}")
         return self
 
+    def _drill_alias(self) -> list[str]:
+        return [self.incident_drill.alias] if self.incident_drill else []
+
     def measures(self) -> set[str]:
+        drill = self.incident_drill.links if self.incident_drill else []
         return {
+            *(link.measure for link in drill),
             *(a.measure for a in self.applicability),
             *self.reinforcements,
             *(link.measure for e in self.evidence for link in e.links),

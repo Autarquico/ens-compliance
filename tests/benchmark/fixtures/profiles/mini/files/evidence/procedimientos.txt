@@ -1,0 +1,15 @@
+Acta de revisión anual de seguridad de Asesoría Ficticia S.L. (empresa ficticia)
+
+Fecha de la revisión: 28 de septiembre de 2026.
+Asistentes: Carla Muestra (gerente), Ana Prueba (responsable de la seguridad),
+Bruno Ensayo (responsable del sistema) y Dario Ejemplo (administrador de sistemas).
+
+1. Se revisan la política de seguridad, la normativa y los procedimientos aprobados.
+   Siguen describiendo el sistema de nóminas y no requieren cambios.
+2. Se revisan las cuentas de usuario del servidor de nóminas. Cada persona tiene una cuenta
+   propia, con doble factor, y los permisos se limitan a las carpetas de sus clientes.
+3. Se comprueba el informe de copias de la última semana: todas las copias nocturnas
+   terminaron bien; la prueba de restauración trimestral se hizo el 15 de septiembre.
+4. Se comprueba que los equipos tienen el disco cifrado y las actualizaciones al día.
+5. Se repasa el registro de incidencias del trimestre: no hubo incidentes.
+6. Se confirma la formación anual del personal en seguridad, impartida en septiembre.

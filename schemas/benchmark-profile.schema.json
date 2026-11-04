@@ -87,6 +87,20 @@
     "EvidenceLink": {
       "additionalProperties": false,
       "properties": {
+        "check": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "En una recogida, el check que la valora: la recogida cuenta por su check.",
+          "title": "Check"
+        },
         "covers": {
           "items": {
             "pattern": "^(base|compensation|R[0-9]+|[a-z]+(\\.[a-z0-9]+)+)$",
@@ -117,11 +131,114 @@
       "title": "EvidenceSource",
       "type": "string"
     },
+    "IncidentDrill": {
+      "additionalProperties": false,
+      "description": "Un simulacro de incidente (`incident new --simulated`, una actuaci\u00f3n de emergencia y el\ncierre). Su historial es la evidencia que admite `op.exp.9`.",
+      "properties": {
+        "action": {
+          "minLength": 1,
+          "title": "Action",
+          "type": "string"
+        },
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "auditable_events_detail": {
+          "minLength": 1,
+          "title": "Auditable Events Detail",
+          "type": "string"
+        },
+        "by": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "By",
+          "type": "string"
+        },
+        "conclusion": {
+          "minLength": 1,
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/EvidenceLink"
+          },
+          "minItems": 1,
+          "title": "Links",
+          "type": "array"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "by",
+        "title",
+        "action",
+        "conclusion",
+        "auditable_events_detail",
+        "links"
+      ],
+      "title": "IncidentDrill",
+      "type": "object"
+    },
+    "MatrixDefaults": {
+      "additionalProperties": false,
+      "description": "Responsable, periodicidad y revisi\u00f3n de las medidas sin fila propia en `matrix`. Una\nmedida aplicable sin fila se revisa como `COMPLIANT`; una no aplicable confirma la decisi\u00f3n.",
+      "properties": {
+        "conclusion": {
+          "minLength": 1,
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "owner": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Owner",
+          "type": "string"
+        },
+        "review_every_days": {
+          "maximum": 365,
+          "minimum": 1,
+          "title": "Review Every Days",
+          "type": "integer"
+        },
+        "reviewed_by": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Reviewed By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "owner",
+        "review_every_days",
+        "reviewed_by",
+        "conclusion"
+      ],
+      "title": "MatrixDefaults",
+      "type": "object"
+    },
     "MatrixRow": {
       "additionalProperties": false,
       "properties": {
         "assessment": {
           "$ref": "#/$defs/MeasureAssessment"
+        },
+        "conclusion": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conclusion"
         },
         "measure": {
           "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
@@ -359,12 +476,34 @@
       "title": "Id",
       "type": "string"
     },
+    "incident_drill": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IncidentDrill"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
     "matrix": {
       "items": {
         "$ref": "#/$defs/MatrixRow"
       },
       "title": "Matrix",
       "type": "array"
+    },
+    "matrix_defaults": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MatrixDefaults"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
     },
     "not_required_justification": {
       "anyOf": [

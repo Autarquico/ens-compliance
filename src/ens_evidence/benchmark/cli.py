@@ -1,5 +1,6 @@
 """Órdenes `ens-evidence benchmark …`. Miden la pre-auditoría; nunca declaran conformidad."""
 
+import tempfile
 from datetime import UTC, datetime
 from pathlib import Path
 from typing import Annotated
@@ -7,7 +8,14 @@ from typing import Annotated
 import typer
 
 from ens_evidence.benchmark.access import HoldoutLocked, open_partition
-from ens_evidence.benchmark.cases import case_paths, validate_bench
+from ens_evidence.benchmark.build import Build, build_bench_profile, build_case, inspect
+from ens_evidence.benchmark.cases import (
+    BenchError,
+    case_paths,
+    cases_dir,
+    load_case,
+    validate_bench,
+)
 from ens_evidence.benchmark.model import Partition
 
 BENCH_DIR = Path("benchmark")
@@ -57,3 +65,60 @@ def validate(
     if problems:
         raise _fail(f"{len(problems)} problemas en la partición {partition}")
     typer.echo(f"banco válido: {len(case_paths(cases, partition))} casos en {partition}")
+
+
+@app.command("build")
+def build(
+    target: Annotated[
+        str, typer.Argument(help="Un caso (`<partición>/<caso>`) o un perfil (`<perfil>`).")
+    ],
+    cases: CasesOption = BENCH_DIR,
+    out: Annotated[
+        Path | None,
+        typer.Option("--out", help="Directorio nuevo o vacío; por defecto, uno temporal."),
+    ] = None,
+    measurement: MeasurementOption = False,
+) -> None:
+    """Construye el workspace de un caso o de un perfil y le pasa solo la capa determinista de
+    la pre-auditoría. Imprime el expediente, la huella del payload y los hallazgos; no envía
+    nada. Sale con 2 si no se puede construir."""
+    if not cases.is_dir():
+        raise _fail(f"Error: no existe el banco {cases}")
+    if out is not None:
+        _report(_build(cases, target, out, measurement))
+        return
+    with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
+        _report(_build(cases, target, Path(scratch) / "ws", measurement))
+
+
+def _build(root: Path, target: str, destination: Path, measurement: bool) -> Build:
+    partition_name, slash, case_id = target.partition("/")
+    try:
+        if not slash:
+            return build_bench_profile(root, target, destination)
+        try:
+            partition = Partition(partition_name)
+        except ValueError:
+            raise _fail(f"Error: partición desconocida «{partition_name}»: dev o holdout") from None
+        open_partition(root, partition, action="build", measurement=measurement, now=clock())
+        path = cases_dir(root, partition) / f"{case_id}.yaml"
+        if not path.is_file():
+            raise _fail(f"Error: no existe el caso {target}")
+        return build_case(root, load_case(path, root), destination)
+    except HoldoutLocked as exc:
+        raise _fail(f"Error: {exc}") from None
+    except BenchError as exc:
+        for problem in exc.problems:
+            typer.echo(problem, err=True)
+        raise _fail(f"No se construye {target}") from None
+
+
+def _report(build: Build) -> None:
+    inspection = inspect(build)
+    typer.echo(f"expediente: {inspection.dossier}")
+    typer.echo(f"payload_sha256: {inspection.payload_sha256}")
+    for problem in inspection.integrity:
+        typer.echo(f"integridad: {problem}")
+    typer.echo(f"hallazgos deterministas: {len(inspection.findings)}")
+    for finding in inspection.findings:
+        typer.echo(f"  {finding.criterion} {finding.measure}: {finding.reason}")

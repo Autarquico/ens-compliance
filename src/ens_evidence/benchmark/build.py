@@ -5,8 +5,9 @@ producto, decidir la aplicabilidad e importar evidencias. Nada se escribe a mano
 ni en `assessment/`. Los instantes salen de `clock.start` (`now=` explícito) y los ids de
 evidencia de una fuente sembrada: el mismo perfil y la misma semilla dan los mismos bytes.
 
-Los pasos están en `STEPS`, en orden; los que faltan (org-docs, matriz e instantánea del
-expediente) se añaden al final de esa tupla.
+Los pasos están en `STEPS`, en orden, y terminan en la instantánea del expediente, como la
+genera `assessment dossier generate`. `inspect` le pasa después la capa determinista de la
+pre-auditoría y calcula la huella del payload, sin enviar nada.
 """
 
 import hashlib
@@ -21,10 +22,16 @@ from pydantic import ValidationError
 from ens_evidence.applicability import approve_declaration, propose_applicability
 from ens_evidence.applicability.context import Context, load_context
 from ens_evidence.approvals import Rejected
+from ens_evidence.assessment.dossier import build_snapshot, current_inputs, render_snapshot_md
+from ens_evidence.assessment.dossier.build import DossierRejected
+from ens_evidence.assessment.dossier.store import load_snapshot, save_markdown, save_snapshot
 from ens_evidence.benchmark.cases import BenchError, load_profile, profile_files_dir
 from ens_evidence.benchmark.model import (
     ApplicabilityDecision,
+    Case,
     EvidenceSource,
+    MatrixRow,
+    Person,
     Profile,
     ProfileEvidence,
 )
@@ -34,15 +41,65 @@ from ens_evidence.categorization import (
     approve_categorization,
     categorization_status,
 )
+from ens_evidence.checks.engine import OutcomeKind, run_all
+from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.evidence.importer import (
     EvidenceImportError,
     IdFactory,
     import_collected,
     import_manual,
 )
+from ens_evidence.incidents import IncidentRejected
+from ens_evidence.incidents.model import (
+    ActionKind,
+    IncidentState,
+    IncidentStatus,
+    RecordKind,
+    ReviewResult,
+    TriState,
+)
+from ens_evidence.incidents.store import (
+    Recorded,
+    next_incident_id,
+    record_incident,
+    simulation_procedure,
+)
+from ens_evidence.matrix import (
+    CheckLink,
+    DocumentsSnapshot,
+    ManualEvidenceLink,
+    MatrixRejected,
+    OrgdocsSource,
+    RowKind,
+    add_link,
+    init_matrix,
+    plan_obligations,
+    prepare_review,
+    record_review,
+    set_entry,
+)
+from ens_evidence.matrix import DocumentLink as MatrixDocumentLink
+from ens_evidence.models import MeasureAssessment
 from ens_evidence.models.contracts import CollectionResult, EvidenceManifest
+from ens_evidence.models.dossier import SELF_ASSESSORS
 from ens_evidence.models.enums import Applicability, Role
+from ens_evidence.models.preaudit import Finding
 from ens_evidence.models.readiness import Measure
+from ens_evidence.orgdocs import (
+    AnswersInvalid,
+    DocumentApprovalRejected,
+    approve_document,
+    build_documents,
+    document_names,
+    load_templates,
+    read_answers,
+    validate_answers,
+)
+from ens_evidence.orgdocs.approval import required_role
+from ens_evidence.preaudit.deterministic import deterministic_findings
+from ens_evidence.preaudit.pack import load_pack
+from ens_evidence.preaudit.payload import build_payload
+from ens_evidence.preaudit.service import dossier_problems
 from ens_evidence.scope import (
     ScopeApprovalRejected,
     ScopeNotApproved,
@@ -50,9 +107,11 @@ from ens_evidence.scope import (
     load_inventory,
 )
 from ens_evidence.scope.messages import describe_validation
-from ens_evidence.workspace import LocalStore
+from ens_evidence.workspace import LocalStore, WorkspaceStore
 
 SCOPE_DIR = "scope"
+ANSWERS_FILE = "org/answers.yaml"
+CONNECTORS_DIR = "connectors"
 COLLECTOR_VERSION = "benchmark"
 """Versión declarada de las recogidas del banco: el JSON es un fixture, no salió de un collector."""
 TICK = timedelta(minutes=1)
@@ -70,6 +129,17 @@ def seeded_ids(seed: str) -> IdFactory:
 
 
 @dataclass
+class FrozenDocuments:
+    """El estado de org-docs leído una vez: la matriz no lo cambia, y leerlo en cada enlace y
+    en cada revisión cuesta casi todo el tiempo de la construcción."""
+
+    frozen: DocumentsSnapshot
+
+    def snapshot(self, store: WorkspaceStore, at: datetime) -> DocumentsSnapshot:
+        return self.frozen
+
+
+@dataclass
 class Build:
     """Estado de una construcción: el workspace, su reloj y los ids reales de cada alias."""
 
@@ -78,6 +148,8 @@ class Build:
     store: LocalStore
     id_factory: IdFactory
     evidence_ids: dict[str, str] = field(default_factory=dict)
+    dossier: str | None = None
+    documents: FrozenDocuments | None = None
     ticks: int = 0
 
     def tick(self) -> datetime:
@@ -98,6 +170,10 @@ class Build:
                 return person.name
         raise BenchError([f"nadie tiene el rol {role.value}"])
 
+    def person(self, person_id: str) -> Person:
+        """La persona declarada con ese id (el modelo ya garantiza que existe)."""
+        return next(p for p in self.profile.people if p.id == person_id)
+
 
 Step = Callable[[Build], None]
 
@@ -107,9 +183,7 @@ def _scope(build: Build) -> None:
     source = build.files / SCOPE_DIR
     if not source.is_dir():
         raise BenchError([f"falta el directorio files/{SCOPE_DIR}/"])
-    for path in sorted(p for p in source.rglob("*") if p.is_file()):
-        key = f"{SCOPE_DIR}/{path.relative_to(source).as_posix()}"
-        build.store.write_bytes(key, path.read_bytes())
+    _copy_tree(build, SCOPE_DIR)
     approve_scope(build.store, build.signer(Role.SYSTEM_OWNER), Role.SYSTEM_OWNER, build.tick())
 
 
@@ -225,12 +299,237 @@ def _collected(build: Build, evidence: ProfileEvidence, data: bytes) -> Evidence
     )
 
 
+def _copy_tree(build: Build, directory: str) -> None:
+    """Los ficheros de `files/<directory>/` en `<directory>/`, como los escribe una persona."""
+    source = build.files / directory
+    for path in sorted(p for p in source.rglob("*") if p.is_file()):
+        build.store.write_bytes(
+            f"{directory}/{path.relative_to(source).as_posix()}", path.read_bytes()
+        )
+
+
+def _orgdocs(build: Build) -> None:
+    """Respuestas del perfil, `docs build` y la aprobación de cada documento por su firmante."""
+    answers = build.files / ANSWERS_FILE
+    if not answers.is_file():
+        raise BenchError([f"falta files/{ANSWERS_FILE}"])
+    build.store.write_bytes(ANSWERS_FILE, answers.read_bytes())
+    try:
+        build_documents(build.store)
+    except AnswersInvalid as exc:
+        raise BenchError(exc.report.errors()) from None
+    approvers = {d.ref: d.approved_by for d in build.profile.documents}
+    if missing := [name for name in document_names() if name not in approvers]:
+        raise BenchError([f"documentos sin firmante en `documents`: {', '.join(missing)}"])
+    if unknown := sorted(set(approvers) - set(document_names())):
+        raise BenchError([f"documentos desconocidos en `documents`: {', '.join(unknown)}"])
+    values = validate_answers(read_answers(build.store), load_templates()).values
+    for name in document_names():
+        role = required_role(name, values)
+        person = build.person(approvers[name])
+        if role is None or role not in person.roles:
+            expected = role.value if role else "sin declarar"
+            raise BenchError([f"{name}: lo aprueba el rol {expected}, que {person.id} no tiene"])
+        approve_document(build.store, name, person.name, role, build.tick())
+
+
+def _drill(build: Build) -> None:
+    """El simulacro del perfil, como `incident new --simulated`, `update` y `close`."""
+    drill = build.profile.incident_drill
+    if drill is None:
+        return
+    by = build.person(drill.by).name
+    detected = build.tick()
+    opened = IncidentState(
+        id=next_incident_id(build.store, simulated=True, year=detected.year),
+        simulated=True,
+        title=drill.title,
+        detected_at=detected,
+        procedure=simulation_procedure(build.store),
+    )
+    _record(build, opened, RecordKind.OPENED, by)
+    acted = build.tick()
+    updated = _changed(
+        opened,
+        personal_data=TriState.NO,
+        actions=[{"kind": ActionKind.EMERGENCY, "at": acted, "description": drill.action}],
+    )
+    _record(build, updated, RecordKind.UPDATED, by, acted)
+    closed_at = build.tick()
+    closure = {
+        "closed_at": closed_at,
+        "conclusion": drill.conclusion,
+        "legal_relevance": TriState.NO,
+        "auditable_events_review": {
+            "result": ReviewResult.NO_CHANGE,
+            "detail": drill.auditable_events_detail,
+        },
+    }
+    closed = _changed(updated, status=IncidentStatus.CLOSED, closure=closure)
+    recorded = _record(build, closed, RecordKind.CLOSED, by, closed_at)
+    if recorded.history_evidence_id is None:
+        raise BenchError([f"{closed.id}: sin historial", *recorded.history_problems])
+    build.evidence_ids[drill.alias] = recorded.history_evidence_id
+
+
+def _changed(state: IncidentState, **changes: object) -> IncidentState:
+    return IncidentState.model_validate({**state.model_dump(mode="json"), **changes})
+
+
+def _record(
+    build: Build, state: IncidentState, kind: RecordKind, by: str, now: datetime | None = None
+) -> Recorded:
+    return record_incident(
+        build.store, state, kind=kind, by=by, now=now or build.tick(), id_factory=build.id_factory
+    )
+
+
+def _checks(build: Build) -> None:
+    """La configuración de los conectores y `check --all` sobre lo ya recogido."""
+    if not (build.files / CONNECTORS_DIR).is_dir():
+        return
+    _copy_tree(build, CONNECTORS_DIR)
+    for outcome in run_all(build.store, build.tick()):
+        if outcome.kind in (OutcomeKind.REJECTED, OutcomeKind.HISTORY_UNREADABLE):
+            raise BenchError([f"{outcome.connector}: {outcome.kind.value}", *outcome.detail])
+
+
+def _matrix(build: Build) -> None:
+    """`matrix init`, responsable y periodicidad, enlaces y la revisión de cada medida."""
+    init_matrix(build.store, build.tick())
+    build.documents = FrozenDocuments(OrgdocsSource().snapshot(build.store, build.now))
+    rows = plan_obligations(build.store, build.now).rows
+    declared = {row.measure: row for row in build.profile.matrix}
+    if unknown := sorted(set(declared) - {r.measure_id for r in rows}):
+        raise BenchError([f"filas de `matrix` fuera de la Declaración: {', '.join(unknown)}"])
+    settings = {r.measure_id: _row_settings(build, r.measure_id, declared) for r in rows}
+    for measure, row in settings.items():
+        owner = build.person(row.owner)
+        set_entry(
+            build.store,
+            build.tick(),
+            measure,
+            owner_name=owner.name,
+            owner_role=owner.roles[0].value,
+            every_days=row.review_every_days,
+        )
+    for measure, link in _links(build):
+        add_link(build.store, build.tick(), measure, link, build.documents)
+    for spec in rows:
+        _review(build, settings[spec.measure_id], spec.kind is RowKind.SELECTED)
+
+
+def _row_settings(build: Build, measure: str, declared: dict[str, MatrixRow]) -> MatrixRow:
+    if measure in declared:
+        return declared[measure]
+    defaults = build.profile.matrix_defaults
+    if defaults is None:
+        raise BenchError([f"{measure}: sin fila en `matrix` y sin `matrix_defaults`"])
+    return MatrixRow(
+        measure=measure,
+        owner=defaults.owner,
+        review_every_days=defaults.review_every_days,
+        reviewed_by=defaults.reviewed_by,
+        assessment=MeasureAssessment.COMPLIANT,
+        conclusion=defaults.conclusion,
+    )
+
+
+def _links(build: Build) -> list[tuple[str, CheckLink | ManualEvidenceLink | MatrixDocumentLink]]:
+    """Los enlaces del perfil con los ids reales: una recogida cuenta por su check."""
+    links: list[tuple[str, CheckLink | ManualEvidenceLink | MatrixDocumentLink]] = []
+    drill = build.profile.incident_drill
+    for link in drill.links if drill else []:
+        evidence_id = build.evidence_ids[drill.alias]
+        links.append(
+            (link.measure, ManualEvidenceLink(evidence_id=evidence_id, covers=link.covers))
+        )
+    for evidence in build.profile.evidence:
+        for link in evidence.links:
+            if evidence.source is EvidenceSource.COLLECTED:
+                if link.check is None:
+                    raise BenchError(
+                        [f"{evidence.alias}: un enlace de una recogida nombra su `check`"]
+                    )
+                links.append((link.measure, CheckLink(check_id=link.check, covers=link.covers)))
+            elif link.check is not None:
+                raise BenchError([f"{evidence.alias}: una evidencia manual no lleva `check`"])
+            else:
+                evidence_id = build.evidence_ids[evidence.alias]
+                links.append(
+                    (link.measure, ManualEvidenceLink(evidence_id=evidence_id, covers=link.covers))
+                )
+    for link in build.profile.document_links:
+        links.append((link.measure, MatrixDocumentLink(document=link.document, covers=link.covers)))
+    return links
+
+
+def _review(build: Build, row: MatrixRow, applicable: bool) -> None:
+    reviewer = build.person(row.reviewed_by)
+    role = next((r for r in reviewer.roles if r in SELF_ASSESSORS), None)
+    if role is None:
+        allowed = ", ".join(sorted(r.value for r in SELF_ASSESSORS))
+        raise BenchError([f"{row.measure}: {reviewer.id} no revisa medidas (roles: {allowed})"])
+    now = build.tick()
+    plan = prepare_review(
+        build.store,
+        now,
+        row.measure,
+        by=reviewer.name,
+        role=role.value,
+        conclusion=row.conclusion or "Revisada.",
+        assessment=row.assessment.value if applicable else None,
+        checks=StoredCheckResults(reference_now=now),
+        documents=build.documents,
+    )
+    if plan.problems:
+        raise BenchError([f"{row.measure}: {problem}" for problem in plan.problems])
+    record_review(build.store, plan)
+
+
+def _dossier(build: Build) -> None:
+    """Como `assessment dossier generate`: instantánea, `dossier.json` y `dossier.md`."""
+    now = build.tick()
+    snapshot = build_snapshot(
+        build.store, current_inputs(now), checks=StoredCheckResults(reference_now=now)
+    )
+    build.dossier = save_snapshot(build.store, snapshot)
+    save_markdown(build.store, build.dossier, render_snapshot_md(snapshot))
+
+
 STEPS: tuple[tuple[str, Step], ...] = (
     ("alcance", _scope),
     ("categorización", _categorization),
     ("aplicabilidad", _applicability),
     ("evidencias", _evidence),
+    ("org-docs", _orgdocs),
+    ("simulacro", _drill),
+    ("checks", _checks),
+    ("matriz", _matrix),
+    ("expediente", _dossier),
 )
+
+
+@dataclass(frozen=True)
+class Inspection:
+    """Lo que `benchmark build` enseña de un expediente construido; no se envía nada."""
+
+    dossier: str
+    payload_sha256: str
+    integrity: list[str]
+    findings: list[Finding]
+
+
+def inspect(build: Build) -> Inspection:
+    """La capa determinista de la pre-auditoría y la huella del payload, como en
+    `preaudit run` y `preaudit prepare`."""
+    assert build.dossier is not None, "la construcción termina en la instantánea"
+    integrity = dossier_problems(build.store, build.dossier)
+    findings = deterministic_findings(
+        load_snapshot(build.store, build.dossier), integrity=integrity
+    )
+    payload = build_payload(build.store, build.dossier, load_pack())
+    return Inspection(build.dossier, payload.sha256, integrity, findings)
 
 
 def build_profile(
@@ -255,7 +554,15 @@ def build_profile(
             step(build)
         except BenchError as exc:
             raise _failed(profile, name, exc.problems) from None
-        except (Rejected, ScopeApprovalRejected, EvidenceImportError) as exc:
+        except (
+            Rejected,
+            ScopeApprovalRejected,
+            EvidenceImportError,
+            DocumentApprovalRejected,
+            MatrixRejected,
+            DossierRejected,
+            IncidentRejected,
+        ) as exc:
             errors = getattr(exc, "errors", None) or [str(exc)]
             raise _failed(profile, name, errors) from None
         except ScopeNotApproved as exc:
@@ -276,6 +583,16 @@ def build_bench_profile(
     """Carga `profiles/<profile_id>` de un banco y lo construye."""
     profile = load_profile(root, profile_id)
     return build_profile(profile, profile_files_dir(root, profile_id), destination, seed=seed)
+
+
+def build_case(root: Path, case: Case, destination: Path) -> Build:
+    """Construye el perfil base de `case` con los ids sembrados por el caso."""
+    key = f"{case.partition.value}/{case.id}"
+    if case.profile is None:
+        raise BenchError([f"{key}: las bases `workspace:` aún no se construyen"])
+    if case.mutations:
+        raise BenchError([f"{key}: mutaciones no implementadas"])
+    return build_bench_profile(root, case.profile, destination, seed=key)
 
 
 def _failed(profile: Profile, step: str, problems: list[str]) -> BenchError:
