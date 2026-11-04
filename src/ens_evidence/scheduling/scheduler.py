@@ -14,6 +14,7 @@ from collections.abc import Callable, Collection, Iterator, Mapping
 from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import date, datetime, timedelta
+from pathlib import Path
 from typing import Literal, Protocol
 
 from ens_evidence.reports.model import is_day, is_month
@@ -51,8 +52,11 @@ MAX_SLEEP_SECONDS = 60.0
 LATE_AFTER = timedelta(minutes=5)
 LOCK_WAIT_MINUTES = 10.0
 HEARTBEAT_FILE = "scheduler-heartbeat"
+HEARTBEAT_ENV = "ENS_HEARTBEAT_FILE"
+BEAT_EVERY_SECONDS = 60.0
 Key = tuple[JobKind, str]
 Status = Literal["completed", "failed", "busy", "interrupted"]
+Heartbeat = Callable[[], None]
 
 
 @dataclass(frozen=True)
@@ -78,11 +82,15 @@ def config_sha256(cfg: ScheduleConfig) -> str:
     return hashlib.sha256(canonical.encode("utf-8")).hexdigest()
 
 
-def file_heartbeat(env: Mapping[str, str]) -> Callable[[], None]:
-    """Latido para el healthcheck del contenedor: renueva la fecha de modificación de un fichero
-    del directorio de estado. Un fallo al escribirlo no para el planificador: el fichero
-    envejece y es el healthcheck quien lo avisa."""
-    path = resolve_state_dir(env) / HEARTBEAT_FILE
+def file_heartbeat(env: Mapping[str, str]) -> Heartbeat:
+    """Latido para el healthcheck del contenedor: renueva la fecha de modificación de un fichero.
+
+    `ENS_HEARTBEAT_FILE` fija su ruta; sin ella, vive en el directorio de estado. En el
+    contenedor apunta a un tmpfs propio de cada contenedor: el latido de una versión anterior
+    no vale para la nueva. Un fallo al escribirlo no para el planificador: el fichero envejece
+    y es el healthcheck quien lo avisa."""
+    configured = env.get(HEARTBEAT_ENV)
+    path = Path(configured) if configured else resolve_state_dir(env) / HEARTBEAT_FILE
 
     def beat() -> None:
         try:
@@ -96,6 +104,32 @@ def file_heartbeat(env: Mapping[str, str]) -> Callable[[], None]:
     return beat
 
 
+class BeatingClock:
+    """Reloj que late con cada lectura y con cada tramo de espera.
+
+    El latido sale del mismo hilo que hace el trabajo: si el ciclo se cuelga, deja de latir.
+    Las esperas largas (reintentos de conectores) se parten en tramos de `BEAT_EVERY_SECONDS`.
+    """
+
+    def __init__(self, clock: Clock, heartbeat: Heartbeat) -> None:
+        self._clock = clock
+        self._heartbeat = heartbeat
+
+    def now(self) -> datetime:
+        self._heartbeat()
+        return self._clock.now()
+
+    def sleep(self, seconds: float) -> None:
+        remaining = seconds
+        while True:
+            self._heartbeat()
+            chunk = min(remaining, BEAT_EVERY_SECONDS)
+            self._clock.sleep(chunk)
+            remaining -= chunk
+            if remaining <= 0:
+                return
+
+
 class Scheduler:
     def __init__(
         self,
@@ -106,7 +140,7 @@ class Scheduler:
         stop: threading.Event,
         *,
         log: Callable[[str], None] = print_log,
-        heartbeat: Callable[[], None] | None = None,
+        heartbeat: Heartbeat | None = None,
     ) -> None:
         self._heartbeat = heartbeat
         self._clock = clock
@@ -307,7 +341,7 @@ class CycleExecutor:
         plugins: Plugins | None = None,
         lock_wait_minutes: float = LOCK_WAIT_MINUTES,
         lock_factory: Callable[[Settings, Mapping[str, str]], CycleLock] = CycleLock.for_settings,
-        heartbeat: Callable[[], None] | None = None,
+        heartbeat: Heartbeat | None = None,
     ) -> None:
         self._heartbeat = heartbeat
         self._store = store
@@ -322,6 +356,7 @@ class CycleExecutor:
         self, job: Job, cfg: ScheduleConfig, trigger: Trigger, *, config_warning: bool = False
     ) -> JobResult:
         lock = self._lock_factory(self._settings, self._env)
+        clock = BeatingClock(self._clock, self._heartbeat) if self._heartbeat else self._clock
         try:
             acquire_or_wait(lock, self._clock, self._lock_wait_minutes)
         except CycleBusy:
@@ -339,12 +374,11 @@ class CycleExecutor:
                 job.kind,
                 job.period,
                 job.due_at,
-                clock=self._clock,
+                clock=clock,
                 cfg=cfg,
                 trigger=trigger,
                 plugins=self._plugins_for(job),
                 config_warning=config_warning,
-                heartbeat=self._heartbeat,
             )
         except _Stopped:
             return JobResult("interrupted")

@@ -93,7 +93,10 @@ def test_el_unico_montaje_del_host_es_el_caddyfile_en_solo_lectura(services):
 def test_las_credenciales_solo_llegan_a_quien_las_necesita(services):
     env_files = {n: s["env_file"] for n, s in services.items() if "env_file" in s}
 
-    assert env_files == {"app": "deploy/.env", "cloudflared": "deploy/tunnel.env"}
+    assert env_files == {
+        "app": "${ENS_ENV_FILE:-deploy/.env}",
+        "cloudflared": "${ENS_TUNNEL_ENV_FILE:-deploy/tunnel.env}",
+    }
 
 
 def test_cloudflared_solo_arranca_con_el_perfil_tunnel(services):
@@ -109,6 +112,29 @@ def test_el_scheduler_tiene_init_reinicio_y_parada_con_margen(services):
     assert app["restart"] == "unless-stopped"
     assert app["stop_grace_period"] == "120s"
     assert "healthcheck" in app
+
+
+def test_todos_los_servicios_rotan_sus_logs(services):
+    for name, service in services.items():
+        options = service.get("logging", {}).get("options", {})
+        assert options.get("max-size") and options.get("max-file"), name
+
+
+def test_caddy_no_corre_como_root_ni_necesita_volumenes_persistentes(compose, services):
+    caddy = services["caddy"]
+
+    assert caddy["user"].split(":")[0] not in ("0", "root")
+    assert "caddy-data" not in compose["volumes"] and "caddy-config" not in compose["volumes"]
+
+
+def test_el_latido_del_scheduler_es_de_cada_contenedor_no_del_volumen(services):
+    app = services["app"]
+
+    assert "/tmp" in app["tmpfs"]
+    assert app["environment"]["ENS_HEARTBEAT_FILE"].startswith("/tmp/")
+    assert not any(
+        "/data" in str(part) and "heartbeat" in str(part) for part in app["healthcheck"]["test"]
+    )
 
 
 def test_caddy_no_tiene_salida_a_internet(compose, services):
@@ -153,22 +179,6 @@ def test_los_ficheros_env_reales_no_se_suben_a_git_pero_los_ejemplos_si():
     assert ignored("deploy/tunnel.env")
     assert not ignored("deploy/.env.example")
     assert not ignored("deploy/tunnel.env.example")
-
-
-def test_caddy_responde_403_a_toda_ruta_y_no_sirve_nada(caddyfile):
-    directives = re.sub(r"#.*", "", caddyfile)
-
-    assert re.search(r"^\s*respond\b.*\b403\b", directives, re.MULTILINE)
-    for serving in ("reverse_proxy", "file_server", "root ", "handle", "route", "redir"):
-        assert serving not in directives
-
-
-def test_el_log_de_caddy_no_registra_query_string_ni_cabeceras(caddyfile):
-    directives = re.sub(r"#.*", "", caddyfile)
-
-    assert "request>uri regexp" in directives and r"\?" in directives
-    assert "request>headers delete" in directives
-    assert "resp_headers delete" in directives
 
 
 def test_restic_se_verifica_por_sha256_antes_de_entrar_en_la_imagen(dockerfile):
@@ -274,6 +284,16 @@ def test_box_sh_se_niega_a_usar_un_env_que_es_un_enlace(clone_with_docker_stub, 
     target.write_text("X=1\n")
     target.chmod(0o600)
     (root / "deploy" / ".env").symlink_to(target)
+
+    result = run_status(root, env)
+
+    assert result.returncode != 0
+    assert "enlace simbólico" in result.stderr
+
+
+def test_box_sh_se_niega_a_usar_un_env_que_es_un_enlace_colgante(clone_with_docker_stub, tmp_path):
+    root, env = clone_with_docker_stub
+    (root / "deploy" / ".env").symlink_to(tmp_path / "no-existe")
 
     result = run_status(root, env)
 

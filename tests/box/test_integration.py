@@ -5,16 +5,17 @@ propias, en un clon temporal con sus propias etiquetas git. Al terminar solo se 
 lleva ese prefijo o esas etiquetas; nunca se toca la caja real (`ens-box`).
 """
 
+import hashlib
 import json
 import os
 import secrets
 import shutil
 import subprocess
+import time
 from dataclasses import dataclass
 from pathlib import Path
 
 import pytest
-import yaml
 
 REPO = Path(__file__).resolve().parents[2]
 UID = "10001"
@@ -41,8 +42,7 @@ def run(args, *, cwd=None, env=None, timeout=1200, check=False):
 class Box:
     clone: Path
     project: str
-    good: str
-    bad: str
+    tags: dict[str, str]
 
     @property
     def volume(self):
@@ -77,12 +77,21 @@ class Box:
         assert out.returncode == 0, out.stderr
         return json.loads(out.stdout)
 
-    def container_image(self, service):
-        compose = ["docker", "compose", "-p", self.project, "-f", "compose.yaml"]
-        ids = run([*compose, "ps", "-q", service], cwd=self.clone, env=self.env(ENS_VERSION="x"))
+    def container(self, service):
+        ids = run(
+            ["docker", "ps", "-q"]
+            + ["--filter", f"label=com.docker.compose.project={self.project}"]
+            + ["--filter", f"label=com.docker.compose.service={service}"]
+        )
+        return ids.stdout.split()[0]
+
+    def inspect(self, service, template):
         return run(
-            ["docker", "inspect", "--format", "{{.Config.Image}}", ids.stdout.split()[0]]
+            ["docker", "inspect", "--format", template, self.container(service)]
         ).stdout.strip()
+
+    def exec(self, service, *command):
+        return run(["docker", "exec", self.container(service), *command])
 
 
 def commit_all(clone, message, tag):
@@ -92,11 +101,11 @@ def commit_all(clone, message, tag):
     run([*git, "tag", tag], cwd=clone, check=True)
 
 
-# Una versión que escribe un informe y un marcador y luego no late: falla su healthcheck.
-BROKEN_CMD = (
-    'CMD ["sh", "-c", "ens-evidence report daily --cycle; '
-    'rm -f /data/state/scheduler-heartbeat; exec sleep 3600"]'
-)
+ORIGINAL_CMD = 'CMD ["ens-evidence", "scheduler", "run"]'
+# Una versión que escribe un informe y un marcador y arranca sin scheduler: el proceso vive,
+# nadie late.
+NO_SCHEDULER_CMD = 'CMD ["sh", "-c", "ens-evidence report daily --cycle; exec sleep 3600"]'
+CRASH_CMD = 'CMD ["sh", "-c", "exit 1"]'
 
 
 @pytest.fixture(scope="module")
@@ -104,7 +113,10 @@ def box(tmp_path_factory):
     suffix = secrets.token_hex(3)
     project = f"ensbxt{suffix}"
     serial = int(suffix, 16) % 900000 + 100000
-    good, bad = f"v9{serial}.0.0", f"v9{serial}.0.1"
+    tags = {
+        name: f"v9{serial}.0.{index}"
+        for index, name in enumerate(["good", "no_scheduler", "crash", "labeled", "next"])
+    }
     clone = tmp_path_factory.mktemp("box-clone")
 
     tracked = run(
@@ -115,46 +127,90 @@ def box(tmp_path_factory):
             (clone / name).parent.mkdir(parents=True, exist_ok=True)
             shutil.copy2(REPO / name, clone / name)
     run(["git", "init", "-q"], cwd=clone, check=True)
-    commit_all(clone, "good", good)
-    dockerfile = clone / "Dockerfile"
-    text = dockerfile.read_text(encoding="utf-8")
-    assert 'CMD ["ens-evidence", "scheduler", "run"]' in text
-    dockerfile.write_text(
-        text.replace('CMD ["ens-evidence", "scheduler", "run"]', BROKEN_CMD), encoding="utf-8"
-    )
-    commit_all(clone, "bad", bad)
+    commit_all(clone, "good", tags["good"])
 
-    handle = Box(clone, project, good, bad)
+    dockerfile = clone / "Dockerfile"
+    original = dockerfile.read_text(encoding="utf-8")
+    assert ORIGINAL_CMD in original
+    for name, cmd in (("no_scheduler", NO_SCHEDULER_CMD), ("crash", CRASH_CMD)):
+        dockerfile.write_text(original.replace(ORIGINAL_CMD, cmd), encoding="utf-8")
+        commit_all(clone, name, tags[name])
+    dockerfile.write_text(original, encoding="utf-8")
+
+    # Una etiqueta cuyo compose difiere del de la que se deja en el árbol de trabajo.
+    compose = clone / "compose.yaml"
+    text = compose.read_text(encoding="utf-8")
+    assert "    init: true\n" in text
+    compose.write_text(
+        text.replace(
+            "    init: true\n", "    init: true\n    labels:\n      ens.test.source: tag\n"
+        ),
+        encoding="utf-8",
+    )
+    commit_all(clone, "labeled", tags["labeled"])
+    (clone / "NEXT").write_text("otra versión\n", encoding="utf-8")
+    commit_all(clone, "next", tags["next"])
+    run(["git", "checkout", "-q", tags["good"]], cwd=clone, check=True)
+
+    handle = Box(clone, project, tags)
     yield handle
 
     # Solo lo que lleva el prefijo del proyecto y las etiquetas de prueba.
-    compose = ["docker", "compose", "-p", project, "-f", "compose.yaml"]
-    run([*compose, "down", "-v", "--remove-orphans"], cwd=clone, env=handle.env(ENS_VERSION=good))
-    for volume in (f"{project}_data", f"{project}_caddy-data", f"{project}_caddy-config"):
-        run(["docker", "volume", "rm", "-f", volume])
-    run(["docker", "rmi", "-f", f"ens-evidence:{good}", f"ens-evidence:{bad}"])
+    owned = run(
+        ["docker", "ps", "-aq", "--filter", f"label=com.docker.compose.project={project}"]
+    ).stdout.split()
+    if owned:
+        run(["docker", "rm", "-f", *owned])
+    for network in ("backend", "edge", "tunnel"):
+        run(["docker", "network", "rm", f"{project}_{network}"])
+    run(["docker", "volume", "rm", "-f", f"{project}_data"])
+    run(["docker", "rmi", "-f", *[f"ens-evidence:{tag}" for tag in tags.values()]])
 
 
-def test_arranque_limpio_con_volumen_vacio_instala_y_deja_el_primer_ciclo_hecho(box):
+@pytest.fixture(scope="module")
+def installed(box):
     assert run(["docker", "volume", "inspect", box.volume]).returncode != 0
-
-    result = box.sh("install", box.good)
-
-    assert result.returncode == 0, result.stdout + result.stderr
-    assert "primer ciclo" in result.stdout
-    assert "falló" not in result.stderr  # 0 y 3 son válidos; 2 aborta el install
-    assert box.report_files(box.good), "el primer ciclo debe dejar informes en el workspace"
-    assert box.registry(box.good)["current"]["tag"] == box.good
-    assert box.container_image("app") == f"ens-evidence:{box.good}"
+    return box.sh("install", box.tags["good"])
 
 
-def test_el_volumen_pertenece_al_uid_de_la_app_no_a_root(box):
-    owner = box.in_volume(box.good, "stat -c %u /data /data/workspace /data/settings.yaml")
+def test_arranque_limpio_con_volumen_vacio_instala_y_deja_el_primer_ciclo_hecho(box, installed):
+    good = box.tags["good"]
+
+    assert installed.returncode == 0, installed.stdout + installed.stderr
+    assert "primer ciclo" in installed.stdout
+    assert "falló" not in installed.stderr  # 0 y 3 son válidos; 2 aborta el install
+    assert box.report_files(good), "el primer ciclo debe dejar informes en el workspace"
+    assert box.registry(good)["current"]["tag"] == good
+    assert box.inspect("app", "{{.Config.Image}}") == f"ens-evidence:{good}"
+
+
+def test_install_avisa_de_todo_lo_que_falta_para_la_copia_y_de_los_siguientes_pasos(box, installed):
+    assert "backup.restic_repository en /data/settings.yaml" in installed.stderr
+    assert "ENS_BACKUP_RESTIC_PASSWORD en deploy/.env" in installed.stderr
+    assert "Siguientes pasos" in installed.stdout
+    assert "alcance" in installed.stdout
+
+
+def test_install_repetido_se_niega_antes_de_reconstruir_la_imagen(box, installed):
+    good = box.tags["good"]
+    before = run(["docker", "image", "inspect", "--format", "{{.Id}}", f"ens-evidence:{good}"])
+
+    again = box.sh("install", good)
+
+    assert again.returncode != 0
+    assert "usa update" in again.stderr
+    assert "Construyendo" not in again.stdout
+    after = run(["docker", "image", "inspect", "--format", "{{.Id}}", f"ens-evidence:{good}"])
+    assert after.stdout == before.stdout
+
+
+def test_el_volumen_pertenece_al_uid_de_la_app_no_a_root(box, installed):
+    owner = box.in_volume(box.tags["good"], "stat -c %u /data /data/workspace /data/settings.yaml")
 
     assert owner.stdout.split() == [UID, UID, UID]
 
 
-def test_ningun_contenedor_publica_puertos(box):
+def test_ningun_contenedor_publica_puertos(box, installed):
     ids = run(["docker", "ps", "-q", "--filter", f"label=com.docker.compose.project={box.project}"])
     assert ids.stdout.split()
 
@@ -163,62 +219,186 @@ def test_ningun_contenedor_publica_puertos(box):
         assert out.stdout.strip() in ("{}", "null")
 
 
-def test_la_ui_no_es_publica_toda_ruta_da_403_desde_la_red_interna(box):
-    caddy_image = yaml.safe_load((box.clone / "compose.yaml").read_text())["services"]["caddy"][
-        "image"
-    ]
+def test_toda_ruta_da_403_desde_la_red_interna_y_el_log_no_guarda_query_ni_cabeceras(
+    box, installed
+):
+    caddy_image = box.inspect("caddy", "{{.Config.Image}}")
 
-    for path in ("/", "/admin", "/agent/enroll?token=abc"):
+    for path in ("/", "/admin", "/agent/enroll?token=abc-query"):
         result = run(
             ["docker", "run", "--rm", "--network", f"{box.project}_edge", caddy_image]
-            + ["wget", "-S", "-O", "/dev/null", f"http://caddy:8080{path}"]
+            + ["wget", "-S", "-O", "/dev/null", "--header", "Authorization: abc-header"]
+            + [f"http://caddy:8080{path}"]
         )
         assert "403" in result.stderr, (path, result.stderr)
 
+    logs = run(["docker", "logs", box.container("caddy")])
+    log = logs.stdout + logs.stderr
+    assert '"status":403' in log
+    assert "abc-query" not in log and "abc-header" not in log
 
-def test_rollback_tras_una_version_que_falla_conserva_informes_y_marcadores(box):
-    before = box.report_files(box.good)
 
-    update = box.sh("update", "--no-backup", box.bad, ENS_BOX_HEALTH_TIMEOUT="45")
+def test_caddy_corre_sin_root(box, installed):
+    assert box.inspect("caddy", "{{.Config.User}}") == "65532:65532"
+    assert box.exec("caddy", "id", "-u").stdout.strip() == "65532"
+
+
+def test_el_latido_del_scheduler_es_del_contenedor_no_del_volumen(box, installed):
+    assert box.exec("app", "test", "-f", "/tmp/scheduler-heartbeat").returncode == 0
+    assert box.exec("app", "test", "-e", "/data/state/scheduler-heartbeat").returncode != 0
+
+
+def test_update_a_una_version_que_arranca_sin_scheduler_no_se_da_por_sana(box, installed):
+    good, bad = box.tags["good"], box.tags["no_scheduler"]
+    before = box.report_files(good)
+    # Un latido fresco dejado en el volumen por una versión anterior no debe valer.
+    planted = box.in_volume(good, "mkdir -p /data/state && touch /data/state/scheduler-heartbeat")
+    assert planted.returncode == 0, planted.stderr
+
+    update = box.sh("update", "--no-backup", bad, ENS_BOX_HEALTH_TIMEOUT="60")
 
     assert update.returncode != 0
+    assert "Esperando a que app esté sano" in update.stdout
     assert "rollback" in update.stderr
-    written = box.report_files(box.bad)
+    assert "Actualizado" not in update.stdout
+    registry = box.registry(good)
+    assert registry["current"]["tag"] == good and registry["previous"] is None
+    written = box.report_files(good)
     assert before.items() <= written.items(), "la nueva versión no puede alterar lo anterior"
-    assert set(written) - set(before), "la versión rota debe haber escrito un informe o marcador"
+    assert set(written) - set(before), "la versión sin scheduler debe haber escrito un informe"
+
+
+def test_status_dice_en_palabras_que_hay_una_actualizacion_sin_completar(box, installed):
+    status = box.sh("status")
+
+    assert status.returncode == 0, status.stdout + status.stderr
+    assert f"Actualización a {box.tags['no_scheduler']} sin completar" in status.stderr
+    assert f"la versión registrada es {box.tags['good']}" in status.stderr
+    assert "deploy/box.sh rollback" in status.stderr
+
+
+def test_rollback_tras_una_version_que_falla_conserva_informes_y_marcadores(box, installed):
+    good = box.tags["good"]
+    written = box.report_files(good)
 
     rollback = box.sh("rollback", ENS_BOX_HEALTH_TIMEOUT="120")
 
     assert rollback.returncode == 0, rollback.stdout + rollback.stderr
-    assert box.container_image("app") == f"ens-evidence:{box.good}"
-    assert box.report_files(box.good) == written
-    registry = box.registry(box.good)
-    assert registry["current"]["tag"] == box.good
-    assert registry["failed"]["tag"] == box.bad
-
-    compose = ["docker", "compose", "-p", box.project, "-f", "compose.yaml"]
-    env = box.env(ENS_VERSION=box.good)
+    assert box.inspect("app", "{{.Config.Image}}") == f"ens-evidence:{good}"
+    assert box.report_files(good) == written
+    registry = box.registry(good)
+    assert registry["current"]["tag"] == good
+    assert registry["failed"]["tag"] == box.tags["no_scheduler"]
     for command in (["scheduler", "status"], ["evidence", "verify", "--all"]):
-        read = run(
-            [*compose, "exec", "-T", "app", "ens-evidence", *command], cwd=box.clone, env=env
-        )
+        read = box.exec("app", "ens-evidence", *command)
         assert read.returncode == 0, (command, read.stdout, read.stderr)
 
 
-def test_copia_run_contra_un_repositorio_restic_local_desde_la_imagen_final(box):
-    password = ["ENS_BACKUP_RESTIC_PASSWORD=prueba-t5"]
-    configure = box.in_volume(
-        box.good,
-        "printf 'backup:\\n  restic_repository: /data/restic-repo\\n' >> /data/settings.yaml",
-    )
-    assert configure.returncode == 0, configure.stderr
+def test_una_version_que_se_reinicia_en_bucle_falla_sin_agotar_la_espera(box, installed):
+    crash = box.tags["crash"]
+    started = time.monotonic()
+
+    update = box.sh("update", "--no-backup", crash, ENS_BOX_HEALTH_TIMEOUT="300")
+
+    assert update.returncode != 0
+    assert time.monotonic() - started < 240
+    assert "rollback" in update.stderr
+    rollback = box.sh("rollback", ENS_BOX_HEALTH_TIMEOUT="120")
+    assert rollback.returncode == 0, rollback.stdout + rollback.stderr
+
+
+def test_update_a_una_etiqueta_con_otro_compose_despliega_el_de_la_etiqueta(box, installed):
+    good, labeled = box.tags["good"], box.tags["labeled"]
+    tree = (box.clone / "compose.yaml").read_text(encoding="utf-8")
+    assert "ens.test.source" not in tree, "el árbol de trabajo está en la etiqueta sin la marca"
+
+    update = box.sh("update", "--no-backup", labeled, ENS_BOX_HEALTH_TIMEOUT="120")
+
+    assert update.returncode == 0, update.stdout + update.stderr
+    assert box.inspect("app", '{{index .Config.Labels "ens.test.source"}}') == "tag"
+    tagged = run(["git", "show", f"{labeled}:compose.yaml"], cwd=box.clone).stdout
+    registry = box.registry(labeled)
+    assert registry["current"]["compose_sha256"] == hashlib.sha256(tagged.encode()).hexdigest()
+    assert registry["previous"]["tag"] == good
+    assert (box.clone / "compose.yaml").read_text(encoding="utf-8") == tree
+
+
+def test_rollback_vuelve_a_la_release_registrada_no_al_arbol_de_trabajo(box, installed):
+    rollback = box.sh("rollback", ENS_BOX_HEALTH_TIMEOUT="120")
+
+    assert rollback.returncode == 0, rollback.stdout + rollback.stderr
+    assert box.inspect("app", '{{index .Config.Labels "ens.test.source"}}') == ""
+    assert box.inspect("app", "{{.Config.Image}}") == f"ens-evidence:{box.tags['good']}"
+    update = box.sh("update", "--no-backup", box.tags["labeled"], ENS_BOX_HEALTH_TIMEOUT="120")
+    assert update.returncode == 0, update.stdout + update.stderr
+
+
+def test_update_se_niega_si_el_script_no_es_el_de_la_etiqueta(box, installed):
+    script = box.clone / "deploy" / "box.sh"
+    original = script.read_text(encoding="utf-8")
+    script.write_text(original + "\n# editado\n", encoding="utf-8")
+    try:
+        update = box.sh("update", "--no-backup", box.tags["next"])
+    finally:
+        script.write_text(original, encoding="utf-8")
+
+    assert update.returncode != 0
+    assert f"git checkout {box.tags['next']}" in update.stderr
+    assert box.registry(box.tags["labeled"])["current"]["tag"] == box.tags["labeled"]
+
+
+def test_update_no_sigue_sin_copia_si_no_puede_leer_los_ajustes(box, installed):
+    labeled = box.tags["labeled"]
+    saved = box.in_volume(labeled, "cp -p /data/settings.yaml /data/settings.saved")
+    assert saved.returncode == 0, saved.stderr
+    broken = box.in_volume(labeled, "printf 'workspace: [sin cerrar\\n' > /data/settings.yaml")
+    assert broken.returncode == 0, broken.stderr
+    try:
+        update = box.sh("update", box.tags["next"])
+    finally:
+        restored = box.in_volume(labeled, "mv /data/settings.saved /data/settings.yaml")
+        assert restored.returncode == 0, restored.stderr
+
+    assert update.returncode != 0
+    assert "No se pudo leer /data/settings.yaml" in update.stderr
+    assert "sin copia previa" not in update.stderr
+    assert box.registry(labeled)["current"]["tag"] == labeled
+
+
+def configure_backup(box):
+    image = box.tags["labeled"]
+    done = box.in_volume(image, "grep -q '^backup:' /data/settings.yaml")
+    if done.returncode != 0:
+        configure = box.in_volume(
+            image,
+            "printf 'backup:\\n  restic_repository: /data/restic-repo\\n' >> /data/settings.yaml",
+        )
+        assert configure.returncode == 0, configure.stderr
+
+
+def test_update_aborta_si_la_copia_obligatoria_falla(box, installed):
+    labeled = box.tags["labeled"]
+    configure_backup(box)
+
+    update = box.sh("update", box.tags["next"])
+
+    assert update.returncode != 0
+    assert "La copia previa falló" in update.stderr
+    assert box.registry(labeled)["current"]["tag"] == labeled
+    assert box.registry(labeled)["attempt"] is None
+
+
+def test_copia_run_contra_un_repositorio_restic_local_desde_la_imagen_final(box, installed):
+    image = box.tags["labeled"]
+    password = "ENS_BACKUP_RESTIC_PASSWORD=prueba-t5"
+    configure_backup(box)
 
     def ens(*args):
         return run(
             ["docker", "run", "--rm", "--network", "none", "--read-only", "--tmpfs", "/tmp"]
             + ["--cap-drop", "ALL"]
-            + ["--user", UID, "-e", password[0], "-v", f"{box.volume}:/data"]
-            + [f"ens-evidence:{box.good}", "ens-evidence", *args]
+            + ["--user", UID, "-e", password, "-v", f"{box.volume}:/data"]
+            + [f"ens-evidence:{image}", "ens-evidence", *args]
         )
 
     init = ens("backup", "init")

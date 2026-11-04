@@ -24,10 +24,14 @@ ENS.
 ```bash
 git clone <url-del-repositorio> ens-compliance && cd ens-compliance
 git fetch --tags
+git checkout v0.1.0
 deploy/box.sh install v0.1.0
 ```
 
-La etiqueta tiene la forma `vX.Y.Z`. El script:
+La etiqueta tiene la forma `vX.Y.Z`. El script tiene que ser el de esa etiqueta:
+si no lo es, se niega y te pide el `git checkout`. La imagen, `compose.yaml` y el
+`Caddyfile` salen del commit de la etiqueta, nunca de lo que tengas editado en el
+clon; se guardan en `.git/ens-box/releases/<commit>/`. El script:
 
 1. comprueba Docker y Compose;
 2. crea `deploy/.env` (modo 600, sin credenciales) si no existe;
@@ -40,8 +44,8 @@ El primer ciclo termina con uno de estos códigos:
 
 | Código | Significado | Qué hacer |
 |---|---|---|
-| 0 | Informe escrito | Nada |
-| 3 | Informe escrito, con conectores en ERROR | Es lo normal sin credenciales. `install` avisa y sigue. Configura las credenciales (sección 3) |
+| 0 | Informe escrito | Nada. Es lo que sale en una instalación limpia: aún no hay conectores activos |
+| 3 | Informe escrito, con conectores en ERROR | Hay conectores activos sin credenciales o que fallan. `install` avisa y sigue. Configura las credenciales (sección 3) |
 | 2 | Fallo: no se escribió el informe, o hay un ciclo en curso | `install` se detiene. Revisa el mensaje y los logs |
 
 Si la copia no está configurada, el primer ciclo imprime que la copia ha
@@ -101,6 +105,20 @@ camino listo y comprobar que no se ve nada desde fuera.
 deploy/box.sh status
 ```
 
+### Comprobación local de la denegación
+
+Sin salir de la caja, desde la red `edge` y sin imágenes de terceros:
+
+```bash
+for ruta in / /agent/enroll '/admin?token=prueba'; do
+  docker compose -p ens-box exec -T caddy wget -S -O /dev/null "http://127.0.0.1:8080$ruta" 2>&1 | grep 'HTTP/'
+done
+```
+
+Se espera `HTTP/1.1 403 Forbidden` las tres veces. En `docker compose -p
+ens-box logs caddy` la petición queda con la ruta (`/admin`) pero sin la query
+ni las cabeceras.
+
 ### Comprobación desde Internet (pendiente de verificar con una cuenta real)
 
 Desde una máquina fuera de tu red y sin sesión de Access:
@@ -122,12 +140,9 @@ se ha probado `cloudflared` en marcha ni su healthcheck. Se verifica en
 La caja es un activo más del sistema y se declara en el inventario del
 workspace de tu organización. Ese dato es tuyo: no va al repositorio.
 
-La CLI no tiene un comando para añadir activos: el inventario son ficheros
-YAML en `scope/` del workspace. El flujo es traer una copia, editarla,
-validarla y publicarla. Se ha probado con un workspace de ejemplo en local;
-dentro del contenedor, no.
-
-Para abreviar:
+Los comandos `scope add-asset` y `scope set-system` escriben YAML válido en el
+workspace del volumen, sin editar ficheros a mano. No aprueban nada: la
+aprobación sigue siendo de una persona (`scope approve`).
 
 ```bash
 export ENS_VERSION=v0.1.0   # la versión instalada (deploy/box.sh status)
@@ -135,70 +150,90 @@ ens() { docker compose -p ens-box exec -T app ens-evidence "$@"; }
 ```
 
 ```bash
-# 1. Trae una copia editable
-ens workspace pull /data/inventario
+# 1. Nombre y descripción del sistema (`init` los deja vacíos y sin ellos el alcance no es válido)
+ens scope set-system --name "<nombre del sistema>" --description "<qué hace>"
 
-# 2. Añade el activo (ajusta los datos a tu caja)
-docker compose -p ens-box exec -T app sh -c 'cat >> /data/inventario/scope/assets.yaml' <<'YAML'
-  - id: srv-caja
-    type: server
-    deployment: deployed
-    hostname: caja.ejemplo.org
-    function: Caja ens-compliance (evidencias e informes)
-    os: Debian 13
-    environment: producción
-    location: Oficina
-YAML
+# 2. Declara la caja e inclúyela en el alcance (ajusta los datos a tu caja)
+ens scope add-asset --id srv-caja --type server --include \
+  --set hostname=caja.ejemplo.org \
+  --set "function=Caja ens-compliance (evidencias e informes)" \
+  --set "os=Debian 13" \
+  --set "environment=producción" \
+  --set location=Oficina
 
-# 3. Inclúyelo en el alcance
-docker compose -p ens-box exec -T app sed -i '/^included_assets:/a\  - srv-caja' /data/inventario/scope/system.yaml
-
-# 4. Valida y publica (push solo publica si la copia es válida)
+# 3. Comprueba el inventario y el alcance
 ens inventory validate
-ens workspace push /data/inventario
+ens scope status        # NOT_APPROVED: falta la aprobación
 
-# 5. Aprueba el alcance (lo decide el responsable del sistema)
+# 4. Aprueba el alcance (lo decide el responsable del sistema)
 ens scope approve --by "<nombre>" --role system_owner
-ens scope status
+ens scope status        # APPROVED
 ```
 
 Notas:
 
-- `type: server` pide `hostname`, `function`, `os`, `environment` y `location`.
-  Si el servidor es de un proveedor, mira los demás tipos en
-  `src/ens_evidence/scope/models.py`.
-- Si no incluyes el activo en `system.yaml` (o no lo excluyes con
-  justificación), `push` no publica nada.
-- `push` no publica la aprobación. Tras cambiar el alcance, apruébalo otra vez
-  con `scope approve`. La aprobación es declarada: la herramienta no la
-  verifica.
-- Si prefieres un editor, copia los ficheros fuera con `docker compose cp` y
-  vigila el propietario: la app corre con el UID 10001.
+- `--type server` pide `hostname`, `function`, `os`, `environment` y
+  `location`; si falta alguno, el comando lo dice y no cambia nada. Para otros
+  tipos mira `src/ens_evidence/scope/models.py`, o `ens scope add-asset --help`.
+- `--set` admite los campos del activo; las listas van separadas por comas y
+  los booleanos son `true` o `false`.
+- Sin `--include` el activo queda sin decidir y `inventory validate` lo dice:
+  incluirlo o excluirlo con justificación es decisión tuya.
+- Cambiar el alcance revoca una aprobación anterior: apruébalo otra vez con
+  `scope approve`. La aprobación es declarada: la herramienta no la verifica.
+- Ambos comandos reescriben `scope/assets.yaml` y `scope/system.yaml`: los
+  comentarios de las plantillas no se conservan.
 
 ## 6. Copia
 
-La copia (restic hacia R2) se configura como se explica en el
+La copia (restic hacia R2) se explica en el
 [runbook de informes y scheduler](informes-y-scheduler.md) y la restauración
-está en el [runbook de restauración](restauracion-de-evidencias.md).
-En la caja:
+está en el [runbook de restauración](restauracion-de-evidencias.md). En la
+caja, `ens backup run` necesita dos cosas.
 
-- Las credenciales de la copia van en `deploy/.env`
-  (`ENS_BACKUP_AWS_ACCESS_KEY_ID`, `ENS_BACKUP_AWS_SECRET_ACCESS_KEY`,
-  `ENS_BACKUP_RESTIC_PASSWORD`).
-- La imagen lleva restic con versión fijada.
-- Lanzar una copia a mano:
+**1. El repositorio, en `/data/settings.yaml`.** Está en el volumen, con
+propietario UID 10001, y `docker compose exec` entra como ese usuario. Añade la
+sección `backup` al final (solo una vez: repetirla duplica la clave):
 
 ```bash
+docker compose -p ens-box exec -T app sh -c 'cat >> /data/settings.yaml' <<'YAML'
+backup:
+  restic_repository: s3:https://<account_id>.r2.cloudflarestorage.com/<bucket>/ens
+  region: auto
+YAML
+```
+
+Para cambiarlo después: `docker compose -p ens-box exec app sed -i
+'s#^  restic_repository:.*#  restic_repository: <nuevo>#' /data/settings.yaml`.
+El repositorio no admite credenciales ni parámetros en la URL.
+
+**2. Las credenciales, en `deploy/.env`** (modo 600, solo las lee `app`):
+`ENS_BACKUP_RESTIC_PASSWORD`, `ENS_BACKUP_AWS_ACCESS_KEY_ID` y
+`ENS_BACKUP_AWS_SECRET_ACCESS_KEY`, distintas de las del workspace. Después,
+recrea `app` (sección 3) para que las lea.
+
+Con eso, crea el repositorio (una vez) y lanza la primera copia:
+
+```bash
+ens backup init
 ens backup run
 ```
 
+Sin `backup init`, el repositorio no existe y `backup run` falla.
+
+- La contraseña del repositorio no se puede recuperar: guárdala fuera de la
+  caja (ver el runbook de restauración).
 - La copia del volumen de la caja no sustituye a la copia inmutable de
   evidencias: la referencia es esta última.
+- Probado en Docker con un repositorio restic local (`/tmp/...` dentro del
+  contenedor) y solo la contraseña: `backup init` y `backup run` terminan bien.
+  No se ha probado contra R2 real.
 
 ## 7. Actualizar
 
 ```bash
 git fetch --tags
+git checkout v0.1.1
 deploy/box.sh update v0.1.1
 ```
 
@@ -238,8 +273,9 @@ deploy/box.sh rollback
   migraciones).
 - Se niega si la imagen local no es la registrada. En ese caso no cambia
   nada.
-- Avisa si `compose.yaml` del clon difiere del usado con esa versión.
-  Hazlo coincidir: `git checkout <etiqueta>`.
+- Usa el `compose.yaml` y el `Caddyfile` guardados de esa versión en
+  `.git/ens-box/releases/<commit>/` y se niega si no coinciden con los
+  registrados. Ejecútalo con el script de esa versión: `git checkout <etiqueta>`.
 
 El registro está en `/data/state/box-deploy.json` y lleva, para `current`,
 `previous`, `attempt` (actualización en curso o fallida) y `failed`: la
@@ -254,7 +290,7 @@ Después de volver atrás, comprueba que no se ha perdido nada:
 
 ```bash
 ens scheduler status
-ens evidence verify
+ens evidence verify --all
 ```
 
 ## 9. Estado y salud
@@ -286,7 +322,9 @@ envejece, el contenedor pasa a `unhealthy`.
 | `caddy` | `edge` (interna) | Solo desde `cloudflared` | No |
 | `cloudflared` (perfil `tunnel`) | `edge` y `tunnel` | Ninguna | Sí: hacia Cloudflare |
 
-Ningún servicio publica puertos en el host. Si tu cortafuegos filtra la salida,
+Ningún servicio publica puertos en el host. En `docker compose ps`, la columna
+PORTS de `caddy` muestra `80/tcp, 443/tcp, 2019/tcp`: son puertos que declara la
+imagen, no publicados. Uno publicado llevaría `0.0.0.0:` delante. Si tu cortafuegos filtra la salida,
 `app` necesita 443 hacia los servicios que uses.
 
 ## 11. Recursos medidos
