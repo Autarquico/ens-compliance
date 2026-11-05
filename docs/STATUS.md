@@ -9,8 +9,6 @@
 ## Done esta semana
 
 <!-- pm-sync:done-this-week -->
-- #5 Collector de GitHub
-- #6 Collector de Cloudflare
 - #7 Collector de Google Workspace
 - #13 Collector de Restic y pruebas de restauración
 - #14 Informes y scheduling
@@ -22,6 +20,7 @@
 - #23 Motor de checks y regla de preparación
 - #24 Generación del expediente y sus estados
 - #25 Pre-auditoría y audit pack
+- #26 Banco de defectos sembrados
 - #27 Caja mínima en Docker Compose
 <!-- /pm-sync:done-this-week -->
 

@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Banco de defectos sembrados
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 26
