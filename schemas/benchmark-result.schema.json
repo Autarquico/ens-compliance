@@ -110,6 +110,18 @@
       "title": "DefectResult",
       "type": "object"
     },
+    "DeterministicRule": {
+      "enum": [
+        "CHECK_FAIL",
+        "EVIDENCE_MISSING",
+        "EVIDENCE_EXPIRED",
+        "CHECK_UNKNOWN",
+        "HASH_MISMATCH",
+        "DOSSIER_INTEGRITY"
+      ],
+      "title": "DeterministicRule",
+      "type": "string"
+    },
     "Partition": {
       "enum": [
         "dev",
@@ -361,6 +373,19 @@
   },
   "additionalProperties": false,
   "properties": {
+    "baseline_source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "De d\u00f3nde sale la l\u00ednea base de la puerta `baseline`.",
+      "title": "Baseline Source"
+    },
     "cases_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Cases Sha256",
@@ -369,6 +394,20 @@
     "catalog_sha256": {
       "pattern": "^[0-9a-f]{64}$",
       "title": "Catalog Sha256",
+      "type": "string"
+    },
+    "deterministic_rules": {
+      "description": "Reglas deterministas que siembra el banco.",
+      "items": {
+        "$ref": "#/$defs/DeterministicRule"
+      },
+      "title": "Deterministic Rules",
+      "type": "array"
+    },
+    "deterministic_scope": {
+      "const": "El 100 % determinista cubre solo las reglas incluidas en el banco; DOSSIER_INTEGRITY queda fuera: la preparaci\u00f3n rechaza un expediente que no es \u00edntegro.",
+      "default": "El 100 % determinista cubre solo las reglas incluidas en el banco; DOSSIER_INTEGRITY queda fuera: la preparaci\u00f3n rechaza un expediente que no es \u00edntegro.",
+      "title": "Deterministic Scope",
       "type": "string"
     },
     "format": {
@@ -391,6 +430,27 @@
       ],
       "default": null,
       "title": "Gate"
+    },
+    "gate_passed": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "None si no se aplic\u00f3 puerta.",
+      "title": "Gate Passed"
+    },
+    "gate_problems": {
+      "description": "Problemas que no son de un proveedor y modelo.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Gate Problems",
+      "type": "array"
     },
     "mode": {
       "const": "replay",

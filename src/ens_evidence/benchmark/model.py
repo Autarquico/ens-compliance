@@ -30,6 +30,14 @@ Notice = Literal[
 NOT_A_VERDICT: Notice = (
     "Cobertura del banco, no garantía universal. Superar el banco no aprueba un expediente real."
 )
+DeterministicScope = Literal[
+    "El 100 % determinista cubre solo las reglas incluidas en el banco; DOSSIER_INTEGRITY queda "
+    "fuera: la preparación rechaza un expediente que no es íntegro."
+]
+DETERMINISTIC_SCOPE: DeterministicScope = (
+    "El 100 % determinista cubre solo las reglas incluidas en el banco; DOSSIER_INTEGRITY queda "
+    "fuera: la preparación rechaza un expediente que no es íntegro."
+)
 
 Slug = Annotated[str, Field(pattern=SLUG_PATTERN)]
 Covers = Annotated[list[Annotated[str, Field(pattern=COVERS_PATTERN)]], Field(min_length=1)]
@@ -551,7 +559,18 @@ class BenchmarkResult(Strict):
     catalog_sha256: Sha256
     cases_sha256: Sha256
     notice: Notice = NOT_A_VERDICT
+    deterministic_scope: DeterministicScope = DETERMINISTIC_SCOPE
+    deterministic_rules: list[DeterministicRule] = Field(
+        default_factory=list, description="Reglas deterministas que siembra el banco."
+    )
+    baseline_source: str | None = Field(
+        default=None, description="De dónde sale la línea base de la puerta `baseline`."
+    )
     results: list[ProviderResult]
+    gate_passed: bool | None = Field(default=None, description="None si no se aplicó puerta.")
+    gate_problems: list[str] = Field(
+        default_factory=list, description="Problemas que no son de un proveedor y modelo."
+    )
 
 
 # --- línea base ------------------------------------------------------------------------------

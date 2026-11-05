@@ -1,13 +1,27 @@
 """Órdenes `ens-evidence benchmark …`. Miden la pre-auditoría; nunca declaran conformidad."""
 
 import tempfile
+from collections.abc import Callable
 from datetime import UTC, datetime
+from enum import StrEnum
 from pathlib import Path
 from typing import Annotated
 
 import typer
 
-from ens_evidence.benchmark.access import HoldoutLocked, open_partition
+from ens_evidence.benchmark.access import HoldoutLocked, append_measurement, open_partition
+from ens_evidence.benchmark.baseline import (
+    BASELINE_FILE,
+    BaselineUnreadable,
+    build_baseline,
+    diff,
+    empty_baseline,
+    inventory,
+    read_file,
+    read_ref,
+    working_tree_retired,
+    write_baseline,
+)
 from ens_evidence.benchmark.build import Build, build_bench_profile, inspect
 from ens_evidence.benchmark.cases import (
     BenchError,
@@ -16,7 +30,13 @@ from ens_evidence.benchmark.cases import (
     load_case,
     validate_bench,
 )
-from ens_evidence.benchmark.model import Partition
+from ens_evidence.benchmark.model import (
+    Baseline,
+    BenchmarkResult,
+    Measurement,
+    Partition,
+    ProviderResult,
+)
 from ens_evidence.benchmark.mutations import build_case
 from ens_evidence.benchmark.recordings import (
     BenchCase,
@@ -28,7 +48,20 @@ from ens_evidence.benchmark.recordings import (
     recording_path,
     write_recording,
 )
-from ens_evidence.benchmark.replay import Recorder
+from ens_evidence.benchmark.replay import Recorder, RecordingStale
+from ens_evidence.benchmark.report import assemble, render_text
+from ens_evidence.benchmark.runner import (
+    REQUIRED_PAIRS,
+    Pair,
+    PartitionRun,
+    RecordingMissing,
+    load_cases,
+    recorded_pairs,
+    recording_check,
+    required_pair_problems,
+    run_partition,
+)
+from ens_evidence.benchmark.score import Score, entry_of
 from ens_evidence.models.preaudit import Provider
 from ens_evidence.preaudit import service
 from ens_evidence.preaudit.pack import PackError, load_pack
@@ -38,6 +71,7 @@ from ens_evidence.workspace import PreAuditSettings
 BENCH_DIR = Path("benchmark")
 REFUSED = 1
 INVALID = 2
+STALE = 3
 
 app = typer.Typer(
     help="Banco de defectos sembrados: mide la pre-auditoría; no aprueba expedientes.",
@@ -71,10 +105,16 @@ def _fail(message: str, code: int = INVALID) -> typer.Exit:
 def validate(
     cases: CasesOption = BENCH_DIR,
     partition: PartitionOption = Partition.DEV,
+    recordings: Annotated[
+        bool,
+        typer.Option("--recordings", help="Comprueba también las grabaciones y su ligadura."),
+    ] = False,
     measurement: MeasurementOption = False,
 ) -> None:
     """Valida casos y perfiles: esquema, citas literales del anexo II, ids únicos, particiones
-    disjuntas y datos ficticios. Sale con 2 si algo no vale."""
+    disjuntas y datos ficticios. Sale con 2 si algo no vale. Con `--recordings`, también las
+    grabaciones: 2 si una no vale o lleva un dato detectable, 3 si está desligada del pack o
+    del payload actuales."""
     if not cases.is_dir():
         raise _fail(f"Error: no existe el banco {cases}")
     try:
@@ -87,6 +127,22 @@ def validate(
     if problems:
         raise _fail(f"{len(problems)} problemas en la partición {partition}")
     typer.echo(f"banco válido: {len(case_paths(cases, partition))} casos en {partition}")
+    if recordings:
+        _validate_recordings(cases, partition)
+
+
+def _validate_recordings(root: Path, partition: Partition) -> None:
+    try:
+        problems, stale, checked = recording_check(root, partition)
+    except BenchError as exc:
+        raise _fail("\n".join(exc.problems)) from None
+    for problem in problems + stale:
+        typer.echo(problem, err=True)
+    if problems:
+        raise _fail(f"{len(problems)} grabaciones no valen en {partition}")
+    if stale:
+        raise _fail(f"{len(stale)} grabaciones desligadas en {partition}; regraba", STALE)
+    typer.echo(f"grabaciones ligadas: {checked} en {partition}")
 
 
 @app.command("build")
@@ -316,3 +372,211 @@ def _record_all(
         outcomes = ", ".join(r.outcome.value for r in recording.repetitions)
         typer.echo(f"{key}: {path.relative_to(root).as_posix()} ({outcomes})")
     return refused
+
+
+# --- repetir y puntuar -----------------------------------------------------------------------
+
+
+class GateChoice(StrEnum):
+    BASELINE = "baseline"
+    THRESHOLD = "threshold"
+
+
+class OutputFormat(StrEnum):
+    TEXT = "text"
+    JSON = "json"
+
+
+@app.command("run")
+def run(
+    partition: PartitionOption = Partition.DEV,
+    provider: Annotated[
+        Provider | None, typer.Option("--provider", help="Un proveedor grabado.")
+    ] = None,
+    model: Annotated[str | None, typer.Option("--model", help="Su modelo grabado.")] = None,
+    all_recorded: Annotated[
+        bool, typer.Option("--all-recorded", help="Todos los proveedores y modelos grabados.")
+    ] = False,
+    gate: Annotated[GateChoice | None, typer.Option("--gate", help="Puerta que aplicar.")] = None,
+    baseline_file: Annotated[
+        Path | None, typer.Option("--baseline", help="Línea base con la que comparar.")
+    ] = None,
+    baseline_ref: Annotated[
+        str | None,
+        typer.Option("--baseline-ref", help="Ref de git cuya línea base se compara."),
+    ] = None,
+    output_format: Annotated[OutputFormat, typer.Option("--format")] = OutputFormat.TEXT,
+    out: Annotated[Path | None, typer.Option("--out", help="Escribe el informe aquí.")] = None,
+    cases: CasesOption = BENCH_DIR,
+    measurement: MeasurementOption = False,
+) -> None:
+    """Repite las grabaciones por la pre-auditoría (`service.prepare` y `service.run`, sin red)
+    y puntúa por proveedor y modelo. Sale con 0 si pasa, 1 si falla la puerta, hay regresión o
+    el banco está vacío, 2 si un caso o una opción no vale y 3 si una grabación falta o está
+    desligada."""
+    if (provider is None) != (model is None) or all_recorded == (provider is not None):
+        raise _fail("Error: indica --provider y --model, o --all-recorded")
+    if baseline_file is not None and baseline_ref is not None:
+        raise _fail("Error: --baseline y --baseline-ref se excluyen")
+    if gate is GateChoice.BASELINE and partition is not Partition.DEV:
+        raise _fail("Error: la puerta baseline es de la partición de desarrollo")
+    pair = Pair(provider, model) if provider is not None and model is not None else None
+    replayed = _replay(cases, partition, pair, gate is not None, "run", measurement)
+    pack_sha256, bench, ran = replayed
+    compared = retired = source = found = None
+    if gate is GateChoice.BASELINE:
+        compared, source = _baseline_for(cases, baseline_file, baseline_ref, pack_sha256)
+        retired = _guarded(lambda: working_tree_retired(cases))
+        found = inventory(cases, bench)
+    gating = list(REQUIRED_PAIRS) if all_recorded else ran.pairs
+    result = assemble(
+        cases,
+        partition,
+        ran,
+        now=clock(),
+        gate=gate.value if gate else None,
+        gating=gating,
+        baseline=compared,
+        baseline_source=source,
+        inventory=found,
+        retired=retired or [],
+    )
+    shown = gating if gate is GateChoice.THRESHOLD else ()
+    if output_format is OutputFormat.JSON:
+        text = result.model_dump_json(indent=2) + "\n"
+    else:
+        text = render_text(result, shown)
+    if out is None:
+        typer.echo(text, nl=False)
+    else:
+        out.write_text(text, encoding="utf-8")
+        typer.echo(f"informe: {out}")
+    if partition is Partition.HOLDOUT:
+        for provider_result in result.results:
+            append_measurement(cases, _measured(result, provider_result))
+    if result.gate_passed is False:
+        raise _fail(f"la puerta {result.gate} no pasa", REFUSED)
+
+
+@app.command("baseline")
+def baseline(
+    partition: PartitionOption = Partition.DEV,
+    write: Annotated[
+        bool, typer.Option("--write", help="Escribe baseline/dev.json; sin ella, solo el diff.")
+    ] = False,
+    cases: CasesOption = BENCH_DIR,
+) -> None:
+    """Repite todo lo grabado de la partición de desarrollo y escribe su línea base
+    (`baseline/dev.json`), conservando las retiradas anotadas. Imprime un diff resumido."""
+    if partition is not Partition.DEV:
+        raise _fail("Error: la línea base es de la partición de desarrollo")
+    pack_sha256, bench, ran = _replay(cases, partition, None, False, "baseline", False)
+    previous = _guarded(lambda: read_file(cases / BASELINE_FILE))
+    retired = previous.retired if previous else []
+    result = assemble(cases, partition, ran, now=clock())
+    entries = [entry_of(r.provider, r.model, Score(r.cases, r.totals)) for r in result.results]
+    written = build_baseline(clock(), pack_sha256, inventory(cases, bench), entries, retired)
+    for line in diff(previous or empty_baseline(clock(), pack_sha256), written):
+        typer.echo(line)
+    if write:
+        typer.echo(f"escrito: {write_baseline(cases, written).relative_to(cases).as_posix()}")
+
+
+def _replay(
+    root: Path,
+    partition: Partition,
+    pair: Pair | None,
+    gated: bool,
+    action: str,
+    measurement: bool,
+) -> tuple[str, list[BenchCase], PartitionRun]:
+    if not root.is_dir():
+        raise _fail(f"Error: no existe el banco {root}")
+    if pair is not None and not pair.model.strip():
+        raise _fail("Error: --model: indica el modelo; no hay valor por defecto")
+    try:
+        pack_sha256 = load_pack().sha256
+    except PackError as exc:
+        raise _fail(f"Error: el audit pack no es íntegro: {exc}") from None
+    try:
+        open_partition(
+            root,
+            partition,
+            action=action,
+            measurement=measurement,
+            now=clock(),
+            pack_sha256=pack_sha256,
+            provider=pair.provider if pair else None,
+            model=pair.model if pair else None,
+        )
+        bench = load_cases(root, partition)
+    except HoldoutLocked as exc:
+        raise _fail(f"Error: {exc}") from None
+    except BenchError as exc:
+        raise _fail("\n".join(exc.problems)) from None
+    if not bench:
+        raise _fail(f"Error: el banco está vacío en {partition}; no hay nada que medir", REFUSED)
+    try:
+        pairs = [pair] if pair else recorded_pairs(root, partition)
+    except BenchError as exc:
+        raise _fail("\n".join(exc.problems), STALE) from None
+    if pair is None and gated and (missing := required_pair_problems(pairs)):
+        raise _fail("\n".join(f"Error: {m}" for m in missing), STALE)
+    with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
+        try:
+            ran = run_partition(root, bench, pairs, Path(scratch))
+        except RecordingMissing as exc:
+            raise _fail("\n".join(f"Error: {p}" for p in exc.problems), STALE) from None
+        except RecordingStale as exc:
+            raise _fail(f"Error: {exc}", STALE) from None
+        except BenchError as exc:
+            raise _fail("\n".join(exc.problems)) from None
+        except service.PreAuditRejected as exc:
+            raise _fail("\n".join(f"Error: {e}" for e in exc.errors)) from None
+    return pack_sha256, bench, ran
+
+
+def _guarded[T](read: Callable[[], T]) -> T:
+    try:
+        return read()
+    except BaselineUnreadable as exc:
+        raise _fail(f"Error: línea base: {exc}") from None
+
+
+def _baseline_for(
+    root: Path, file: Path | None, ref: str | None, pack_sha256: str
+) -> tuple[Baseline, str]:
+    if file is not None:
+        found = _guarded(lambda: read_file(file))
+        if found is None:
+            raise _fail(f"Error: no existe la línea base {file}")
+        return found, file.as_posix()
+    if ref is not None:
+        found = _guarded(lambda: read_ref(root, ref))
+        source = f"{ref}:{BASELINE_FILE}"
+        if found is None:
+            return empty_baseline(clock(), pack_sha256), f"{source} (no existe: vacía)"
+        return found, source
+    found = _guarded(lambda: read_file(root / BASELINE_FILE))
+    if found is None:
+        return empty_baseline(clock(), pack_sha256), f"{BASELINE_FILE} (no existe: vacía)"
+    return found, BASELINE_FILE
+
+
+def _measured(result: BenchmarkResult, provider: ProviderResult) -> Measurement:
+    totals = provider.totals
+    return Measurement(
+        at=result.run_at,
+        action="run-result",
+        pack_sha256=result.pack_sha256,
+        provider=provider.provider,
+        model=provider.model,
+        result={
+            "gate": result.gate,
+            "gate_passed": provider.gate_passed,
+            "deterministic": totals.deterministic.value,
+            "judgment": totals.judgment.value,
+            "false_alarms": totals.false_alarms.value,
+            "correct_with_false_alarms": totals.correct_with_false_alarms.value,
+        },
+    )

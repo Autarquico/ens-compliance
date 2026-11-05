@@ -40,7 +40,6 @@ from ens_evidence.preaudit.adapter import parse_response
 from ens_evidence.preaudit.pack import load_pack
 from ens_evidence.preaudit.payload import canonical_json
 from ens_evidence.scope.messages import describe_validation
-from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import PreAuditSettings
 
 RECORDINGS_DIR = "recordings"
@@ -90,12 +89,9 @@ def portable_destination(destination: str) -> str:
 
 
 def write_problems(recording: Recording) -> list[str]:
-    """Lo que impide escribir: el escaneo decodificado de `recording_problems` y, en el destino,
-    solo secretos. El destino lo compone el producto (URL base o CLI con su sha256): la heurística
-    de texto libre marcaría el host del proveedor y los dígitos de la huella."""
-    problems = recording_problems(recording.model_copy(update={"destination": "-"}))
-    problems += [f"{p}: parece un secreto" for p in find_secrets(recording.destination, "destino")]
-    return problems
+    """Lo que impide escribir: lo mismo que `benchmark validate --recordings` mira en las
+    grabaciones existentes."""
+    return recording_problems(recording)
 
 
 def write_recording(root: Path, recording: Recording, *, replace: bool = False) -> Path:

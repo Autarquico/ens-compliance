@@ -29,6 +29,7 @@ from ens_evidence.benchmark.build import (
     build_bench_profile,
     review_again,
     run_step,
+    seeded_ids,
 )
 from ens_evidence.benchmark.cases import BenchError, case_files_dir
 from ens_evidence.benchmark.model import (
@@ -68,18 +69,21 @@ TAMPER_MARK = b"\n(alterado a mano tras importarlo)\n"
 
 
 def build_case(root: Path, case: Case, destination: Path) -> Build:
-    """El perfil base de `case`, sembrado con su clave; sus mutaciones; y el expediente."""
+    """El perfil base de `case` (sembrado con el id del perfil, el mismo para todos sus casos,
+    así se puede cachear); sus mutaciones, sembradas con la clave del caso; y el expediente."""
     if case.profile is None:
         raise BenchError([f"{case.key}: las bases `workspace:` aún no se construyen"])
-    base = build_bench_profile(root, case.profile, destination, seed=case.key, steps=BASE_STEPS)
+    base = build_bench_profile(root, case.profile, destination, steps=BASE_STEPS)
     return finish_case(base, case, case_files_dir(root, case))
 
 
 def finish_case(base: Build, case: Case, files: Path) -> Build:
-    """Aplica las mutaciones de `case` sobre `base` (un perfil sin expediente) y lo genera.
+    """Aplica las mutaciones de `case` sobre `base` (un perfil sin expediente, o una copia suya)
+    y lo genera. Los ids que emite el caso salen de su clave.
 
     `files` es el directorio de ficheros del caso (`replace_evidence_text`, `collected_override`).
     """
+    base.id_factory = seeded_ids(case.key)
     base.judgment = case.judgment
     apply_mutations(base, case.mutations, files)
     run_step(base, *DOSSIER_STEP)

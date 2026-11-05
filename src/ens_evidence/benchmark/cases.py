@@ -32,6 +32,7 @@ from ens_evidence.benchmark.model import (
 from ens_evidence.catalog import load_catalog
 from ens_evidence.preaudit.pack import load_pack
 from ens_evidence.scope.messages import describe_validation
+from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.yaml_unique import safe_load_unique
 
 PROFILE_FILE = "profile.yaml"
@@ -184,12 +185,13 @@ def validate_bench(root: Path, partition: Partition) -> list[str]:
 def recording_problems(recording: Recording) -> list[str]:
     """Datos detectables en una grabación: metadatos y respuesta, decodificados y recorridos
     entero (un escape Unicode no esconde un secreto). Las huellas y los instantes no se miran:
-    son hexadecimales o ISO y la heurística de teléfonos los confundiría."""
+    son hexadecimales o ISO y la heurística de teléfonos los confundiría. El destino lo compone
+    el producto (URL base o CLI con su sha256): en él solo se buscan secretos."""
     shown = recording.model_dump(
-        mode="json",
-        include={"model", "destination", "temperature_note", "recorded_by", "tool_version"},
+        mode="json", include={"model", "temperature_note", "recorded_by", "tool_version"}
     )
     problems = value_problems(shown)
+    problems += [f"{p}: parece un secreto" for p in find_secrets(recording.destination, "destino")]
     for repetition in recording.repetitions:
         if repetition.response is None:
             continue

@@ -338,14 +338,14 @@ def test_build_sin_out_construye_en_un_temporal(tmp_path):
     assert "hallazgos deterministas: 0" in result.output
 
 
-def test_build_de_un_caso_siembra_los_ids_con_la_clave_del_caso(mini, tmp_path):
+def test_un_caso_sin_mutaciones_reproduce_el_expediente_de_su_perfil(mini, tmp_path):
     root = bench_with_case(tmp_path, "dev")
 
     result = bench("dev/correcto", "--cases", str(root), "--out", str(tmp_path / "ws"))
 
     assert result.exit_code == 0, result.output
     assert "hallazgos deterministas: 0" in result.output
-    assert f"expediente: {mini.dossier}" not in result.output
+    assert f"expediente: {mini.dossier}" in result.output
 
 
 def test_la_reservada_exige_measurement_y_lo_anota(tmp_path):
