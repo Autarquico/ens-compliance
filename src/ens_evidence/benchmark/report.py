@@ -102,6 +102,7 @@ def assemble(
         cases_sha256=_sha256(sorted([b.case.key, b.sha256] for b in run.cases)),
         deterministic_rules=sorted(rules),
         baseline_source=baseline_source if gate == "baseline" else None,
+        gate_note=TARGET_NOTE if gate == "target" else None,
         results=results,
         gate_passed=passed,
         gate_problems=general,
@@ -153,8 +154,8 @@ def render_text(result: BenchmarkResult, gating: Collection[Pair] = ()) -> str:
         f"puerta: {result.gate or 'ninguna'}"
         + (f" (línea base: {result.baseline_source})" if result.baseline_source else ""),
     ]
-    if result.gate == "target":
-        lines.append(TARGET_NOTE)
+    if result.gate_note:
+        lines.append(result.gate_note)
     for provider in result.results:
         pair = Pair(provider.provider, provider.model)
         lines += _provider_lines(provider, result.gate, not gating or pair in gating)
@@ -170,8 +171,8 @@ def render_text(result: BenchmarkResult, gating: Collection[Pair] = ()) -> str:
     else:
         closing = "; v0.1 no cierra" if result.gate == "threshold" else ""
         lines.append(f"resultado: la puerta {result.gate} no pasa{closing}")
-    if result.gate == "target":
-        lines.append(TARGET_NOTE)
+    if result.gate_note:
+        lines.append(result.gate_note)
     lines.append(result.notice)
     return "\n".join(lines) + "\n"
 

@@ -291,6 +291,8 @@ def test_la_puerta_target_falla_si_un_par_de_la_puerta_no_llega_al_80_de_juicio(
     assert result.exit_code == 1, result.output
     data = json.loads(out.read_text())
     assert data["gate"] == "target" and data["gate_passed"] is False
+    assert TARGET_NOTE in data["gate_note"] and "no cierra v0.1" in data["gate_note"]
+    assert not VERDICT_WORDS.search(out.read_text())
     by_pair = {f"{r['provider']}/{r['model']}": r for r in data["results"]}
     assert by_pair[str(CLAUDE)]["gate_passed"] is True
     assert by_pair[str(CODEX)]["gate_problems"] == ["detección de juicio 0.0 % (mínimo 80 %)"]

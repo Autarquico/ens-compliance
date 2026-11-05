@@ -581,6 +581,9 @@ class BenchmarkResult(Strict):
     baseline_source: str | None = Field(
         default=None, description="De dónde sale la línea base de la puerta `baseline`."
     )
+    gate_note: str | None = Field(
+        default=None, description="Alcance de la puerta `target`: no cierra v0.1."
+    )
     results: list[ProviderResult]
     gate_passed: bool | None = Field(default=None, description="None si no se aplicó puerta.")
     gate_problems: list[str] = Field(
