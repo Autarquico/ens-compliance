@@ -141,6 +141,93 @@ info_otras:
     pasos: Antes de dar de baja un portátil o un disco se borra de forma segura con la herramienta del sistema operativo, se revocan sus claves y se anota la fecha del borrado en el inventario de soportes.
     herramienta: Borrado seguro del sistema operativo, registro de claves e inventario de soportes
     evidencia: Inventario de soportes y registro de claves criptográficas
+analisis_riesgos:
+  - ambito: Portal de proyectos, servidor, copias, identidad corporativa, alojamiento de código y portátiles
+    quien: Responsable de la seguridad
+    pasos: Cada año, y antes de contratar un servicio o cambiar la arquitectura, revisa los activos más valiosos, las amenazas más probables, las salvaguardas y los riesgos residuales; lo presenta en el Comité de Seguridad y la gerente acepta los riesgos residuales.
+    herramienta: Documento del análisis de riesgos en la unidad compartida Seguridad
+    evidencia: Análisis de riesgos fechado y acta del Comité de Seguridad que lo revisa
+inventario_activos:
+  - ambito: Portátiles, servidor, base de datos, servicios en la nube, copias y proveedores
+    quien: Administradora de sistemas
+    pasos: Anota cada alta y baja de un equipo, servicio o proveedor con su naturaleza y la persona que decide sobre él, en la misma semana; cada trimestre revisa el inventario completo y publica una versión nueva.
+    herramienta: Inventario de activos en la unidad compartida Seguridad
+    evidencia: Inventario versionado con su fecha de revisión
+gestion_cuentas:
+  - ambito: Identidad corporativa, alojamiento de código y gestor de contraseñas
+    quien: Administradora de sistemas
+    pasos: Con la petición escrita de la gerente da de alta una cuenta nominal por persona; la inhabilita el mismo día en que la persona deja la empresa o cambia de funciones, o cuando lo ordena la gerente; las cuentas de servicio no tienen acceso interactivo; las cuentas inhabilitadas se conservan doce meses, como sus registros, y después se borran.
+    herramienta: Consola de la identidad corporativa y registro de accesos
+    evidencia: Petición de la gerente, registro de accesos y revisión trimestral de cuentas
+  - ambito: Usuarios de clientes en el portal de proyectos
+    quien: Administradora de sistemas
+    pasos: Da de alta un usuario nominal por persona de contacto a petición del cliente y lo desactiva el mismo día en que el cliente avisa de su baja.
+    herramienta: Administración de usuarios del portal
+    evidencia: Registro de accesos y revisión trimestral de cuentas
+credenciales:
+  - ambito: Credenciales del equipo en los servicios corporativos
+    quien: Administradora de sistemas
+    pasos: Antes de recibir sus credenciales la persona firma la aceptación de la normativa y de la custodia de credenciales; inscribe su doble factor en el primer acceso y guarda sus contraseñas solo en el gestor de contraseñas; las cambia si sospecha que otra persona las conoce; la cuenta se bloquea si se pierde el dispositivo del segundo factor o se sospecha que está comprometida, y se inhabilita al terminar la relación con la empresa.
+    herramienta: Identidad corporativa y gestor de contraseñas
+    evidencia: Aceptación firmada y revisión trimestral de cuentas
+  - ambito: Credenciales de servicio de las bóvedas del gestor de contraseñas
+    quien: Administradora de sistemas
+    pasos: Se rotan cada año, al dar de baja un equipo y cuando una persona deja de tener acceso a la bóveda.
+    herramienta: Gestor de contraseñas
+    evidencia: Revisión trimestral de cuentas y registro de claves criptográficas
+actualizaciones:
+  - ambito: Servidor del portal y portátiles
+    quien: Administradora de sistemas
+    pasos: Sigue los avisos de seguridad de Debian, macOS y Ubuntu; aplica las actualizaciones de seguridad del servidor cada lunes, con reinicio fuera de horario si tocan el núcleo, y las de los portátiles en un máximo de siete días desde su publicación.
+    herramienta: Gestor de paquetes del sistema y actualizaciones del sistema operativo
+    evidencia: Informe mensual de configuración y actualizaciones
+  - ambito: Dependencias del portal
+    quien: Desarrollador sénior
+    pasos: Revisa cada semana las alertas de dependencias vulnerables y corrige cada una con una solicitud de cambios revisada; si la función afectada no se usa, la descarta con una nota en la alerta.
+    herramienta: Alertas de dependencias del alojamiento de código
+    evidencia: Historial de alertas e informe mensual de configuración y actualizaciones
+codigo_danino:
+  - ambito: Portátiles, correo y ficheros que los clientes suben al portal
+    quien: Administradora de sistemas
+    pasos: Mantiene activa la protección integrada del sistema operativo en los portátiles, el filtrado de código dañino del correo, el filtrado DNS de dominios maliciosos y el análisis de los ficheros subidos al portal; ante una alerta desconecta el equipo de la red y avisa al responsable de la seguridad, que lo trata como incidente.
+    herramienta: Protección del sistema operativo, filtrado del correo y del DNS y análisis de ficheros del portal
+    evidencia: Revisión de seguridad del portal, del correo y de los servicios en la nube
+registro_actividad:
+  - ambito: Servidor, portal, identidad corporativa, alojamiento de código y red perimetral
+    quien: Responsable de la seguridad
+    pasos: El servidor registra los accesos SSH, sudo y los eventos del sistema, y el portal los inicios de sesión, las descargas y los cambios de permisos con usuario, fecha y hora, objeto y resultado; los registros del servidor se envían cada hora al almacenamiento de copias y se conservan doce meses; cada mes se revisan buscando patrones anormales.
+    herramienta: Registros del servidor y del portal y registros de auditoría de los servicios
+    evidencia: Revisión mensual del registro de actividad y vigilancia
+perimetro:
+  - ambito: Red perimetral del portal (DNS, cortafuegos de aplicaciones web y túnel)
+    quien: Responsable del sistema
+    pasos: El servidor no abre puertos a internet y solo recibe el túnel; cada regla nueva del cortafuegos web o cambio del túnel lo propone la administradora y lo aprueba el responsable de la seguridad antes de activarlo.
+    herramienta: Panel de la red perimetral, con identidad corporativa y doble factor
+    evidencia: Registro de autorizaciones y acta del Comité de Seguridad
+puesta_en_produccion:
+  - ambito: Nuevas versiones del portal y servicios en la nube nuevos
+    quien: Responsable del sistema
+    pasos: Cada versión pasa las pruebas automáticas, se prueba en preproducción y la acepta en la solicitud de cambios una persona distinta de quien la propone; antes de cada versión mayor se hace un análisis dinámico de caja negra; un servicio en la nube nuevo no se usa hasta que lo autoriza el responsable del sistema.
+    herramienta: Integración continua, entorno de preproducción y herramienta de análisis dinámico
+    evidencia: Historial de solicitudes de cambios, ejecuciones de pruebas e informe del análisis dinámico
+informacion_deberes:
+  - ambito: Las tres personas del equipo
+    quien: Responsable de la seguridad
+    pasos: Al incorporarse se le entregan por correo la normativa, sus deberes de seguridad, las medidas disciplinarias y el deber de confidencialidad, y firma su aceptación; al cambiar de funciones se le entregan los deberes nuevos, y al salir se le recuerda que la confidencialidad sigue vigente.
+    herramienta: Correo corporativo y unidad compartida Seguridad
+    evidencia: Aceptación firmada de la normativa y de los deberes de confidencialidad
+concienciacion:
+  - ambito: Las tres personas del equipo
+    quien: Responsable de la seguridad
+    pasos: En cada reunión mensual del Comité de Seguridad recuerda las normas de uso de equipos y servicios y el deber de avisar el mismo día de cualquier incidente o sospecha; en la sesión anual repasa con ejemplos reales los correos fraudulentos y cómo avisar de un incidente o de una falsa alarma, y programa simulacros de correo fraudulento.
+    herramienta: Reunión del Comité de Seguridad, sesión anual y simulacros
+    evidencia: Acta del Comité de Seguridad y registro del simulacro
+formacion:
+  - ambito: Las tres personas del equipo
+    quien: Responsable de la seguridad
+    pasos: Imparte una sesión al incorporarse y otra cada año sobre la normativa, el tratamiento de la información de clientes, la configuración segura de los portátiles y, para quien administra, la respuesta a incidentes; al final se hace un cuestionario para evaluar su eficacia y se anotan las mejoras propuestas.
+    herramienta: Sesión por videoconferencia y cuestionario
+    evidencia: Registro de la sesión con asistentes, contenidos y resultados del cuestionario
 aut_instalaciones:
   - elemento: Puesto en el espacio de coworking
     quien: Gerente

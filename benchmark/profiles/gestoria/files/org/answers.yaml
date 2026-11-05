@@ -139,6 +139,88 @@ info_otras:
     pasos: Se digitalizan al recibirlos, se devuelven al cliente o se destruyen con la destructora de corte cruzado de la oficina.
     herramienta: Escáner y destructora de la oficina
     evidencia: Registro de devoluciones de documentación
+analisis_riesgos:
+  - ambito: Servidor de ficheros, aplicación de gestión, correo, portátiles y copias
+    quien: Responsable de la seguridad
+    pasos: Cada año, y antes de cambiar de proveedor o de servicio, revisa los activos más valiosos, las amenazas más probables, las salvaguardas y los riesgos residuales; la gerente lo aprueba en el Comité de Seguridad y acepta los riesgos residuales.
+    herramienta: Documento del análisis de riesgos en la carpeta Seguridad del servidor
+    evidencia: Análisis de riesgos fechado y acta del Comité de Seguridad que lo aprueba
+inventario_activos:
+  - ambito: Portátiles, servidor, servicios en la nube, copias, proveedores y equipamiento auxiliar
+    quien: Responsable del sistema
+    pasos: Anota cada alta, baja, entrada y salida de un equipo o servicio con su naturaleza y su responsable; cada semestre revisa el inventario completo con el proveedor informático y etiqueta el equipamiento auxiliar.
+    herramienta: Inventario de activos en la carpeta Seguridad del servidor
+    evidencia: Inventario con su fecha de revisión
+gestion_cuentas:
+  - ambito: Correo e identidad en la nube, servidor de ficheros y aplicación de gestión
+    quien: Técnica laboral con funciones de sistemas
+    pasos: Con la petición firmada por la gerente da de alta una cuenta nominal por persona en cada servicio, y al técnico del proveedor informático una cuenta de administración nominal; la inhabilita el mismo día en que la persona deja la gestoría, cambia de funciones o la gerente lo ordena; las cuentas inhabilitadas se conservan un año y después se borran.
+    herramienta: Consola del correo, del servidor y de la aplicación de gestión
+    evidencia: Petición firmada, registro de altas y bajas y revisión trimestral de usuarios y permisos
+  - ambito: Accesos de clientes al portal de la aplicación de gestión
+    quien: Técnica laboral con funciones de sistemas
+    pasos: Crea un acceso por cliente al firmar el contrato y lo da de baja el día en que termina.
+    herramienta: Administración de usuarios de la aplicación de gestión
+    evidencia: Revisión trimestral de usuarios y permisos
+credenciales:
+  - ambito: Contraseñas y doble factor de la plantilla
+    quien: Técnica laboral con funciones de sistemas
+    pasos: Antes de recibir sus credenciales la persona firma la recepción y custodia de credenciales; activa el doble factor por aplicación de autenticación en el primer acceso; cambia la contraseña si sospecha que otra persona la conoce y cada vez que la política del proveedor lo pide; la cuenta se bloquea si se pierde el portátil o el móvil del doble factor y se inhabilita al terminar la relación con la gestoría.
+    herramienta: Consola del correo y de la aplicación de gestión
+    evidencia: Recepción de credenciales firmada y revisión trimestral de usuarios y permisos
+actualizaciones:
+  - ambito: Servidor de ficheros y portátiles
+    quien: Proveedor informático externo
+    pasos: Sigue los avisos de seguridad del fabricante; aplica las actualizaciones de seguridad del servidor el segundo martes de cada mes fuera de horario, con reinicio comprobado, y comprueba que los portátiles las instalan solos en la semana; la responsable del sistema revisa su informe.
+    herramienta: Consola de gestión remota del proveedor
+    evidencia: Informe mensual de mantenimiento del proveedor
+  - ambito: Aplicación de gestión
+    quien: Proveedor de la aplicación de gestión
+    pasos: El proveedor del servicio la actualiza según su contrato; el Comité de Seguridad repasa sus avisos cada trimestre.
+    herramienta: Avisos del proveedor de la aplicación
+    evidencia: Acta del Comité de Seguridad
+codigo_danino:
+  - ambito: Portátiles, servidor de ficheros y correo
+    quien: Proveedor informático externo
+    pasos: Mantiene el antivirus gestionado activo y actualizado en los portátiles y el servidor, y el proveedor del correo filtra el código dañino de los adjuntos; ante una detección deja el fichero en cuarentena, avisa a la responsable del sistema y, si se ha ejecutado, se aísla el equipo y se trata como incidente.
+    herramienta: Consola del antivirus gestionado y filtrado del correo
+    evidencia: Informe mensual de mantenimiento del proveedor
+registro_actividad:
+  - ambito: Servidor de ficheros, correo y aplicación de gestión
+    quien: Responsable de la seguridad
+    pasos: El servidor registra los inicios de sesión, los accesos fallidos y los cambios de permisos con usuario, fecha y hora y resultado, y el correo y la aplicación de gestión guardan sus registros de auditoría; cada trimestre los revisa buscando accesos fuera de horario o desde lugares no habituales.
+    herramienta: Registro de auditoría del servidor y de los servicios en la nube
+    evidencia: Revisión trimestral de registros de actividad
+perimetro:
+  - ambito: Cortafuegos de la oficina, VPN y conexión remota del proveedor
+    quien: Responsable del sistema
+    pasos: El cortafuegos bloquea todo el tráfico entrante salvo la VPN del teletrabajo; cada cambio de reglas lo pide la responsable del sistema al proveedor informático, y la conexión remota del proveedor se habilita solo para cada intervención autorizada por el responsable de la seguridad.
+    herramienta: Cortafuegos gestionado por el proveedor informático
+    evidencia: Registro de tickets del proveedor y registro de conexiones remotas
+puesta_en_produccion:
+  - ambito: Módulos nuevos de la aplicación de gestión y programas de la oficina
+    quien: Responsable del sistema
+    pasos: Antes de activar un módulo nuevo se prueba con un cliente ficticio y lo acepta la gerente; un programa nuevo solo lo instala el proveedor informático cuando está autorizado y comprobado que no afecta a los demás servicios.
+    herramienta: Cliente ficticio de pruebas en la aplicación de gestión
+    evidencia: Aceptación de la gerente y registro de aplicaciones autorizadas
+informacion_deberes:
+  - ambito: Toda la plantilla
+    quien: Responsable de la seguridad
+    pasos: Al incorporarse se le entregan por correo la normativa, sus deberes de seguridad, las medidas disciplinarias y el deber de confidencialidad, que contesta con «leído» y firma su aceptación; al cambiar de puesto se le entregan los deberes nuevos, y al salir se le recuerda que la confidencialidad sigue vigente.
+    herramienta: Correo corporativo y carpeta Seguridad del servidor
+    evidencia: Respuestas de «leído» y aceptación firmada de la normativa y de la confidencialidad
+concienciacion:
+  - ambito: Toda la plantilla
+    quien: Responsable de la seguridad
+    pasos: En cada Comité de Seguridad trimestral recuerda los deberes de la normativa y la verificación telefónica de cualquier cambio de cuenta bancaria; en la sesión anual repasa los correos fraudulentos que suplantan a clientes o a la Agencia Tributaria y cómo avisar de un incidente o de una falsa alarma.
+    herramienta: Comité de Seguridad y sesión anual
+    evidencia: Acta del Comité de Seguridad
+formacion:
+  - ambito: Toda la plantilla
+    quien: Responsable de la seguridad
+    pasos: Con el proveedor informático imparte una sesión al incorporarse y otra cada año sobre la normativa, el tratamiento de los expedientes en papel y digitales y la configuración segura del portátil en teletrabajo; al final se hace un ejercicio práctico para evaluar su eficacia y se repite la parte en la que alguien falla.
+    herramienta: Sesión presencial y ejercicio práctico
+    evidencia: Registro de formación con asistentes, contenidos y resultados del ejercicio
 aut_instalaciones:
   - elemento: Oficina de Valdeprueba
     quien: Gerente
