@@ -229,6 +229,11 @@ repeticiones × 2 pares.
 
 ## 5. Escribe la línea base
 
+Antes de `--write` tras ajustar el pack, pasa la puerta de ajuste y compara
+con `main`: `benchmark run --partition dev --all-recorded --gate target`
+(umbrales de v0.1 sin muestra mínima; objetivo de ajuste, no cierra v0.1) y
+`--gate baseline --baseline-ref origin/main`.
+
 ```bash
 uv run ens-evidence benchmark baseline           # solo el diff
 uv run ens-evidence benchmark baseline --write   # escribe benchmark/baseline/dev.json
@@ -252,7 +257,9 @@ la puerta (§ 6) lo rechaza e imprime su huella en la línea base
 ]
 ```
 
-Un `id` sin `#` retira el caso entero con sus defectos. Sin esa entrada, la
+Un `id` sin `#` retira el caso entero con sus defectos. **Cambiar un
+perfil** (`profile.yaml` o un fichero de `files/`) cambia la huella de todos
+sus casos: la puerta los lista y hay que retirar cada uno con su huella. Sin esa entrada, la
 puerta del CI falla. Una retirada solo cubre la versión cuya huella anota: si
 el mismo id vuelve a cambiar en otro PR, sustituye su `sha256` por la nueva
 que imprime la puerta.
@@ -281,7 +288,7 @@ texto, quita `--format json --out bench.json`. Para un solo par:
 |---|---|
 | 0 | Pasa la puerta (o no se pidió puerta) |
 | 1 | Falla la puerta: regresión, umbral no alcanzado, inventario sin `retired`; o banco vacío |
-| 2 | Caso, grabación u opción no válida (grabación que no se puede leer, `--baseline` y `--baseline-ref` juntas, `--gate baseline` fuera de `dev`, `--gate threshold` fuera de `holdout`, reservada sin `--measurement`) |
+| 2 | Caso, grabación u opción no válida (grabación que no se puede leer, `--baseline` y `--baseline-ref` juntas, `--gate baseline` o `--gate target` fuera de `dev`, `--gate target` sin `--all-recorded`, `--gate threshold` fuera de `holdout`, reservada sin `--measurement`) |
 | 3 | Falta una grabación, falta un par que es puerta o una grabación está desligada: graba o regraba |
 
 ## 7. Mide la reservada (U2, cierre de v0.1)

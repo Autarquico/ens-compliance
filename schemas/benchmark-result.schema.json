@@ -420,7 +420,8 @@
         {
           "enum": [
             "baseline",
-            "threshold"
+            "threshold",
+            "target"
           ],
           "type": "string"
         },

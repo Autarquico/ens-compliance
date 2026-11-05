@@ -45,6 +45,9 @@ class Sample:
 HOLDOUT_MINIMUM = Sample(judgment=20, deterministic=10, correct=3)
 """D7: la reservada de BÁSICA, con defectos de juicio, deterministas y expedientes correctos."""
 
+NONEMPTY = Sample(judgment=1, deterministic=1, correct=1)
+"""La puerta target de desarrollo: sin los mínimos de D7, pero ningún denominador vacío."""
+
 RefKey = tuple[RefKind, str]
 _LAYER = {DefectLayer.DETERMINISTIC: Layer.DETERMINISTIC, DefectLayer.JUDGMENT: Layer.JUDGMENT}
 
@@ -323,8 +326,8 @@ def _sample_problems(t: Totals, minimum: Sample) -> list[str]:
 
 
 def threshold_problems(t: Totals, minimum: Sample | None = None) -> list[str]:
-    """Puerta de la reservada por proveedor y modelo. Vacía si se cumple. Sin `minimum`, la
-    muestra de `HOLDOUT_MINIMUM`."""
+    """Umbral de v0.1 por proveedor y modelo. Vacía si se cumple. Sin `minimum`, la muestra de
+    `HOLDOUT_MINIMUM` (puerta threshold); la puerta target pasa `NONEMPTY`."""
     problems = _deterministic_problems(t) + _sample_problems(t, minimum or HOLDOUT_MINIMUM)
     if t.judgment.denominator and _fraction(t.judgment) < JUDGMENT_FLOOR:
         problems.append(f"detección de juicio {_percent(_fraction(t.judgment))} (mínimo 80 %)")

@@ -566,7 +566,7 @@ class BenchmarkResult(Strict):
     format: Literal["ens-benchmark-result/1"]
     mode: Literal["replay"]
     partition: Partition
-    gate: Literal["baseline", "threshold"] | None = None
+    gate: Literal["baseline", "threshold", "target"] | None = None
     run_at: AwareDatetime
     tool_version: str = Field(min_length=1)
     pack_version: str = Field(min_length=1)
