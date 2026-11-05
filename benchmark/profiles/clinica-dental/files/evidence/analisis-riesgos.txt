@@ -11,8 +11,8 @@ Amenazas más probables:
 4. Robo del portátil de dirección fuera de la clínica.
 5. Pérdida de un disco con radiografías entregado a un paciente o a otro profesional.
 
-Salvaguardas: doble factor en el acceso remoto, antivirus gestionado en todos los equipos,
-copia nocturna cifrada fuera de la clínica, perfiles por puesto en el programa revisados cada
+Salvaguardas: doble factor en el acceso remoto, antivirus en los equipos, copias de seguridad
+guardadas fuera de la clínica, perfiles por puesto en el programa revisados cada
 trimestre, revisión mensual del registro de accesos, cifrado del disco del portátil y discos de
 radiografías grabados cifrados, con la clave dada por teléfono al destinatario.
 

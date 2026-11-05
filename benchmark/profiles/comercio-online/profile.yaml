@@ -25,27 +25,27 @@ applicability:
     applicable: false
     justification: >-
       La tienda no compra productos de seguridad que el análisis de riesgos pida certificar: el
-      servidor está en un alojamiento cuyo proveedor acredita su conformidad con el ENS, y la
-      protección frente a código dañino es la del sistema y la del filtro del correo. No exigida
-      en BÁSICA.
+      servidor está en un alojamiento cuyo proveedor acredita su conformidad con el ENS. No
+      exigida en BÁSICA.
   - measure: op.acc.3
     applicable: false
     justification: >-
-      Con tres personas no se pueden separar todas las funciones, pero la de más riesgo, publicar
-      cambios en la tienda, ya exige que otra persona revise la petición antes del despliegue
-      (mp.sw.2). El anexo II no la exige en categoría BÁSICA.
+      Con tres personas no se pueden separar todas las funciones, pero cada una tiene un cargo
+      distinto en la designación de responsables y nadie decide y aplica a la vez un permiso: los
+      pide por escrito la fundadora y los aplica el responsable del sistema. El anexo II no la
+      exige en categoría BÁSICA.
   - measure: op.exp.5
     applicable: false
     justification: >-
-      Los cambios de la tienda se controlan en su aceptación y puesta en servicio (petición
-      revisada y pruebas automáticas, mp.sw.2) y los del servidor en el registro semanal de
-      actualizaciones (op.exp.4); no se lleva una gestión de cambios aparte, que BÁSICA no pide.
+      Los cambios de la tienda se tratan en su aceptación y puesta en producción (mp.sw.2) y los
+      del servidor en su mantenimiento y actualización (op.exp.4); con un solo servidor y una sola
+      aplicación no se lleva una gestión de cambios aparte, que BÁSICA no pide.
   - measure: op.ext.2
     applicable: false
     justification: >-
-      El seguimiento de los proveedores consiste en vigilar los acuerdos de nivel de servicio
-      pactados en op.ext.1, y cualquier incumplimiento se trata en la reunión mensual de los
-      responsables. No hace falta una gestión diaria aparte en categoría BÁSICA.
+      Son tres proveedores y ninguno gestiona por su cuenta una parte del sistema: sus avisos e
+      incidencias se tratan en la reunión mensual de los responsables, que decide qué reclamar a
+      cada uno. No hace falta una gestión diaria aparte en categoría BÁSICA.
   - measure: op.ext.3
     applicable: false
     justification: >-
@@ -69,7 +69,7 @@ applicability:
     applicable: false
     justification: >-
       La continuidad descansa en la copia diaria cifrada con restauración probada cada trimestre
-      (mp.info.6) y en el acuerdo de nivel de servicio del alojamiento (op.ext.1); no se redacta
+      (mp.info.6) y en el acuerdo de nivel de servicio firmado con el alojamiento; no se redacta
       un plan formal, que no es exigible en categoría BÁSICA.
   - measure: op.cont.3
     applicable: false
@@ -104,9 +104,9 @@ applicability:
   - measure: mp.com.4
     applicable: false
     justification: >-
-      Todo el sistema es un único servidor virtual: la base de datos solo escucha en local y la
-      administración solo entra por la red privada del alojamiento, así que no hay segmentos de
-      red entre los que separar flujos. No exigida en BÁSICA.
+      Todo el sistema es un único servidor virtual en el alojamiento, con la base de datos en el
+      mismo servidor, así que no hay redes internas propias ni segmentos entre los que separar
+      flujos. No exigida en BÁSICA.
   - measure: mp.si.1
     applicable: false
     justification: >-
@@ -122,9 +122,9 @@ applicability:
   - measure: mp.sw.1
     applicable: false
     justification: >-
-      El código de la tienda es propio, pero BÁSICA no exige esta medida y el riesgo del
-      desarrollo se trata al aceptar cada cambio (mp.sw.2): lo revisa otra persona, pasa pruebas
-      automáticas de seguridad y los de más riesgo se prueban antes en el entorno de pruebas.
+      El código de la tienda es propio, pero es una sola aplicación pequeña que mantiene una
+      persona y el anexo II no exige esta medida en categoría BÁSICA; el riesgo de cada cambio se
+      trata en su aceptación y puesta en producción (mp.sw.2).
   - measure: mp.info.2
     applicable: false
     justification: >-

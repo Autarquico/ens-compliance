@@ -1,13 +1,13 @@
 Acta de la revisión anual de seguridad de la Clínica Dental Sonrisa Ficticia (empresa ficticia).
 
-Fecha: 25 de septiembre de 2026, reunión de coordinación del último viernes del mes.
+Fecha: 25 de septiembre de 2026, reunión de coordinación de septiembre.
 Asistentes: Elena Muela (directora), Irene Esmalte (responsable de la seguridad),
 Jorge Molar (responsable del sistema) y Hugo Encía (responsable del servicio).
 
-1. Se revisan la política, la normativa, los procedimientos y el proceso de autorización: siguen
-   describiendo la clínica y no requieren cambios.
-2. Cada persona tiene un usuario propio en el programa de gestión; el acceso remoto de la
-   directora exige doble factor y las contraseñas se cambian cada año o ante sospecha.
+1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la
+   versión y la fecha de aprobación vigentes de cada uno.
+2. El acceso remoto de la directora exige doble factor y las contraseñas se cambian cada año o
+   ante sospecha.
 3. El servidor está en el cuarto técnico cerrado, con un sistema de alimentación ininterrumpida,
    extintor revisado en marzo y el cableado protegido por canaleta.
 4. El router de la clínica separa la red de gabinetes de la wifi de pacientes y solo deja salir

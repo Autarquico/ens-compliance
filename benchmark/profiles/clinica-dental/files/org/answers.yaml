@@ -100,10 +100,10 @@ anomalias_comunicacion: Se avisa por teléfono o en persona a Irene Esmalte en c
 anomalias_registro: Irene Esmalte anota en el registro de incidencias la fecha, quién avisa, qué se ha visto y qué se ha hecho.
 info_acceso:
   - informacion: Historias clínicas y radiografías
-    quien: Directora médica
-    pasos: Cada perfil del programa da acceso solo a lo que necesita el puesto; recepción ve citas y datos de contacto, no la historia clínica.
+    quien: Directora médica, que decide los derechos, y responsable de sistemas, que los concede
+    pasos: La directora, como responsable de la información, decide qué perfil corresponde a cada puesto; cada perfil del programa da acceso solo a lo que necesita el puesto y recepción ve citas y datos de contacto, no la historia clínica. Solo el responsable de sistemas concede, cambia o retira un perfil, y siempre con la petición firmada de la directora. Cada trimestre la responsable de seguridad revisa con él los perfiles y los accesos y se retira lo que ya no corresponde.
     herramienta: Perfiles del programa de gestión clínica
-    evidencia: Revisión trimestral de perfiles y accesos
+    evidencia: Peticiones firmadas y revisión trimestral de perfiles y accesos
 info_almacenamiento:
   - informacion: Historias clínicas y radiografías
     quien: Responsable de sistemas
@@ -113,7 +113,7 @@ info_almacenamiento:
 info_copias:
   - informacion: Historias clínicas y radiografías
     quien: Responsable de sistemas
-    pasos: Copia nocturna cifrada a un almacenamiento externo contratado, retención de 30 días y prueba de restauración de una historia cada trimestre.
+    pasos: Cada noche el programa de copias copia la base de pacientes y la carpeta de radiografías, las cifra y las envía al almacenamiento externo contratado, fuera de la clínica, donde se conservan 30 copias diarias. En la clínica no se guardan copias en los puestos ni en soportes extraíbles; los datos solo están en el servidor del cuarto técnico, cerrado con llave. Solo el responsable de sistemas puede acceder a las copias y a su clave. Cada trimestre se restaura una historia completa en el portátil de pruebas y la responsable de seguridad firma el acta.
     herramienta: Programa de copias del servidor y almacenamiento externo
     evidencia: Informe de copias y acta de la prueba de restauración
 info_etiquetado:
@@ -152,13 +152,13 @@ gestion_cuentas:
 credenciales:
   - ambito: Usuarios del programa de gestión, equipos de la clínica y acceso remoto de la directora
     quien: Responsable de sistemas
-    pasos: Entrega la contraseña inicial en persona después de que la persona firme el acuse de la normativa y de sus obligaciones con las credenciales, y el programa obliga a cambiarla en el primer acceso; se cambian cada año o ante sospecha, y la cuenta se bloquea en el día si se pierde el móvil del doble factor, si se cree que alguien conoce la contraseña o si termina la relación con la clínica.
+    pasos: Entrega la contraseña inicial en persona después de que la persona firme el acuse de la normativa y de sus obligaciones con las credenciales (custodiarlas con diligencia, no revelarlas a nadie y avisar en el momento si las pierde), y el programa obliga a cambiarla en el primer acceso; se cambian cada año o ante sospecha, y la cuenta se bloquea en el día si se pierde el móvil del doble factor, si se cree que alguien conoce la contraseña o si termina la relación con la clínica.
     herramienta: Consola del programa de gestión y aplicación de doble factor del acceso remoto
     evidencia: Acuse firmado en el archivador de personal y registro de altas y bajas
 actualizaciones:
   - ambito: Servidor, portátil de dirección, puestos Windows y programa de gestión clínica
     quien: Técnico externo de mantenimiento, supervisado por el responsable de sistemas
-    pasos: El responsable de sistemas sigue los avisos de defectos del fabricante del servidor y del proveedor del programa y decide con el técnico qué se instala en la visita del segundo martes de cada mes; las de seguridad se aplican ese mes tras probarlas el día antes en el ordenador de recepción, las que el proveedor no califica de seguridad pueden esperar al mes siguiente y un aviso crítico se aplica sin esperar a la visita. Solo el técnico contratado y el responsable de sistemas tocan los equipos.
+    pasos: El responsable de sistemas sigue los avisos de defectos del fabricante del servidor y del proveedor del programa y decide con el técnico qué se instala y cuándo, según el riesgo que supone dejarlo sin aplicar. Las de seguridad se aplican en la visita del segundo martes de cada mes, tras probarlas el día antes en el ordenador de recepción; un aviso crítico que afecte al servidor o al programa de gestión se aplica sin esperar a la visita, y las que el proveedor no califica de seguridad pueden esperar al mes siguiente. Solo el técnico contratado y el responsable de sistemas tocan los equipos.
     herramienta: Servicio de actualizaciones del sistema operativo y avisos del proveedor del programa
     evidencia: Parte mensual de mantenimiento firmado
 codigo_danino:
@@ -182,7 +182,7 @@ perimetro:
 puesta_en_produccion:
   - ambito: Versiones nuevas del programa de gestión clínica y del software de radiografía
     quien: Responsable de sistemas
-    pasos: Antes de instalar una versión lee las notas del proveedor y la prueba el día anterior en el ordenador de recepción, comprobando que el programa arranca, abre una historia y no cambia perfiles ni desactiva el antivirus; solo entonces se instala en el servidor fuera del horario de consulta, y si algo falla no se instala y se avisa al proveedor.
+    pasos: Antes de instalar una versión lee las notas del proveedor y la prueba el día anterior en el ordenador de recepción. Comprueba que funciona (arranca y abre una historia), que cumple los criterios de seguridad de la clínica (pide usuario y contraseña, cada perfil sigue viendo solo lo de su puesto y los accesos quedan en el registro) y que no deteriora la seguridad del resto del sistema (el antivirus sigue activo y no cambia la configuración del servidor ni la del router). Solo entonces se instala en el servidor fuera del horario de consulta; si algo falla, no se instala y se avisa al proveedor.
     herramienta: Ordenador de recepción como equipo de prueba
     evidencia: Parte mensual de mantenimiento firmado
 informacion_deberes:

@@ -74,3 +74,20 @@ defects:
       crear y quitar cuentas a «cualquiera» «cuando alguien se acuerda», no fija ningún periodo
       de retención de las cuentas ni su inhabilitación al cambiar de función o por orden de quien
       la autorizó.
+  - id: altas-de-usuarios-sin-competencia
+    layer: judgment
+    measure: op.acc.4
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.acc.4
+      clause: op.acc.4.4
+      quote: >-
+        Capacidad de autorizar: Exclusivamente el personal con competencia para ello podrá
+        conceder, alterar o anular la autorización de acceso a los recursos, conforme a los
+        criterios establecidos por su responsable.
+    rationale: >-
+      Las tareas de los procedimientos dejan dar de alta o de baja a los usuarios del programa a
+      «cualquiera de la clínica que tenga un rato», sin petición de la directora: conceder y
+      anular el acceso no queda reservado a personal con competencia, aunque el apartado de
+      control de acceso del mismo documento lo reserve al responsable de sistemas.

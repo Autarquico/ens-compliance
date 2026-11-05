@@ -96,10 +96,10 @@ anomalias_comunicacion: Se avisa por mensaje o llamada a Óscar Arcilla en cuant
 anomalias_registro: Óscar Arcilla anota fecha, quién avisa y qué se ha visto en el registro de incidencias de la carpeta Seguridad.
 info_acceso:
   - informacion: Datos de clientes y pedidos
-    quien: Responsable de la información
-    pasos: Atención al cliente ve pedidos y direcciones; solo el administrador accede a la base de datos; los permisos se revisan cada trimestre.
+    quien: Responsable de la información, que decide los derechos, y administrador de la tienda, que los concede
+    pasos: La fundadora, como responsable de la información, decide qué puede ver cada perfil; atención al cliente ve pedidos y direcciones y solo el administrador accede a la base de datos. Solo el administrador de la tienda concede, cambia o retira un perfil o un permiso, y siempre con la petición por escrito de la fundadora. Cada trimestre el responsable de seguridad revisa con él las cuentas y los perfiles y se retira lo que ya no corresponde.
     herramienta: Perfiles del panel de la tienda
-    evidencia: Revisión trimestral de cuentas y perfiles
+    evidencia: Peticiones por correo y revisión trimestral de cuentas y perfiles
 info_almacenamiento:
   - informacion: Datos de clientes y pedidos
     quien: Desarrollador y administrador de la tienda
@@ -109,7 +109,7 @@ info_almacenamiento:
 info_copias:
   - informacion: Datos de clientes y pedidos
     quien: Desarrollador y administrador de la tienda
-    pasos: Copia diaria cifrada de la base de datos a un almacenamiento de otro proveedor, retención de 35 días y prueba de restauración cada trimestre.
+    pasos: Cada día la herramienta de copias cifra la base de datos y la envía a un almacenamiento de otro proveedor, fuera del alojamiento de la tienda, donde se conserva 35 días; en el servidor y en los portátiles no se guardan copias. La clave de cifrado está en el gestor de contraseñas de la empresa y solo la conocen el administrador y la fundadora, las únicas personas que pueden acceder a las copias. Cada trimestre se restaura una copia en un servidor de pruebas, que se borra al terminar.
     herramienta: Herramienta de copias cifradas y almacenamiento externo
     evidencia: Informe de copias y acta de la prueba de restauración
 info_etiquetado:
@@ -148,13 +148,13 @@ gestion_cuentas:
 credenciales:
   - ambito: Cuentas del panel, del alojamiento, del repositorio y del correo
     quien: Desarrollador y administrador de la tienda
-    pasos: Antes de dar acceso, la persona confirma por correo que ha leído la normativa y sus obligaciones con las credenciales; la contraseña inicial se comparte por el gestor de contraseñas y se cambia en el primer acceso, cuando se activa el doble factor. Se cambian ante cualquier sospecha, y la cuenta se bloquea en el día si se pierde un portátil o el móvil del doble factor o si termina la relación con la empresa.
+    pasos: Antes de dar acceso, la persona confirma por correo que ha leído la normativa y sus obligaciones con las credenciales (custodiarlas con diligencia, no revelarlas y avisar en el momento si las pierde); la contraseña inicial se comparte por el gestor de contraseñas y se cambia en el primer acceso, cuando se activa el doble factor. Las contraseñas se cambian cada año, en la revisión de septiembre, y ante cualquier sospecha, y la cuenta se bloquea en el día si se pierde un portátil o el móvil del doble factor o si termina la relación con la empresa.
     herramienta: Gestor de contraseñas de la empresa
     evidencia: Confirmación de lectura por correo y registro de cuentas
 actualizaciones:
   - ambito: Servidor Debian, dependencias de la tienda y portátiles Ubuntu
     quien: Desarrollador y administrador de la tienda
-    pasos: Cada lunes revisa los avisos de dependencias del repositorio y los anuncios de seguridad de Debian; aplica los de seguridad en la semana tras pasar las pruebas automáticas, un aviso crítico el mismo día después de una copia y el resto el primer lunes de mes. El mantenimiento del servidor solo lo hace él.
+    pasos: Cada lunes revisa los avisos de dependencias del repositorio y los anuncios de seguridad de Debian y decide cuándo aplicar cada uno según el riesgo de dejarlo sin aplicar. Un aviso crítico de algo expuesto a internet, como el servidor web o el pago, se aplica el mismo día después de una copia; el resto de los de seguridad, en la semana tras pasar las pruebas automáticas; las mejoras y versiones nuevas, el primer lunes de mes. El mantenimiento del servidor solo lo hace él.
     herramienta: Avisos de dependencias del repositorio y actualizaciones de Debian
     evidencia: Registro semanal de actualizaciones
 codigo_danino:
@@ -178,7 +178,7 @@ perimetro:
 puesta_en_produccion:
   - ambito: Código de la tienda y extensiones del panel
     quien: Desarrollador y administrador de la tienda, con la revisión de otra persona del equipo
-    pasos: Cada cambio entra por una petición en el repositorio que revisa otra persona y solo se despliega si pasan las pruebas automáticas, que incluyen las de seguridad; los cambios que tocan pagos o envíos se prueban antes en el entorno de pruebas con pedidos ficticios, y se despliega fuera de las horas de más venta.
+    pasos: Cada cambio entra por una petición en el repositorio que revisa otra persona y solo se despliega si pasan las pruebas automáticas, que incluyen las de seguridad. Quien revisa comprueba además que el cambio no abre puertos, no toca la configuración del servidor ni desactiva los registros, el pago seguro o el doble factor del panel. Los cambios que tocan pagos o envíos se prueban antes en el entorno de pruebas con pedidos ficticios, y se despliega fuera de las horas de más venta.
     herramienta: Repositorio con pruebas automáticas y entorno de pruebas
     evidencia: Historial de peticiones de cambio y de despliegues
 informacion_deberes:
@@ -196,7 +196,7 @@ concienciacion:
 formacion:
   - ambito: Las tres personas del equipo
     quien: Responsable de la seguridad
-    pasos: Cada septiembre, y al incorporarse alguien, imparte una sesión de hora y media sobre pedidos fraudulentos y suplantaciones, contraseñas y doble factor, cómo avisar de un incidente, publicación segura de cambios y tratamiento de los datos de clientes en el panel y con la empresa de transporte; al final cada persona resuelve casos prácticos y se repasan los fallos.
+    pasos: Cada septiembre, y al incorporarse alguien, imparte una sesión de hora y media sobre configuración segura de los portátiles y de las cuentas (contraseñas y doble factor), pedidos fraudulentos y suplantaciones, cómo detectar y avisar de un incidente y qué hacer mientras tanto, publicación segura de cambios y tratamiento de los datos de clientes en cualquier soporte (dónde se guardan, cómo se envían a la empresa de transporte, sus copias, a quién se pueden dar y cómo se destruyen los albaranes); al final cada persona resuelve casos prácticos y se repasan los fallos.
     herramienta: Sesión con casos prácticos
     evidencia: Registro de la sesión con sus contenidos y el resultado de los casos
 aut_instalaciones:

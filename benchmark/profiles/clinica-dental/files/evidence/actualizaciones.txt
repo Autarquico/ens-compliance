@@ -7,4 +7,4 @@ en el ordenador de recepción.
 Actualización 4.2 del programa de gestión clínica anunciada por el proveedor: se aplaza a
 octubre porque corrige un fallo menor; el proveedor no la califica de seguridad.
 Se revisan los avisos del fabricante del servidor: sin defectos pendientes.
-Tras la actualización el programa arranca y la copia nocturna termina bien.
+Tras la actualización el programa de gestión arranca y abre las historias con normalidad.
