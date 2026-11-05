@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Ajuste del audit pack hasta el umbral de v0.1"
+title: Ajuste del audit pack hasta el umbral de v0.1
 type: task
-status: draft
+status: active
 priority: P0
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [56]
 depends_on: [audit-benchmark]
 supersedes: []
 related_specs: []
