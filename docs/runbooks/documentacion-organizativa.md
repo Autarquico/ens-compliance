@@ -45,8 +45,11 @@ operativas de las medidas de BÁSICA: análisis de riesgos (op.pl.1),
 inventario (op.exp.1), cuentas y credenciales (op.acc.1, op.acc.6),
 actualizaciones (op.exp.4), código dañino (op.exp.6), registro de actividad
 (op.exp.8), perímetro (mp.com.1) y puesta en producción (mp.sw.2); el control
-de acceso y las copias citan además op.acc.2, op.acc.4 y mp.info.6. Describir
-un procedimiento no lo demuestra: la medida sigue necesitando su evidencia.
+de acceso y las copias citan además op.acc.2, op.acc.4 y mp.info.6. Y cómo
+se trata al personal: información de sus deberes (`informacion_deberes`,
+mp.per.2), concienciación (`concienciacion`, mp.per.3) y formación con la
+evaluación de su eficacia (`formacion`, mp.per.4). Describir un procedimiento
+no lo demuestra: la medida sigue necesitando su evidencia.
 
 ## 2. Genera los documentos
 

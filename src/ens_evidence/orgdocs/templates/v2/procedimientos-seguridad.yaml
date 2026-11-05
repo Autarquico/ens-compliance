@@ -195,6 +195,39 @@ questions:
       - {id: pasos, text: "Pasos"}
       - {id: herramienta, text: "Herramienta o canal"}
       - {id: evidencia, text: "Evidencia que deja"}
+  - id: informacion_deberes
+    text: "¿Cómo se informa a cada persona de los deberes y responsabilidades de su puesto en materia de seguridad?"
+    type: records
+    clause: mp.per.2.intro
+    help: "mp.per.2: se informa a cada persona que trabaja en el sistema de los deberes de su puesto, contemplando las medidas disciplinarias, las obligaciones al terminar la asignación o cambiar de puesto y el deber de confidencialidad. Describe cuándo se informa (incorporación, cambio de puesto, salida), quién lo hace y qué queda firmado o registrado. Una fila por procedimiento o grupo de personal al que aplica."
+    fields:
+      - {id: ambito, text: "Personal o puestos a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: concienciacion
+    text: "¿Cómo se conciencia regularmente al personal en seguridad?"
+    type: records
+    clause: mp.per.3.intro
+    help: "mp.per.3: acciones para concienciar regularmente al personal de su papel en la seguridad, recordando periódicamente la normativa de buen uso de los equipos y las técnicas de ingeniería social más habituales (mp.per.3.1), cómo identificar incidentes o comportamientos sospechosos que hay que comunicar (mp.per.3.2) y el procedimiento para informar de incidentes, reales o falsas alarmas (mp.per.3.3). Describe qué se recuerda, cada cuánto, quién lo organiza y qué queda registrado. Una fila por acción o grupo de personal al que aplica."
+    fields:
+      - {id: ambito, text: "Personal o puestos a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: formacion
+    text: "¿Cómo se forma regularmente al personal en seguridad y cómo se evalúa esa formación?"
+    type: records
+    clause: mp.per.4.1
+    help: "mp.per.4: formación regular en las materias de seguridad que requiere cada función, en particular configuración de sistemas, detección y reacción ante incidentes y gestión de la información en cualquier soporte (almacenamiento, transferencia, copias, distribución y destrucción); además, se evalúa la eficacia de las acciones formativas. Describe qué formación recibe cada puesto, cada cuánto, quién la imparte, cómo se evalúa y qué queda registrado. Una fila por acción o grupo de personal al que aplica."
+    fields:
+      - {id: ambito, text: "Personal o puestos a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
   - id: autoridad_procedimientos
     text: "¿Quién aprueba los procedimientos y el proceso de autorización?"
     clause: org.3.r1.1
@@ -423,6 +456,45 @@ sections:
     covers: [mp.sw.2.intro, mp.sw.2.1]
     body: |
       {{#each puesta_en_produccion}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: informacion_deberes
+    title: "Información al personal de sus deberes y obligaciones"
+    covers: [mp.per.2.intro]
+    body: |
+      {{#each informacion_deberes}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: concienciacion
+    title: "Concienciación del personal"
+    covers: [mp.per.3.intro, mp.per.3.1, mp.per.3.2, mp.per.3.3]
+    body: |
+      {{#each concienciacion}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: formacion
+    title: "Formación del personal"
+    covers: [mp.per.4.1, mp.per.4.intro]
+    body: |
+      {{#each formacion}}
       ### {{.ambito}}
 
       - Quién: {{.quien}}

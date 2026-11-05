@@ -32,8 +32,16 @@ OPERATIONAL_COVERS = {
     "registro_actividad": {"op.exp.8.1"},
     "perimetro": {"mp.com.1.2"},
     "puesta_en_produccion": {"mp.sw.2.intro", "mp.sw.2.1"},
+    "informacion_deberes": {"mp.per.2.intro"},
+    "concienciacion": {"mp.per.3.intro", "mp.per.3.1", "mp.per.3.2", "mp.per.3.3"},
+    "formacion": {"mp.per.4.1", "mp.per.4.intro"},
 }
-MEASURE = "op.exp.4"
+SECTION_OF = {
+    "op.exp.4": "actualizaciones",
+    "mp.per.2": "informacion_deberes",
+    "mp.per.3": "concienciacion",
+    "mp.per.4": "formacion",
+}
 
 
 def template():
@@ -74,6 +82,7 @@ def test_el_documento_generado_muestra_cada_procedimiento_y_su_trazabilidad(buil
             )
             assert (label, titles[section]) in rows, (section, clause)
     assert "Consola de actualizaciones" in document
+    assert "Hoja de asistencia y resultados del cuestionario" in document
 
 
 @pytest.fixture(scope="module")
@@ -81,51 +90,54 @@ def stages():
     return basic()
 
 
-@pytest.fixture
-def approved_without_evidence(stages, tmp_path, monkeypatch):
-    """Expediente BÁSICA con los procedimientos aprobados y `op.exp.4` sin ninguna evidencia."""
+@pytest.fixture(params=sorted(SECTION_OF))
+def approved_without_evidence(request, stages, tmp_path, monkeypatch):
+    """Expediente BÁSICA con los procedimientos aprobados y la medida sin ninguna evidencia."""
+    measure = request.param
     world = restore(stages, "generated", tmp_path, monkeypatch)
     role = APPROVER[DOCUMENT]
     approve_document(world.store, DOCUMENT, SIGNATORY[role], role, NOW - timedelta(hours=1))
-    unlinked = run_at(world, "matrix", "unlink", MEASURE, "--evidence", _evidence_of(stages))
-    assert unlinked.exit_code == 0, unlinked.output
+    for evidence in _evidence_of(stages, measure):
+        unlinked = run_at(world, "matrix", "unlink", measure, "--evidence", evidence)
+        assert unlinked.exit_code == 0, unlinked.output
     generated = run_at(world, "assessment", "dossier", "generate", at=AFTER)
     assert generated.exit_code == 0, generated.output
-    return world.store, ID.search(generated.output).group()
+    return world.store, ID.search(generated.output).group(), measure
 
 
-def _evidence_of(stages) -> str:
-    """La única evidencia que el expediente de partida enlaza a la medida."""
+def _evidence_of(stages, measure: str) -> list[str]:
+    """Las evidencias que el expediente de partida enlaza a la medida."""
     store = LocalStore(stages.trees["generated"] / "ws")
     payload = build_payload(store, stages.dossier, load_pack())
-    (evidence,) = next(m for m in payload.data["dossier"]["measures"] if m["id"] == MEASURE)[
-        "evidence"
-    ]
-    return evidence
+    return next(m for m in payload.data["dossier"]["measures"] if m["id"] == measure)["evidence"]
 
 
 def test_el_documento_aprobado_llega_al_payload_como_documento_de_la_medida(
     approved_without_evidence,
 ):
-    store, dossier = approved_without_evidence
+    store, dossier, measure_id = approved_without_evidence
 
     content = build_payload(store, dossier, load_pack()).data["dossier"]
 
-    measure = next(m for m in content["measures"] if m["id"] == MEASURE)
-    link = next(ln for ln in content["links"] if ln["measure"] == MEASURE and ln["ref"] == DOCUMENT)
+    measure = next(m for m in content["measures"] if m["id"] == measure_id)
+    link = next(
+        ln for ln in content["links"] if ln["measure"] == measure_id and ln["ref"] == DOCUMENT
+    )
     assert measure["documents"] == [DOCUMENT] and measure["evidence"] == []
     assert link["kind"] == "document" and link["via"] == ["template"]
-    assert set(link["covers"]) == OPERATIONAL_COVERS["actualizaciones"]
+    assert set(link["covers"]) == OPERATIONAL_COVERS[SECTION_OF[measure_id]]
 
 
 def test_cubrir_la_clausula_con_el_documento_no_suple_la_evidencia(approved_without_evidence):
-    store, dossier = approved_without_evidence
+    """La matriz exige evidencia por cláusula numerada; la introducción no es unidad propia."""
+    store, dossier, measure_id = approved_without_evidence
 
     findings = deterministic_findings(load_snapshot(store, dossier))
 
     missing = {
         f.refs[0].id.rsplit(":", 1)[-1]
         for f in findings
-        if f.measure == MEASURE and f.criterion == DeterministicRule.EVIDENCE_MISSING
+        if f.measure == measure_id and f.criterion == DeterministicRule.EVIDENCE_MISSING
     }
-    assert OPERATIONAL_COVERS["actualizaciones"] <= missing
+    numbered = {c for c in OPERATIONAL_COVERS[SECTION_OF[measure_id]] if not c.endswith(".intro")}
+    assert missing and numbered <= missing
