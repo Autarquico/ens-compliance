@@ -1,0 +1,20 @@
+Registro de solicitudes de cambios del portal — septiembre de 2026
+Robledal Sistemas S.L. (empresa ficticia). Extracto del alojamiento de código preparado por Tomás
+Pradera el 30 de septiembre de 2026.
+
+Cómo se gestiona: cada cambio del portal o del repositorio infra entra por una solicitud de
+cambios con número propio, descripción, motivo e impacto previsto, y la revisa una persona distinta
+de quien la propone. Los despliegues se programan fuera del horario de soporte, después de pasar
+las pruebas automáticas y la prueba en preproducción; los que tocan el control de acceso o los datos
+de clientes los aprueba antes el responsable de la seguridad.
+
+Septiembre: 14 solicitudes; 12 desplegadas, 1 desestimada y 1 abierta. Ejemplos:
+- n.º 412, filtro de tickets por estado. Propone Tomás Pradera; revisa Nora Vilaplana; desplegada
+  el 9 de septiembre a las 19:00.
+- n.º 417, permisos de descarga por proyecto. Propone Tomás Pradera; revisa Nora Vilaplana y la
+  aprueba el responsable de la seguridad antes del despliegue del 17 de septiembre.
+- n.º 421, ampliar la caducidad de los enlaces de descarga. Desestimada por la gerente: el plazo
+  actual basta para los clientes.
+
+Tras cada despliegue se comprueba el portal en producción y, si el cambio afecta a la arquitectura
+o al inventario, se actualizan esos documentos.

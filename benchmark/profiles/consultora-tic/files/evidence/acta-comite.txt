@@ -6,14 +6,25 @@ Redacta: Tomás Pradera.
 1. Revisión anual de la documentación: la política, la normativa, la designación, los
    procedimientos, el proceso de autorización y el procedimiento de incidentes siguen describiendo
    el sistema; se actualiza la lista de servicios de terceros. Se aprueban sin más cambios.
-2. Autorizaciones del trimestre: alta de lap-tomas (ficha de alta firmada por Nora Vilaplana) y
-   nueva regla del cortafuegos web; ambas registradas.
+2. Autorizaciones desde la reunión de agosto: alta de lap-tomas (petición firmada por la gerente y
+   ficha de alta firmada por Nora Vilaplana) y nueva regla del cortafuegos web; ambas registradas.
 3. Adquisiciones: antes de contratar el nuevo gestor de contraseñas se comparó con el análisis de
    riesgos (doble factor, cifrado de extremo a extremo y servidores en la UE); se aprobó.
 4. Capacidad: el servidor usa el 38 % del disco y el 20 % de la memoria; el almacenamiento de
    copias crece 4 GB al mes. Se revisará en enero; no hace falta ampliar.
-5. Incidentes: ninguno en el trimestre; se prepara para octubre un simulacro de correo fraudulento.
-6. Continuidad: se confirma que el portal se puede restaurar en otro proveedor en unas seis horas
+5. Incidentes: ninguno desde la reunión de agosto; se prepara para octubre un simulacro de correo
+   fraudulento.
+6. Accesos: Nora Vilaplana presenta las altas y bajas de cuentas del mes; la revisión trimestral
+   completa de cuentas y permisos se hace el 24 de septiembre.
+7. Copias: Nora Vilaplana presenta el estado de las copias del mes; el informe del trimestre se
+   cierra a final de mes.
+8. Actualizaciones: Nora Vilaplana repasa el estado de las actualizaciones del servidor y de los
+   portátiles y las alertas de dependencias del portal; el informe mensual se cierra el día 29.
+9. Cambios del portal: Tomás Pradera repasa las solicitudes de cambios del mes y las pendientes de
+   despliegue.
+10. Continuidad: se confirma que el portal se puede restaurar en otro proveedor en unas seis horas
    con las copias y la plantilla de infra; Lucía Robledal tiene los accesos de respaldo.
+11. Normativa: se recuerdan al equipo las normas de uso de equipos y servicios y el deber de avisar
+   el mismo día de cualquier incidente.
 
-Próxima reunión: 6 de octubre de 2026.
+Próxima reunión: 27 de octubre de 2026.

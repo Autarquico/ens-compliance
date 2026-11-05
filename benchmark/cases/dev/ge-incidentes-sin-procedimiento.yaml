@@ -7,6 +7,9 @@ mutations:
   - op: unlink_document
     ref: procedimiento-incidentes
     measure: op.exp.7
+  - op: unlink_evidence
+    alias: acta-revision
+    measure: op.exp.7
 defects:
   - id: gestion-incidentes-sin-respaldo
     layer: deterministic

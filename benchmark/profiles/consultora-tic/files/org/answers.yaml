@@ -28,7 +28,7 @@ resp_sistema: Nora Vilaplana
 resp_sistema_funciones: Administra el servidor, la nube, la identidad corporativa y los despliegues, aplica las medidas que decide el responsable de seguridad y vigila la operación diaria.
 designacion_procedimiento: La gerente nombra por escrito a cada responsable, lo comunica por correo a las otras dos personas y guarda el nombramiento firmado en la unidad compartida Seguridad.
 renovacion_procedimiento: La gerente revisa los nombramientos cada mes de enero; si una persona deja la empresa o cambia de funciones, firma un nuevo nombramiento en la misma semana y lo comunica por correo.
-coordinacion: Los tres responsables se reúnen el primer martes de cada mes por videoconferencia; Tomás Pradera redacta el acta y la guarda en la unidad compartida Seguridad.
+coordinacion: Los tres responsables se reúnen el cuarto martes de cada mes por videoconferencia; Tomás Pradera redacta el acta y la guarda en la unidad compartida Seguridad.
 resolucion_conflictos: Decide la gerente en un plazo de cinco días laborables y lo deja escrito en el acta de la reunión siguiente.
 comite:
   - nombre: Comité de Seguridad
@@ -136,8 +136,11 @@ info_transmision:
     herramienta: Portal de proyectos y correo corporativo
     evidencia: Registro de descargas del portal
 info_otras:
-  not_applicable: true
-  reason: No hay otras actividades de tratamiento; el borrado de soportes se recoge en el inventario de soportes.
+  - informacion: Portátiles y discos que se retiran
+    quien: Responsable de la seguridad
+    pasos: Antes de dar de baja un portátil o un disco se borra de forma segura con la herramienta del sistema operativo, se revocan sus claves y se anota la fecha del borrado en el inventario de soportes.
+    herramienta: Borrado seguro del sistema operativo, registro de claves e inventario de soportes
+    evidencia: Inventario de soportes y registro de claves criptográficas
 aut_instalaciones:
   - elemento: Puesto en el espacio de coworking
     quien: Gerente

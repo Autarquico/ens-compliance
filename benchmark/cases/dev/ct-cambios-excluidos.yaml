@@ -1,0 +1,26 @@
+format: ens-benchmark-case/1
+id: ct-cambios-excluidos
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: declare_not_applicable
+    measure: op.exp.5
+    justification: >-
+      No aplica: el anexo II no la exige en categoría BÁSICA y los cambios del portal son pequeños y
+      frecuentes, así que registrarlos y planificarlos no reduce ningún riesgo del análisis de riesgos.
+defects:
+  - id: exclusion-de-cambios-contradice-riesgos
+    layer: judgment
+    measure: op.exp.5
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.exp.5
+      clause: op.exp.5.4
+      quote: Mediante un análisis de riesgos se determinará si los cambios son relevantes para la seguridad del sistema.
+    rationale: >-
+      El perfil había seleccionado la gestión de cambios porque su análisis de riesgos trata la
+      explotación de una vulnerabilidad del portal con la revisión de cada cambio por otra persona; la
+      exclusión afirma que controlar los cambios no reduce ningún riesgo del análisis, y el propio
+      análisis lo contradice.
