@@ -25,7 +25,7 @@ from ens_evidence.preaudit.classify import (
     JUDGMENT_CLASSIFICATIONS,
     judgment_classification_source,
 )
-from ens_evidence.preaudit.pack import PACK_V1, load_pack
+from ens_evidence.preaudit.pack import CURRENT_PACK, load_pack
 from ens_evidence.preaudit.validate import MAX_REASON_CHARS, validate_findings
 
 PACK = load_pack()
@@ -312,7 +312,7 @@ def test_text_that_cannot_be_shown_as_is_is_discarded_with_its_reason(reason: st
 
 
 def test_response_model_matches_pack_schema() -> None:
-    schema = json.loads((PACK_V1 / "response.schema.json").read_text(encoding="utf-8"))
+    schema = json.loads((CURRENT_PACK / "response.schema.json").read_text(encoding="utf-8"))
     item = schema["properties"]["findings"]["items"]
     model = JudgmentResponse.model_json_schema()
     model_item = model["$defs"]["ResponseFinding"]

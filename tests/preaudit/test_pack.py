@@ -7,7 +7,8 @@ import pytest
 
 from ens_evidence.models.preaudit import Classification
 from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
-from ens_evidence.preaudit.pack import PACK_V1, MeasureScope, PackError, load_pack
+from ens_evidence.preaudit.pack import CURRENT_PACK, MeasureScope, PackError, load_pack
+from ens_evidence.preaudit.validate import MAX_QUOTE_CHARS, MIN_QUOTE_CHARS, MIN_QUOTE_WORDS
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 SOURCE_FIXTURES = {
@@ -37,15 +38,15 @@ UNSUPPORTED = {
 
 @pytest.fixture
 def pack_copy(tmp_path: Path) -> Path:
-    root = tmp_path / "v1"
-    shutil.copytree(Path(str(PACK_V1)), root, ignore=shutil.ignore_patterns("__pycache__"))
+    root = tmp_path / "pack"
+    shutil.copytree(Path(str(CURRENT_PACK)), root, ignore=shutil.ignore_patterns("__pycache__"))
     return root
 
 
 def test_loads_and_exposes_criteria_and_pack_hash():
     pack = load_pack()
-    assert pack.version == "1.0.0"
-    manifest = (Path(str(PACK_V1)) / "manifest.json").read_bytes()
+    assert pack.version == "2.0.0"
+    manifest = (Path(str(CURRENT_PACK)) / "manifest.json").read_bytes()
     assert pack.sha256 == hashlib.sha256(manifest).hexdigest()
     assert {c.id for c in pack.criteria} == {
         "coherencia-politica-evidencia",
@@ -143,6 +144,24 @@ def test_system_prompt_fixes_the_boundaries():
         "solo con un objeto json",
     ):
         assert fragment in prompt
+
+
+def test_system_prompt_states_the_quote_rule_the_validation_applies():
+    prompt = _normalized(load_pack().system_prompt)
+    for fragment in (
+        "carácter a carácter",
+        "todo lo que va entre corchetes",
+        f"menos de {MIN_QUOTE_WORDS} palabras",
+        f"menos de {MIN_QUOTE_CHARS} caracteres que no sean espacios",
+        f"más de {MAX_QUOTE_CHARS} caracteres",
+    ):
+        assert fragment in prompt
+
+
+def test_system_prompt_keeps_weak_exclusions_in_scope():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "no basta, por sí solo, ni para dar por buena su justificación" in prompt
+    assert "contradicen los activos, los riesgos" in prompt
 
 
 def _normalized(text: str) -> str:
