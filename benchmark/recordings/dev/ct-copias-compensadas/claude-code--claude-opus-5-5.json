@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/ct-copias-compensadas",
+  "case_sha256": "cd124b7dc9b4bc20f902b94ebf4779a152ba0f294b445761481ba7754faddb48",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.317, sesión del usuario (plan contratado); ejecutable 2.1.317 (sha256 09f153b46b5df9e8b3454716d682a91901de020cbca630f61dec1a015b32b5e9); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "1.0.0",
+  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
+  "payload_sha256": "9128f689a2bbba6cad4c3a082112881a601591d8144c91b9c3cae916a725b29c",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-05T10:22:04.117629Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-05T10:20:21.199167Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261001-232fbc6a\", \"quote\": \"copia diaria cifrada con restic de db-portal y de\\nlos ficheros del portal a st-copias, en otra región y otro proveedor\"}], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El proveedor de nube ya replica el disco del servidor en su centro de datos, así que una copia propia no aporta nada.\"}], \"reason\": \"La justificación no demuestra que la medida compensatoria (op.exp.3) proteja igual o mejor que las copias de seguridad: la réplica del disco en el propio proveedor copia también los borrados y la corrupción, y no protege si cae ese proveedor. Además, la contradice la propia evidencia enlazada a la medida, que describe copias propias en otro proveedor.\"}, {\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"politica-seguridad\", \"quote\": \"Coordinación: Los tres responsables se reúnen el primer martes de cada mes por videoconferencia\"}], \"evidence\": [{\"ref\": \"EV-20261001-37fc9354\", \"quote\": \"Fecha: 22 de septiembre de 2026, por videoconferencia.\"}], \"justifications\": [], \"reason\": \"La política fija la reunión de coordinación el primer martes de cada mes, pero la reunión que consta en el acta fue el 22 de septiembre de 2026, que es el cuarto martes. La evidencia aportada no acredita que se haya celebrado la reunión del primer martes de septiembre: es una incoherencia leve que conviene aclarar.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-05T10:21:04.942960Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261001-232fbc6a\", \"quote\": \"copia diaria cifrada con restic de db-portal y de\\nlos ficheros del portal a st-copias, en otra región y otro proveedor\"}], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El proveedor de nube ya replica el disco del servidor en su centro de datos, así que una copia propia no aporta nada.\"}], \"reason\": \"La replicación del disco que hace el proveedor no demuestra que proteja igual o mejor que las copias de seguridad: no cubre el borrado accidental ni la corrupción, que también se replican, ni la caída del propio proveedor. Además, la evidencia enlazada muestra que la organización sí hace copias propias, lo que contradice que «no aportan nada».\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.sw.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.sw.1\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera.\"}], \"reason\": \"Es un texto genérico, idéntico al de otras medidas, para descartar el desarrollo de aplicaciones en una organización cuya actividad principal es desarrollar aplicaciones web. No se razona respecto a los activos propios (el portal) ni a los riesgos de vulnerabilidades de la aplicación, lo que puede derivar en un problema.\"}, {\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"politica-seguridad\", \"quote\": \"Los tres responsables se reúnen el primer martes de cada mes por videoconferencia\"}], \"evidence\": [{\"ref\": \"EV-20261001-37fc9354\", \"quote\": \"Fecha: 22 de septiembre de 2026, por videoconferencia.\"}], \"justifications\": [], \"reason\": \"La política fija la reunión de coordinación el primer martes de cada mes, pero el acta aportada corresponde al 22 de septiembre de 2026, que no es el primer martes de ese mes. Es una desviación leve entre el mecanismo de coordinación declarado y el observado.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-05T10:21:41.446083Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261001-232fbc6a\", \"quote\": \"copia diaria cifrada con restic de db-portal y de\\nlos ficheros del portal a st-copias, en otra región y otro proveedor\"}], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El proveedor de nube ya replica el disco del servidor en su centro de datos, así que una copia propia no aporta nada.\"}], \"reason\": \"La justificación no demuestra que la medida compensatoria proteja igual o mejor del riesgo sobre los activos. Una réplica del disco en el mismo proveedor también copia los borrados y las corrupciones, y la medida citada (op.exp.3) no sustituye a una copia de seguridad. Además, la evidencia enlazada muestra que sí se hace una copia propia en otro proveedor, lo que contradice que «no aporta nada».\"}, {\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"No aplica: No hay otras actividades de tratamiento; el borrado de soportes se recoge en el inventario de soportes.\"}], \"evidence\": [{\"ref\": \"EV-20261001-37fc9354\", \"quote\": \"la política, la normativa, la designación, los\\n   procedimientos, el proceso de autorización y el procedimiento de incidentes siguen describiendo\\n   el sistema\"}], \"justifications\": [], \"reason\": \"El documento declara que no hay otras actividades de tratamiento, pero a la vez menciona el borrado de soportes. Remite al inventario sin precisar cómo se hace ese borrado, lo que deja poco claro el extremo org.3.4.f.\"}]}",
+      "kind": null
+    }
+  ]
+}

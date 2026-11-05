@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/ge-copias-sin-procedimiento",
+  "case_sha256": "97b6990d6b9425fcee44a9432af6d7e4b9ce9c10fb11bfc3668672f95dbeafa0",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "1.0.0",
+  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
+  "payload_sha256": "ba3d1058f674ed0050a86b1a20bf10a69f7e1c7a6b88b41668f3e7e2ee13213f",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-05T10:27:59.591859Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-05T10:27:14.920258Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.3\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"- Pasos: Se hacen copias cuando hay tiempo.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\\n   salvo la actualización de la lista de proveedores.\"}],\"justifications\":[],\"reason\":\"La indicación «cuando hay tiempo» no precisa cómo efectuar las copias de la información y deja su realización a una disponibilidad indeterminada, pese a que la revisión documental mantiene vigente el procedimiento. Se propone NC_MENOR por incumplimiento parcial de la claridad y precisión exigidas para org.3.4 en la realización de copias.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-05T10:27:31.602265Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.3\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"- Pasos: Se hacen copias cuando hay tiempo.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\\n   salvo la actualización de la lista de proveedores.\"}],\"justifications\":[],\"reason\":\"La expresión «cuando hay tiempo» no precisa cómo efectuar las copias de la información y deja su realización a una disponibilidad indeterminada, pese a que el acta mantiene vigente el documento. Se propone NC_MENOR por un incumplimiento parcial de la precisión documental exigida para org.3.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-05T10:27:47.054234Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.3\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"- Pasos: Se hacen copias cuando hay tiempo.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\\n   salvo la actualización de la lista de proveedores.\"}],\"justifications\":[],\"reason\":\"La expresión «cuando hay tiempo» no precisa cómo efectuar las copias ni establece una pauta operativa clara, como exige org.3.4; el acta mantiene vigente ese procedimiento sin corregirlo. Se propone NC_MENOR por un incumplimiento parcial del requisito de precisión documental.\"}]}",
+      "kind": null
+    }
+  ]
+}

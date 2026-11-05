@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/ct-registros-compensados",
+  "case_sha256": "624e3369f1b2ebee5d0b5b3094100562309e8e307db62e887cd22e862e7938bc",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.317, sesión del usuario (plan contratado); ejecutable 2.1.317 (sha256 09f153b46b5df9e8b3454716d682a91901de020cbca630f61dec1a015b32b5e9); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "1.0.0",
+  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
+  "payload_sha256": "a3d8f3e94696bd4a6ec4eed1309cd1a2c7bf40c45df2bf78a1cf780dc6e60bed",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-05T10:37:27.007668Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-05T10:35:39.089421Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.exp.8\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261001-b72d523f\", \"quote\": \"Registros activos: el servidor registra los accesos SSH, sudo y los eventos del sistema\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.exp.8:base\", \"quote\": \"Somos tres personas y nos conocemos; cualquier cambio en el servidor se comenta en el chat del equipo, que hace las veces de registro de actividad.\"}], \"reason\": \"La compensación de op.exp.8 se apoya en la confianza entre personas y en comentarios informales en un chat. No justifica documentalmente que proteja igual o mejor del riesgo sobre los activos. Además, la evidencia enlazada describe registros técnicos que no encajan con declarar la medida compensada.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.sw.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.sw.1\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera.\"}], \"reason\": \"La justificación es una fórmula genérica que no se refiere a los activos. La organización desarrolla aplicaciones web a medida y su análisis de riesgos incluye como amenaza probable la explotación de vulnerabilidades de la aplicación web, así que la justificación parece insuficiente para el riesgo sobre esos activos.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-05T10:36:16.285260Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.exp.8\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261001-b72d523f\", \"quote\": \"Registros activos: el servidor registra los accesos SSH, sudo y los eventos del sistema\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.exp.8:base\", \"quote\": \"Somos tres personas y nos conocemos; cualquier cambio en el servidor se comenta en el chat del equipo, que hace las veces de registro de actividad.\"}], \"reason\": \"La compensación se apoya en la confianza entre personas y en un chat informal. No explica por qué protege igual o mejor del riesgo sobre los activos, ni cómo la sustituye op.mon.2. Además, choca con la evidencia enlazada, que describe registros de actividad reales del servidor.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.sw.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.sw.1\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera.\"}], \"reason\": \"Es una justificación genérica, repetida para todas las medidas no seleccionadas, en una organización cuya actividad principal es desarrollar aplicaciones web. Afirma que el análisis de riesgos no identifica una amenaza que la requiera, pero no analiza los activos ni los riesgos concretos del desarrollo. Habría que comprobarlo con el análisis de riesgos, que no está enlazado a esta medida.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-05T10:36:52.648543Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.exp.8\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261001-b72d523f\", \"quote\": \"Registros activos: el servidor registra los accesos SSH, sudo y los eventos del sistema\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.exp.8:base\", \"quote\": \"Somos tres personas y nos conocemos; cualquier cambio en el servidor se comenta en el chat del equipo, que hace las veces de registro de actividad.\"}], \"reason\": \"La compensación apoya el registro de actividad en la confianza entre personas y en comentarios informales en un chat. No identifica activos ni riesgos ni explica por qué la medida op.mon.2 protegería igual o mejor que op.exp.8. Además, no casa con la evidencia enlazada, que describe registros técnicos activos.\"}, {\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"politica-seguridad\", \"quote\": \"Coordinación: Los tres responsables se reúnen el primer martes de cada mes por videoconferencia\"}], \"evidence\": [{\"ref\": \"EV-20261001-37fc9354\", \"quote\": \"Fecha: 22 de septiembre de 2026, por videoconferencia.\"}], \"justifications\": [], \"reason\": \"La política fija la reunión de coordinación el primer martes de cada mes. El acta aportada es del 22 de septiembre de 2026, que no es el primer martes de ese mes, por lo que la evidencia no muestra que se siga la periodicidad declarada.\"}]}",
+      "kind": null
+    }
+  ]
+}
