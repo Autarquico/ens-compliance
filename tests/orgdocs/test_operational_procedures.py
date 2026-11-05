@@ -1,5 +1,6 @@
 """Procedimientos operativos de BÁSICA en `procedimientos-seguridad`: el documento cubre cláusulas
-op./mp. y se cita junto a la medida, pero cubrir una cláusula nunca suple su evidencia."""
+op./mp. y se cita junto a la medida, pero la cobertura de la plantilla, por sí sola, nunca suple
+la evidencia: solo un enlace explícito en matrix.yaml lo hace."""
 
 from datetime import timedelta
 

@@ -81,7 +81,8 @@ La confirma una persona.
 ### Audit pack versionado
 
 El pack vigente es v2, en `src/ens_evidence/audit_pack/v2/` (spec
-audit-pack-tuning); v1 se conserva por historia. Cada versión tiene:
+audit-pack-tuning). v1 se retira, como las plantillas v1: nada lo cargaba y
+queda en el historial de Git. Cada versión tiene:
 
 - `criteria.yaml`: cada criterio con su id, su texto, su fuente con cita
   literal, las medidas a las que aplica y las propuestas que admite;

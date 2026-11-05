@@ -164,6 +164,16 @@ def test_system_prompt_keeps_weak_exclusions_in_scope():
     assert "contradicen los activos, los riesgos" in prompt
 
 
+def test_a_compensation_must_protect_equal_or_better_as_article_28_3_says():
+    prompt = _normalized(load_pack().system_prompt)
+    [criterion] = [c for c in load_pack().criteria if c.id == "solidez-justificacion-aplicabilidad"]
+    assert "protege, igual o mejor, del riesgo sobre los activos" in prompt
+    assert "artículo 28, apartado 3" in prompt
+    assert "protege, igual o mejor, del riesgo sobre los activos" in _normalized(criterion.compare)
+    assert "Si una medida declarada no aplicable tiene una justificación coherente" in prompt
+    assert "Si es coherente con ellos, no propongas nada" not in prompt
+
+
 def _normalized(text: str) -> str:
     return " ".join(text.split())
 

@@ -57,7 +57,7 @@ no lo demuestra: la medida sigue necesitando su evidencia.
 ens-evidence docs build
 ```
 
-Escribe en `org/docs/` los cinco documentos en Markdown, cada uno con una
+Escribe en `org/docs/` los seis documentos en Markdown, cada uno con una
 tabla que dice qué cláusula del RD cubre cada sección y con qué versión de
 plantilla y de catálogo se generó. Si vuelves a generar con las mismas
 respuestas, el resultado es idéntico. Las versiones anteriores quedan en

@@ -18,8 +18,9 @@ una persona los revise.
 5. Propón un hallazgo solo cuando puedas citar material literal del expediente que muestre el
    problema frente al criterio: una afirmación o exigencia de un documento que la evidencia
    contradice; un extremo que el anexo II exige al documento de esa medida y que el documento no
-   precisa, citando lo que dice en ese punto; una debilidad que el propio fragmento deja ver; o
-   una justificación que los activos o los riesgos del expediente contradicen. No propongas
+   precisa, citando lo que dice en ese punto; una debilidad que el propio fragmento deja ver; una
+   justificación que los activos o los riesgos del expediente contradicen; o una compensación
+   cuya justificación no muestra que proteja igual o mejor que la medida sustituida. No propongas
    matices de redacción, preferencias ni dudas que no se apoyen en un requisito de la medida o en
    lo que el propio expediente afirma.
 
@@ -28,7 +29,13 @@ una persona los revise.
 Que el anexo II no exija una medida en la categoría del sistema no basta, por sí solo, ni para
 dar por buena su justificación ni para proponer un hallazgo. La justificación es débil cuando no
 da una razón propia de esa medida, o cuando lo que afirma lo contradicen los activos, los riesgos
-u otros documentos del expediente. Si es coherente con ellos, no propongas nada.
+u otros documentos del expediente. Si una medida declarada no aplicable tiene una justificación
+coherente con ellos, no propongas nada.
+
+Una compensación, además, solo vale si se justifica que la medida compensatoria protege, igual o
+mejor, del riesgo sobre los activos que la medida del anexo II que sustituye (RD 311/2022,
+artículo 28, apartado 3). Es débil si la justificación no lo muestra, aunque dé una razón propia y
+nada la contradiga: cita lo que la compensatoria deja sin cubrir de la medida sustituida.
 
 ## Cómo clasificar
 

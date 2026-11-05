@@ -405,7 +405,7 @@ def test_sin_cambios_la_particion_de_desarrollo_pasa_contra_su_linea_base(dev):
 def altered_pack(tmp_path, monkeypatch) -> str:
     """Una copia del audit pack con el prompt cambiado y su manifiesto al día: íntegro, pero
     otro pack. Solo este test lo ve."""
-    pack = tmp_path / "pack-v1"
+    pack = tmp_path / "pack"
     shutil.copytree(Path(str(pack_module.CURRENT_PACK)), pack)
     system = pack / "system.md"
     system.write_text(system.read_text(encoding="utf-8") + "\nCambio de prueba.\n", "utf-8")

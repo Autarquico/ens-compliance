@@ -18,13 +18,15 @@ from ens_evidence.benchmark.baseline import BASELINE_FILE
 from ens_evidence.benchmark.build import Build
 from ens_evidence.benchmark.cases import load_case
 from ens_evidence.benchmark.model import (
+    Partition,
     Recording,
     Repetition,
     RepetitionOutcome,
 )
 from ens_evidence.benchmark.mutations import build_case
 from ens_evidence.benchmark.recordings import recording_path, write_recording
-from ens_evidence.benchmark.runner import REQUIRED_PAIRS, Pair, ProfileCache
+from ens_evidence.benchmark.report import assemble
+from ens_evidence.benchmark.runner import REQUIRED_PAIRS, Pair, PartitionRun, ProfileCache
 from ens_evidence.catalog import catalog_sha256
 from ens_evidence.cli import app
 from ens_evidence.preaudit import service
@@ -292,6 +294,25 @@ def test_la_puerta_target_falla_si_un_par_de_la_puerta_no_llega_al_80_de_juicio(
     by_pair = {f"{r['provider']}/{r['model']}": r for r in data["results"]}
     assert by_pair[str(CLAUDE)]["gate_passed"] is True
     assert by_pair[str(CODEX)]["gate_problems"] == ["detección de juicio 0.0 % (mínimo 80 %)"]
+
+
+def test_la_puerta_target_sin_las_grabaciones_de_un_par_de_la_puerta_sale_con_3(bench, memo):
+    record_all(bench, memo, pairs=[CLAUDE])
+
+    result = run(bench, "--all-recorded", "--gate", "target")
+
+    assert result.exit_code == 3, result.output
+    assert f"falta la grabación de {CODEX}" in result.output and "que es puerta" in result.output
+
+
+@pytest.mark.parametrize("gate", ["threshold", "target"])
+def test_assemble_no_pasa_la_puerta_si_falta_un_par_de_la_puerta(tmp_path, gate):
+    ran = PartitionRun(cases=[], pairs=[CLAUDE], runs={CLAUDE: []})
+
+    result = assemble(tmp_path, Partition.DEV, ran, now=AT, gate=gate, gating=REQUIRED_PAIRS)
+
+    assert result.gate_passed is False
+    assert result.gate_problems == [f"falta {CODEX}, que es puerta"]
 
 
 def test_todo_grabado_y_detectado_sale_con_0_con_los_avisos(bench, memo):

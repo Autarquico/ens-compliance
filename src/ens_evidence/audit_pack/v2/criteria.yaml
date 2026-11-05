@@ -40,7 +40,9 @@ criteria:
     compare: >-
       La justificación de aplicabilidad o de compensación frente a los activos, los riesgos y
       la medida del anexo II que se sustituye. Es débil si no da una razón propia de la medida
-      o si lo que afirma lo contradicen los activos o los riesgos del expediente.
+      o si lo que afirma lo contradicen los activos o los riesgos del expediente. Una
+      compensación es débil, además, si no justifica que la medida compensatoria protege, igual
+      o mejor, del riesgo sobre los activos que la medida que sustituye.
     measure_scope: not_applicable_or_compensated
     allowed_proposals: [NC_MENOR, OBSERVACION]
     source:
