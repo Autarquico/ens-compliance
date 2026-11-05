@@ -108,7 +108,7 @@ anomalias_registro: Tomás Pradera anota fecha, quién avisa y descripción en e
 info_acceso:
   - informacion: Datos de clientes en el portal (nivel bajo)
     quien: Responsable de la información
-    pasos: Cada persona solo ve los proyectos de los clientes que tiene asignados; los permisos se revisan cada trimestre.
+    pasos: La responsable de la información decide qué proyectos ve cada persona; solo la administradora de sistemas concede, cambia o retira esos permisos, y siempre con la petición escrita de la gerente; cada persona solo ve los proyectos de los clientes que tiene asignados, y los permisos se revisan cada trimestre.
     herramienta: Permisos por proyecto del portal
     evidencia: Acta de revisión trimestral de accesos
 info_almacenamiento:
@@ -167,7 +167,7 @@ gestion_cuentas:
 credenciales:
   - ambito: Credenciales del equipo en los servicios corporativos
     quien: Administradora de sistemas
-    pasos: Antes de recibir sus credenciales la persona firma la aceptación de la normativa y de la custodia de credenciales; inscribe su doble factor en el primer acceso y guarda sus contraseñas solo en el gestor de contraseñas; las cambia si sospecha que otra persona las conoce; la cuenta se bloquea si se pierde el dispositivo del segundo factor o se sospecha que está comprometida, y se inhabilita al terminar la relación con la empresa.
+    pasos: Antes de recibir sus credenciales la persona firma la aceptación de la normativa y de la custodia de credenciales; inscribe su doble factor en el primer acceso y guarda sus contraseñas solo en el gestor de contraseñas; las cambia cada doce meses, y antes si sospecha que otra persona las conoce; la cuenta se bloquea si se pierde el dispositivo del segundo factor o se sospecha que está comprometida, y se inhabilita al terminar la relación con la empresa.
     herramienta: Identidad corporativa y gestor de contraseñas
     evidencia: Aceptación firmada y revisión trimestral de cuentas
   - ambito: Credenciales de servicio de las bóvedas del gestor de contraseñas
@@ -178,7 +178,7 @@ credenciales:
 actualizaciones:
   - ambito: Servidor del portal y portátiles
     quien: Administradora de sistemas
-    pasos: Sigue los avisos de seguridad de Debian, macOS y Ubuntu; aplica las actualizaciones de seguridad del servidor cada lunes, con reinicio fuera de horario si tocan el núcleo, y las de los portátiles en un máximo de siete días desde su publicación.
+    pasos: Sigue los avisos de seguridad de Debian, macOS y Ubuntu y valora el riesgo de cada uno; aplica las actualizaciones de seguridad del servidor cada lunes, con reinicio fuera de horario si tocan el núcleo, y las de los portátiles en un máximo de siete días desde su publicación; si una corrige una vulnerabilidad crítica o que ya se está explotando, la aplica en un máximo de 48 horas sin esperar al calendario.
     herramienta: Gestor de paquetes del sistema y actualizaciones del sistema operativo
     evidencia: Informe mensual de configuración y actualizaciones
   - ambito: Dependencias del portal
@@ -207,7 +207,7 @@ perimetro:
 puesta_en_produccion:
   - ambito: Nuevas versiones del portal y servicios en la nube nuevos
     quien: Responsable del sistema
-    pasos: Cada versión pasa las pruebas automáticas, se prueba en preproducción y la acepta en la solicitud de cambios una persona distinta de quien la propone; antes de cada versión mayor se hace un análisis dinámico de caja negra; un servicio en la nube nuevo no se usa hasta que lo autoriza el responsable del sistema.
+    pasos: Cada versión pasa las pruebas automáticas, se prueba en preproducción comprobando que no deteriora la seguridad de los demás componentes del servicio (permisos del portal, cortafuegos web y túnel) y la acepta en la solicitud de cambios una persona distinta de quien la propone; antes de cada versión mayor se hace un análisis dinámico de caja negra; un servicio en la nube nuevo no se usa hasta que lo autoriza el responsable del sistema.
     herramienta: Integración continua, entorno de preproducción y herramienta de análisis dinámico
     evidencia: Historial de solicitudes de cambios, ejecuciones de pruebas e informe del análisis dinámico
 informacion_deberes:

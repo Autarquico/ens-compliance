@@ -35,4 +35,5 @@ defects:
         Los procedimientos de respaldo establecidos indicarán: a) Frecuencia de las copias.
     rationale: >-
       El mismo apartado documenta el procedimiento de respaldo de mp.info.6, y «cuando hay tiempo»
-      no indica la frecuencia de las copias.
+      no indica la frecuencia de las copias. Sale de la misma mutación que procedimiento-copias-vago:
+      es un par correlacionado, no dos fallos independientes.

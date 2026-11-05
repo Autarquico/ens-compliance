@@ -15,5 +15,6 @@ al portal con contraseña de 10 caracteres mínimo; 7 accesos de clientes dados 
 trimestre el día en que terminó el contrato.
 
 Credenciales: cada persona firmó al incorporarse la recepción y custodia de sus credenciales; las
-contraseñas se cambian si hay sospecha y cada vez que el proveedor lo pide por política.
+contraseñas se cambian cada doce meses, cuando la consola del correo lo exige, y antes si hay
+sospecha.
 Conclusión: sin desviaciones.

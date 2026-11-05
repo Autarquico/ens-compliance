@@ -11,8 +11,8 @@ de clientes los aprueba antes el responsable de la seguridad.
 Septiembre: 14 solicitudes; 12 desplegadas, 1 desestimada y 1 abierta. Ejemplos:
 - n.º 412, filtro de tickets por estado. Propone Tomás Pradera; revisa Nora Vilaplana; desplegada
   el 9 de septiembre a las 19:00.
-- n.º 417, permisos de descarga por proyecto. Propone Tomás Pradera; revisa Nora Vilaplana y la
-  aprueba el responsable de la seguridad antes del despliegue del 17 de septiembre.
+- n.º 417, permisos de descarga por proyecto. Propone Nora Vilaplana; la revisa y la aprueba,
+  como responsable de la seguridad, Tomás Pradera antes del despliegue del 17 de septiembre.
 - n.º 421, ampliar la caducidad de los enlaces de descarga. Desestimada por la gerente: el plazo
   actual basta para los clientes.
 

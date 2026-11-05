@@ -106,7 +106,7 @@ anomalias_registro: Raúl Monteagudo anota fecha, persona que avisa y descripci�
 info_acceso:
   - informacion: Expedientes de clientes (nivel bajo)
     quien: Responsable de la información
-    pasos: Cada persona solo accede a las carpetas y a los clientes que tiene asignados en el servidor y en la aplicación de gestión; se revisa cada trimestre.
+    pasos: La responsable de la información decide a qué clientes accede cada persona; solo la responsable del sistema concede, cambia o retira esos permisos, y siempre con la petición firmada de la gerente; cada persona solo accede a las carpetas y a los clientes que tiene asignados en el servidor y en la aplicación de gestión, y se revisa cada trimestre.
     herramienta: Permisos de carpetas del servidor y perfiles de la aplicación de gestión
     evidencia: Acta de revisión trimestral de accesos
 info_almacenamiento:
@@ -165,13 +165,13 @@ gestion_cuentas:
 credenciales:
   - ambito: Contraseñas y doble factor de la plantilla
     quien: Técnica laboral con funciones de sistemas
-    pasos: Antes de recibir sus credenciales la persona firma la recepción y custodia de credenciales; activa el doble factor por aplicación de autenticación en el primer acceso; cambia la contraseña si sospecha que otra persona la conoce y cada vez que la política del proveedor lo pide; la cuenta se bloquea si se pierde el portátil o el móvil del doble factor y se inhabilita al terminar la relación con la gestoría.
+    pasos: Antes de recibir sus credenciales la persona firma la recepción y custodia de credenciales; activa el doble factor por aplicación de autenticación en el primer acceso; cambia la contraseña cada doce meses, cuando la consola del correo lo exige, y antes si sospecha que otra persona la conoce; la cuenta se bloquea si se pierde el portátil o el móvil del doble factor y se inhabilita al terminar la relación con la gestoría.
     herramienta: Consola del correo y de la aplicación de gestión
     evidencia: Recepción de credenciales firmada y revisión trimestral de usuarios y permisos
 actualizaciones:
   - ambito: Servidor de ficheros y portátiles
     quien: Proveedor informático externo
-    pasos: Sigue los avisos de seguridad del fabricante; aplica las actualizaciones de seguridad del servidor el segundo martes de cada mes fuera de horario, con reinicio comprobado, y comprueba que los portátiles las instalan solos en la semana; la responsable del sistema revisa su informe.
+    pasos: Sigue los avisos de seguridad del fabricante y valora el riesgo de cada uno; aplica las actualizaciones de seguridad del servidor el segundo martes de cada mes fuera de horario, con reinicio comprobado, y comprueba que los portátiles las instalan solos en la semana; si una corrige una vulnerabilidad crítica o que ya se está explotando, la aplica en un máximo de dos días laborables sin esperar al segundo martes; la responsable del sistema revisa su informe.
     herramienta: Consola de gestión remota del proveedor
     evidencia: Informe mensual de mantenimiento del proveedor
   - ambito: Aplicación de gestión
@@ -188,7 +188,7 @@ codigo_danino:
 registro_actividad:
   - ambito: Servidor de ficheros, correo y aplicación de gestión
     quien: Responsable de la seguridad
-    pasos: El servidor registra los inicios de sesión, los accesos fallidos y los cambios de permisos con usuario, fecha y hora y resultado, y el correo y la aplicación de gestión guardan sus registros de auditoría; cada trimestre los revisa buscando accesos fuera de horario o desde lugares no habituales.
+    pasos: El servidor registra los inicios de sesión, los accesos fallidos y los cambios de permisos con usuario, fecha y hora, carpeta o recurso afectado y resultado, y el correo y la aplicación de gestión guardan sus registros de auditoría; cada trimestre los revisa buscando accesos fuera de horario o desde lugares no habituales.
     herramienta: Registro de auditoría del servidor y de los servicios en la nube
     evidencia: Revisión trimestral de registros de actividad
 perimetro:
@@ -218,7 +218,7 @@ concienciacion:
 formacion:
   - ambito: Toda la plantilla
     quien: Responsable de la seguridad
-    pasos: Con el proveedor informático imparte una sesión al incorporarse y otra cada año sobre la normativa, el tratamiento de los expedientes en papel y digitales y la configuración segura del portátil en teletrabajo; al final se hace un ejercicio práctico para evaluar su eficacia y se repite la parte en la que alguien falla.
+    pasos: Con el proveedor informático imparte una sesión al incorporarse y otra cada año sobre la normativa, el tratamiento de los expedientes en papel y digitales, la configuración segura del portátil en teletrabajo y cómo detectar y avisar de un incidente; al final se hace un ejercicio práctico para evaluar su eficacia y se repite la parte en la que alguien falla.
     herramienta: Sesión presencial y ejercicio práctico
     evidencia: Registro de formación con asistentes, contenidos y resultados del ejercicio
 aut_instalaciones:

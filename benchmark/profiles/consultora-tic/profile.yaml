@@ -99,18 +99,19 @@ applicability:
     justification: >-
       El anexo II no la exige con disponibilidad de nivel BAJO. La interrupción tolerable ya está
       fijada en la política (recuperar el portal en menos de dos días laborables), y la restauración
-      en otro proveedor, probada en junio, tarda unas seis horas según el análisis de riesgos.
+      en otro proveedor tarda unas seis horas según el análisis de riesgos.
   - measure: op.cont.2
     applicable: false
     justification: >-
       Solo se exige con disponibilidad de nivel ALTO. La caída del proveedor de nube que recoge el
-      análisis de riesgos se cubre con la restauración del portal en otro proveedor, probada en
-      junio; la dependencia de un único proveedor es un riesgo residual que aceptó la gerente.
+      análisis de riesgos se cubre con la restauración del portal en otro proveedor; la dependencia
+      de un único proveedor es un riesgo residual que aceptó la gerente.
   - measure: op.cont.3
     applicable: false
     justification: >-
       El anexo II la pide solo con disponibilidad de nivel ALTO y, sin plan de continuidad, no hay
-      plan que probar. Lo que se ensaya es la restauración en otro proveedor, la última en junio.
+      plan que probar. Ante la caída del proveedor de nube, el análisis de riesgos prevé restaurar
+      el portal en otro proveedor.
   - measure: op.cont.4
     applicable: false
     justification: >-
@@ -123,7 +124,7 @@ applicability:
       No la exige el anexo II en categoría BÁSICA. Los servicios externos se contratan con las
       condiciones estándar del proveedor y los autoriza la gerente según el proceso de autorización
       (org.4); depender de un único proveedor de nube es un riesgo residual aceptado, con la
-      restauración en otro proveedor probada.
+      restauración en otro proveedor que prevé el análisis de riesgos.
   - measure: op.ext.2
     applicable: false
     justification: >-

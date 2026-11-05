@@ -40,7 +40,7 @@ applicability:
     justification: >-
       No la exige el anexo II con disponibilidad de nivel BAJO. El agua dañaría a la vez el servidor
       y el disco de la copia local, como la avería del servidor que recoge el análisis de riesgos;
-      para ambos casos está la copia diaria externa cifrada fuera de la oficina.
+      para ambos casos está la copia externa cifrada fuera de la oficina.
   - measure: mp.info.2
     applicable: false
     justification: >-
@@ -106,7 +106,8 @@ applicability:
     applicable: false
     justification: >-
       El anexo II la pide solo con disponibilidad de nivel ALTO y, sin plan de continuidad, no hay
-      plan que probar. La restauración de las copias se prueba cada semestre según los procedimientos.
+      plan que probar. La avería del servidor que recoge el análisis de riesgos se trata restaurando
+      la copia externa.
   - measure: op.cont.4
     applicable: false
     justification: >-
