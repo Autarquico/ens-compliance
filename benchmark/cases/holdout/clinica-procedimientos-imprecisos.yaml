@@ -58,3 +58,19 @@ defects:
       El procedimiento de incidentes de la clínica reduce el aviso de eventos a comentarlo «en
       el café» y deja sin anotar lo ocurrido salvo petición expresa: no hay un informe de eventos
       ni de debilidades con destinatario y registro.
+  - id: cuentas-sin-retencion-definida
+    layer: judgment
+    measure: op.acc.1
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.acc.1
+      clause: op.acc.1.4
+      quote: >-
+        Las cuentas se retendrán durante el periodo necesario para atender a las necesidades de
+        trazabilidad de los registros de actividad asociados a las mismas.
+    rationale: >-
+      Es la misma sección de altas, bajas y retención de cuentas que también cubre op.acc.1: deja
+      crear y quitar cuentas a «cualquiera» «cuando alguien se acuerda», no fija ningún periodo
+      de retención de las cuentas ni su inhabilitación al cambiar de función o por orden de quien
+      la autorizó.
