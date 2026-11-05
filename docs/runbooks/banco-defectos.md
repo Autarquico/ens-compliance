@@ -281,7 +281,7 @@ texto, quita `--format json --out bench.json`. Para un solo par:
 |---|---|
 | 0 | Pasa la puerta (o no se pidió puerta) |
 | 1 | Falla la puerta: regresión, umbral no alcanzado, inventario sin `retired`; o banco vacío |
-| 2 | Caso, grabación u opción no válida (grabación que no se puede leer, `--baseline` y `--baseline-ref` juntas, `--gate baseline` fuera de `dev`, reservada sin `--measurement`) |
+| 2 | Caso, grabación u opción no válida (grabación que no se puede leer, `--baseline` y `--baseline-ref` juntas, `--gate baseline` fuera de `dev`, `--gate threshold` fuera de `holdout`, reservada sin `--measurement`) |
 | 3 | Falta una grabación, falta un par que es puerta o una grabación está desligada: graba o regraba |
 
 ## 7. Mide la reservada (U2, cierre de v0.1)
@@ -310,7 +310,8 @@ su línea en `benchmark/measurements.jsonl`.
 
    Con `--all-recorded`, deciden los dos pares de v0.1; los demás grabados se
    informan. Por par: 100 % de los deterministas, ≥ 80 % de los de juicio,
-   tasa A ≤ 20 % y tasa B ≤ 20 %.
+   tasa A ≤ 20 % y tasa B ≤ 20 %, sobre al menos 20 defectos de juicio, 10
+   deterministas y 3 expedientes correctos.
 
    - **0:** los dos pares pasan el umbral del banco.
    - **1:** algún par no llega. v0.1 no cierra. El informe dice qué falla.

@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 26
-prs: []
+prs: [55]
 related_issues: [26]
 depends_on: [pre-audit]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-10-16
+updated: 2026-11-05
 ---
 
 # Banco de defectos sembrados

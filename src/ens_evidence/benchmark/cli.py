@@ -420,6 +420,8 @@ def run(
         raise _fail("Error: --baseline y --baseline-ref se excluyen")
     if gate is GateChoice.BASELINE and partition is not Partition.DEV:
         raise _fail("Error: la puerta baseline es de la partición de desarrollo")
+    if gate is GateChoice.THRESHOLD and partition is not Partition.HOLDOUT:
+        raise _fail("Error: la puerta threshold es de la partición reservada")
     pair = Pair(provider, model) if provider is not None and model is not None else None
     replayed = _replay(cases, partition, pair, gate is not None, "run", measurement)
     pack_sha256, bench, ran = replayed

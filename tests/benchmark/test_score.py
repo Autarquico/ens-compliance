@@ -16,6 +16,7 @@ from ens_evidence.benchmark.score import (
     ExpectedDefect,
     Observed,
     RepetitionRun,
+    Sample,
     baseline_gate,
     entry_of,
     inventory_problems,
@@ -295,6 +296,10 @@ def totals(
         (totals(a=(3, 10)), "(A) 30.0 %"),
         (totals(b=(1, 3)), "(B) 33.3 %"),
         (totals(a=(0, 0)), None),
+        (totals(b=(0, 0)), "no hay expedientes correctos"),
+        (totals(det=(9, 9)), "defectos deterministas: 9 (la muestra exige al menos 10)"),
+        (totals(jud=(19, 19)), "defectos de juicio: 19 (la muestra exige al menos 20)"),
+        (totals(b=(0, 2)), "expedientes correctos: 2 (la muestra exige al menos 3)"),
     ],
 )
 def test_puerta_threshold(t: Totals, problem: str | None) -> None:
@@ -303,6 +308,20 @@ def test_puerta_threshold(t: Totals, problem: str | None) -> None:
         assert problems == []
     else:
         assert any(problem in p for p in problems), problems
+
+
+SMALL = Sample(judgment=1, deterministic=1, correct=1)
+
+
+def test_un_banco_pequeno_pasa_con_su_muestra_minima_explicita() -> None:
+    t = totals(det=(1, 1), jud=(1, 1), a=(0, 1), b=(0, 1))
+    assert threshold_problems(t, SMALL) == []
+    assert len(threshold_problems(t)) == 3
+
+
+def test_sin_expedientes_correctos_la_tasa_b_no_cuenta_como_cero() -> None:
+    t = totals(det=(1, 1), jud=(1, 1), a=(0, 1), b=(0, 0))
+    assert threshold_problems(t, SMALL) == ["no hay expedientes correctos"]
 
 
 # --- puerta baseline -------------------------------------------------------------------------

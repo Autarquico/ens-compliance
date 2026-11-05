@@ -14,12 +14,14 @@ import pytest
 from typer.testing import CliRunner
 
 from ens_evidence.benchmark import runner as runner_module
+from ens_evidence.benchmark import score as score_module
 from ens_evidence.benchmark.access import MEASUREMENTS_FILE
 from ens_evidence.benchmark.baseline import BASELINE_FILE
 from ens_evidence.benchmark.cases import load_case
 from ens_evidence.benchmark.model import Recording, Repetition, RepetitionOutcome
 from ens_evidence.benchmark.recordings import recording_path, write_recording
 from ens_evidence.benchmark.runner import REQUIRED_PAIRS, Pair
+from ens_evidence.benchmark.score import HOLDOUT_MINIMUM, Sample
 from ens_evidence.catalog import catalog_sha256
 from ens_evidence.cli import app
 from ens_evidence.models.preaudit import Provider
@@ -56,6 +58,8 @@ HOLDOUT_DETERMINISTIC = "holdout/inventario-vencido"
 DEFECT_MEASURE = {DEV_JUDGED: "org.2", HOLDOUT_JUDGED: "org.3"}
 FALSE_ALARM_MEASURE = "org.1"
 """Medida sin defecto sembrado en ningún caso: un hallazgo sobre ella es una falsa alarma."""
+
+MINI_SAMPLE = Sample(judgment=1, deterministic=1, correct=1)
 
 cli = CliRunner()
 
@@ -130,6 +134,8 @@ def bench_from(source: Path, tmp_path: Path, memo, integrity, monkeypatch) -> Pa
 
 @pytest.fixture
 def holdout(tmp_path, template, memo, integrity, monkeypatch) -> Path:
+    """La reservada mínima (un defecto de cada capa y un correcto), medida con esa muestra."""
+    monkeypatch.setattr(score_module, "HOLDOUT_MINIMUM", MINI_SAMPLE)
     return bench_from(template, tmp_path, memo, integrity, monkeypatch)
 
 
@@ -303,6 +309,31 @@ def test_los_dos_pares_de_la_puerta_llegan_y_v01_cierra_el_umbral(holdout, memo)
     assert "resultado: la puerta threshold pasa" in result.output
     assert "v0.1 no cierra" not in result.output
     assert_report(result.output)
+
+
+def test_un_par_extra_no_decide_el_umbral(holdout, memo):
+    extra = Pair(CLAUDE.provider, "otro-modelo")
+    for pair in REQUIRED_PAIRS:
+        record_holdout(holdout, memo, pair, [detecting(memo, HOLDOUT_JUDGED)] * 3)
+    record_holdout(holdout, memo, extra, [EMPTY] * 3)
+
+    result = measure_holdout(holdout, "--all-recorded")
+
+    assert result.exit_code == 0, result.output
+    assert "(informativo: este par no es puerta)" in result.output
+
+
+def test_con_la_muestra_de_d7_la_reservada_minima_no_basta(holdout, memo, monkeypatch):
+    monkeypatch.setattr(score_module, "HOLDOUT_MINIMUM", HOLDOUT_MINIMUM)
+    record_holdout(holdout, memo, CLAUDE, [detecting(memo, HOLDOUT_JUDGED)] * 3)
+
+    result = measure_holdout(holdout, *by_pair(CLAUDE))
+
+    assert result.exit_code == 1, result.output
+    assert "defectos de juicio: 1 (la muestra exige al menos 20)" in result.output
+    assert "defectos deterministas: 1 (la muestra exige al menos 10)" in result.output
+    assert "expedientes correctos: 1 (la muestra exige al menos 3)" in result.output
+    assert "resultado: la puerta threshold no pasa" in result.output
 
 
 def test_la_tasa_a_de_falsas_alarmas_por_encima_del_20_es_puerta(holdout, memo):

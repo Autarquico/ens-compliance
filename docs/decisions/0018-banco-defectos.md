@@ -191,8 +191,10 @@ Por proveedor y modelo, con funciones puras:
 
 **`threshold`, sobre la reservada, por proveedor y modelo:** 100 % de los
 defectos deterministas, ≥ 80 % de los de juicio, A ≤ 20 % y B ≤ 20 %
-(decisión D6), sin hallazgos deterministas sin casar. Falla también si no hay
-defectos deterministas o de juicio que medir.
+(decisión D6), sin hallazgos deterministas sin casar. Falla también si la
+muestra no llega al tamaño mínimo de la reservada (`HOLDOUT_MINIMUM` en
+`score.py`) o si no hay expedientes correctos: B de 0/0 no cuenta como 0 %.
+Solo se acepta con `--partition holdout`.
 
 El 100 % determinista cubre solo las reglas que siembra el banco.
 `DOSSIER_INTEGRITY` queda fuera (decisión D3): no hay texto del anexo II que

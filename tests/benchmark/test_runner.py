@@ -232,10 +232,18 @@ def run(root: Path, *args: str):
 # --- códigos de salida e informe --------------------------------------------------------------
 
 
-def test_todo_grabado_y_detectado_pasa_el_umbral_con_los_avisos(bench, memo):
+def test_la_puerta_threshold_en_desarrollo_es_un_error_de_uso_sin_repetir_nada(bench):
+    result = run(bench, "--all-recorded", "--gate", "threshold")
+
+    assert result.exit_code == 2, result.output
+    assert "la puerta threshold es de la partición reservada" in result.output
+    assert "falta la grabación" not in result.output
+
+
+def test_todo_grabado_y_detectado_sale_con_0_con_los_avisos(bench, memo):
     record_all(bench, memo)
 
-    result = run(bench, "--all-recorded", "--gate", "threshold")
+    result = run(bench, "--all-recorded")
 
     assert result.exit_code == 0, result.output
     assert NOTICE in result.output
@@ -243,7 +251,7 @@ def test_todo_grabado_y_detectado_pasa_el_umbral_con_los_avisos(bench, memo):
     assert "DOSSIER_INTEGRITY queda fuera" in result.output
     assert "EVIDENCE_EXPIRED, HASH_MISMATCH" in result.output
     assert "no aplica: JudgmentConfig no expone temperatura" in result.output
-    assert "resultado: la puerta threshold pasa" in result.output
+    assert "resultado: sin puerta" in result.output
     assert not VERDICT_WORDS.search(result.output), result.output
 
 
@@ -279,29 +287,6 @@ def test_el_informe_json_lleva_fuentes_timestamps_y_el_caso_solo_determinista(be
     assert totals["deterministic"] == {"numerator": 2, "denominator": 2, "value": 1.0}
     assert totals["judgment"]["value"] == 1.0
     assert totals["false_alarms"]["numerator"] == 0
-
-
-def test_un_par_requerido_por_debajo_del_umbral_sale_con_1_y_v01_no_cierra(bench, memo):
-    record_all(bench, memo, pairs=[CLAUDE])
-    record_all(bench, memo, pairs=[CODEX], judged=[EMPTY] * 3)
-
-    result = run(bench, "--all-recorded", "--gate", "threshold")
-
-    assert result.exit_code == 1, result.output
-    assert "v0.1 no cierra" in result.output
-    assert "detección de juicio 0.0 %" in result.output
-    assert not VERDICT_WORDS.search(result.output)
-
-
-def test_un_par_extra_no_decide_el_umbral(bench, memo):
-    record_all(bench, memo)
-    extra = Pair(CLAUDE.provider, "otro-modelo")
-    record_all(bench, memo, pairs=[extra], judged=[EMPTY] * 3)
-
-    result = run(bench, "--all-recorded", "--gate", "threshold")
-
-    assert result.exit_code == 0, result.output
-    assert "(informativo: este par no es puerta)" in result.output
 
 
 def test_falta_un_par_requerido_sale_con_3(bench, memo):

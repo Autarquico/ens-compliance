@@ -32,6 +32,19 @@ DETERMINISTIC_FLOOR = Fraction(1)
 JUDGMENT_FLOOR = Fraction(4, 5)
 FALSE_ALARM_CEILING = Fraction(1, 5)
 
+
+@dataclass(frozen=True)
+class Sample:
+    """Tamaño mínimo de la reservada para que la puerta threshold mida algo."""
+
+    judgment: int
+    deterministic: int
+    correct: int
+
+
+HOLDOUT_MINIMUM = Sample(judgment=20, deterministic=10, correct=3)
+"""D7: la reservada de BÁSICA, con defectos de juicio, deterministas y expedientes correctos."""
+
 RefKey = tuple[RefKind, str]
 _LAYER = {DefectLayer.DETERMINISTIC: Layer.DETERMINISTIC, DefectLayer.JUDGMENT: Layer.JUDGMENT}
 
@@ -295,14 +308,25 @@ def _deterministic_problems(t: Totals) -> list[str]:
     return problems
 
 
-def threshold_problems(t: Totals) -> list[str]:
-    """Puerta de la reservada por proveedor y modelo. Vacía si se cumple."""
-    problems = _deterministic_problems(t)
-    if not t.deterministic.denominator:
-        problems.append("no hay defectos deterministas")
-    if not t.judgment.denominator:
-        problems.append("no hay defectos de juicio")
-    elif _fraction(t.judgment) < JUDGMENT_FLOOR:
+def _sample_problems(t: Totals, minimum: Sample) -> list[str]:
+    problems = []
+    for name, size, required in (
+        ("defectos deterministas", t.deterministic.denominator, minimum.deterministic),
+        ("defectos de juicio", t.judgment.denominator, minimum.judgment),
+        ("expedientes correctos", t.correct_with_false_alarms.denominator, minimum.correct),
+    ):
+        if not size:
+            problems.append(f"no hay {name}")
+        elif size < required:
+            problems.append(f"{name}: {size} (la muestra exige al menos {required})")
+    return problems
+
+
+def threshold_problems(t: Totals, minimum: Sample | None = None) -> list[str]:
+    """Puerta de la reservada por proveedor y modelo. Vacía si se cumple. Sin `minimum`, la
+    muestra de `HOLDOUT_MINIMUM`."""
+    problems = _deterministic_problems(t) + _sample_problems(t, minimum or HOLDOUT_MINIMUM)
+    if t.judgment.denominator and _fraction(t.judgment) < JUDGMENT_FLOOR:
         problems.append(f"detección de juicio {_percent(_fraction(t.judgment))} (mínimo 80 %)")
     for name, r in (
         ("falsas alarmas sobre emitidos (A)", t.false_alarms),
