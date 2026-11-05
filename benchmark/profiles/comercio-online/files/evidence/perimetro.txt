@@ -1,0 +1,8 @@
+Revisión del cortafuegos del servidor de la tienda, 29 de septiembre de 2026.
+Hecha por Pablo Horno y revisada por Óscar Arcilla.
+
+Puertos abiertos a internet: solo 443 (tienda, con certificado vigente) y 80 (redirige a 443).
+La administración por SSH solo se acepta desde la red privada del alojamiento, a la que se
+entra con la VPN del proveedor y doble factor. La base de datos escucha solo en local.
+El panel de administración exige sesión y doble factor y no se publica en el menú de la tienda.
+Las reglas del cortafuegos no han cambiado desde la revisión anterior de junio.

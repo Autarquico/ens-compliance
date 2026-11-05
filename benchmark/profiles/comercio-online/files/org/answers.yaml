@@ -1,0 +1,206 @@
+# Respuestas de org-docs de Barro Ficticio Cerámica (empresa ficticia del banco).
+organizacion: Barro Ficticio Cerámica S.L., taller de cerámica artesanal con tienda en línea
+direccion: La fundadora, Nuria Torno, administradora única de la sociedad.
+firmante_direccion: Nuria Torno
+mision: Fabricamos y vendemos en línea vajilla y piezas de cerámica artesanal a particulares de toda España y material de taller a centros educativos públicos con los que tenemos contrato menor.
+objetivos_seguridad:
+  - Que los datos de los clientes y sus pedidos no se filtren ni se alteren.
+  - Que la tienda siga vendiendo en campaña de Navidad aunque falle el servidor, recuperándola en menos de un día.
+  - Que nadie publique cambios en la tienda sin que otra persona los haya revisado.
+marco_legal:
+  - Reglamento General de Protección de Datos (RGPD) y Ley Orgánica 3/2018 (LOPDGDD).
+  - Ley 34/2002, de servicios de la sociedad de la información y de comercio electrónico.
+  - Real Decreto 311/2022 (ENS), exigido en el contrato menor con los centros educativos.
+riesgos_datos_personales: >-
+  Tratamos nombres, direcciones de envío, teléfonos de contacto e historial de compras de
+  clientes particulares. Los pagos los procesa la pasarela externa y no guardamos datos de
+  tarjeta. Una filtración permitiría fraudes de suplantación por correo a nuestros clientes.
+resp_informacion: Nuria Torno
+resp_informacion_funciones: Decide qué datos de clientes se piden en la tienda, quién puede verlos y cuánto tiempo se guardan los pedidos.
+resp_servicio: Nuria Torno
+resp_servicio_funciones: Fija cuánto tiempo puede estar la tienda sin vender y qué exige al proveedor de alojamiento y a la pasarela de pago.
+resp_seguridad: Óscar Arcilla
+resp_seguridad_funciones: Decide las medidas de seguridad, revisa cada trimestre que se aplican, custodia los documentos de seguridad e informa a la fundadora de las incidencias.
+resp_sistema: Pablo Horno
+resp_sistema_funciones: Desarrolla y administra la tienda, el servidor y las copias, y aplica las medidas que decide el responsable de seguridad.
+designacion_procedimiento: La fundadora nombra a cada responsable con un escrito firmado que comunica por correo a todo el equipo y guarda en la carpeta Seguridad de la nube de la empresa.
+renovacion_procedimiento: Cada septiembre la fundadora revisa los nombramientos y los renueva o sustituye con un escrito nuevo; si alguien deja la empresa, se nombra a otra persona antes de su salida.
+coordinacion: Los tres responsables se reúnen el primer miércoles de cada mes por videollamada y Óscar Arcilla anota los acuerdos en el acta de la carpeta Seguridad.
+resolucion_conflictos: Si hay desacuerdo, decide la fundadora en un plazo de tres días laborables y se anota en el acta siguiente.
+comite:
+  - nombre: Comité de Seguridad
+    ambito: Revisión mensual de pedidos sospechosos, accesos, copias, avisos de dependencias y cambios publicados.
+    integrantes: Nuria Torno, Óscar Arcilla, Pablo Horno
+    relacion: Informa a la fundadora; Pablo Horno traslada sus acuerdos al proveedor de alojamiento.
+documentacion_estructura: Seis documentos (política, designación, normativa, procedimientos, proceso de autorización y procedimiento de incidentes) en la carpeta Seguridad de la nube de la empresa, con versión y fecha en el nombre.
+documentacion_gestion: Óscar Arcilla custodia los documentos, los revisa cada año o tras un cambio importante en la tienda y conserva las versiones anteriores en la subcarpeta Histórico.
+documentacion_acceso: Todo el equipo puede leerlos; solo el responsable de seguridad y la fundadora pueden modificarlos.
+difusion_personal: Se envían por correo a cada persona al incorporarse y tras cada cambio, y se pide que confirme la lectura; Óscar Arcilla guarda esas confirmaciones.
+servicios_externalizados: "sí"
+poc_servicios:
+  - servicio: Suministro de material de taller
+    cliente: Centros educativos públicos de la comunidad ficticia
+    poc: Óscar Arcilla, seguridad@barro-ficticio.example
+    relacion: Es el responsable de la seguridad de Barro Ficticio Cerámica S.L.
+personas:
+  - nombre: Nuria Torno
+    cargo: Fundadora y ceramista
+    contacto: nuria@barro-ficticio.example
+  - nombre: Óscar Arcilla
+    cargo: Atención al cliente y calidad
+    contacto: oscar@barro-ficticio.example
+  - nombre: Pablo Horno
+    cargo: Desarrollador y administrador de la tienda
+    contacto: pablo@barro-ficticio.example
+relacion_seguridad_sistema: distintas y sin dependencia jerárquica
+uso_equipos:
+  - Los portátiles de la empresa se usan solo para el trabajo; nadie instala programas sin avisar a Pablo Horno.
+  - El portátil del taller se bloquea al dejarlo y no se presta a visitas ni a alumnos de los cursos.
+uso_servicios:
+  - El correo y la nube de la empresa se usan solo para el trabajo y nunca para guardar listados de clientes en cuentas personales.
+  - El panel de administración de la tienda solo se abre desde los portátiles de la empresa.
+uso_instalaciones:
+  - El taller se cierra con llave al terminar y el portátil se guarda en el armario de la oficina.
+  - Los alumnos de los cursos de cerámica no entran en la oficina.
+uso_indebido:
+  - Exportar listados de clientes para usos que no sean los pedidos.
+  - Compartir la cuenta del panel de la tienda o la del alojamiento con otra persona.
+derechos_personal:
+  - Recibir formación en seguridad al incorporarse y una vez al año.
+  - Consultar dudas al responsable de seguridad sin que suponga una sanción.
+deberes_personal:
+  - Avisar de inmediato de un pedido sospechoso, un correo extraño o la pérdida de un portátil.
+  - Usar el gestor de contraseñas de la empresa y el doble factor en todas las cuentas de trabajo.
+medidas_disciplinarias: Según el convenio colectivo de comercio de la provincia ficticia y el Estatuto de los Trabajadores. La fundadora califica la falta como leve, grave o muy grave y decide la sanción tras escuchar a la persona.
+procedimientos:
+  - tarea: Alta y baja de cuentas del panel y del alojamiento
+    quien: Desarrollador y administrador de la tienda
+    pasos: Recibe la petición por escrito de la fundadora, crea o retira la cuenta con su doble factor y lo anota en el registro de cuentas el mismo día.
+    herramienta: Panel de administración de la tienda y consola del alojamiento
+    evidencia: Petición por correo y registro de cuentas
+  - tarea: Publicación de cambios en la tienda
+    quien: Desarrollador y administrador de la tienda
+    pasos: Abre una petición de cambio en el repositorio, espera a que pasen las pruebas automáticas y a la revisión de otra persona, y despliega fuera de las horas de más venta.
+    herramienta: Repositorio de código con pruebas automáticas
+    evidencia: Historial de peticiones de cambio y de despliegues
+  - tarea: Actualización del servidor y de las dependencias
+    quien: Desarrollador y administrador de la tienda
+    pasos: Revisa cada lunes los avisos de dependencias y del sistema operativo, aplica los de seguridad en la semana y los demás el primer lunes de mes.
+    herramienta: Avisos de dependencias del repositorio y actualizaciones de Debian
+    evidencia: Registro semanal de actualizaciones
+anomalias_identificacion:
+  - Pedidos con direcciones de envío que no coinciden con la de facturación y pago rechazado varias veces.
+  - Correos de clientes que dicen haber recibido mensajes nuestros que no hemos enviado.
+  - Avisos del alojamiento por consumo anómalo o accesos desde países donde no trabajamos.
+anomalias_comunicacion: Se avisa por mensaje o llamada a Óscar Arcilla en cuanto se detecta, o por correo a seguridad@barro-ficticio.example, como máximo el mismo día.
+anomalias_registro: Óscar Arcilla anota fecha, quién avisa y qué se ha visto en el registro de incidencias de la carpeta Seguridad.
+info_acceso:
+  - informacion: Datos de clientes y pedidos
+    quien: Responsable de la información
+    pasos: Atención al cliente ve pedidos y direcciones; solo el administrador accede a la base de datos; los permisos se revisan cada trimestre.
+    herramienta: Perfiles del panel de la tienda
+    evidencia: Revisión trimestral de cuentas y perfiles
+info_almacenamiento:
+  - informacion: Datos de clientes y pedidos
+    quien: Desarrollador y administrador de la tienda
+    pasos: Se guardan solo en la base de datos del servidor, con el disco cifrado por el proveedor; nunca en hojas de cálculo locales.
+    herramienta: Base de datos del servidor virtual
+    evidencia: Configuración del servidor y del cifrado del proveedor
+info_copias:
+  - informacion: Datos de clientes y pedidos
+    quien: Desarrollador y administrador de la tienda
+    pasos: Copia diaria cifrada de la base de datos a un almacenamiento de otro proveedor, retención de 35 días y prueba de restauración cada trimestre.
+    herramienta: Herramienta de copias cifradas y almacenamiento externo
+    evidencia: Informe de copias y acta de la prueba de restauración
+info_etiquetado:
+  - informacion: Soportes con datos de clientes
+    quien: Atención al cliente y calidad
+    pasos: No se usan soportes extraíbles; si hiciera falta uno, se etiqueta con su contenido y su responsable y se anota en el registro.
+    herramienta: Registro de soportes
+    evidencia: Registro de soportes
+info_transmision:
+  - informacion: Datos de pedidos enviados a la empresa de transporte
+    quien: Atención al cliente y calidad
+    pasos: Solo se envían nombre, dirección y teléfono de entrega por la integración cifrada de la empresa de transporte.
+    herramienta: Integración cifrada con la empresa de transporte
+    evidencia: Registro de envíos de la tienda
+info_otras:
+  not_applicable: true
+  reason: No hay otras actividades de tratamiento; los albaranes en papel se destruyen en la trituradora de la oficina.
+aut_instalaciones:
+  - elemento: Taller y oficina
+    quien: Fundadora
+    solicitud: Petición verbal a la fundadora
+    registro: Anotación en el acta mensual
+aut_instalaciones_alt:
+  - elemento: Teletrabajo desde el domicilio
+    quien: Responsable de la seguridad
+    solicitud: Petición por correo con las fechas y el portátil que se usará
+    registro: Correo archivado en la carpeta Seguridad
+aut_equipos:
+  - elemento: Portátiles y servidor virtual
+    quien: Responsable del sistema
+    solicitud: Ficha de alta con su configuración y cifrado
+    registro: Inventario de equipos actualizado
+aut_criptografia:
+  - elemento: Certificados del sitio web y cifrado de copias
+    quien: Responsable de la seguridad
+    solicitud: Petición razonada por escrito
+    registro: Registro de configuración criptográfica
+aut_aplicaciones:
+  - elemento: Nuevas versiones de la tienda y extensiones del panel
+    quien: Responsable del sistema
+    solicitud: Petición de cambio revisada en el repositorio
+    registro: Historial de peticiones de cambio
+aut_enlaces:
+  - elemento: Integraciones con la pasarela de pago y la empresa de transporte
+    quien: Responsable de la seguridad
+    solicitud: Petición por escrito con la finalidad y los datos que se intercambian
+    registro: Registro de integraciones autorizadas
+aut_comunicaciones:
+  - elemento: Correo de la empresa y videollamadas
+    quien: Responsable del sistema
+    solicitud: Alta a petición de la fundadora
+    registro: Registro de servicios autorizados
+aut_comunicaciones_alt:
+  not_applicable: true
+  reason: No hay medios alternativos; si falla el correo se atiende a los clientes por teléfono.
+aut_soportes:
+  - elemento: Memorias USB para fotos del catálogo
+    quien: Responsable del sistema
+    solicitud: Petición por correo indicando el uso
+    registro: Registro de soportes
+aut_moviles:
+  - elemento: Portátiles de la empresa
+    quien: Responsable del sistema
+    solicitud: Petición por escrito de la fundadora
+    registro: Inventario de equipos móviles
+aut_terceros:
+  - elemento: Alojamiento, pasarela de pago, transporte y almacenamiento de copias
+    quien: Fundadora
+    solicitud: Propuesta, contrato y acuerdo de encargo de tratamiento firmados
+    registro: Contratos archivados y registro de proveedores
+autoridad_procedimientos: el responsable de la seguridad
+incidentes_alcance: La tienda en línea, el servidor virtual, la base de datos de pedidos, el repositorio de código, los portátiles y el correo. Es incidente cualquier suceso que comprometa la confidencialidad, integridad o disponibilidad de los datos de clientes o de la tienda.
+incidentes_deteccion:
+  - Avisos del proveedor de alojamiento, de la herramienta de copias y de dependencias del repositorio, que recibe Pablo Horno.
+  - Revisión semanal del registro de accesos al panel por el responsable de seguridad.
+  - Avisos de clientes o del equipo a seguridad@barro-ficticio.example.
+incidentes_informe_eventos: Cualquier persona del equipo avisa por mensaje, llamada o correo al responsable de seguridad, que anota el evento o la debilidad en el registro de incidencias con fecha, quién avisa y descripción.
+incidentes_niveles:
+  - nivel: Bajo
+    criterio: Sin acceso indebido a datos de clientes y con la tienda vendiendo.
+    escalado: El responsable de seguridad lo resuelve con el administrador y lo presenta en la reunión mensual del comité.
+  - nivel: Alto
+    criterio: Acceso indebido a datos de clientes, cambios no autorizados en la tienda o tienda sin vender más de cuatro horas.
+    escalado: El responsable de seguridad avisa en el momento a la fundadora por teléfono y reúne al comité ese día.
+incidentes_analisis: El responsable de seguridad dirige el análisis con el administrador, determina el alcance y la causa, aplica la contención y cierra el incidente cuando la tienda funciona y la causa está corregida.
+incidentes_comunicacion: La fundadora decide qué se comunica a clientes, centros educativos y proveedores; el responsable de seguridad informa al equipo por correo.
+incidentes_registro: El responsable de seguridad anota en el registro de la herramienta (ens-evidence incident) el aviso inicial, los avances, las actuaciones de emergencia, los cambios en el sistema y el cierre.
+incidentes_mejora: El comité revisa cada trimestre los incidentes cerrados y el responsable de seguridad propone las medidas correctoras, que se anotan en el acta.
+incidentes_datos_personales: El responsable de seguridad determina si el incidente afecta a datos personales de clientes; si es así, avisa a la fundadora y a la asesoría de protección de datos externa para decidir qué comunicaciones exigen el RGPD y la Ley Orgánica 3/2018.
+incibe_quien: El responsable de seguridad, con el equipo de respuesta que forman él y el administrador de la tienda.
+incibe_como: Por el canal de notificación que indique el INCIBE-CERT, con autorización previa de la fundadora.
+incibe_cuando: Los de nivel Alto, en cuanto se clasifican; los de nivel Bajo, al cerrarlos.
+incidentes_evidencia: El responsable de seguridad decide qué evidencia se preserva y la asesoría jurídica externa de la empresa da el asesoramiento legal.
+incidentes_eventos_auditables: El responsable de seguridad revisa los eventos auditables del panel y del servidor al cerrar cada incidente y anota si hay que registrar alguno más.

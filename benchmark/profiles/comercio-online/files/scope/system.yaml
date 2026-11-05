@@ -1,0 +1,8 @@
+name: Sistema de Barro Ficticio Cerámica
+description: >-
+  Sistema de información que soporta la tienda en línea de cerámica artesanal de Barro Ficticio
+  (empresa ficticia): catálogo, pedidos, pagos con pasarela externa y envíos, incluidas las
+  ventas a centros educativos públicos por el contrato menor de material de taller.
+included_assets: [lap-taller, vps-tienda, app-tienda, db-pedidos, gh-tienda]
+included_services: [svc-tienda]
+exclusions: []

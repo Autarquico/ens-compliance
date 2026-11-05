@@ -1,0 +1,24 @@
+format: ens-benchmark-case/1
+id: comercio-recogida-sin-estado
+partition: holdout
+profile: comercio-online
+kind: defective
+mutations:
+  - op: collected_override
+    alias: github
+    file: github.json
+defects:
+  - id: dependencias-sin-dato
+    layer: deterministic
+    measure: op.exp.4
+    target: {kind: none}
+    expected_rule: CHECK_UNKNOWN
+    requirement:
+      measure: op.exp.4
+      clause: op.exp.4.2
+      quote: >-
+        La priorización tendrá en cuenta la variación del riesgo en función de la implantación o
+        no de la actualización.
+    rationale: >-
+      La recogida de octubre omite el estado de los avisos de dependencias del repositorio
+      tienda; el check no puede concluir y la medida queda sin dato automático.

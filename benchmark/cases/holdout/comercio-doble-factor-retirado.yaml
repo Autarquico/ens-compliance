@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: comercio-doble-factor-retirado
+partition: holdout
+profile: comercio-online
+kind: defective
+mutations:
+  - op: collected_override
+    alias: github
+    file: github.json
+defects:
+  - id: organizacion-sin-doble-factor
+    layer: deterministic
+    measure: op.acc.6
+    target: {kind: none}
+    expected_rule: CHECK_FAIL
+    requirement:
+      measure: op.acc.6
+      clause: op.acc.6.3
+      quote: Las credenciales estarán bajo el control exclusivo del usuario
+    rationale: >-
+      La recogida del 3 de octubre muestra que la organización del repositorio de la tienda ya
+      no obliga al doble factor, aunque la matriz lo daba por exigido.

@@ -1,0 +1,37 @@
+assets:
+  - id: lap-taller
+    type: laptop
+    deployment: deployed
+    hostname: lap-taller.barro-ficticio.example
+    os: Ubuntu 24.04 LTS
+    owner: Nuria Torno
+    encrypted: true
+    usage: Gestión de pedidos, atención a clientes y administración de la tienda
+  - id: vps-tienda
+    type: server
+    deployment: deployed
+    hostname: vps-tienda.barro-ficticio.example
+    function: Servidor web de la tienda y base de datos de pedidos
+    os: Debian 12
+    environment: producción
+    location: Servidor virtual en un proveedor de alojamiento de la Unión Europea
+  - id: app-tienda
+    type: application
+    deployment: deployed
+    service: Tienda en línea
+    domain: tienda.barro-ficticio.example
+    repo: barro-ficticio/tienda
+    database: db-pedidos
+  - id: db-pedidos
+    type: database
+    deployment: deployed
+    engine: MariaDB 10.11
+    location: vps-tienda
+    data: Pedidos, direcciones de envío y cuentas de clientes
+    backup: Diaria, cifrada, a un almacenamiento de otro proveedor
+  - id: gh-tienda
+    type: code_hosting
+    deployment: deployed
+    account: barro-ficticio
+    repos: [tienda]
+    actions: Pruebas automáticas y despliegue al servidor

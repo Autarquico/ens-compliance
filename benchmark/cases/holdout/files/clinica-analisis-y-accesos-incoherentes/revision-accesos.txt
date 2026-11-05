@@ -1,0 +1,8 @@
+Notas sobre usuarios del programa de gestión clínica, 25 de septiembre de 2026.
+
+- Hay un usuario «recepcion» que usan las dos personas de recepción y, en verano, la
+  auxiliar de sustitución; la contraseña está en un pósit del mostrador.
+- Los tres odontólogos y la higienista tienen perfil de administrador «para no tener que
+  llamar a Jorge» y ven todas las historias de la clínica.
+- La auxiliar que se fue en agosto sigue con el usuario activo por si vuelve en Navidad.
+- Los permisos los cambia cualquiera que conozca la contraseña de administración.

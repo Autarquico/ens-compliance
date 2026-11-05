@@ -1,0 +1,10 @@
+Registro de actualizaciones del servidor y de la tienda, septiembre de 2026.
+Llevado por Pablo Horno (responsable del sistema).
+
+- 7 de septiembre: avisos de dependencias revisados; dos bibliotecas con fallo de seguridad
+  moderado, actualizadas el 8 tras pasar las pruebas automáticas.
+- 14 de septiembre: actualizaciones de seguridad de Debian aplicadas en el servidor, con
+  reinicio a las 7:00, antes de la primera hora de venta.
+- 21 de septiembre: sin avisos nuevos.
+- 28 de septiembre: aviso crítico del servidor web; aplicado el mismo día tras una copia.
+Todas las versiones del sistema y del lenguaje de la tienda tienen soporte del fabricante.

@@ -1,0 +1,51 @@
+format: ens-benchmark-case/1
+id: clinica-procedimientos-imprecisos
+partition: holdout
+profile: clinica-dental
+kind: defective
+mutations:
+  - op: set_answer
+    key: procedimientos.0.quien
+    value: Cualquiera de la clínica que tenga un rato
+  - op: set_answer
+    key: procedimientos.0.pasos
+    value: Se da de alta o de baja al usuario cuando alguien se acuerda.
+  - op: set_answer
+    key: procedimientos.1.quien
+    value: El primero que llegue por la mañana, si sabe
+  - op: set_answer
+    key: procedimientos.1.pasos
+    value: Se mira si la copia ha salido bien y, si no, ya se verá.
+  - op: set_answer
+    key: incidentes_informe_eventos
+    value: Si alguien ve algo raro en un ordenador, que lo comente en el café.
+  - op: set_answer
+    key: incidentes_registro
+    value: No se apunta nada salvo que la directora lo pida expresamente.
+defects:
+  - id: tareas-sin-responsable-definido
+    layer: judgment
+    measure: org.3
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.3
+      clause: org.3.2
+      quote: Quién debe hacer cada tarea.
+    rationale: >-
+      En los procedimientos aprobados las altas de usuarios y la comprobación de copias quedan a
+      cargo de «cualquiera» o «el primero que llegue», con pasos que dependen de que alguien se
+      acuerde: no dicen quién hace cada tarea ni cómo.
+  - id: eventos-sin-canal-de-informe
+    layer: judgment
+    measure: op.exp.7
+    target: {kind: document, ref: procedimiento-incidentes}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.exp.7
+      clause: op.exp.7.1
+      quote: que incluya el informe de eventos de seguridad y debilidades
+    rationale: >-
+      El procedimiento de incidentes de la clínica reduce el aviso de eventos a comentarlo «en
+      el café» y deja sin anotar lo ocurrido salvo petición expresa: no hay un informe de eventos
+      ni de debilidades con destinatario y registro.

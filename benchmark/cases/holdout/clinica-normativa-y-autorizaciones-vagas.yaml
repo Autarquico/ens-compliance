@@ -1,0 +1,43 @@
+format: ens-benchmark-case/1
+id: clinica-normativa-y-autorizaciones-vagas
+partition: holdout
+profile: clinica-dental
+kind: defective
+mutations:
+  - op: set_answer
+    key: medidas_disciplinarias
+    value: Se tomarán las medidas oportunas en cada caso.
+  - op: set_answer
+    key: aut_moviles.0.quien
+    value: No hace falta autorización
+  - op: set_answer
+    key: aut_moviles.0.solicitud
+    value: Cada uno usa el portátil o el móvil que prefiera
+  - op: set_answer
+    key: aut_moviles.0.registro
+    value: No se registra
+defects:
+  - id: sanciones-sin-referencia
+    layer: judgment
+    measure: org.2
+    target: {kind: document, ref: normativa-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.2
+      clause: org.2.2
+      quote: derechos, deberes y medidas disciplinarias de acuerdo con la legislación vigente
+    rationale: >-
+      La normativa remite a «las medidas oportunas» sin citar convenio ni ley, sin graduar las
+      faltas y sin decir quién decide: no informa al personal de sus consecuencias.
+  - id: moviles-sin-proceso-formal
+    layer: judgment
+    measure: org.4
+    target: {kind: document, ref: proceso-autorizacion}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.4
+      clause: org.4.7
+      quote: Utilización de equipos móviles.
+    rationale: >-
+      El proceso de autorización dice que los equipos móviles no necesitan permiso ni se
+      registran, lo que vacía el apartado y contradice el carácter formal del proceso.

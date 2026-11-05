@@ -1,0 +1,5 @@
+Puertos del servidor de la tienda, consulta del 29 de septiembre de 2026.
+
+Abiertos a internet: 80 y 443 (tienda), 22 (SSH con usuario y contraseña, desde cualquier
+dirección) y 3306 (base de datos), que se abrió para consultar pedidos desde casa. El
+cortafuegos del alojamiento está en modo «permitir todo» desde la migración de junio.

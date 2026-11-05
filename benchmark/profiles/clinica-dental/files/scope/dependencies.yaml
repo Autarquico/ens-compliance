@@ -1,0 +1,4 @@
+dependencies:
+  - id: dep-historias-db
+    asset: app-historias
+    depends_on: db-pacientes

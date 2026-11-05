@@ -1,0 +1,162 @@
+format: ens-benchmark-profile/1
+fictional: true
+id: clinica-dental
+title: Clínica Dental Sonrisa Ficticia (pyme ficticia de la partición reservada)
+clock:
+  start: "2026-10-05T08:30:00+00:00"
+categorization: {C: BAJO, I: BAJO, T: BAJO, A: BAJO, D: BAJO}
+people:
+  - id: irene
+    name: Irene Esmalte
+    roles: [security_officer]
+  - id: jorge
+    name: Jorge Molar
+    roles: [system_owner, system_administrator]
+  - id: elena
+    name: Elena Muela
+    roles: [management, information_owner]
+  - id: hugo
+    name: Hugo Encía
+    roles: [service_owner]
+applicability:
+  - measure: mp.si.2
+    applicable: true
+    justification: >-
+      Seleccionada como adicional: la clínica entrega a pacientes y a otros profesionales discos
+      con radiografías, y el análisis de riesgos identifica su pérdida fuera de la clínica.
+reinforcements:
+  op.acc.5: [R1]
+  op.acc.6: [R1]
+  mp.s.2: [R1]
+not_required_justification: >-
+  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de la
+  clínica no identifica una amenaza que la pida.
+documents:
+  - {ref: politica-seguridad, approved_by: elena}
+  - {ref: normativa-seguridad, approved_by: elena}
+  - {ref: designacion-responsables, approved_by: elena}
+  - {ref: procedimientos-seguridad, approved_by: irene}
+  - {ref: proceso-autorizacion, approved_by: irene}
+  - {ref: procedimiento-incidentes, approved_by: irene}
+evidence:
+  - alias: inventario
+    file: evidence/inventario.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2027-03-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.1, covers: [base]}
+  - alias: analisis-riesgos
+    file: evidence/analisis-riesgos.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2027-09-30T00:00:00+00:00"
+    links:
+      - {measure: op.pl.1, covers: [base]}
+  - alias: revision-accesos
+    file: evidence/revision-accesos.txt
+    source: manual
+    asset: app-historias
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.acc.4, covers: [base]}
+  - alias: antivirus
+    file: evidence/antivirus.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2026-11-30T00:00:00+00:00"
+    links:
+      - {measure: op.exp.6, covers: [base]}
+  - alias: actualizaciones
+    file: evidence/actualizaciones.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2026-11-30T00:00:00+00:00"
+    links:
+      - {measure: op.exp.4, covers: [base]}
+  - alias: copias
+    file: evidence/copias.txt
+    source: manual
+    asset: db-pacientes
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: mp.info.6, covers: [base]}
+  - alias: formacion
+    file: evidence/formacion.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2027-09-30T00:00:00+00:00"
+    links:
+      - {measure: mp.per.4, covers: [base]}
+  - alias: acta-anual
+    file: evidence/acta-anual.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2027-09-26T00:00:00+00:00"
+    links:
+      - {measure: org.1, covers: [base]}
+      - {measure: org.2, covers: [base]}
+      - {measure: org.3, covers: [base]}
+      - {measure: org.4, covers: [base]}
+      - {measure: op.pl.2, covers: [base]}
+      - {measure: op.pl.3, covers: [base]}
+      - {measure: op.pl.4, covers: [base]}
+      - {measure: op.acc.1, covers: [base]}
+      - {measure: op.acc.2, covers: [base]}
+      - {measure: op.acc.5, covers: [base, R1]}
+      - {measure: op.acc.6, covers: [base, R1, R8, R9]}
+      - {measure: op.exp.2, covers: [base]}
+      - {measure: op.exp.3, covers: [base]}
+      - {measure: op.exp.7, covers: [base]}
+      - {measure: op.exp.8, covers: [base]}
+      - {measure: op.exp.10, covers: [base]}
+      - {measure: op.nub.1, covers: [base]}
+      - {measure: op.mon.1, covers: [base]}
+      - {measure: op.mon.2, covers: [base]}
+      - {measure: op.mon.3, covers: [base]}
+      - {measure: mp.if.1, covers: [base]}
+      - {measure: mp.if.2, covers: [base]}
+      - {measure: mp.if.3, covers: [base]}
+      - {measure: mp.if.4, covers: [base]}
+      - {measure: mp.if.5, covers: [base]}
+      - {measure: mp.if.7, covers: [base]}
+      - {measure: mp.per.2, covers: [base]}
+      - {measure: mp.per.3, covers: [base]}
+      - {measure: mp.eq.1, covers: [base]}
+      - {measure: mp.eq.3, covers: [base]}
+      - {measure: mp.eq.4, covers: [base]}
+      - {measure: mp.com.1, covers: [base]}
+      - {measure: mp.com.2, covers: [base]}
+      - {measure: mp.com.3, covers: [base]}
+      - {measure: mp.si.3, covers: [base]}
+      - {measure: mp.si.2, covers: [base]}
+      - {measure: mp.si.4, covers: [base]}
+      - {measure: mp.si.5, covers: [base]}
+      - {measure: mp.sw.2, covers: [base]}
+      - {measure: mp.info.1, covers: [base]}
+      - {measure: mp.info.3, covers: [base]}
+      - {measure: mp.info.5, covers: [base]}
+      - {measure: mp.s.1, covers: [base]}
+      - {measure: mp.s.2, covers: [base, R1]}
+      - {measure: mp.s.3, covers: [base]}
+incident_drill:
+  alias: simulacro
+  by: irene
+  title: Simulacro de llamada que suplanta al proveedor del programa de gestión
+  action: Se cuelga la llamada, se cambia la contraseña del usuario afectado y se avisa al proveedor por su canal oficial
+  conclusion: El simulacro confirma que recepción reconoce la suplantación y avisa a la responsable de seguridad en menos de una hora.
+  auditable_events_detail: El registro de accesos del programa ya recoge los cambios de contraseña y los inicios de sesión fallidos.
+  links:
+    - {measure: op.exp.9, covers: [base]}
+document_links:
+  - {measure: org.1, document: politica-seguridad, covers: [base]}
+  - {measure: org.1, document: designacion-responsables, covers: [base]}
+  - {measure: org.2, document: normativa-seguridad, covers: [base]}
+  - {measure: org.3, document: procedimientos-seguridad, covers: [base]}
+  - {measure: org.4, document: proceso-autorizacion, covers: [base]}
+  - {measure: op.exp.7, document: procedimiento-incidentes, covers: [base]}
+matrix_defaults:
+  owner: irene
+  review_every_days: 365
+  reviewed_by: jorge
+  conclusion: Revisada con el acta anual de seguridad, los informes aportados y los documentos aprobados.

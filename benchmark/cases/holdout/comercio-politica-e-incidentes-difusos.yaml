@@ -1,0 +1,44 @@
+format: ens-benchmark-case/1
+id: comercio-politica-e-incidentes-difusos
+partition: holdout
+profile: comercio-online
+kind: defective
+mutations:
+  - op: set_answer
+    key: documentacion_gestion
+    value: Cada persona guarda los documentos donde le viene mejor.
+  - op: set_answer
+    key: documentacion_acceso
+    value: Sin definir.
+  - op: set_answer
+    key: incidentes_datos_personales
+    value: Si hay datos personales por medio, se verá en cada caso qué hacer.
+defects:
+  - id: documentacion-sin-gestion
+    layer: judgment
+    measure: org.1
+    target: {kind: document, ref: politica-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.1
+      clause: org.1.5
+      quote: >-
+        Las directrices para la estructuración de la documentación de seguridad del sistema, su
+        gestión y acceso.
+    rationale: >-
+      La política deja la custodia de los documentos al gusto de cada persona y el acceso «sin
+      definir»: no hay directriz de gestión ni de acceso que se pueda seguir o auditar.
+  - id: brechas-de-datos-sin-pauta
+    layer: judgment
+    measure: op.exp.7
+    target: {kind: document, ref: procedimiento-incidentes}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.exp.7
+      clause: op.exp.7.2
+      quote: >-
+        La gestión de incidentes que afecten a datos personales tendrá en cuenta lo dispuesto en el
+        Reglamento General de Protección de Datos
+    rationale: >-
+      El procedimiento de incidentes de una tienda con datos de clientes resuelve las brechas
+      de datos personales con «se verá en cada caso», sin quién decide ni referencia al RGPD.

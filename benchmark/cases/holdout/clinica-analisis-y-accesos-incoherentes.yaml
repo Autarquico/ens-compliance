@@ -1,0 +1,41 @@
+format: ens-benchmark-case/1
+id: clinica-analisis-y-accesos-incoherentes
+partition: holdout
+profile: clinica-dental
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: analisis-riesgos
+    file: analisis-riesgos.txt
+  - op: replace_evidence_text
+    alias: revision-accesos
+    file: revision-accesos.txt
+defects:
+  - id: analisis-de-otra-actividad
+    layer: judgment
+    measure: op.pl.1
+    target: {kind: evidence, alias: analisis-riesgos}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.pl.1
+      clause: op.pl.1.1
+      quote: Identifique los activos más valiosos del sistema.
+    rationale: >-
+      El análisis aportado es una plantilla de 2021 para un despacho jurídico: habla de
+      expedientes en papel y escrituras y no menciona las historias clínicas, el servidor ni el
+      programa de gestión que la política y el inventario describen.
+  - id: perfiles-de-administrador-para-todos
+    layer: judgment
+    measure: op.acc.4
+    target: {kind: evidence, alias: revision-accesos}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.acc.4
+      clause: op.acc.4.2
+      quote: >-
+        Mínimo privilegio: los privilegios de cada entidad, usuario o proceso se reducirán al
+        mínimo imprescindible para cumplir sus obligaciones o funciones.
+    rationale: >-
+      Las notas describen una cuenta de recepción compartida, todo el personal sanitario como
+      administrador y una baja sin tramitar, cuando los procedimientos dicen que cada perfil ve
+      solo lo de su puesto y que solo el responsable de sistemas concede permisos.

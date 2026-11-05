@@ -1,0 +1,7 @@
+Análisis de riesgos (plantilla de la gestoría, versión de 2021).
+
+Activos principales: los expedientes judiciales en papel, el archivo de escrituras y la
+centralita telefónica del despacho.
+Amenazas: inundación del archivo del sótano y extravío de expedientes en los juzgados.
+Salvaguardas: armario ignífugo y fotocopias de los expedientes.
+Riesgo residual: bajo. No se considera necesario revisarlo cada año.

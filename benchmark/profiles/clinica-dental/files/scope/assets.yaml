@@ -1,0 +1,31 @@
+assets:
+  - id: lap-direccion
+    type: laptop
+    deployment: deployed
+    hostname: lap-direccion.clinica-sonrisa.example
+    os: Windows 11 Pro
+    owner: Elena Muela
+    encrypted: true
+    usage: Dirección clínica, firma de informes y consulta de historias desde casa
+  - id: srv-clinica
+    type: server
+    deployment: deployed
+    hostname: srv-clinica.clinica-sonrisa.example
+    function: Programa de gestión clínica y carpeta compartida de radiografías
+    os: Windows Server 2022
+    environment: producción
+    location: Cuarto técnico cerrado con llave, planta baja de la clínica
+  - id: app-historias
+    type: application
+    deployment: deployed
+    service: Historias clínicas y citas
+    domain: historias.clinica-sonrisa.example
+    repo: proveedor-gestion-clinica/historias
+    database: db-pacientes
+  - id: db-pacientes
+    type: database
+    deployment: deployed
+    engine: Microsoft SQL Server 2022 Express
+    location: srv-clinica
+    data: Historias clínicas, radiografías, presupuestos y datos de facturación
+    backup: Diaria, cifrada, a un almacenamiento externo contratado

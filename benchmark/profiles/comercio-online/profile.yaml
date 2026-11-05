@@ -1,0 +1,203 @@
+format: ens-benchmark-profile/1
+fictional: true
+id: comercio-online
+title: Barro Ficticio Cerámica, tienda en línea (pyme ficticia de la partición reservada)
+clock:
+  start: "2026-10-06T07:45:00+00:00"
+categorization: {C: BAJO, I: BAJO, T: BAJO, A: BAJO, D: BAJO}
+people:
+  - id: oscar
+    name: Óscar Arcilla
+    roles: [security_officer]
+  - id: pablo
+    name: Pablo Horno
+    roles: [system_owner, system_administrator]
+  - id: nuria
+    name: Nuria Torno
+    roles: [management, information_owner, service_owner]
+applicability:
+  - measure: op.ext.1
+    applicable: true
+    justification: >-
+      Seleccionada como adicional: la tienda depende del alojamiento, la pasarela de pago y el
+      almacenamiento de copias, y el análisis de riesgos pide fijar con ellos un servicio mínimo.
+reinforcements:
+  op.acc.5: [R1]
+  op.acc.6: [R1]
+  mp.s.2: [R1]
+not_required_justification: >-
+  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de la
+  tienda no la pide.
+documents:
+  - {ref: politica-seguridad, approved_by: nuria}
+  - {ref: normativa-seguridad, approved_by: nuria}
+  - {ref: designacion-responsables, approved_by: nuria}
+  - {ref: procedimientos-seguridad, approved_by: oscar}
+  - {ref: proceso-autorizacion, approved_by: oscar}
+  - {ref: procedimiento-incidentes, approved_by: oscar}
+evidence:
+  - alias: inventario
+    file: evidence/inventario.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2027-04-01T00:00:00+00:00"
+    links:
+      - {measure: op.exp.1, covers: [base]}
+  - alias: github
+    file: collected/github.json
+    source: collected
+    links:
+      - {measure: op.acc.6, covers: [base], check: github.org_2fa_required}
+      - {measure: op.exp.4, covers: [base], check: github.dependabot_alerts_enabled}
+      - {measure: op.exp.10, covers: [base], check: github.secret_scanning_enabled}
+  - alias: actualizaciones
+    file: evidence/actualizaciones.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.4, covers: [base]}
+  - alias: registro-actividad
+    file: evidence/registro-actividad.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2027-03-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.8, covers: [base]}
+  - alias: pruebas-despliegue
+    file: evidence/pruebas-despliegue.txt
+    source: manual
+    asset: app-tienda
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: mp.sw.2, covers: [base]}
+  - alias: perimetro
+    file: evidence/perimetro.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: mp.com.1, covers: [base]}
+  - alias: copias
+    file: evidence/copias.txt
+    source: manual
+    asset: db-pedidos
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: mp.info.6, covers: [base]}
+  - alias: formacion
+    file: evidence/formacion.txt
+    source: manual
+    asset: lap-taller
+    valid_until: "2027-09-30T00:00:00+00:00"
+    links:
+      - {measure: mp.per.4, covers: [base]}
+  - alias: antimalware
+    file: evidence/antimalware.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.6, covers: [base]}
+  - alias: vigilancia
+    file: evidence/vigilancia.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.mon.1, covers: [base]}
+  - alias: contratos-proveedores
+    file: evidence/contratos-proveedores.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2027-06-30T00:00:00+00:00"
+    links:
+      - {measure: op.ext.1, covers: [base]}
+  - alias: acta-anual
+    file: evidence/acta-anual.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2027-09-30T00:00:00+00:00"
+    links:
+      - {measure: org.1, covers: [base]}
+      - {measure: org.2, covers: [base]}
+      - {measure: org.3, covers: [base]}
+      - {measure: org.4, covers: [base]}
+      - {measure: op.pl.1, covers: [base]}
+      - {measure: op.pl.2, covers: [base]}
+      - {measure: op.pl.3, covers: [base]}
+      - {measure: op.pl.4, covers: [base]}
+      - {measure: op.acc.1, covers: [base]}
+      - {measure: op.acc.2, covers: [base]}
+      - {measure: op.acc.4, covers: [base]}
+      - {measure: op.acc.5, covers: [base, R1]}
+      - {measure: op.acc.6, covers: [base, R1, R8, R9]}
+      - {measure: op.exp.2, covers: [base]}
+      - {measure: op.exp.3, covers: [base]}
+      - {measure: op.exp.7, covers: [base]}
+      - {measure: op.exp.10, covers: [base]}
+      - {measure: op.nub.1, covers: [base]}
+      - {measure: op.mon.2, covers: [base]}
+      - {measure: op.mon.3, covers: [base]}
+      - {measure: mp.if.1, covers: [base]}
+      - {measure: mp.if.2, covers: [base]}
+      - {measure: mp.if.3, covers: [base]}
+      - {measure: mp.if.4, covers: [base]}
+      - {measure: mp.if.5, covers: [base]}
+      - {measure: mp.if.7, covers: [base]}
+      - {measure: mp.per.2, covers: [base]}
+      - {measure: mp.per.3, covers: [base]}
+      - {measure: mp.eq.1, covers: [base]}
+      - {measure: mp.eq.3, covers: [base]}
+      - {measure: mp.eq.4, covers: [base]}
+      - {measure: mp.com.2, covers: [base]}
+      - {measure: mp.com.3, covers: [base]}
+      - {measure: mp.si.3, covers: [base]}
+      - {measure: mp.si.4, covers: [base]}
+      - {measure: mp.si.5, covers: [base]}
+      - {measure: mp.info.1, covers: [base]}
+      - {measure: mp.info.3, covers: [base]}
+      - {measure: mp.info.5, covers: [base]}
+      - {measure: mp.s.1, covers: [base]}
+      - {measure: mp.s.2, covers: [base, R1]}
+      - {measure: mp.s.3, covers: [base]}
+incident_drill:
+  alias: simulacro
+  by: oscar
+  title: Simulacro de pedido fraudulento con cambio de dirección de envío
+  action: Se retiene el pedido, se bloquea la cuenta del cliente y se avisa a la pasarela de pago
+  conclusion: El simulacro confirma que atención al cliente detecta el patrón y avisa al responsable de seguridad antes de preparar el envío.
+  auditable_events_detail: El panel ya registra los cambios de dirección de envío y los bloqueos de cuenta.
+  links:
+    - {measure: op.exp.9, covers: [base]}
+document_links:
+  - {measure: org.1, document: politica-seguridad, covers: [base]}
+  - {measure: org.1, document: designacion-responsables, covers: [base]}
+  - {measure: org.2, document: normativa-seguridad, covers: [base]}
+  - {measure: org.3, document: procedimientos-seguridad, covers: [base]}
+  - {measure: org.4, document: proceso-autorizacion, covers: [base]}
+  - {measure: op.exp.7, document: procedimiento-incidentes, covers: [base]}
+matrix:
+  - measure: op.acc.6
+    owner: oscar
+    review_every_days: 90
+    reviewed_by: pablo
+    assessment: COMPLIANT
+    conclusion: El doble factor es obligatorio en la organización del repositorio y en el panel.
+  - measure: op.exp.4
+    owner: oscar
+    review_every_days: 90
+    reviewed_by: pablo
+    assessment: COMPLIANT
+    conclusion: Los avisos de dependencias están activos y el registro semanal de actualizaciones está al día.
+  - measure: op.exp.10
+    owner: oscar
+    review_every_days: 90
+    reviewed_by: pablo
+    assessment: COMPLIANT
+    conclusion: El escaneo de secretos está activo en el repositorio y las claves están en el gestor de contraseñas.
+matrix_defaults:
+  owner: oscar
+  review_every_days: 365
+  reviewed_by: pablo
+  conclusion: Revisada con el acta anual de seguridad, los informes aportados y los documentos aprobados.

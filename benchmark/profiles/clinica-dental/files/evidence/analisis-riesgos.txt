@@ -1,0 +1,18 @@
+Análisis de riesgos de la Clínica Dental Sonrisa Ficticia, septiembre de 2026.
+Redactado por Irene Esmalte y revisado con la directora y el responsable de sistemas.
+
+Activos más valiosos: la base de datos de pacientes (historias, radiografías y alergias) y el
+programa de gestión clínica, sin el cual no se puede dar cita ni consultar tratamientos.
+
+Amenazas más probables:
+1. Correo fraudulento que suplanta al proveedor del programa para robar contraseñas.
+2. Avería o cifrado por programa malicioso del servidor del cuarto técnico.
+3. Consulta indebida de una historia por personal de la propia clínica.
+4. Robo del portátil de dirección fuera de la clínica.
+
+Salvaguardas: doble factor en el acceso remoto, antivirus gestionado en todos los equipos,
+copia nocturna cifrada fuera de la clínica, perfiles por puesto en el programa y revisión
+mensual de accesos, cifrado del disco del portátil.
+
+Riesgos residuales: una caída del proveedor de comunicaciones deja la clínica sin acceso a la
+plataforma del servicio de salud durante horas; se acepta y se atiende con la agenda en papel.

@@ -1,0 +1,41 @@
+format: ens-benchmark-case/1
+id: comercio-mantenimiento-y-registros-abandonados
+partition: holdout
+profile: comercio-online
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: actualizaciones
+    file: actualizaciones.txt
+  - op: replace_evidence_text
+    alias: registro-actividad
+    file: registro-actividad.txt
+defects:
+  - id: parches-sin-calendario
+    layer: judgment
+    measure: op.exp.4
+    target: {kind: evidence, alias: actualizaciones}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.exp.4
+      clause: op.exp.4.2
+      quote: >-
+        Se dispondrá de un procedimiento para analizar, priorizar y determinar cuándo aplicar las
+        actualizaciones de seguridad, parches, mejoras y nuevas versiones.
+    rationale: >-
+      El procedimiento aprobado fija revisión semanal y parches de seguridad en la semana, y el
+      inventario habla de Debian 12; la evidencia dice que el servidor sigue en una versión sin
+      soporte y que hay avisos críticos sin revisar desde mayo.
+  - id: registro-web-desactivado
+    layer: judgment
+    measure: op.exp.8
+    target: {kind: evidence, alias: registro-actividad}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.exp.8
+      clause: op.exp.8.2
+      quote: Se activarán los registros de actividad en los servidores.
+    rationale: >-
+      La nota reconoce el registro web apagado desde julio y un panel que no guarda acciones ni
+      resultados, mientras la documentación da por hecho un registro de accesos revisado cada
+      semana.

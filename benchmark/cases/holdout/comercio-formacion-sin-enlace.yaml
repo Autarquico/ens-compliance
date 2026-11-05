@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: comercio-formacion-sin-enlace
+partition: holdout
+profile: comercio-online
+kind: defective
+mutations:
+  - op: unlink_evidence
+    alias: formacion
+    measure: mp.per.4
+defects:
+  - id: mp-per-4-sin-registro
+    layer: deterministic
+    measure: mp.per.4
+    target: {kind: none}
+    expected_rule: EVIDENCE_MISSING
+    requirement:
+      measure: mp.per.4
+      clause: mp.per.4
+      quote: Además, se evaluará la eficacia de las acciones formativas llevadas a cabo.
+    rationale: >-
+      Sin el registro de la sesión de septiembre, la formación del equipo de la tienda no tiene
+      ninguna evidencia enlazada.

@@ -1,0 +1,8 @@
+Informe mensual de la consola del antivirus gestionado, septiembre de 2026.
+Exportado el 30 de septiembre de 2026 por Jorge Molar.
+
+Equipos protegidos: 6 de 6 (servidor, portátil de dirección, recepción y tres gabinetes).
+Protección en tiempo real activa en todos; firmas actualizadas en las últimas 24 horas.
+Análisis de memorias y adjuntos antes de abrirlos: activado por política.
+Detecciones del mes: 2 adjuntos maliciosos en correos de supuestos proveedores, bloqueados y
+eliminados antes de abrirse. Ningún equipo infectado.

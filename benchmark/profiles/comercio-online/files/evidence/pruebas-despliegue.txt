@@ -1,0 +1,10 @@
+Historial de despliegues de la tienda, septiembre de 2026 (exportado del repositorio).
+
+Cada cambio entra por una petición revisada por otra persona y solo se despliega si pasan las
+pruebas automáticas, que incluyen las de seguridad: acceso al panel sin sesión, cambio de
+precio desde el navegador y formularios con código inyectado.
+- PR 212, nuevo filtro por colección: revisado por Nuria Torno; pruebas en verde; desplegado
+  el 10 de septiembre a las 8:15.
+- PR 215, cambio de la empresa de transporte: revisado por Óscar Arcilla; pruebas en verde;
+  probado antes en el entorno de pruebas con pedidos ficticios; desplegado el 22 de septiembre.
+Ningún despliegue directo a producción en el mes.

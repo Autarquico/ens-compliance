@@ -1,0 +1,7 @@
+Estado del antivirus a 30 de septiembre de 2026, anotado por Jorge Molar.
+
+- Recepción y gabinetes 1 y 2: antivirus gratuito, firmas al día.
+- Gabinete 3: licencia caducada en junio; avisa en cada arranque.
+- Portátil de dirección: firmas de hace tres meses porque casi no se conecta a la red.
+- Servidor: sin antivirus; se desinstaló en mayo porque ralentizaba el programa de gestión.
+Los adjuntos de correo se abren directamente; no hay análisis previo de memorias USB.

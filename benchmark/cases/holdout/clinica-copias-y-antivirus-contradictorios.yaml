@@ -1,0 +1,43 @@
+format: ens-benchmark-case/1
+id: clinica-copias-y-antivirus-contradictorios
+partition: holdout
+profile: clinica-dental
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: copias
+    file: copias.txt
+  - op: replace_evidence_text
+    alias: antivirus
+    file: antivirus.txt
+defects:
+  - id: copias-usb-sin-cifrar
+    layer: judgment
+    measure: mp.info.6
+    target: {kind: evidence, alias: copias}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.1
+      quote: >-
+        Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o
+        intencionadamente.
+    rationale: >-
+      Los procedimientos aprobados prometen copia nocturna cifrada de la base de pacientes y
+      restauración trimestral; la hoja aportada muestra copias quincenales de solo las
+      radiografías a un USB sin cifrar que sale de la clínica y ninguna restauración probada.
+  - id: servidor-sin-antivirus
+    layer: judgment
+    measure: op.exp.6
+    target: {kind: evidence, alias: antivirus}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.exp.6
+      clause: op.exp.6.2
+      quote: >-
+        Se instalará software de protección frente a código dañino en todos los equipos: puestos
+        de usuario, servidores y elementos perimetrales.
+    rationale: >-
+      El estado anotado reconoce el servidor sin protección desde mayo, un gabinete con la
+      licencia vencida y el portátil con firmas viejas, frente a la normativa que exige
+      antivirus en todos los equipos y el análisis de memorias y adjuntos.

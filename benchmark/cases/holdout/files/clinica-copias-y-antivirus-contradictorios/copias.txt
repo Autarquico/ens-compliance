@@ -1,0 +1,9 @@
+Hoja de copias de la clínica, septiembre de 2026 (rellenada a mano y escaneada).
+Responsable: Jorge Molar.
+
+- Sábado 6: copia de la carpeta de radiografías al disco USB de recepción.
+- Sábado 20: no se hizo; el disco estaba en casa de Jorge.
+- Sábado 27: copia de la carpeta de radiografías al disco USB de recepción.
+La base de datos de pacientes no se copia aparte: el programa «ya la guarda».
+El disco USB no está cifrado y se lleva a casa los fines de semana para que no se pierda.
+Pruebas de restauración: ninguna desde que se compró el disco en 2024.
