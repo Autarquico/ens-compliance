@@ -1,0 +1,164 @@
+{
+  "schema_version": "1.0",
+  "source": "github",
+  "collector": "github",
+  "collected_at": "2026-09-30T19:00:00Z",
+  "asset_id": "gh-robledal",
+  "data": {
+    "organization": "robledal-sistemas",
+    "error": null,
+    "sections": {
+      "organization": {
+        "status": "SUCCESS",
+        "reason": null,
+        "items": [],
+        "summary": {
+          "two_factor_requirement": {
+            "status": "SUCCESS",
+            "reason": null,
+            "enabled": false
+          }
+        }
+      },
+      "repositories": {
+        "status": "SUCCESS",
+        "reason": null,
+        "items": [
+          {
+            "name": "portal",
+            "archived": false,
+            "default_branch": "main",
+            "admin": true
+          },
+          {
+            "name": "infra",
+            "archived": false,
+            "default_branch": "main",
+            "admin": true
+          }
+        ],
+        "summary": {
+          "missing_from_token": []
+        }
+      },
+      "secret_scanning": {
+        "status": "SUCCESS",
+        "reason": null,
+        "items": [
+          {
+            "repository": "portal",
+            "status": "SUCCESS",
+            "state": "enabled"
+          },
+          {
+            "repository": "infra",
+            "status": "SUCCESS",
+            "state": "enabled"
+          }
+        ],
+        "summary": {}
+      },
+      "dependabot": {
+        "status": "SUCCESS",
+        "reason": null,
+        "items": [
+          {
+            "repository": "portal",
+            "status": "SUCCESS",
+            "state": "enabled"
+          },
+          {
+            "repository": "infra",
+            "status": "SUCCESS",
+            "state": "enabled"
+          }
+        ],
+        "summary": {}
+      },
+      "branch_rules": {
+        "status": "SUCCESS",
+        "reason": null,
+        "items": [
+          {
+            "repository": "portal",
+            "status": "SUCCESS",
+            "rulesets": {
+              "status": "SUCCESS",
+              "items": [
+                {
+                  "id": 21,
+                  "status": "SUCCESS",
+                  "enforcement": "active",
+                  "bypass_actors": []
+                }
+              ]
+            },
+            "effective_rules": {
+              "status": "SUCCESS",
+              "reason": null,
+              "rules": [
+                {
+                  "type": "pull_request",
+                  "ruleset_id": 21
+                },
+                {
+                  "type": "non_fast_forward",
+                  "ruleset_id": 21
+                },
+                {
+                  "type": "deletion",
+                  "ruleset_id": 21
+                }
+              ]
+            },
+            "classic": {
+              "status": "SUCCESS",
+              "reason": null,
+              "state": "unprotected"
+            }
+          },
+          {
+            "repository": "infra",
+            "status": "SUCCESS",
+            "rulesets": {
+              "status": "SUCCESS",
+              "items": [
+                {
+                  "id": 22,
+                  "status": "SUCCESS",
+                  "enforcement": "active",
+                  "bypass_actors": []
+                }
+              ]
+            },
+            "effective_rules": {
+              "status": "SUCCESS",
+              "reason": null,
+              "rules": [
+                {
+                  "type": "pull_request",
+                  "ruleset_id": 22
+                },
+                {
+                  "type": "non_fast_forward",
+                  "ruleset_id": 22
+                },
+                {
+                  "type": "deletion",
+                  "ruleset_id": 22
+                }
+              ]
+            },
+            "classic": {
+              "status": "SUCCESS",
+              "reason": null,
+              "state": "unprotected"
+            }
+          }
+        ],
+        "summary": {}
+      }
+    }
+  },
+  "collection_status": "SUCCESS"
+}

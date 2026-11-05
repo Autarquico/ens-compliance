@@ -1,0 +1,25 @@
+format: ens-benchmark-case/1
+id: ge-comite-indeterminado
+partition: dev
+profile: gestoria
+kind: defective
+mutations:
+  - op: set_answer
+    key: comite.0.integrantes
+    value: Las personas que la gerencia convoque en cada ocasión.
+  - op: set_answer
+    key: comite.0.ambito
+    value: Los asuntos de seguridad que vayan surgiendo.
+defects:
+  - id: comite-sin-integrantes-ni-ambito
+    layer: judgment
+    measure: org.1
+    target: {kind: document, ref: politica-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.1
+      clause: org.1.4
+      quote: detallando su ámbito de responsabilidad, las personas integrantes y la relación con otros elementos de la organización
+    rationale: >-
+      La política no dice quién forma el Comité de Seguridad ni de qué se ocupa: «las personas que
+      la gerencia convoque» y «los asuntos que vayan surgiendo» no detallan integrantes ni ámbito.

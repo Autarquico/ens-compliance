@@ -1,0 +1,13 @@
+Ficha de cumplimiento del proveedor de la aplicación de gestión — Gestoría Albar S.L. (ficticia)
+Archivada por Elena Tamarit el 20 de septiembre de 2026.
+
+Servicio: aplicación de gestión fiscal y laboral como servicio (software como servicio), con
+centro de datos en la UE.
+Declaración del proveedor: certificación de conformidad con el ENS, categoría MEDIA, para el
+servicio contratado, publicada en su página de cumplimiento y comprobada el 20 de septiembre en la
+relación de entidades certificadas. La gestoría vuelve a comprobarla cada seis meses.
+Contrato: incluye encargo de tratamiento, cifrado de los datos en reposo y en tránsito,
+jurisdicción de los datos en la UE, informe anual de pruebas de penetración y aviso de incidentes
+en 24 horas.
+Almacenamiento de copias: su proveedor declara conformidad con el ENS, categoría MEDIA, vigente
+hasta junio de 2027.

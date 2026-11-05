@@ -1,0 +1,12 @@
+Registro de claves criptográficas — Robledal Sistemas S.L. (empresa ficticia)
+Mantiene: Tomás Pradera. Última revisión: 23 de septiembre de 2026.
+
+| Clave                     | Generación                    | Custodia                    | Rotación  |
+|---------------------------|-------------------------------|-----------------------------|-----------|
+| Clave del repositorio restic | Generada en lap-nora, nunca en el servidor | Bóveda Producción | Anual   |
+| Credencial del túnel       | Generada por la red perimetral | Solo en vps-portal          | Al cambiar de servidor |
+| Certificados TLS del portal | Emitidos por la red perimetral | Gestión del proveedor      | Automática |
+| Claves SSH de administración | En cada portátil, con frase  | Llavero cifrado del portátil | Anual   |
+
+Las claves retiradas (la clave SSH del portátil dado de baja) se revocaron el 2 de septiembre; la
+copia archivada de la clave restic anterior está en el kit de recuperación, en el armario cerrado.

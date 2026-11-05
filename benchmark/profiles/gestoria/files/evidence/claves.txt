@@ -1,0 +1,11 @@
+Registro de claves de Gestoría Albar S.L. (empresa ficticia)
+Mantiene: Raúl Monteagudo. Revisado el 22 de septiembre de 2026.
+
+- Clave de cifrado de la copia externa: generada por el proveedor informático en el portátil de
+  Pilar Aranda, nunca guardada en el servidor; copia impresa en sobre cerrado en la caja fuerte.
+- Claves de recuperación del cifrado de los cuatro portátiles: en la consola del proveedor y en
+  copia impresa en la caja fuerte.
+- Certificados de representante de la gerente para las sedes electrónicas: en tarjeta con PIN,
+  custodiada por la gerente.
+Las claves de recuperación del portátil dado de baja en julio se destruyeron tras el borrado del
+disco, con anotación en este registro.

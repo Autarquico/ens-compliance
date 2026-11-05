@@ -1,0 +1,15 @@
+Informe de copias de seguridad — tercer trimestre de 2026
+Gestoría Albar S.L. (empresa ficticia). Elabora: Pilar Aranda, 25 de septiembre de 2026.
+
+Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado, con 30 días
+de retención. Copia externa: diaria, cifrada antes de salir de la oficina, al almacenamiento en la
+nube, con 30 copias diarias y una mensual durante un año. Acceso a las copias: solo la cuenta de
+servicio del servidor y Pilar Aranda; la clave de cifrado está en el sobre cerrado de la caja
+fuerte de la gerencia.
+
+Resultados: 89 de 90 copias externas correctas; la del 3 de agosto falló por corte de la línea y
+se repitió al día siguiente. Todas las copias locales correctas.
+
+Prueba de restauración semestral: el 18 de septiembre se restauró desde la nube la carpeta de un
+cliente a una ubicación temporal y se compararon sus 214 ficheros con los del servidor, sin
+diferencias.

@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: ge-formacion-caducada
+partition: dev
+profile: gestoria
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: formacion
+    file: formacion.txt
+defects:
+  - id: formacion-no-anual
+    layer: judgment
+    measure: mp.per.4
+    target: {kind: evidence, alias: formacion}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: mp.per.4
+      clause: mp.per.4.1
+      quote: Se formará regularmente al personal en aquellas materias relativas a seguridad de la información que requiera el desempeño de sus funciones
+    rationale: >-
+      La normativa reconoce el derecho a formación al incorporarse y una vez al año; la evidencia
+      muestra que la última sesión fue en 2024 y que dos personas incorporadas en 2025 no han
+      recibido ninguna.

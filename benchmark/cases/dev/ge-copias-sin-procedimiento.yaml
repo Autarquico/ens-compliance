@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ge-copias-sin-procedimiento
+partition: dev
+profile: gestoria
+kind: defective
+mutations:
+  - op: set_answer
+    key: info_copias.0.pasos
+    value: Se hacen copias cuando hay tiempo.
+defects:
+  - id: procedimiento-copias-vago
+    layer: judgment
+    measure: org.3
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.3
+      clause: org.3.4
+      quote: c) La realización de copias.
+    rationale: >-
+      Los procedimientos no precisan cómo se realizan las copias de los expedientes: ni frecuencia,
+      ni destino, ni retención, ni pruebas; «cuando hay tiempo» no es un procedimiento.

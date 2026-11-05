@@ -1,0 +1,19 @@
+Revisión trimestral de usuarios y permisos — Gestoría Albar S.L. (empresa ficticia)
+Fecha: 23 de septiembre de 2026. Realiza: Pilar Aranda. Firma: Raúl Monteagudo.
+
+Correo e identidad en la nube: 4 cuentas nominales, una por persona, con doble factor obligatorio
+por aplicación de autenticación; 1 cuenta de administración del proveedor informático, nominal
+del técnico asignado, con doble factor; ninguna cuenta compartida.
+
+Servidor de ficheros: 4 usuarios nominales; las carpetas de clientes tienen permisos por grupo
+(fiscal, laboral, administración); se retiraron a Jorge Salvatierra los permisos de dos clientes
+que pasó a llevar Raúl Monteagudo. Las cuentas se bloquean tras 5 intentos fallidos y solo las
+desbloquea Pilar Aranda.
+
+Aplicación de gestión: 4 usuarios con doble factor y perfiles por área; 186 accesos de clientes
+al portal con contraseña de 10 caracteres mínimo; 7 accesos de clientes dados de baja este
+trimestre el día en que terminó el contrato.
+
+Credenciales: cada persona firmó al incorporarse la recepción y custodia de sus credenciales; las
+contraseñas se cambian si hay sospecha y cada vez que el proveedor lo pide por política.
+Conclusión: sin desviaciones.

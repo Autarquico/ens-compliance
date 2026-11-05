@@ -1,0 +1,14 @@
+Informe de mantenimiento de septiembre de 2026 del proveedor informático externo para Gestoría
+Albar S.L. (empresa ficticia). Revisado por Pilar Aranda el 30 de septiembre de 2026.
+
+Configuración: los portátiles se entregan desde la imagen base del proveedor, sin cuentas locales
+por defecto, con cifrado de disco, cortafuegos y antivirus gestionado; el servidor solo comparte
+carpetas y ejecuta el programa de copias. Cualquier cambio de configuración lo pide Pilar Aranda
+y queda en el registro de tickets del proveedor.
+
+Actualizaciones: servidor actualizado el martes 8 de septiembre fuera de horario, con reinicio
+comprobado; los cuatro portátiles con las actualizaciones de seguridad del mes instaladas entre el
+9 y el 12 de septiembre. Aplicación de gestión: la actualiza el proveedor del servicio.
+
+Código dañino: antivirus activo y actualizado en los cuatro portátiles y en el servidor; dos
+detecciones de adjuntos maliciosos en cuarentena, sin ejecución.

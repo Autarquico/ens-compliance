@@ -1,0 +1,16 @@
+Informe mensual de configuración y actualizaciones — septiembre de 2026
+Robledal Sistemas S.L. (empresa ficticia). Elabora: Nora Vilaplana, 29 de septiembre de 2026.
+
+Configuración base: el servidor se instaló desde la plantilla de infra, sin cuentas por defecto y
+con SSH solo por clave. Los portátiles siguen la ficha de alta.
+
+Actualizaciones:
+- vps-portal: última actualización de paquetes el 14 de junio de 2026. En septiembre hay 37
+  actualizaciones de seguridad pendientes, 4 de ellas del núcleo; se aplazan hasta que haya una
+  ventana sin entregas de clientes, sin fecha prevista.
+- Portátiles: lap-lucia y lap-nora al día; lap-tomas sigue en una versión de julio porque la
+  actualización rompía una herramienta de desarrollo.
+- Portal: 6 alertas de dependencias vulnerables abiertas, 2 de ellas críticas desde agosto; no se
+  han revisado.
+
+Cambios de configuración: ninguno registrado este mes.

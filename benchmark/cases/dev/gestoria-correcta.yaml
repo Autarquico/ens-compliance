@@ -1,0 +1,5 @@
+format: ens-benchmark-case/1
+id: gestoria-correcta
+partition: dev
+profile: gestoria
+kind: correct

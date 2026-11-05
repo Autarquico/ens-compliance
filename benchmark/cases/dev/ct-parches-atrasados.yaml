@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: ct-parches-atrasados
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: actualizaciones
+    file: actualizaciones.txt
+defects:
+  - id: actualizaciones-sin-aplicar
+    layer: judgment
+    measure: op.exp.4
+    target: {kind: evidence, alias: actualizaciones}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.exp.4
+      clause: op.exp.4.2
+      quote: Se dispondrá de un procedimiento para analizar, priorizar y determinar cuándo aplicar las actualizaciones de seguridad, parches, mejoras y nuevas versiones.
+    rationale: >-
+      Los procedimientos obligan a actualizar el servidor cada lunes y los portátiles en siete
+      días; el informe muestra el servidor sin actualizar desde junio, un portátil con dos meses
+      de retraso y alertas de dependencias vulnerables sin atender.

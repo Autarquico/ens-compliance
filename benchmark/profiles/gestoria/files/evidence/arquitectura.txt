@@ -1,0 +1,21 @@
+Arquitectura de seguridad de Gestoría Albar S.L. (empresa ficticia)
+Documento preparado por el proveedor informático y revisado por Pilar Aranda el 12 de septiembre
+de 2026.
+
+Instalaciones: oficina en planta baja con una zona de recepción y una zona de trabajo separada por
+puerta con llave; el servidor está en un armario rack cerrado con llave en la zona de trabajo,
+con su SAI. Puntos de acceso: puerta principal con alarma y puerta de la zona de trabajo.
+
+Sistema: cuatro portátiles, el servidor de ficheros, la impresora y el router. Conexiones al
+exterior: una línea de fibra con el router del operador detrás de un cortafuegos gestionado por el
+proveedor; el correo, la aplicación de gestión y el almacenamiento de copias están en la nube.
+Puestos de administración: el portátil de Pilar Aranda y la consola remota del proveedor.
+
+Líneas de defensa: cortafuegos perimetral con todo el tráfico entrante bloqueado salvo la VPN
+cifrada que usan los portátiles en teletrabajo y la conexión remota del proveedor, que se habilita
+para cada intervención. La red de invitados está separada de la de trabajo.
+
+Identificación y autenticación: cuentas nominales del correo en la nube con doble factor, que dan
+acceso a los portátiles; cuentas nominales en el servidor y en la aplicación de gestión, esta
+también con doble factor. Los clientes acceden al portal de la aplicación de gestión con su
+usuario y contraseña.

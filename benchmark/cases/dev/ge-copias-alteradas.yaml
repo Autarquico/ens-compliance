@@ -1,0 +1,30 @@
+format: ens-benchmark-case/1
+id: ge-copias-alteradas
+partition: dev
+profile: gestoria
+kind: defective
+judgment: false
+mutations:
+  - op: tamper_artifact
+    alias: copias
+defects:
+  - id: informe-copias-alterado
+    layer: deterministic
+    measure: mp.info.6
+    target: {kind: evidence, alias: copias}
+    expected_rule: HASH_MISMATCH
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.1
+      quote: Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o intencionadamente.
+    rationale: El informe de copias se editó después de importarlo y ya no es el que se aportó.
+  - id: copias-sin-evidencia-valida
+    layer: deterministic
+    measure: mp.info.6
+    target: {kind: none}
+    expected_rule: EVIDENCE_MISSING
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.1
+      quote: Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o intencionadamente.
+    rationale: El informe alterado era la única evidencia de las copias, así que la medida se queda sin evidencia válida.

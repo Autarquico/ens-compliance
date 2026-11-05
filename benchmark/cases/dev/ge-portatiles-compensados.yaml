@@ -1,0 +1,25 @@
+format: ens-benchmark-case/1
+id: ge-portatiles-compensados
+partition: dev
+profile: gestoria
+kind: defective
+mutations:
+  - op: compensate
+    measure: mp.eq.3
+    measures: [mp.eq.1]
+    replaces: [base]
+    justification: Los portátiles casi nunca salen de la oficina y, cuando están en ella, el puesto despejado y el armario con llave ya los protegen.
+defects:
+  - id: portatiles-compensados-por-puesto-despejado
+    layer: judgment
+    measure: mp.eq.3
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: mp.eq.3
+      clause: mp.eq.3
+      quote: Los equipos (ordenadores portátiles, tabletas, etc.) que sean susceptibles de salir de las instalaciones de la organización
+    rationale: >-
+      Los cuatro equipos son portátiles y la gestoría autoriza el teletrabajo con VPN: salen de la
+      oficina. El puesto despejado no cubre el inventario de portátiles, el aviso de pérdida ni la
+      limitación del acceso remoto que exige la medida.

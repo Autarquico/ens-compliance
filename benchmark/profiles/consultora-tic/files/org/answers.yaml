@@ -1,0 +1,220 @@
+# Respuestas de org-docs de Robledal Sistemas S.L. (empresa ficticia del banco de defectos).
+organizacion: Robledal Sistemas S.L., consultora de desarrollo y mantenimiento de aplicaciones web para pymes y ayuntamientos
+direccion: La gerente, Lucía Robledal, administradora única de Robledal Sistemas S.L.
+firmante_direccion: Lucía Robledal
+mision: Desarrollamos y mantenemos aplicaciones web a medida para unos 15 clientes, y les damos un portal donde siguen sus proyectos, abren tickets e intercambian ficheros con nosotros.
+objetivos_seguridad:
+  - Que los ficheros y tickets que los clientes suben al portal solo los vea el cliente y el equipo asignado.
+  - Recuperar el portal y sus datos en menos de dos días laborables si falla el servidor o el proveedor de nube.
+  - Que ningún cambio llegue a producción sin revisión de otra persona del equipo.
+  - Que las tres personas del equipo usen doble factor en todos los servicios corporativos.
+marco_legal:
+  - Reglamento General de Protección de Datos (RGPD) y Ley Orgánica 3/2018 (LOPDGDD).
+  - Real Decreto 311/2022 (ENS), exigido en el contrato de mantenimiento con el Ayuntamiento de Valdeprueba.
+  - Ley 34/2002 de servicios de la sociedad de la información y de comercio electrónico.
+  - Contratos de encargo de tratamiento firmados con cada cliente del portal.
+riesgos_datos_personales: >-
+  El portal guarda nombres, correos y teléfonos de las personas de contacto de los clientes y, en
+  algunos tickets, capturas de pantalla con datos de ciudadanos del ayuntamiento. Una filtración
+  expondría esos datos de contacto y de ciudadanos; una pérdida dejaría a los clientes sin el
+  historial de sus proyectos.
+resp_informacion: Lucía Robledal
+resp_informacion_funciones: Decide qué información de clientes se guarda en el portal, quién del equipo accede a cada proyecto y cuánto tiempo se conserva tras cerrar el contrato.
+resp_servicio: Lucía Robledal
+resp_servicio_funciones: Fija con cada cliente los plazos de respuesta del soporte y la disponibilidad comprometida del portal, y decide cuándo se avisa a los clientes de una interrupción.
+resp_seguridad: Tomás Pradera
+resp_seguridad_funciones: Decide las medidas de seguridad, revisa cada trimestre los accesos, las copias y las alertas, mantiene el análisis de riesgos e informa a la gerente de los incidentes.
+resp_sistema: Nora Vilaplana
+resp_sistema_funciones: Administra el servidor, la nube, la identidad corporativa y los despliegues, aplica las medidas que decide el responsable de seguridad y vigila la operación diaria.
+designacion_procedimiento: La gerente nombra por escrito a cada responsable, lo comunica por correo a las otras dos personas y guarda el nombramiento firmado en la unidad compartida Seguridad.
+renovacion_procedimiento: La gerente revisa los nombramientos cada mes de enero; si una persona deja la empresa o cambia de funciones, firma un nuevo nombramiento en la misma semana y lo comunica por correo.
+coordinacion: Los tres responsables se reúnen el primer martes de cada mes por videoconferencia; Tomás Pradera redacta el acta y la guarda en la unidad compartida Seguridad.
+resolucion_conflictos: Decide la gerente en un plazo de cinco días laborables y lo deja escrito en el acta de la reunión siguiente.
+comite:
+  - nombre: Comité de Seguridad
+    ambito: Revisión mensual de incidentes, accesos, copias, actualizaciones y cambios del portal.
+    integrantes: Lucía Robledal, Tomás Pradera, Nora Vilaplana
+    relacion: Informa a la gerencia; Nora Vilaplana traslada sus decisiones al proveedor de nube cuando hace falta.
+documentacion_estructura: Seis documentos (política, designación, normativa, procedimientos, proceso de autorización y procedimiento de incidentes) en la unidad compartida Seguridad, con versión y fecha en el nombre del fichero.
+documentacion_gestion: Tomás Pradera custodia los documentos, los revisa cada año o tras un cambio importante del sistema y conserva las versiones anteriores en la carpeta Histórico.
+documentacion_acceso: Las tres personas pueden leerlos; solo Tomás Pradera y la gerente pueden modificarlos.
+difusion_personal: Se entrega por correo a cada persona al incorporarse y tras cada cambio, con acuse de lectura que Tomás Pradera archiva.
+servicios_externalizados: "sí"
+poc_servicios:
+  - servicio: Mantenimiento de la sede electrónica y del portal de proyectos
+    cliente: Ayuntamiento de Valdeprueba
+    poc: Tomás Pradera, seguridad@robledal.example
+    relacion: Es el propio responsable de la seguridad de Robledal Sistemas S.L.
+personas:
+  - nombre: Lucía Robledal
+    cargo: Gerente
+    contacto: lucia@robledal.example
+  - nombre: Tomás Pradera
+    cargo: Desarrollador sénior
+    contacto: tomas@robledal.example
+  - nombre: Nora Vilaplana
+    cargo: Administradora de sistemas
+    contacto: nora@robledal.example
+relacion_seguridad_sistema: distintas y sin dependencia jerárquica
+uso_equipos:
+  - Los portátiles son de la empresa, llevan el disco cifrado y solo se instalan programas aprobados por Nora Vilaplana.
+  - La sesión se bloquea al levantarse del puesto y de forma automática a los cinco minutos.
+  - Los portátiles no se prestan a familiares ni se usan para fines personales.
+uso_servicios:
+  - Todas las cuentas corporativas (correo, código, nube, gestor de contraseñas) usan doble factor.
+  - Los ficheros de clientes se intercambian solo por el portal, nunca por correo personal ni mensajería.
+  - Las contraseñas se guardan únicamente en el gestor de contraseñas corporativo.
+uso_instalaciones:
+  - En el espacio de coworking los portátiles no se dejan desatendidos y se guardan en la taquilla con llave.
+  - En teletrabajo se trabaja solo desde la red de casa o con la conexión del móvil, nunca en redes públicas abiertas.
+uso_indebido:
+  - Compartir una cuenta o una contraseña, incluso entre personas del equipo.
+  - Copiar datos de clientes a un servicio o dispositivo personal.
+  - Desactivar el doble factor o el cifrado del disco.
+derechos_personal:
+  - Recibir formación en seguridad al incorporarse y una vez al año.
+  - Consultar dudas al responsable de seguridad sin que suponga una sanción.
+deberes_personal:
+  - Comunicar en el mismo día cualquier incidente o sospecha.
+  - Custodiar sus credenciales y cambiarlas si sospecha que otra persona las conoce.
+medidas_disciplinarias: Según el convenio colectivo estatal de empresas de consultoría y el Estatuto de los Trabajadores. La gerente califica la falta como leve, grave o muy grave, oye a la persona afectada y decide la sanción, que va de la amonestación escrita al despido en las muy graves.
+procedimientos:
+  - tarea: Alta y baja de cuentas
+    quien: Administradora de sistemas
+    pasos: Recibe la petición escrita de la gerente, crea o desactiva la cuenta en la identidad corporativa, el código y el gestor de contraseñas y lo anota en el registro de accesos el mismo día.
+    herramienta: Consola de la identidad corporativa y registro de accesos
+    evidencia: Petición de la gerente y registro de accesos
+  - tarea: Copia de seguridad diaria
+    quien: Administradora de sistemas
+    pasos: Revisa cada mañana el informe de la copia nocturna de restic y, si falla, la repite y lo anota.
+    herramienta: restic y correo de informe
+    evidencia: Informe de copias y registro de incidencias
+  - tarea: Actualización de equipos y servidor
+    quien: Administradora de sistemas
+    pasos: Aplica las actualizaciones de seguridad del servidor cada lunes y las de los portátiles en un máximo de siete días desde su publicación.
+    herramienta: Gestor de paquetes del sistema y actualizaciones del sistema operativo
+    evidencia: Informe mensual de actualizaciones
+  - tarea: Puesta en producción de cambios
+    quien: Desarrollador sénior
+    pasos: Cada cambio entra por una solicitud de cambios revisada por otra persona; las pruebas automáticas deben pasar antes del despliegue.
+    herramienta: Alojamiento de código y su integración continua
+    evidencia: Historial de solicitudes de cambios y ejecuciones de pruebas
+anomalias_identificacion:
+  - Alertas del cortafuegos de aplicaciones o del túnel con picos de peticiones bloqueadas.
+  - Avisos de inicio de sesión desde un país o dispositivo desconocido.
+  - Correos que piden credenciales, pagos urgentes o cambios de cuenta bancaria.
+anomalias_comunicacion: Se avisa a Tomás Pradera por el canal de chat del equipo o a seguridad@robledal.example en cuanto se detecta, y como máximo el mismo día.
+anomalias_registro: Tomás Pradera anota fecha, quién avisa y descripción en el registro de incidentes de la herramienta.
+info_acceso:
+  - informacion: Datos de clientes en el portal (nivel bajo)
+    quien: Responsable de la información
+    pasos: Cada persona solo ve los proyectos de los clientes que tiene asignados; los permisos se revisan cada trimestre.
+    herramienta: Permisos por proyecto del portal
+    evidencia: Acta de revisión trimestral de accesos
+info_almacenamiento:
+  - informacion: Datos de clientes en el portal (nivel bajo)
+    quien: Administradora de sistemas
+    pasos: Se guardan solo en la base de datos y el almacenamiento del servidor, con disco cifrado; nunca en los portátiles salvo lo imprescindible para un soporte puntual.
+    herramienta: Servidor con cifrado de disco
+    evidencia: Configuración del servidor
+info_copias:
+  - informacion: Datos de clientes en el portal (nivel bajo)
+    quien: Administradora de sistemas
+    pasos: Copia diaria cifrada con restic a un almacenamiento en otra región, con retención de 30 copias diarias y 12 mensuales, y prueba de restauración cada trimestre.
+    herramienta: restic y almacenamiento de objetos
+    evidencia: Informe de copias y acta de la prueba de restauración
+info_etiquetado:
+  - informacion: Discos externos con copias puntuales
+    quien: Responsable de la seguridad
+    pasos: Cada disco lleva una etiqueta con su número y su responsable y se anota en el inventario de soportes.
+    herramienta: Etiquetas e inventario de soportes
+    evidencia: Inventario de soportes
+info_transmision:
+  - informacion: Datos de clientes en el portal (nivel bajo)
+    quien: Todo el personal
+    pasos: Se transmiten solo por el portal, con conexión cifrada, o por el correo corporativo con enlace caducable.
+    herramienta: Portal de proyectos y correo corporativo
+    evidencia: Registro de descargas del portal
+info_otras:
+  not_applicable: true
+  reason: No hay otras actividades de tratamiento; el borrado de soportes se recoge en el inventario de soportes.
+aut_instalaciones:
+  - elemento: Puesto en el espacio de coworking
+    quien: Gerente
+    solicitud: Petición por correo a la gerente
+    registro: Contrato del coworking archivado en la unidad Seguridad
+aut_instalaciones_alt:
+  - elemento: Teletrabajo desde el domicilio
+    quien: Gerente
+    solicitud: Petición por correo indicando persona y dirección
+    registro: Autorización de teletrabajo firmada
+aut_equipos:
+  - elemento: Portátiles y servidores nuevos
+    quien: Responsable del sistema
+    solicitud: Ficha de alta con la configuración base
+    registro: Inventario de activos actualizado
+aut_criptografia:
+  - elemento: Claves de restic, del túnel y certificados
+    quien: Responsable de la seguridad
+    solicitud: Petición razonada por escrito
+    registro: Registro de claves criptográficas
+aut_aplicaciones:
+  - elemento: Nuevas versiones del portal y servicios en la nube
+    quien: Responsable del sistema
+    solicitud: Solicitud de cambios revisada
+    registro: Historial de solicitudes de cambios
+aut_enlaces:
+  - elemento: Conexión con la sede electrónica del ayuntamiento cliente
+    quien: Responsable de la seguridad
+    solicitud: Petición por escrito con la finalidad del enlace
+    registro: Registro de enlaces autorizados
+aut_comunicaciones:
+  - elemento: Correo corporativo, chat del equipo y videoconferencia
+    quien: Responsable del sistema
+    solicitud: Alta en la identidad corporativa
+    registro: Registro de servicios autorizados
+aut_comunicaciones_alt:
+  - elemento: Conexión compartida desde el móvil corporativo
+    quien: Responsable del sistema
+    solicitud: Aviso por el chat del equipo
+    registro: Registro de servicios autorizados
+aut_soportes:
+  - elemento: Discos externos para copias puntuales
+    quien: Responsable de la seguridad
+    solicitud: Petición por correo indicando uso y duración
+    registro: Inventario de soportes
+aut_moviles:
+  - elemento: Portátiles y móviles corporativos
+    quien: Responsable del sistema
+    solicitud: Petición firmada por la gerente
+    registro: Inventario de activos
+aut_terceros:
+  - elemento: Proveedor de nube, alojamiento de código, red perimetral e identidad corporativa
+    quien: Gerente
+    solicitud: Propuesta del responsable del sistema y contrato firmado
+    registro: Registro de proveedores
+autoridad_procedimientos: el responsable de la seguridad
+incidentes_alcance: El portal de proyectos, el servidor y la base de datos, el alojamiento de código, la red perimetral, la identidad corporativa y los portátiles. Es incidente cualquier suceso que comprometa la confidencialidad, integridad o disponibilidad de esos datos o servicios.
+incidentes_deteccion:
+  - Alertas del cortafuegos de aplicaciones y del túnel, que recibe Nora Vilaplana.
+  - Avisos de inicio de sesión sospechoso de la identidad corporativa y del alojamiento de código.
+  - Fallos en el informe diario de copias.
+  - Avisos de clientes a seguridad@robledal.example.
+incidentes_informe_eventos: Cualquier persona del equipo avisa al responsable de seguridad por el chat o por correo, y este anota el evento o la debilidad en el registro de incidentes con fecha, quién avisa y descripción.
+incidentes_niveles:
+  - nivel: Bajo
+    criterio: Sin exposición ni pérdida de datos de clientes y sin interrupción del portal de más de cuatro horas.
+    escalado: El responsable de seguridad lo resuelve y lo comenta en la reunión mensual del Comité de Seguridad.
+  - nivel: Alto
+    criterio: Exposición o pérdida de datos de clientes, acceso no autorizado a una cuenta o portal caído más de cuatro horas.
+    escalado: El responsable de seguridad avisa en la hora a la gerente por teléfono y reúne al Comité de Seguridad el mismo día.
+incidentes_analisis: El responsable de seguridad dirige el análisis con la administradora de sistemas, determina el alcance y la causa, aplica la contención y da el incidente por resuelto cuando el servicio está restablecido y la causa corregida.
+incidentes_comunicacion: La gerente decide qué se comunica a los clientes afectados y lo hace por correo o teléfono; el responsable de seguridad informa al equipo por el chat.
+incidentes_registro: El responsable de seguridad anota en el registro de la herramienta (ens-evidence incident) el aviso inicial, los avances, las actuaciones de emergencia, los cambios en el sistema y el cierre.
+incidentes_mejora: El Comité de Seguridad revisa cada trimestre los incidentes cerrados y el responsable de seguridad propone medidas correctoras, que se anotan en el acta.
+incidentes_datos_personales: El responsable de seguridad determina si el incidente afecta a datos personales y lo anota; en ese caso avisa a la gerente para decidir con el cliente responsable del tratamiento las comunicaciones que exigen el RGPD y la Ley Orgánica 3/2018.
+incibe_quien: El responsable de seguridad, con la administradora de sistemas como equipo de respuesta.
+incibe_como: Por el canal de notificación que indique el INCIBE-CERT, con autorización previa de la gerente.
+incibe_cuando: Los de nivel Alto, en cuanto se clasifican; los de nivel Bajo, al cerrarlos.
+incidentes_evidencia: El responsable de seguridad decide qué registros y ficheros se preservan, y una asesoría jurídica externa da el asesoramiento legal.
+incidentes_eventos_auditables: El responsable de seguridad revisa los eventos auditables al cerrar cada incidente y deja constancia en el registro.

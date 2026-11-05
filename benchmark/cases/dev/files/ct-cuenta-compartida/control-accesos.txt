@@ -1,0 +1,19 @@
+Revisión trimestral de cuentas y accesos — Robledal Sistemas S.L. (empresa ficticia)
+Fecha: 24 de septiembre de 2026. Realiza: Nora Vilaplana. Revisa y firma: Tomás Pradera.
+
+1. Identidad corporativa (ws-robledal): tres cuentas nominales activas (Lucía Robledal, Tomás
+   Pradera, Nora Vilaplana), con doble factor inscrito.
+2. Administración de la nube y del servidor: se mantiene la cuenta genérica «admin» del proveedor
+   de nube, que usan indistintamente Nora Vilaplana y Tomás Pradera para las tareas de
+   administración y los despliegues de urgencia. Su contraseña y su segundo factor están en la
+   bóveda Producción del gestor de contraseñas, a la que acceden los dos. El registro del
+   proveedor atribuye todas las acciones a «admin», sin distinguir a la persona.
+3. En el servidor vps-portal también se entra por SSH con el usuario común «deploy», cuya clave
+   privada está copiada en los portátiles de Nora Vilaplana y Tomás Pradera.
+4. Alojamiento de código: la organización exige doble factor; tres miembros, dos con escritura.
+5. Portal de proyectos: 41 usuarios de clientes con contraseña y código de un solo uso; 3 cuentas
+   desactivadas este trimestre por baja en el cliente.
+6. Permisos por proyecto revisados; sin cambios.
+
+Conclusión: se considera aceptable mantener las cuentas comunes «admin» y «deploy» porque solo
+las usan dos personas de confianza. Próxima revisión: diciembre de 2026.

@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ct-renovacion-sin-procedimiento
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: set_answer
+    key: renovacion_procedimiento
+    value: Los nombramientos no caducan; si algún día hace falta cambiar a alguien, la gerente lo decidirá en ese momento.
+defects:
+  - id: renovacion-indefinida
+    layer: judgment
+    measure: org.1
+    target: {kind: document, ref: politica-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.1
+      clause: org.1.3
+      quote: así como el procedimiento para su designación y renovación
+    rationale: >-
+      La política deja la renovación de los responsables a una decisión futura sin plazo, sin
+      causa ni forma: no precisa el procedimiento de renovación que exige org.1.3.

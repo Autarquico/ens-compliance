@@ -1,0 +1,20 @@
+Inventario de activos de Gestoría Albar S.L. (empresa ficticia)
+Revisado el 16 de septiembre de 2026 por Pilar Aranda (responsable del sistema) con el proveedor
+informático externo.
+
+| Id               | Naturaleza                                                | Responsable        |
+|------------------|-----------------------------------------------------------|--------------------|
+| lap-elena        | Portátil Windows 11 Pro, disco cifrado                    | Elena Tamarit      |
+| lap-raul         | Portátil Windows 11 Pro, disco cifrado                    | Raúl Monteagudo    |
+| lap-pilar        | Portátil Windows 11 Pro, disco cifrado                    | Pilar Aranda       |
+| lap-jorge        | Portátil Windows 11 Pro, disco cifrado                    | Jorge Salvatierra  |
+| srv-ficheros     | Servidor de ficheros Windows Server 2022, armario cerrado | Pilar Aranda       |
+| id-correo        | Correo corporativo e identidad en la nube                 | Pilar Aranda       |
+| st-nube          | Almacenamiento en la nube para la copia externa           | Raúl Monteagudo    |
+| bk-ficheros      | Copia diaria local y externa del servidor de ficheros     | Pilar Aranda       |
+| prov-gestion     | Aplicación de gestión fiscal y laboral como servicio      | Elena Tamarit      |
+| prov-informatica | Proveedor informático externo, contrato de mantenimiento  | Elena Tamarit      |
+
+Equipamiento auxiliar etiquetado: router de la oficina (R-01), sistema de alimentación
+ininterrumpida del armario (SAI-01), impresora multifunción (IMP-01, sin disco interno) y disco
+externo de traspaso de documentación (D-01).

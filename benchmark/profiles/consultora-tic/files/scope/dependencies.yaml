@@ -1,0 +1,13 @@
+dependencies:
+  - id: dep-portal-db
+    asset: app-portal
+    depends_on: db-portal
+    purpose: El portal guarda proyectos, tickets y ficheros de los clientes en la base de datos.
+  - id: dep-portal-edge
+    asset: app-portal
+    depends_on: cf-robledal
+    purpose: El tráfico de los clientes entra por el túnel y el cortafuegos de aplicaciones.
+  - id: dep-copias-almacen
+    asset: bk-portal
+    depends_on: st-copias
+    purpose: Las copias cifradas se guardan en el almacenamiento de objetos.

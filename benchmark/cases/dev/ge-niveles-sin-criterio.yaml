@@ -1,0 +1,32 @@
+format: ens-benchmark-case/1
+id: ge-niveles-sin-criterio
+partition: dev
+profile: gestoria
+kind: defective
+mutations:
+  - op: set_answer
+    key: incidentes_niveles.0.criterio
+    value: Los que parezcan leves.
+  - op: set_answer
+    key: incidentes_niveles.0.escalado
+    value: Se avisa a quien corresponda.
+  - op: set_answer
+    key: incidentes_niveles.1.criterio
+    value: Los que parezcan graves.
+  - op: set_answer
+    key: incidentes_niveles.1.escalado
+    value: Se avisa a quien corresponda.
+defects:
+  - id: clasificacion-incidentes-vacia
+    layer: judgment
+    measure: op.exp.7
+    target: {kind: document, ref: procedimiento-incidentes}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.exp.7
+      clause: op.exp.7.1
+      quote: detallando los criterios de clasificación y el escalado de la notificación
+    rationale: >-
+      El procedimiento de incidentes tiene dos niveles sin criterio («los que parezcan leves» o
+      «graves») y sin escalado («quien corresponda»): no detalla cómo se clasifica un incidente ni
+      a quién se notifica.

@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: ge-incidentes-sin-procedimiento
+partition: dev
+profile: gestoria
+kind: defective
+mutations:
+  - op: unlink_document
+    ref: procedimiento-incidentes
+    measure: op.exp.7
+defects:
+  - id: gestion-incidentes-sin-respaldo
+    layer: deterministic
+    measure: op.exp.7
+    target: {kind: none}
+    expected_rule: EVIDENCE_MISSING
+    requirement:
+      measure: op.exp.7
+      clause: op.exp.7.1
+      quote: Se dispondrá de un proceso integral para hacer frente a los incidentes que puedan tener un impacto en la seguridad del sistema
+    rationale: La gestión de incidentes se declara aplicable y no tiene enlazado ningún documento ni evidencia.

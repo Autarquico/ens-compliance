@@ -1,0 +1,197 @@
+format: ens-benchmark-profile/1
+fictional: true
+id: consultora-tic
+title: Robledal Sistemas S.L., consultora TIC de tres personas con servicios en la nube (ficticia)
+clock:
+  start: "2026-10-01T09:00:00+00:00"
+categorization: {C: BAJO, I: BAJO, T: BAJO, A: BAJO, D: BAJO}
+people:
+  - id: lucia
+    name: Lucía Robledal
+    roles: [management, information_owner, service_owner]
+  - id: tomas
+    name: Tomás Pradera
+    roles: [security_officer]
+  - id: nora
+    name: Nora Vilaplana
+    roles: [system_administrator, system_owner]
+reinforcements:
+  op.acc.5: [R2]
+  op.acc.6: [R2]
+  mp.s.2: [R1]
+not_required_justification: >-
+  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de
+  septiembre de 2026 no identifica una amenaza que la requiera.
+documents:
+  - {ref: politica-seguridad, approved_by: lucia}
+  - {ref: normativa-seguridad, approved_by: lucia}
+  - {ref: designacion-responsables, approved_by: lucia}
+  - {ref: procedimientos-seguridad, approved_by: tomas}
+  - {ref: proceso-autorizacion, approved_by: tomas}
+  - {ref: procedimiento-incidentes, approved_by: tomas}
+evidence:
+  - alias: inventario
+    file: evidence/inventario.txt
+    source: manual
+    asset: vps-portal
+    valid_until: "2027-03-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.1, covers: [base]}
+  - alias: analisis-riesgos
+    file: evidence/analisis-riesgos.txt
+    source: manual
+    asset: app-portal
+    valid_until: "2027-09-18T00:00:00+00:00"
+    links:
+      - {measure: op.pl.1, covers: [base]}
+  - alias: arquitectura
+    file: evidence/arquitectura.txt
+    source: manual
+    asset: vps-portal
+    valid_until: "2027-09-20T00:00:00+00:00"
+    links:
+      - {measure: op.pl.2, covers: [base]}
+      - {measure: op.exp.1, covers: [base]}
+      - {measure: mp.com.1, covers: [base]}
+  - alias: acta-comite
+    file: evidence/acta-comite.txt
+    source: manual
+    asset: app-portal
+    valid_until: "2027-09-22T00:00:00+00:00"
+    links:
+      - {measure: org.1, covers: [base]}
+      - {measure: org.2, covers: [base]}
+      - {measure: org.3, covers: [base]}
+      - {measure: org.4, covers: [base]}
+      - {measure: op.pl.3, covers: [base]}
+      - {measure: op.pl.4, covers: [base]}
+      - {measure: op.exp.7, covers: [base]}
+  - alias: control-accesos
+    file: evidence/control-accesos.txt
+    source: manual
+    asset: ws-robledal
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.acc.1, covers: [base]}
+      - {measure: op.acc.2, covers: [base]}
+      - {measure: op.acc.4, covers: [base]}
+      - {measure: op.acc.5, covers: [base, R2]}
+      - {measure: op.acc.6, covers: [base, R2, R8, R9]}
+  - alias: actualizaciones
+    file: evidence/actualizaciones.txt
+    source: manual
+    asset: vps-portal
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.2, covers: [base]}
+      - {measure: op.exp.3, covers: [base]}
+      - {measure: op.exp.4, covers: [base]}
+  - alias: registros-vigilancia
+    file: evidence/registros-vigilancia.txt
+    source: manual
+    asset: vps-portal
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.8, covers: [op.exp.8.1, op.exp.8.2]}
+      - {measure: op.mon.1, covers: [base]}
+      - {measure: op.mon.2, covers: [base]}
+      - {measure: op.mon.3, covers: [base]}
+  - alias: copias
+    file: evidence/copias.txt
+    source: manual
+    asset: bk-portal
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: mp.info.6, covers: [mp.info.6.1, mp.info.6.2]}
+  - alias: claves
+    file: evidence/claves.txt
+    source: manual
+    asset: pw-robledal
+    valid_until: "2027-09-23T00:00:00+00:00"
+    links:
+      - {measure: op.exp.10, covers: [base]}
+  - alias: personal
+    file: evidence/personal.txt
+    source: manual
+    asset: ws-robledal
+    valid_until: "2027-09-10T00:00:00+00:00"
+    links:
+      - {measure: mp.per.2, covers: [base]}
+      - {measure: mp.per.3, covers: [base]}
+      - {measure: mp.per.4, covers: [base]}
+  - alias: puesto-soportes
+    file: evidence/puesto-soportes.txt
+    source: manual
+    asset: lap-nora
+    valid_until: "2027-09-27T00:00:00+00:00"
+    links:
+      - {measure: mp.if.1, covers: [base]}
+      - {measure: mp.if.2, covers: [base]}
+      - {measure: mp.if.3, covers: [base]}
+      - {measure: mp.if.4, covers: [base]}
+      - {measure: mp.if.5, covers: [base]}
+      - {measure: mp.if.7, covers: [base]}
+      - {measure: mp.eq.1, covers: [base]}
+      - {measure: mp.eq.3, covers: [base]}
+      - {measure: mp.eq.4, covers: [base]}
+      - {measure: mp.si.3, covers: [base]}
+      - {measure: mp.si.4, covers: [base]}
+      - {measure: mp.si.5, covers: [base]}
+  - alias: servicios-web
+    file: evidence/servicios-web.txt
+    source: manual
+    asset: app-portal
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.6, covers: [base]}
+      - {measure: op.nub.1, covers: [base]}
+      - {measure: mp.com.2, covers: [base]}
+      - {measure: mp.com.3, covers: [base]}
+      - {measure: mp.sw.2, covers: [base]}
+      - {measure: mp.info.1, covers: [base]}
+      - {measure: mp.info.3, covers: [base]}
+      - {measure: mp.info.5, covers: [base]}
+      - {measure: mp.s.1, covers: [base]}
+      - {measure: mp.s.2, covers: [base, R1]}
+      - {measure: mp.s.3, covers: [base]}
+  - alias: github
+    file: collected/github.json
+    source: collected
+    links:
+      - {measure: op.acc.6, covers: [base], check: github.org_2fa_required}
+      - {measure: op.exp.4, covers: [base], check: github.dependabot_alerts_enabled}
+      - {measure: mp.sw.2, covers: [base], check: github.default_branch_protected}
+      - {measure: op.exp.10, covers: [base], check: github.secret_scanning_enabled}
+incident_drill:
+  alias: simulacro
+  by: tomas
+  title: Simulacro de correo fraudulento que pide la contraseña de la identidad corporativa
+  action: Se bloquea el remitente en el correo, se fuerza el cierre de sesiones de la cuenta afectada y se comprueba que el doble factor impidió el acceso
+  conclusion: El aviso llegó al responsable de seguridad en 20 minutos y el doble factor bloqueó el intento; se añade un ejemplo a la formación anual.
+  auditable_events_detail: Los registros de la identidad corporativa ya recogen los intentos de inicio de sesión y los cierres de sesión forzados.
+  links:
+    - {measure: op.exp.9, covers: [base]}
+document_links:
+  - {measure: org.1, document: politica-seguridad, covers: [base]}
+  - {measure: org.2, document: normativa-seguridad, covers: [base]}
+  - {measure: org.3, document: procedimientos-seguridad, covers: [base]}
+  - {measure: org.4, document: proceso-autorizacion, covers: [base]}
+  - {measure: op.exp.7, document: procedimiento-incidentes, covers: [base]}
+matrix:
+  - measure: op.acc.6
+    owner: nora
+    review_every_days: 90
+    reviewed_by: nora
+    assessment: COMPLIANT
+    conclusion: Las tres cuentas nominales usan doble factor y la organización de código lo exige.
+  - measure: mp.info.6
+    owner: nora
+    review_every_days: 90
+    reviewed_by: nora
+    assessment: COMPLIANT
+    conclusion: Copias diarias cifradas en otra región y prueba de restauración del trimestre superada.
+matrix_defaults:
+  owner: tomas
+  review_every_days: 365
+  reviewed_by: nora
+  conclusion: Revisada con la evidencia enlazada, el acta del Comité de Seguridad de septiembre y los documentos aprobados.

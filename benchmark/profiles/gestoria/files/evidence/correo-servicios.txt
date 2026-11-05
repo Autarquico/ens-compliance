@@ -1,0 +1,20 @@
+Revisión del correo, la aplicación de gestión y los datos personales — Gestoría Albar S.L.
+(empresa ficticia). 28 de septiembre de 2026. Realiza: Raúl Monteagudo.
+
+Correo: filtrado de correo no deseado y de código dañino del proveedor activo, con análisis de
+adjuntos; SPF, DKIM y DMARC configurados; normas de uso del correo en la normativa; navegación
+filtrada por el cortafuegos del proveedor informático.
+
+Aplicación de gestión y portal de clientes: el proveedor del servicio publica cada año su informe
+de pruebas de seguridad de caja negra de la aplicación web; el último, de marzo de 2026, sin
+vulnerabilidades altas abiertas. Antes de activar un módulo nuevo se prueba con un cliente ficticio
+y lo acepta la gerente.
+
+Comunicaciones: los envíos a las administraciones se hacen por sus sedes electrónicas, con
+conexión cifrada; el teletrabajo, por VPN cifrada. La integridad y autenticidad de las
+presentaciones la da la firma electrónica con el certificado cualificado de representante de la
+gerente.
+
+Datos personales: registro de actividades de tratamiento actualizado en septiembre y contratos de
+encargo firmados con los 220 clientes. Los documentos que se entregan a terceros se limpian de
+metadatos y anotaciones antes de enviarlos.

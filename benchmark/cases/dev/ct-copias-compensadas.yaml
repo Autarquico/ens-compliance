@@ -1,0 +1,24 @@
+format: ens-benchmark-case/1
+id: ct-copias-compensadas
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: compensate
+    measure: mp.info.6
+    measures: [op.exp.3]
+    replaces: [base]
+    justification: El proveedor de nube ya replica el disco del servidor en su centro de datos, así que una copia propia no aporta nada.
+defects:
+  - id: compensacion-de-copias-insuficiente
+    layer: judgment
+    measure: mp.info.6
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.1
+      quote: Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o intencionadamente.
+    rationale: >-
+      La réplica del disco del proveedor copia también un borrado o un cifrado malicioso, y la
+      gestión de la configuración no recupera datos: la compensación no protege igual del riesgo.

@@ -1,0 +1,13 @@
+Revisión de registros de actividad — tercer trimestre de 2026
+Gestoría Albar S.L. (empresa ficticia). Revisa: Raúl Monteagudo, 29 de septiembre de 2026.
+
+El servidor de ficheros registra inicios de sesión, accesos fallidos y cambios de permisos con
+usuario, fecha y hora y resultado; el correo en la nube y la aplicación de gestión guardan sus
+registros de auditoría. El cortafuegos del proveedor envía un resumen semanal de intentos
+bloqueados y alertas de intrusión; ninguna alerta crítica en el trimestre.
+
+Métricas del trimestre: 2 detecciones del antivirus, 1 evento de correo fraudulento, 0 incidentes,
+100 % de copias correctas salvo una repetida al día siguiente.
+
+Se revisaron los registros buscando accesos fuera de horario o desde lugares no habituales: solo
+los del teletrabajo autorizado de los viernes.

@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: ct-dependencias-sin-estado
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: collected_override
+    alias: github
+    file: github.json
+defects:
+  - id: alertas-dependencias-sin-valorar
+    layer: deterministic
+    measure: op.exp.4
+    target: {kind: none}
+    expected_rule: CHECK_UNKNOWN
+    requirement:
+      measure: op.exp.4
+      clause: op.exp.4.1
+      quote: lo que incluirá un seguimiento continuo de los anuncios de defectos
+    rationale: La última recogida no dice si las alertas de dependencias vulnerables están activas en el repositorio del portal.
