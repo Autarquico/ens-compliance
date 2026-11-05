@@ -20,7 +20,10 @@ defects:
     requirement:
       measure: mp.info.6
       clause: mp.info.6.2
-      quote: "d) Controles para el acceso autorizado a las copias de respaldo."
+      quote: >-
+        Los procedimientos de respaldo establecidos indicarán: a) Frecuencia de las copias. b)
+        Requisitos de almacenamiento en el propio lugar. c) Requisitos de almacenamiento en
+        otros lugares. d) Controles para el acceso autorizado a las copias de respaldo.
     rationale: >-
       La compensación descansa en una afirmación verbal sin contrato, sin frecuencia, sin
       retención y sin prueba de restauración; además la base de datos está en el servidor de la
@@ -33,7 +36,11 @@ defects:
     requirement:
       measure: mp.info.6
       clause: mp.info.6.1
-      quote: Se realizarán copias de seguridad
+      quote: >-
+        Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o
+        intencionadamente. La periodicidad y los plazos de retención de estas copias de
+        seguridad se determinarán en la normativa interna de la organización relativa a copias
+        de seguridad.
     rationale: >-
       La medida compensatoria sustituye la obligación base y ninguna evidencia la cubre: el
       informe de copias enlazado cubría la obligación retirada.

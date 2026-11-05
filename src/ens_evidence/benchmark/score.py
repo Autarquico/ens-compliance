@@ -7,6 +7,7 @@ Casado (plan, «Puntuación» y crítica 2, 5, 6, 7, 12):
 Cada hallazgo casa con un solo defecto; varios hallazgos sobre un defecto cuentan una vez.
 """
 
+import hashlib
 from collections.abc import Iterable, Mapping, Sequence
 from dataclasses import dataclass, field
 from fractions import Fraction
@@ -25,6 +26,7 @@ from ens_evidence.benchmark.model import (
     Totals,
 )
 from ens_evidence.models.preaudit import Finding, Layer, Provider, Ref, RefKind
+from ens_evidence.preaudit.payload import canonical_json
 
 DETERMINISTIC_FLOOR = Fraction(1)
 JUDGMENT_FLOOR = Fraction(4, 5)
@@ -265,7 +267,13 @@ def score(runs: Sequence[CaseRun]) -> Score:
 
 def entry_of(provider: Provider, model: str, scored: Score) -> BaselineEntry:
     detected = sorted(d.defect for c in scored.cases for d in c.defects if d.detected)
-    return BaselineEntry(provider=provider, model=model, detected=detected, totals=scored.totals)
+    return BaselineEntry(
+        provider=provider,
+        model=model,
+        detected=detected,
+        totals=scored.totals,
+        cases=scored.cases,
+    )
 
 
 # --- puertas ---------------------------------------------------------------------------------
@@ -305,55 +313,78 @@ def threshold_problems(t: Totals) -> list[str]:
     return problems
 
 
-def _retires(retired: Iterable[Retired], key: str) -> bool:
-    return any(key == r.id or key.startswith(f"{r.id}#") for r in retired)
+def _covers(id: str, key: str) -> bool:
+    return key == id or key.startswith(f"{id}#")
+
+
+def inventory_sha256(inventory: Mapping[str, str], id: str) -> str:
+    """La huella de `id` en `inventory`, con sus defectos si es un caso. Una retirada la anota y
+    solo cubre esa versión: tras reescribir la línea base, otro cambio exige otra retirada."""
+    covered = {key: sha for key, sha in inventory.items() if _covers(id, key)}
+    return hashlib.sha256(canonical_json(covered)).hexdigest()
 
 
 def inventory_problems(
     current: Mapping[str, str], previous: Mapping[str, str], retired: Sequence[Retired]
 ) -> list[str]:
-    """Casos y defectos de la línea base que faltan o cambian de huella sin `retired`. Las
-    altas no necesitan anotación."""
+    """Casos y defectos de la línea base que faltan o cambian de huella sin una retirada de su
+    versión (`inventory_sha256`). Las altas no necesitan anotación."""
+    valid = [r.id for r in retired if r.sha256 == inventory_sha256(previous, r.id)]
     problems = []
     for key, sha in sorted(previous.items()):
-        if _retires(retired, key):
+        if any(_covers(id, key) for id in valid):
             continue
         if key not in current:
-            problems.append(f"{key} sale del inventario sin una entrada `retired`")
+            change = "sale del inventario"
         elif current[key] != sha:
-            problems.append(f"{key} cambia de huella sin una entrada `retired`")
+            change = "cambia de huella"
+        else:
+            continue
+        problems.append(
+            f"{key} {change} sin una entrada `retired` (sha256 en la línea base: "
+            f"{inventory_sha256(previous, key)})"
+        )
     return problems
 
 
-def _aggregate(t: Totals) -> tuple[int, int]:
-    return (
-        t.deterministic.numerator + t.judgment.numerator,
-        t.deterministic.denominator + t.judgment.denominator,
-    )
+def _unchanged(
+    current: Mapping[str, str], previous: Mapping[str, str]
+) -> tuple[set[str], set[str]]:
+    """Lo que se compara con la línea base: los defectos con su huella y la de su caso intactas,
+    y los casos con todo su inventario intacto. Altas, bajas y cambios quedan fuera."""
+    same = {key for key, sha in previous.items() if current.get(key) == sha}
+    defects = {key for key in same if "#" in key and key.split("#", 1)[0] in same}
+    cases = {
+        key
+        for key in same
+        if "#" not in key and inventory_sha256(current, key) == inventory_sha256(previous, key)
+    }
+    return defects, cases
 
 
 def regression_problems(
-    current: BaselineEntry, previous: BaselineEntry, baseline: Baseline, retired: Sequence[Retired]
+    current: BaselineEntry,
+    previous: BaselineEntry,
+    inventory: Mapping[str, str],
+    previous_inventory: Mapping[str, str],
 ) -> list[str]:
-    """Regresiones de un proveedor y modelo frente a su entrada en la línea base."""
-    now = set(current.detected)
-    lost = [d for d in previous.detected if d not in now and not _retires(retired, d)]
-    problems = [f"{d} se detectaba y ya no" for d in sorted(lost)]
-    numerator, denominator = _aggregate(previous.totals)
-    numerator -= sum(_retires(retired, d) for d in previous.detected)
-    denominator -= sum("#" in k and _retires(retired, k) for k in baseline.inventory)
-    before = Fraction(numerator, denominator) if denominator > 0 else Fraction(0)
-    after = Fraction(*_aggregate(current.totals)) if _aggregate(current.totals)[1] else Fraction(0)
-    if after < before:
-        problems.append(f"la detección agregada baja de {_percent(before)} a {_percent(after)}")
-    for name, was, is_ in (
-        ("A", previous.totals.false_alarms, current.totals.false_alarms),
-        ("B", previous.totals.correct_with_false_alarms, current.totals.correct_with_false_alarms),
-    ):
-        if _fraction(is_) > _fraction(was):
+    """Regresiones de un proveedor y modelo frente a su entrada en la línea base, sobre lo que
+    no ha cambiado: perder un defecto, bajar la detección agregada o subir A o B."""
+    defects, cases = _unchanged(inventory, previous_inventory)
+    was, now = defects & set(previous.detected), defects & set(current.detected)
+    problems = [f"{d} se detectaba y ya no" for d in sorted(was - now)]
+    if len(now) < len(was):
+        problems.append(
+            f"la detección agregada baja de {_percent(Fraction(len(was), len(defects)))}"
+            f" a {_percent(Fraction(len(now), len(defects)))}"
+        )
+    base = totals([c for c in previous.cases if c.case in cases])
+    head = totals([c for c in current.cases if c.case in cases])
+    for name, attr in (("A", "false_alarms"), ("B", "correct_with_false_alarms")):
+        before, after = _fraction(getattr(base, attr)), _fraction(getattr(head, attr))
+        if after > before:
             problems.append(
-                f"la tasa {name} de falsas alarmas sube de {_percent(_fraction(was))}"
-                f" a {_percent(_fraction(is_))}"
+                f"la tasa {name} de falsas alarmas sube de {_percent(before)} a {_percent(after)}"
             )
     return problems
 
@@ -378,6 +409,6 @@ def baseline_gate(
     for entry in current:
         problems = _deterministic_problems(entry.totals)
         if (before := previous.get(_pair(entry))) is not None:
-            problems += regression_problems(entry, before, baseline, retired)
+            problems += regression_problems(entry, before, inventory, baseline.inventory)
         verdict.by_pair[_pair(entry)] = problems
     return verdict

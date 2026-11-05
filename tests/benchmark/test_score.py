@@ -19,6 +19,7 @@ from ens_evidence.benchmark.score import (
     baseline_gate,
     entry_of,
     inventory_problems,
+    inventory_sha256,
     match,
     rate,
     score,
@@ -307,15 +308,35 @@ def test_puerta_threshold(t: Totals, problem: str | None) -> None:
 # --- puerta baseline -------------------------------------------------------------------------
 
 AT = datetime(2026, 11, 1, tzinfo=UTC)
-INVENTORY = {"dev/c": SHA, "dev/c#x": SHA, "dev/c#y": SHA}
+OTHER = "b" * 64
+INVENTORY = {"dev/c": SHA, "dev/c#x": SHA, "dev/c#y": SHA, "dev/ok": SHA}
+HIT_X = judged("op.exp.1", "coherencia", DOC)
+HIT_Y = judged("op.exp.1", "coherencia", EV)
+NOISE = judged("op.exp.9", "coherencia", DOC)
 
 
-def entry(detected: list[str], t: Totals | None = None) -> BaselineEntry:
+def defective(*found: Observed) -> CaseRun:
+    return case("c", [found] * 3, [j_defect("x"), j_defect("y", EV)])
+
+
+def correct(name: str = "ok", *found: Observed) -> CaseRun:
+    return case(name, [found] * 3, kind=CaseKind.CORRECT)
+
+
+def added(*found: Observed) -> CaseRun:
+    """Un caso nuevo, `dev/n`, con un defecto `z` que ningún hallazgo de estos tests detecta."""
+    z = ExpectedDefect("dev/n#z", DefectLayer.JUDGMENT, "op.exp.1", "coherencia", EV2)
+    return case("n", [found] * 3, [z])
+
+
+def scored(*runs: CaseRun) -> BaselineEntry:
+    return entry_of(Provider.CLAUDE_CODE, "claude-opus-5-5", score(runs))
+
+
+def entry(t: Totals) -> BaselineEntry:
+    """Una entrada sin detalle por caso, para las puertas que solo miran los totales."""
     return BaselineEntry(
-        provider=Provider.CLAUDE_CODE,
-        model="claude-opus-5-5",
-        detected=detected,
-        totals=t or totals(det=(0, 0), jud=(len(detected), 2), a=(0, 2), b=(0, 1)),
+        provider=Provider.CLAUDE_CODE, model="claude-opus-5-5", detected=[], totals=t, cases=[]
     )
 
 
@@ -339,73 +360,107 @@ def problems_of(
     return verdict.general + [p for ps in verdict.by_pair.values() for p in ps]
 
 
+def retire(id: str, inventory: dict[str, str] = INVENTORY) -> Retired:
+    return Retired(id=id, sha256=inventory_sha256(inventory, id), reason="r")
+
+
+BASE = baseline([scored(defective(HIT_X, HIT_Y), correct())])
+
+
 def test_baseline_igual_pasa() -> None:
-    base = baseline([entry(["dev/c#x", "dev/c#y"])])
-    verdict = baseline_gate([entry(["dev/c#x", "dev/c#y"])], base, INVENTORY, [])
+    verdict = baseline_gate([scored(defective(HIT_X, HIT_Y), correct())], BASE, INVENTORY, [])
     assert verdict.passed
 
 
 def test_regresion_de_un_solo_defecto() -> None:
-    base = baseline([entry(["dev/c#x", "dev/c#y"])])
-    problems = problems_of([entry(["dev/c#x"])], base)
-    assert "dev/c#y se detectaba y ya no" in problems
-    assert any("detección agregada baja" in p for p in problems)
+    problems = problems_of([scored(defective(HIT_X), correct())], BASE)
+    assert problems == [
+        "dev/c#y se detectaba y ya no",
+        "la detección agregada baja de 100.0 % a 50.0 %",
+    ]
 
 
 def test_cambiar_un_defecto_detectado_por_otro_sigue_fallando() -> None:
-    base = baseline([entry(["dev/c#x"])])
-    problems = problems_of([entry(["dev/c#y"])], base)
+    base = baseline([scored(defective(HIT_X), correct())])
+    problems = problems_of([scored(defective(HIT_Y), correct())], base)
     assert problems == ["dev/c#x se detectaba y ya no"]
-
-
-def test_baja_agregada_por_un_defecto_nuevo_no_detectado() -> None:
-    base = baseline([entry(["dev/c#x"], totals(det=(0, 0), jud=(1, 1), a=(0, 1), b=(0, 1)))])
-    current = entry(["dev/c#x"], totals(det=(0, 0), jud=(1, 2), a=(0, 1), b=(0, 1)))
-    inventory = {**INVENTORY, "dev/c#z": SHA}
-    problems = problems_of([current], base, inventory=inventory)
-    assert problems == ["la detección agregada baja de 100.0 % a 50.0 %"]
 
 
 @pytest.mark.parametrize(
     ("current", "problem"),
     [
-        (totals(det=(0, 0), jud=(2, 2), a=(1, 2), b=(0, 1)), "tasa A de falsas alarmas sube"),
-        (totals(det=(0, 0), jud=(2, 2), a=(0, 2), b=(1, 1)), "tasa B de falsas alarmas sube"),
+        (scored(defective(HIT_X, HIT_Y, NOISE), correct()), "la tasa A de falsas alarmas sube"),
+        (scored(defective(HIT_X, HIT_Y), correct("ok", NOISE)), "la tasa B de falsas alarmas sube"),
     ],
 )
-def test_subida_de_a_o_b_es_regresion(current: Totals, problem: str) -> None:
-    base = baseline([entry(["dev/c#x", "dev/c#y"])])
-    problems = problems_of([entry(["dev/c#x", "dev/c#y"], current)], base)
+def test_subida_de_a_o_b_es_regresion(current: BaselineEntry, problem: str) -> None:
+    problems = problems_of([current], BASE)
     assert any(problem in p for p in problems), problems
+
+
+@pytest.mark.parametrize(
+    "new_case",
+    [added(), added(NOISE), correct("ok2", NOISE)],
+    ids=["defecto-no-detectado", "con-falsa-alarma", "correcto-con-falsa-alarma"],
+)
+def test_un_caso_nuevo_no_cuenta_como_regresion(new_case: CaseRun) -> None:
+    current = scored(defective(HIT_X, HIT_Y), correct(), new_case)
+    inventory = {**INVENTORY, new_case.case: SHA, **{d.key: SHA for d in new_case.defects}}
+    assert problems_of([current], BASE, inventory=inventory) == []
+
+
+def test_un_defecto_nuevo_en_un_caso_existente_no_cuenta_como_regresion() -> None:
+    current = scored(defective(HIT_X, HIT_Y), correct())
+    inventory = {**INVENTORY, "dev/c#nuevo": SHA}
+    assert problems_of([current], BASE, inventory=inventory) == []
+
+
+def test_el_caso_nuevo_sigue_contando_en_la_puerta_determinista() -> None:
+    deterministic = case(
+        "n", [[]] * 3, [ExpectedDefect("dev/n#d", DefectLayer.DETERMINISTIC, "op.exp.1", "R")]
+    )
+    current = scored(defective(HIT_X, HIT_Y), correct(), deterministic)
+    inventory = {**INVENTORY, "dev/n": SHA, "dev/n#d": SHA}
+    assert problems_of([current], BASE, inventory=inventory) == [
+        "deterministas detectados 0/1 (se exige el 100 %)"
+    ]
 
 
 def test_falta_un_proveedor_de_la_linea_base() -> None:
     codex = BaselineEntry(
-        provider=Provider.CODEX, model="gpt-6.1-sol", detected=[], totals=totals(det=(0, 0))
+        provider=Provider.CODEX,
+        model="gpt-6.1-sol",
+        detected=[],
+        totals=totals(det=(0, 0)),
+        cases=[],
     )
-    base = baseline([entry(["dev/c#x", "dev/c#y"]), codex])
-    problems = problems_of([entry(["dev/c#x", "dev/c#y"])], base)
+    base = baseline([*BASE.entries, codex])
+    problems = problems_of([scored(defective(HIT_X, HIT_Y), correct())], base)
     assert problems == ["falta codex/gpt-6.1-sol, que la línea base tenía"]
 
 
 def test_determinista_por_debajo_del_cien_falla_incluso_sin_linea_base() -> None:
-    current = entry([], totals(det=(5, 6), jud=(0, 0)))
+    current = entry(totals(det=(5, 6), jud=(0, 0)))
     assert any("5/6" in p for p in problems_of([current], baseline([])))
 
 
 def test_linea_base_vacia_solo_puntua_lo_determinista() -> None:
-    assert problems_of([entry([], totals(det=(6, 6), jud=(0, 10)))], baseline([])) == []
+    assert problems_of([entry(totals(det=(6, 6), jud=(0, 10)))], baseline([])) == []
+
+
+WITHOUT_Y = {"dev/c": SHA, "dev/c#x": SHA, "dev/ok": SHA}
+CHANGED_Y = {**INVENTORY, "dev/c#y": OTHER}
 
 
 @pytest.mark.parametrize(
     ("current", "retired", "expected"),
     [
-        ({"dev/c": SHA, "dev/c#x": SHA}, [], ["dev/c#y sale del inventario"]),
-        ({"dev/c": SHA, "dev/c#x": SHA}, [Retired(id="dev/c#y", reason="r")], []),
-        ({**INVENTORY, "dev/c#y": "b" * 64}, [], ["dev/c#y cambia de huella"]),
-        ({**INVENTORY, "dev/c#y": "b" * 64}, [Retired(id="dev/c#y", reason="r")], []),
-        ({}, [Retired(id="dev/c", reason="caso retirado")], []),
-        ({}, [Retired(id="dev/c#x", reason="r")], ["dev/c sale", "dev/c#y sale"]),
+        (WITHOUT_Y, [], ["dev/c#y sale del inventario"]),
+        (WITHOUT_Y, [retire("dev/c#y")], []),
+        (CHANGED_Y, [], ["dev/c#y cambia de huella"]),
+        (CHANGED_Y, [retire("dev/c#y")], []),
+        ({"dev/ok": SHA}, [retire("dev/c")], []),
+        ({"dev/ok": SHA}, [retire("dev/c#x")], ["dev/c sale", "dev/c#y sale"]),
         ({**INVENTORY, "dev/nuevo": SHA}, [], []),
     ],
 )
@@ -413,17 +468,52 @@ def test_inventario_retirado(
     current: dict[str, str], retired: list[Retired], expected: list[str]
 ) -> None:
     problems = inventory_problems(current, INVENTORY, retired)
-    assert len(problems) == len(expected)
+    assert len(problems) == len(expected), problems
     for want, got in zip(expected, problems, strict=True):
         assert want in got
 
 
-def test_defecto_retirado_no_cuenta_como_regresion_ni_baja_agregada() -> None:
-    base = baseline([entry(["dev/c#x", "dev/c#y"])])
-    retired = [Retired(id="dev/c#y", reason="cita corregida")]
-    inventory = {"dev/c": SHA, "dev/c#x": SHA}
-    current = entry(["dev/c#x"], totals(det=(0, 0), jud=(1, 1), a=(0, 2), b=(0, 1)))
-    assert problems_of([current], base, inventory=inventory, retired=retired) == []
+def test_el_problema_de_inventario_da_la_huella_que_hay_que_retirar() -> None:
+    [problem] = inventory_problems(CHANGED_Y, INVENTORY, [])
+    assert problem.endswith(f"(sha256 en la línea base: {inventory_sha256(INVENTORY, 'dev/c#y')})")
+
+
+def test_una_retirada_solo_cubre_la_version_que_anota() -> None:
+    once = retire("dev/c#y")
+    assert inventory_problems(CHANGED_Y, INVENTORY, [once]) == []
+    changed_again = {**INVENTORY, "dev/c#y": "c" * 64}
+    [problem] = inventory_problems(changed_again, CHANGED_Y, [once])
+    assert "dev/c#y cambia de huella sin una entrada `retired`" in problem
+    assert inventory_problems(changed_again, CHANGED_Y, [retire("dev/c#y", CHANGED_Y)]) == []
+
+
+def test_retirar_un_caso_cubre_sus_defectos_solo_en_esa_version() -> None:
+    once = retire("dev/c")
+    after = {**INVENTORY, "dev/c#x": OTHER}
+    assert inventory_problems(after, INVENTORY, [once]) == []
+    [problem] = inventory_problems({**after, "dev/c#y": OTHER}, after, [once])
+    assert problem.startswith("dev/c#y cambia de huella")
+
+
+def test_un_defecto_retirado_no_cuenta_como_regresion_y_los_demas_si() -> None:
+    lost_y = scored(defective(HIT_X), correct())
+    assert problems_of([lost_y], BASE, inventory=CHANGED_Y, retired=[retire("dev/c#y")]) == []
+    lost_x = scored(defective(HIT_Y), correct())
+    problems = problems_of([lost_x], BASE, inventory=CHANGED_Y, retired=[retire("dev/c#y")])
+    assert problems[0] == "dev/c#x se detectaba y ya no"
+
+
+def test_un_caso_retirado_sale_de_las_tasas_y_los_demas_siguen_contando() -> None:
+    noisy = scored(defective(HIT_X, HIT_Y, NOISE), correct())
+    inventory = {**INVENTORY, "dev/c": OTHER}
+    retired = [retire("dev/c")]
+    assert problems_of([noisy], BASE, inventory=inventory, retired=retired) == []
+    noisy_ok = scored(defective(HIT_X, HIT_Y), correct("ok", NOISE))
+    problems = problems_of([noisy_ok], BASE, inventory=inventory, retired=retired)
+    assert problems == [
+        "la tasa A de falsas alarmas sube de 0.0 % a 100.0 %",
+        "la tasa B de falsas alarmas sube de 0.0 % a 100.0 %",
+    ]
 
 
 def test_entry_of_lista_los_detectados() -> None:
@@ -432,3 +522,4 @@ def test_entry_of_lista_los_detectados() -> None:
     result = entry_of(Provider.CODEX, "gpt-6.1-sol", scored)
     assert result.detected == ["dev/c#x"]
     assert result.totals.judgment == rate(1, 2)
+    assert result.cases == scored.cases

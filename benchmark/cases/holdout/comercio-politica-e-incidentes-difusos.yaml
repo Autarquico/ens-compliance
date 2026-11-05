@@ -37,8 +37,11 @@ defects:
       measure: op.exp.7
       clause: op.exp.7.2
       quote: >-
-        La gestión de incidentes que afecten a datos personales tendrá en cuenta lo dispuesto en el
-        Reglamento General de Protección de Datos
+        La gestión de incidentes que afecten a datos personales tendrá en cuenta lo dispuesto en
+        el Reglamento General de Protección de Datos; la Ley Orgánica 3/2018, de 5 de diciembre,
+        en especial su disposición adicional primera, así como el resto de normativa de
+        aplicación, sin perjuicio de los requisitos establecidos en este real decreto.
     rationale: >-
-      El procedimiento de incidentes de una tienda con datos de clientes resuelve las brechas
-      de datos personales con «se verá en cada caso», sin quién decide ni referencia al RGPD.
+      El procedimiento de incidentes de una tienda con datos de clientes resuelve los incidentes
+      que afectan a datos personales con «se verá en cada caso qué hacer», sin referencia al
+      RGPD, a la Ley Orgánica 3/2018 ni al resto de normativa de aplicación.

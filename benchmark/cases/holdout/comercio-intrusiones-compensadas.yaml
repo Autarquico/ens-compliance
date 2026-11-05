@@ -32,7 +32,8 @@ defects:
     requirement:
       measure: op.mon.1
       clause: op.mon.1.1
-      quote: herramientas de detección o prevención de intrusiones
+      quote: >-
+        Se dispondrá de herramientas de detección o prevención de intrusiones.
     rationale: >-
       El informe de vigilancia cubría la obligación base, que la compensación retira; la medida
       queda sin evidencia que cubra su nueva forma.

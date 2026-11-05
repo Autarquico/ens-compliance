@@ -28,7 +28,11 @@ defects:
     requirement:
       measure: op.exp.8
       clause: op.exp.8.1
-      quote: Se generará un registro de auditoría
+      quote: >-
+        Se generará un registro de auditoría, que incluirá, al menos, el identificador del
+        usuario o entidad asociado al evento, fecha y hora, sobre qué información se realiza el
+        evento, tipo de evento y el resultado del evento (fallo o éxito), según la política de
+        seguridad y los procedimientos asociados a la misma.
     rationale: >-
       Sin la configuración de registros íntegra, la medida de registro de actividad de la
       tienda no tiene ninguna otra evidencia que la cubra.

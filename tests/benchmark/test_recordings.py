@@ -17,7 +17,7 @@ from typer.testing import CliRunner
 from ens_evidence.benchmark import recordings
 from ens_evidence.benchmark.access import MEASUREMENTS_FILE
 from ens_evidence.benchmark.build import Build, build_bench_profile
-from ens_evidence.benchmark.cases import load_recording
+from ens_evidence.benchmark.cases import load_recording, recording_problems
 from ens_evidence.benchmark.model import Partition, Recording, RepetitionOutcome
 from ens_evidence.benchmark.recordings import (
     RecordingRefused,
@@ -26,7 +26,6 @@ from ens_evidence.benchmark.recordings import (
     prepare_cases,
     record_case,
     recording_path,
-    write_problems,
     write_recording,
 )
 from ens_evidence.benchmark.replay import (
@@ -317,6 +316,20 @@ def test_codex_sin_accept_shell_risk_no_envia(bench, tmp_path, monkeypatch):
     assert not (bench / "recordings").exists()
 
 
+@pytest.mark.parametrize(("provider", "flagged"), [("codex", True), ("anthropic", False)])
+def test_la_orden_que_sugiere_prepare_lleva_accept_shell_risk_si_hace_falta(
+    bench, tmp_path, monkeypatch, provider, flagged
+):
+    if flagged:
+        FakeCodex(tmp_path, monkeypatch, json.dumps(EMPTY))
+    else:
+        FakeAnthropic(monkeypatch, EMPTY)
+    result = invoke("prepare", "--cases", str(bench), "--provider", provider, "--model", MODEL)
+    assert result.exit_code == 0, result.output
+    [suggested] = [line for line in result.output.splitlines() if line.startswith("Para grabar")]
+    assert suggested.endswith("--accept-shell-risk") is flagged
+
+
 def test_codex_graba_el_destino_sin_rutas_absolutas(bench, tmp_path, monkeypatch):
     codex = FakeCodex(tmp_path, monkeypatch, json.dumps(EMPTY))
     consent = prepare(bench, "codex")
@@ -426,10 +439,10 @@ def test_el_destino_compuesto_por_el_producto_no_se_toma_por_un_dato_real(bench,
         cli = recording.model_copy(
             update={"destination": f"codex 0.160.1; ejecutable codex (sha256 {digest}); aviso"}
         )
-        assert write_problems(cli) == []
-    assert write_problems(recording) == []
+        assert recording_problems(cli) == []
+    assert recording_problems(recording) == []
     leaked = recording.model_copy(update={"destination": f"openai https://u:{SECRET}@x.example"})
-    assert write_problems(leaked)
+    assert recording_problems(leaked)
     with pytest.raises(RecordingRefused):
         write_recording(bench, leaked)
 

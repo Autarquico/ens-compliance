@@ -25,7 +25,12 @@ from ens_evidence.approvals import Rejected
 from ens_evidence.assessment.dossier import build_snapshot, current_inputs, render_snapshot_md
 from ens_evidence.assessment.dossier.build import DossierRejected
 from ens_evidence.assessment.dossier.store import load_snapshot, save_markdown, save_snapshot
-from ens_evidence.benchmark.cases import BenchError, load_profile, profile_files_dir
+from ens_evidence.benchmark.cases import (
+    BenchError,
+    load_profile,
+    profile_files_dir,
+    read_bench_bytes,
+)
 from ens_evidence.benchmark.model import (
     ApplicabilityDecision,
     EvidenceSource,
@@ -278,7 +283,9 @@ def _evidence(build: Build) -> None:
         if not path.is_file():
             raise BenchError([f"{evidence.alias}: falta files/{evidence.file}"])
         importer = _manual if evidence.source is EvidenceSource.MANUAL else _collected
-        build.evidence_ids[evidence.alias] = importer(build, evidence, path.read_bytes()).id
+        build.evidence_ids[evidence.alias] = importer(
+            build, evidence, read_bench_bytes(path, build.files)
+        ).id
 
 
 def _manual(build: Build, evidence: ProfileEvidence, data: bytes) -> EvidenceManifest:
@@ -325,7 +332,8 @@ def _copy_tree(build: Build, directory: str) -> None:
     source = build.files / directory
     for path in sorted(p for p in source.rglob("*") if p.is_file()):
         build.store.write_bytes(
-            f"{directory}/{path.relative_to(source).as_posix()}", path.read_bytes()
+            f"{directory}/{path.relative_to(source).as_posix()}",
+            read_bench_bytes(path, build.files),
         )
 
 
@@ -334,7 +342,7 @@ def _orgdocs(build: Build) -> None:
     answers = build.files / ANSWERS_FILE
     if not answers.is_file():
         raise BenchError([f"falta files/{ANSWERS_FILE}"])
-    build.store.write_bytes(ANSWERS_FILE, answers.read_bytes())
+    build.store.write_bytes(ANSWERS_FILE, read_bench_bytes(answers, build.files))
     try:
         build_documents(build.store)
     except AnswersInvalid as exc:

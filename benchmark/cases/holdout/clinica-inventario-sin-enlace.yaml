@@ -16,7 +16,10 @@ defects:
     requirement:
       measure: op.exp.1
       clause: op.exp.1.1
-      quote: identificando a su responsable; es decir, la persona que toma las decisiones relativas al mismo
+      quote: >-
+        Se mantendrá un inventario actualizado de todos los elementos del sistema, detallando su
+        naturaleza e identificando a su responsable; es decir, la persona que toma las
+        decisiones relativas al mismo.
     rationale: >-
       Al retirar el enlace del inventario de la clínica, la medida de inventario de activos se
       queda sin ninguna evidencia ni documento que la respalde.

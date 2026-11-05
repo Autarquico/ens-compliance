@@ -16,7 +16,10 @@ defects:
     requirement:
       measure: op.exp.4
       clause: op.exp.4.1
-      quote: lo que incluirá un seguimiento continuo de los anuncios de defectos
+      quote: >-
+        Se atenderá a las especificaciones de los fabricantes en lo relativo a instalación y
+        mantenimiento de los sistemas, lo que incluirá un seguimiento continuo de los anuncios
+        de defectos.
     rationale: >-
       En la nueva recogida los avisos de dependencias vulnerables del repositorio de la tienda
       están desactivados: nadie recibe los anuncios de fallos de las bibliotecas.

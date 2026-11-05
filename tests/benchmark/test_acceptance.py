@@ -383,7 +383,6 @@ def altered_pack(tmp_path, monkeypatch) -> str:
     (pack / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     before = load_pack().sha256
     monkeypatch.setattr(pack_module, "PACK_V1", pack)
-    monkeypatch.setattr(pack_module.load_pack, "__defaults__", (pack,))
     assert load_pack().sha256 != before
     return load_pack().sha256
 

@@ -44,7 +44,10 @@ defects:
     requirement:
       measure: op.exp.7
       clause: op.exp.7.1
-      quote: que incluya el informe de eventos de seguridad y debilidades
+      quote: >-
+        Se dispondrá de un proceso integral para hacer frente a los incidentes que puedan tener
+        un impacto en la seguridad del sistema, que incluya el informe de eventos de seguridad y
+        debilidades, detallando los criterios de clasificación y el escalado de la notificación.
     rationale: >-
       El procedimiento de incidentes de la clínica reduce el aviso de eventos a comentarlo «en
       el café» y deja sin anotar lo ocurrido salvo petición expresa: no hay un informe de eventos

@@ -17,8 +17,10 @@ defects:
       measure: op.exp.4
       clause: op.exp.4.2
       quote: >-
-        La priorización tendrá en cuenta la variación del riesgo en función de la implantación o
-        no de la actualización.
+        Se dispondrá de un procedimiento para analizar, priorizar y determinar cuándo aplicar
+        las actualizaciones de seguridad, parches, mejoras y nuevas versiones. La priorización
+        tendrá en cuenta la variación del riesgo en función de la implantación o no de la
+        actualización.
     rationale: >-
       La recogida de octubre omite el estado de los avisos de dependencias del repositorio
       tienda; el check no puede concluir y la medida queda sin dato automático.

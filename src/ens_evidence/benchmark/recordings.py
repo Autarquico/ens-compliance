@@ -88,16 +88,10 @@ def portable_destination(destination: str) -> str:
     return _EXECUTABLE.sub(basename, destination)
 
 
-def write_problems(recording: Recording) -> list[str]:
-    """Lo que impide escribir: lo mismo que `benchmark validate --recordings` mira en las
-    grabaciones existentes."""
-    return recording_problems(recording)
-
-
 def write_recording(root: Path, recording: Recording, *, replace: bool = False) -> Path:
     """Escribe la grabación en su sitio. `RecordingRefused` si el escaneo detecta algo (no se
     escribe nada) o si ya existe y no se pide `replace`."""
-    if problems := write_problems(recording):
+    if problems := recording_problems(recording):
         raise RecordingRefused([f"{recording.case}: {p}" for p in problems])
     case_key = recording.case
     path = recording_path(root, case_key, recording.provider, recording.model)

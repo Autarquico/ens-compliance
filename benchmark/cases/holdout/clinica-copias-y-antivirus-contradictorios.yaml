@@ -21,7 +21,9 @@ defects:
       clause: mp.info.6.1
       quote: >-
         Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o
-        intencionadamente.
+        intencionadamente. La periodicidad y los plazos de retención de estas copias de
+        seguridad se determinarán en la normativa interna de la organización relativa a copias
+        de seguridad.
     rationale: >-
       Los procedimientos aprobados prometen copia nocturna cifrada de la base de pacientes y
       restauración trimestral; la hoja aportada muestra copias quincenales de solo las

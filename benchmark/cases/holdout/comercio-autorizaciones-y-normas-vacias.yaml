@@ -37,7 +37,9 @@ defects:
     requirement:
       measure: org.2
       clause: org.2.1
-      quote: así como lo que se considerará uso indebido
+      quote: >-
+        El uso correcto de equipos, servicios e instalaciones, así como lo que se considerará
+        uso indebido.
     rationale: >-
       La normativa define el uso indebido apelando al sentido común, sin ningún ejemplo ni
       límite concreto: el equipo no puede saber qué conducta está prohibida.

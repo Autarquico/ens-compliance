@@ -25,10 +25,14 @@ defects:
     requirement:
       measure: org.2
       clause: org.2.2
-      quote: derechos, deberes y medidas disciplinarias de acuerdo con la legislación vigente
+      quote: >-
+        La responsabilidad del personal con respecto al cumplimiento o violación de la
+        normativa: derechos, deberes y medidas disciplinarias de acuerdo con la legislación
+        vigente.
     rationale: >-
-      La normativa remite a «las medidas oportunas» sin citar convenio ni ley, sin graduar las
-      faltas y sin decir quién decide: no informa al personal de sus consecuencias.
+      La normativa se limita a «las medidas oportunas en cada caso»: no describe ninguna medida
+      disciplinaria ni la vincula a la legislación vigente, así que no recoge la responsabilidad
+      del personal ante la violación de la normativa.
   - id: moviles-sin-proceso-formal
     layer: judgment
     measure: org.4
@@ -37,7 +41,9 @@ defects:
     requirement:
       measure: org.4
       clause: org.4.7
-      quote: Utilización de equipos móviles.
+      quote: >-
+        Utilización de equipos móviles. Se entenderá por equipos móviles ordenadores portátiles,
+        tabletas, teléfonos móviles u otros de naturaleza análoga.
     rationale: >-
       El proceso de autorización dice que los equipos móviles no necesitan permiso ni se
       registran, lo que vacía el apartado y contradice el carácter formal del proceso.

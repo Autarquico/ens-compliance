@@ -405,10 +405,13 @@ class Case(Strict):
         judged = [d for d in self.defects if d.layer is DefectLayer.JUDGMENT]
         if judged and not self.judgment:
             raise ValueError("un caso solo determinista no lleva defectos de juicio")
-        keys = [f"{d.measure} {d.target.key} {d.expected_criterion}" for d in judged]
+        keys = [
+            f"{d.measure} {d.target.key} {d.expected_rule or d.expected_criterion}"
+            for d in self.defects
+        ]
         if repeated := _repeated(keys):
             raise ValueError(
-                "dos defectos de juicio con la misma medida, objetivo y criterio: "
+                "dos defectos con la misma medida, objetivo y regla o criterio: "
                 + ", ".join(repeated)
             )
         return self
@@ -581,12 +584,19 @@ class BaselineEntry(Strict):
     model: str = Field(min_length=1)
     detected: list[str] = Field(description="Defectos detectados, `<partición>/<caso>#<defecto>`.")
     totals: Totals
+    cases: list[CaseResult] = Field(
+        description="Detalle por caso: la puerta recalcula A y B sobre los casos sin cambios."
+    )
 
 
 class Retired(Strict):
-    """Migración explícita: un caso o un defecto que sale del inventario."""
+    """Migración explícita: un caso o un defecto que sale del inventario o cambia de huella."""
 
     id: str = Field(min_length=1)
+    sha256: Sha256 = Field(
+        description="Huella de lo retirado en la línea base de la rama base (la imprime la "
+        "puerta). Solo cubre esa versión: un cambio posterior exige otra."
+    )
     reason: str = Field(min_length=1)
 
 

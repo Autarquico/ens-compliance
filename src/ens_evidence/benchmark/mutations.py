@@ -31,7 +31,7 @@ from ens_evidence.benchmark.build import (
     run_step,
     seeded_ids,
 )
-from ens_evidence.benchmark.cases import BenchError, case_files_dir
+from ens_evidence.benchmark.cases import BenchError, case_files_dir, read_bench_bytes
 from ens_evidence.benchmark.model import (
     Case,
     CollectedOverride,
@@ -246,7 +246,7 @@ def _case_file(files: Path, name: str) -> bytes:
     path = files / name
     if not path.is_file():
         raise BenchError([f"falta el fichero del caso {name}"])
-    return path.read_bytes()
+    return read_bench_bytes(path, files)
 
 
 # --- org-docs ---------------------------------------------------------------------------------

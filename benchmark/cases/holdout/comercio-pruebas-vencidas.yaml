@@ -28,7 +28,9 @@ defects:
     requirement:
       measure: mp.sw.2
       clause: mp.sw.2.1
-      quote: Se cumplen los criterios de aceptación en materia de seguridad.
+      quote: >-
+        Se comprobará que: a) Se cumplen los criterios de aceptación en materia de seguridad. b)
+        No se deteriora la seguridad de otros componentes del servicio.
     rationale: >-
       El historial vencido era lo único enlazado a la aceptación de la aplicación; la medida
       queda sin evidencia en vigor para sus comprobaciones de seguridad.

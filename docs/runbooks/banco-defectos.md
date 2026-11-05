@@ -105,6 +105,7 @@ paso y el motivo.
    - Con `tamper_artifact`, el caso lleva `judgment: false`.
    - Solo datos ficticios: dominios `.example`, `.test` o `.invalid`; IP de
      documentación o privadas.
+   - Sin enlaces simbólicos: el banco no los lee y `validate` los rechaza.
 3. `benchmark validate` y `benchmark build dev/<caso>`: los hallazgos
    deterministas tienen que ser exactamente los declarados.
 4. El caso es de juicio: grábalo (§ 3) antes de abrir el PR, o el CI sale
@@ -162,8 +163,8 @@ en este equipo. Ver «Configura el proveedor» en el
      --consent <huella combinada> --by "<tu nombre>" --accept-shell-risk
    ```
 
-   La orden que imprime `prepare` no lleva `--accept-shell-risk`: añádela
-   tú. Sin ella, `record` no envía nada y sale con 1.
+   La orden que imprime `prepare` ya lleva `--accept-shell-risk` cuando el
+   destino conserva una shell. Sin ella, `record` no envía nada y sale con 1.
 
 Qué hace `record`:
 
@@ -239,17 +240,27 @@ defectos ganados o perdidos; cambios de las tasas A y B; cambio del pack.
 Solo existe para `dev`. Sale con 3 si falta una grabación o está desligada.
 
 **Retirar o cambiar un caso o un defecto** que ya estaba en la línea base:
-añade a mano la entrada en `benchmark/baseline/dev.json` y después vuelve a
-escribirla (`--write` conserva las retiradas):
+la puerta (§ 6) lo rechaza e imprime su huella en la línea base
+(`sha256 en la línea base: …`). Añade a mano la entrada en
+`benchmark/baseline/dev.json` con esa huella y después vuelve a escribirla
+(`--write` conserva las retiradas):
 
 ```json
 "retired": [
-  {"id": "dev/<caso>#<defecto>", "reason": "<por qué sale o cambia>"}
+  {"id": "dev/<caso>#<defecto>", "sha256": "<huella que imprime la puerta>",
+   "reason": "<por qué sale o cambia>"}
 ]
 ```
 
 Un `id` sin `#` retira el caso entero con sus defectos. Sin esa entrada, la
-puerta del CI falla.
+puerta del CI falla. Una retirada solo cubre la versión cuya huella anota: si
+el mismo id vuelve a cambiar en otro PR, sustituye su `sha256` por la nueva
+que imprime la puerta.
+
+**Añadir un caso o un defecto** no necesita anotación ni cuenta como
+regresión, aunque el pack no lo detecte o dé una falsa alarma en él: la
+puerta compara la detección y las tasas A y B solo sobre lo que no ha
+cambiado. Lo determinista sí tiene que detectarse al 100 %.
 
 ## 6. Repite y puntúa (CI y local)
 
@@ -270,7 +281,7 @@ texto, quita `--format json --out bench.json`. Para un solo par:
 |---|---|
 | 0 | Pasa la puerta (o no se pidió puerta) |
 | 1 | Falla la puerta: regresión, umbral no alcanzado, inventario sin `retired`; o banco vacío |
-| 2 | Caso u opción no válida (`--baseline` y `--baseline-ref` juntas, `--gate baseline` fuera de `dev`, reservada sin `--measurement`) |
+| 2 | Caso, grabación u opción no válida (grabación que no se puede leer, `--baseline` y `--baseline-ref` juntas, `--gate baseline` fuera de `dev`, reservada sin `--measurement`) |
 | 3 | Falta una grabación, falta un par que es puerta o una grabación está desligada: graba o regraba |
 
 ## 7. Mide la reservada (U2, cierre de v0.1)

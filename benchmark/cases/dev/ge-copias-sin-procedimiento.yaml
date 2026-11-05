@@ -16,7 +16,10 @@ defects:
     requirement:
       measure: org.3
       clause: org.3.4
-      quote: c) La realización de copias.
+      quote: >-
+        La forma en que se ha de tratar la información en consideración al nivel de seguridad que
+        requiere, precisando cómo efectuar: a) Su control de acceso. b) Su almacenamiento. c) La
+        realización de copias.
     rationale: >-
       Los procedimientos no precisan cómo se realizan las copias de los expedientes: ni frecuencia,
       ni destino, ni retención, ni pruebas; «cuando hay tiempo» no es un procedimiento.

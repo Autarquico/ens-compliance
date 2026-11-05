@@ -24,10 +24,9 @@ defects:
     expected_criterion: solidez-justificacion-aplicabilidad
     requirement:
       measure: mp.s.2
-      clause: mp.s.2
+      clause: mp.s.2.2
       quote: >-
-        Los sistemas que prestan servicios web deberán ser protegidos frente a las siguientes
-        amenazas:
+        Se prevendrán intentos de escalado de privilegios.
     rationale: >-
       La empresa desarrolla y despliega el código de su tienda; el alojamiento no protege la
       aplicación frente a escalado de privilegios ni inyección, así que la compensación no
@@ -53,8 +52,10 @@ defects:
       measure: op.ext.1
       clause: op.ext.1.1
       quote: >-
-        se establecerá contractualmente un Acuerdo de Nivel de Servicio, que incluirá las
-        características del servicio prestado
+        Con anterioridad a la efectiva utilización de los recursos externos se establecerá
+        contractualmente un Acuerdo de Nivel de Servicio, que incluirá las características del
+        servicio prestado, lo que debe entenderse como «servicio mínimo admisible», así como, la
+        responsabilidad del prestador y las consecuencias de eventuales incumplimientos.
     rationale: >-
       La tienda seleccionó la medida por su dependencia de alojamiento, pasarela y copias; el
       tamaño del proveedor no sustituye a un acuerdo con servicio mínimo y consecuencias, y los

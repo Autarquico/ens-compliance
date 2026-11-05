@@ -202,6 +202,23 @@ def test_un_dato_real_en_las_evidencias_del_perfil_se_rechaza(tmp_path, text, ki
     assert all(value not in p for p in problems)
 
 
+@pytest.mark.parametrize(
+    "linked",
+    [
+        "profiles/mini/files/evidence/inventario.txt",
+        "cases/dev/files/inventario-sin-responsable/inventario-v2.txt",
+        "cases/dev/inventario-sin-responsable.yaml",
+    ],
+)
+def test_un_enlace_simbolico_fuera_del_banco_se_rechaza(tmp_path, linked):
+    root = bench(tmp_path / "bench")
+    outside = tmp_path / "fuera"
+    (root / linked).rename(outside)
+    (root / linked).symlink_to(outside)
+    problems = validate_bench(root, Partition.DEV)
+    assert any(linked in p and "enlace simbólico" in p for p in problems), problems
+
+
 def test_un_nif_en_el_caso_se_rechaza(tmp_path):
     defect = judgment_defect(rationale="El responsable 12345678Z no figura.")
     root = bench(tmp_path, case_data=case(defects=[defect]))
@@ -214,9 +231,17 @@ def test_dos_defectos_de_juicio_con_misma_medida_objetivo_y_criterio_se_rechazan
     other = judgment_defect(id="otro", rationale="Otra forma de decir lo mismo.")
     root = bench(tmp_path, case_data=case(defects=[judgment_defect(), other]))
     [problem] = validate_bench(root, Partition.DEV)
-    assert "misma medida, objetivo y criterio" in problem
+    assert "misma medida, objetivo y regla o criterio" in problem
     with pytest.raises(BenchError):
         load_case(root / "cases/dev/inventario-sin-responsable.yaml")
+
+
+@pytest.mark.parametrize("target", [{"kind": "evidence", "alias": "inventario"}, {"kind": "none"}])
+def test_dos_defectos_deterministas_con_misma_medida_objetivo_y_regla_se_rechazan(target):
+    expired = case()["defects"][1] | {"target": target}
+    data = case(defects=[expired, expired | {"id": "otra-caducada"}])
+    with pytest.raises(ValueError, match="misma medida, objetivo y regla o criterio"):
+        Case.model_validate(data)
 
 
 def test_con_otro_criterio_u_objetivo_no_es_ambiguo():

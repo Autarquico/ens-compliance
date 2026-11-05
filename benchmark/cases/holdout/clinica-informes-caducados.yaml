@@ -45,7 +45,10 @@ defects:
     requirement:
       measure: mp.info.6
       clause: mp.info.6.2
-      quote: "c) Requisitos de almacenamiento en otros lugares."
+      quote: >-
+        Los procedimientos de respaldo establecidos indicarán: a) Frecuencia de las copias. b)
+        Requisitos de almacenamiento en el propio lugar. c) Requisitos de almacenamiento en
+        otros lugares. d) Controles para el acceso autorizado a las copias de respaldo.
     rationale: >-
       Con el informe de copias caducado, ninguna evidencia vigente cubre ya los requisitos de
       respaldo de la base de pacientes: la medida se queda sin cobertura.
@@ -57,7 +60,9 @@ defects:
     requirement:
       measure: op.exp.6
       clause: op.exp.6.1
-      quote: Se dispondrá de mecanismos de prevención y reacción frente a código dañino
+      quote: >-
+        Se dispondrá de mecanismos de prevención y reacción frente a código dañino, incluyendo
+        el correspondiente mantenimiento de acuerdo a las recomendaciones del fabricante.
     rationale: >-
       La protección frente a código dañino solo se respaldaba con el informe de la consola; al
       caducar, ninguna de sus cláusulas tiene una evidencia en vigor.

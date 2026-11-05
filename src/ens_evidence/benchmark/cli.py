@@ -225,7 +225,7 @@ def prepare(
     typer.echo(
         f"Para grabar: ens-evidence benchmark record --partition {partition} "
         f"--provider {provider} --model {settings.model} --consent {prepared.fingerprint} "
-        "--by <nombre>"
+        "--by <nombre>" + (" --accept-shell-risk" if prepared.requires_shell_warning else "")
     )
 
 
@@ -412,8 +412,8 @@ def run(
 ) -> None:
     """Repite las grabaciones por la pre-auditoría (`service.prepare` y `service.run`, sin red)
     y puntúa por proveedor y modelo. Sale con 0 si pasa, 1 si falla la puerta, hay regresión o
-    el banco está vacío, 2 si un caso o una opción no vale y 3 si una grabación falta o está
-    desligada."""
+    el banco está vacío, 2 si un caso, una grabación o una opción no vale y 3 si una grabación
+    falta o está desligada."""
     if (provider is None) != (model is None) or all_recorded == (provider is not None):
         raise _fail("Error: indica --provider y --model, o --all-recorded")
     if baseline_file is not None and baseline_ref is not None:
@@ -427,7 +427,7 @@ def run(
     if gate is GateChoice.BASELINE:
         compared, source = _baseline_for(cases, baseline_file, baseline_ref, pack_sha256)
         retired = _guarded(lambda: working_tree_retired(cases))
-        found = inventory(cases, bench)
+        found = _inventory(cases, bench)
     gating = list(REQUIRED_PAIRS) if all_recorded else ran.pairs
     result = assemble(
         cases,
@@ -475,7 +475,7 @@ def baseline(
     retired = previous.retired if previous else []
     result = assemble(cases, partition, ran, now=clock())
     entries = [entry_of(r.provider, r.model, Score(r.cases, r.totals)) for r in result.results]
-    written = build_baseline(clock(), pack_sha256, inventory(cases, bench), entries, retired)
+    written = build_baseline(clock(), pack_sha256, _inventory(cases, bench), entries, retired)
     for line in diff(previous or empty_baseline(clock(), pack_sha256), written):
         typer.echo(line)
     if write:
@@ -519,7 +519,7 @@ def _replay(
     try:
         pairs = [pair] if pair else recorded_pairs(root, partition)
     except BenchError as exc:
-        raise _fail("\n".join(exc.problems), STALE) from None
+        raise _fail("\n".join(exc.problems)) from None
     if pair is None and gated and (missing := required_pair_problems(pairs)):
         raise _fail("\n".join(f"Error: {m}" for m in missing), STALE)
     with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
@@ -534,6 +534,13 @@ def _replay(
         except service.PreAuditRejected as exc:
             raise _fail("\n".join(f"Error: {e}" for e in exc.errors)) from None
     return pack_sha256, bench, ran
+
+
+def _inventory(root: Path, bench: list[BenchCase]) -> dict[str, str]:
+    try:
+        return inventory(root, bench)
+    except BenchError as exc:
+        raise _fail("\n".join(exc.problems)) from None
 
 
 def _guarded[T](read: Callable[[], T]) -> T:

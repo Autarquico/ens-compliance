@@ -252,6 +252,20 @@ def test_no_construye_sobre_un_destino_con_contenido(tmp_path):
         build_bench_profile(FIXTURES, PROFILE, destination)
 
 
+def test_una_evidencia_enlazada_fuera_del_banco_no_se_lee(tmp_path):
+    root = tmp_path / "bench"
+    shutil.copytree(FIXTURES / "profiles" / PROFILE, root / "profiles" / PROFILE)
+    first = yaml.safe_load((root / "profiles" / PROFILE / "profile.yaml").read_text())
+    evidence = root / "profiles" / PROFILE / "files" / first["evidence"][0]["file"]
+    outside = tmp_path / "fuera.txt"
+    shutil.move(evidence, outside)
+    evidence.symlink_to(outside)
+
+    with pytest.raises(BenchError, match="enlace simbólico o queda fuera del banco"):
+        build_bench_profile(root, PROFILE, tmp_path / "ws")
+    assert any("enlace simbólico" in p for p in validate_bench(root, Partition.DEV))
+
+
 def test_el_perfil_invalido_por_esquema_no_llega_a_construirse(tmp_path):
     root = edited_bench(tmp_path, lambda data: data.update(fictional=False))
     with pytest.raises(BenchError):

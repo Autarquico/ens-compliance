@@ -448,11 +448,45 @@ def test_retirar_un_caso_exige_anotarlo(bench, memo):
         unannotated.output
     )
 
+    [sha] = re.findall(
+        r"dev/inventario-caducado sale .*sha256 en la línea base: ([0-9a-f]{64})",
+        unannotated.output,
+    )
     annotated = json.loads((bench / BASELINE_FILE).read_text())
-    annotated["retired"] = [{"id": "dev/inventario-caducado", "reason": "duplica otro caso"}]
+    annotated["retired"] = [
+        {"id": "dev/inventario-caducado", "sha256": sha, "reason": "duplica otro caso"}
+    ]
     (bench / BASELINE_FILE).write_text(json.dumps(annotated))
     result = run(bench, "--all-recorded", "--gate", "baseline", "--baseline", str(reference))
     assert result.exit_code == 0, result.output
+
+
+def test_un_caso_nuevo_que_el_pack_no_detecta_no_es_regresion(bench, memo):
+    record_all(bench, memo)
+    assert baseline(bench, "--write").exit_code == 0
+    path = bench / "cases" / "dev" / "juicio-bis.yaml"
+    path.write_text(JUDGED.replace("id: juicio\n", "id: juicio-bis\n", 1))
+    memo(bench, load_case(path, bench), memo.scratch / "warm" / "juicio-bis")
+    for pair in REQUIRED_PAIRS:
+        record(bench, memo, "dev/juicio-bis", pair, [EMPTY] * 3)
+
+    result = run(bench, "--all-recorded", "--gate", "baseline")
+
+    assert result.exit_code == 0, result.output
+
+
+@pytest.mark.parametrize(
+    "pairs",
+    [("--all-recorded",), ("--provider", CLAUDE.provider.value, "--model", CLAUDE.model)],
+    ids=["all-recorded", "provider"],
+)
+def test_una_grabacion_mal_formada_sale_con_2_por_las_dos_vias(bench, memo, pairs):
+    record_all(bench, memo)
+    recording_path(bench, "dev/correcto", CLAUDE.provider, CLAUDE.model).write_text("{roto")
+
+    result = run(bench, *pairs)
+
+    assert result.exit_code == 2, result.output
 
 
 def git(root: Path, *args: str) -> None:

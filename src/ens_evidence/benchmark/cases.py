@@ -39,6 +39,7 @@ PROFILE_FILE = "profile.yaml"
 TEXT_SUFFIXES = frozenset({".txt", ".md"})
 STRUCTURED_SUFFIXES = frozenset({".yaml", ".yml", ".json"})
 _SPACES = re.compile(r"\s+")
+OUTSIDE = "es un enlace simbólico o queda fuera del banco; no se lee"
 
 
 class BenchError(ValueError):
@@ -94,12 +95,26 @@ def load_recording(path: Path, root: Path | None = None) -> Recording:
     return _load_model(path, Recording, json.loads, root)
 
 
+def read_bench_bytes(path: Path, base: Path) -> bytes:
+    """Los bytes de un fichero del banco. `BenchError` si es un enlace simbólico o queda fuera
+    de `base`: el banco nunca lee fuera de sí mismo."""
+    if _escapes(path, base):
+        raise BenchError([f"{_shown(path, base)}: {OUTSIDE}"])
+    return path.read_bytes()
+
+
+def _escapes(path: Path, base: Path) -> bool:
+    return path.is_symlink() or not path.resolve().is_relative_to(base.resolve())
+
+
 def _parse_yaml(text: str) -> Any:
     return safe_load_unique(text)
 
 
 def _load_model[M: BaseModel](path: Path, model: type[M], parse: Any, root: Path | None) -> M:
     shown = _shown(path, root)
+    if root is not None and _escapes(path, root):
+        raise BenchError([f"{shown}: {OUTSIDE}"])
     try:
         raw = parse(path.read_text(encoding="utf-8"))
     except FileNotFoundError:
@@ -305,13 +320,14 @@ def _reference_problems(root: Path, case: Case, profile: Profile) -> list[str]:
 def _scan_tree(directory: Path, root: Path) -> list[str]:
     if not directory.is_dir():
         return []
-    return [
-        p for path in sorted(directory.rglob("*")) if path.is_file() for p in _scan_file(path, root)
-    ]
+    found = sorted(p for p in directory.rglob("*") if p.is_file() or p.is_symlink())
+    return [problem for path in found for problem in _scan_file(path, root)]
 
 
 def _scan_file(path: Path, root: Path) -> list[str]:
     shown = _shown(path, root)
+    if _escapes(path, root):
+        return [f"{shown}: {OUTSIDE}"]
     suffix = path.suffix.lower()
     if suffix not in TEXT_SUFFIXES | STRUCTURED_SUFFIXES:
         return [f"{shown}: tipo de fichero no admitido en el banco (.txt, .md, .yaml, .json)"]

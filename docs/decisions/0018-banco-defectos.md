@@ -49,7 +49,9 @@ En el repo solo hay pymes ficticias. Los ficheros admitidos son `.txt`,
 `.md`, `.yaml` y `.json`, y `benchmark validate` les pasa la heurística de
 datos ficticios: correos, URL y dominios solo de los reservados (`.example`,
 `.test`, `.invalid`); IP solo de documentación o privadas; nunca un DNI/NIE,
-un NIF de empresa, un IBAN, un teléfono ni algo con forma de secreto.
+un NIF de empresa, un IBAN, un teléfono ni algo con forma de secreto. Un
+enlace simbólico o un fichero que resuelve fuera del banco no se lee nunca, y
+`validate` lo rechaza.
 
 ### Perfil
 
@@ -115,8 +117,9 @@ del payload. Lo prueban los tests, también en dos procesos separados.
     valida;
   - `rationale`.
 
-Dentro de un caso no puede haber dos defectos de juicio con la misma medida,
-el mismo objetivo y el mismo criterio. Los ids de caso no se repiten entre
+Dentro de un caso no puede haber dos defectos con la misma medida, el mismo
+objetivo y la misma regla o el mismo criterio: competirían por los mismos
+hallazgos. Los ids de caso no se repiten entre
 particiones.
 
 ### Grabación y su ligadura
@@ -204,6 +207,13 @@ base.** Falla si:
 - lo determinista baja del 100 %;
 - el inventario cambia sin una retirada anotada.
 
+Las tres primeras se miden solo sobre lo que no ha cambiado: los defectos
+con su huella y la de su caso iguales en los dos inventarios, y, para A y B,
+los casos con todo su inventario igual (la línea base guarda el detalle por
+caso para recalcularlas). Así un caso o un defecto nuevo nunca cuenta como
+regresión, aunque el pack no lo detecte o dé una falsa alarma; lo
+determinista sí le exige el 100 %.
+
 Bajar la línea base en el mismo PR no sirve: la puerta compara con la de la
 rama base (`--baseline-ref`).
 
@@ -245,10 +255,13 @@ No se ajustan prompts ni criterios con lo que muestre la reservada.
 La línea base guarda una huella por caso (su YAML sin los defectos, más sus
 ficheros) y otra por defecto. En la puerta `baseline`, un caso o un defecto
 de la línea base que falta o cambia de huella falla, salvo que
-`baseline/dev.json` del árbol de trabajo lo anote en `retired: [{id,
-reason}]`. Las altas no necesitan anotación. Un defecto retirado sale del
-denominador de la detección agregada solo si está anotado. `benchmark
-baseline --write` conserva las retiradas que ya había.
+`baseline/dev.json` del árbol de trabajo lo anote en `retired: [{id, sha256,
+reason}]`. Las altas no necesitan anotación. `sha256` es la huella de lo
+retirado (con sus defectos, si es un caso) en la línea base de la rama base,
+y la puerta la imprime: una retirada solo cubre esa versión, así que un
+cambio posterior del mismo id exige anotar la nueva huella. `benchmark
+baseline --write` conserva las retiradas que ya había; las de versiones
+pasadas no cubren nada.
 
 ### Informe
 

@@ -16,5 +16,8 @@ defects:
     requirement:
       measure: op.nub.1
       clause: op.nub.1.2
-      quote: Cuando se utilicen servicios en la nube suministrados por terceros, los sistemas de información que los soportan deberán ser conformes con el ENS
+      quote: >-
+        Cuando se utilicen servicios en la nube suministrados por terceros, los sistemas de
+        información que los soportan deberán ser conformes con el ENS o cumplir con las medidas
+        desarrolladas en una guía CCN-STIC
     rationale: La ficha de cumplimiento del proveedor de la aplicación de gestión dejó de estar vigente el 25 de septiembre.
