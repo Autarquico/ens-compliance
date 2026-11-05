@@ -266,6 +266,19 @@ def test_una_evidencia_enlazada_fuera_del_banco_no_se_lee(tmp_path):
     assert any("enlace simbólico" in p for p in validate_bench(root, Partition.DEV))
 
 
+def test_un_directorio_de_ficheros_enlazado_fuera_del_banco_no_se_lee(tmp_path):
+    root = tmp_path / "bench"
+    shutil.copytree(FIXTURES / "profiles" / PROFILE, root / "profiles" / PROFILE)
+    files = root / "profiles" / PROFILE / "files"
+    shutil.move(files, tmp_path / "fuera")
+    files.symlink_to(tmp_path / "fuera", target_is_directory=True)
+
+    with pytest.raises(BenchError, match="enlace simbólico o queda fuera del banco"):
+        build_bench_profile(root, PROFILE, tmp_path / "ws")
+    assert not (tmp_path / "ws").exists()
+    assert any("enlace simbólico" in p for p in validate_bench(root, Partition.DEV))
+
+
 def test_el_perfil_invalido_por_esquema_no_llega_a_construirse(tmp_path):
     root = edited_bench(tmp_path, lambda data: data.update(fictional=False))
     with pytest.raises(BenchError):

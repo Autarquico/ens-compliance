@@ -2,6 +2,7 @@
 expediente, y deja el hallazgo determinista o el cambio de payload que se espera."""
 
 import hashlib
+import shutil
 from pathlib import Path
 from typing import get_args
 
@@ -300,3 +301,16 @@ def test_la_orden_de_un_caso_solo_determinista_no_construye_payload(tmp_path):
     assert result.exit_code == 0, result.output
     assert "payload_sha256: no aplica (caso solo determinista)" in result.output
     assert "HASH_MISMATCH op.exp.1" in result.output
+
+
+def test_los_ficheros_de_un_caso_enlazados_fuera_del_banco_no_se_leen(tmp_path):
+    root = tmp_path / "bench"
+    shutil.copytree(FIXTURES, root)
+    case = fixture_case("inventario-sustituido")
+    files = case_files_dir(root, case)
+    shutil.move(files, tmp_path / "fuera")
+    files.symlink_to(tmp_path / "fuera", target_is_directory=True)
+
+    with pytest.raises(BenchError, match="enlace simbólico o queda fuera del banco"):
+        build_case(root, case, tmp_path / "ws")
+    assert any("enlace simbólico" in p for p in validate_bench(root, Partition.DEV))

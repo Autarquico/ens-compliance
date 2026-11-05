@@ -293,6 +293,11 @@ class Defect(Strict):
             raise ValueError("el requisito citado es de otra medida")
         return self
 
+    @property
+    def expected(self) -> str:
+        """Medida y regla o criterio esperados: lo que casa un hallazgo antes del objetivo."""
+        return f"{self.measure} {self.expected_rule or self.expected_criterion}"
+
 
 class _Mutation(Strict):
     pass
@@ -405,14 +410,21 @@ class Case(Strict):
         judged = [d for d in self.defects if d.layer is DefectLayer.JUDGMENT]
         if judged and not self.judgment:
             raise ValueError("un caso solo determinista no lleva defectos de juicio")
-        keys = [
-            f"{d.measure} {d.target.key} {d.expected_rule or d.expected_criterion}"
-            for d in self.defects
-        ]
-        if repeated := _repeated(keys):
+        if repeated := _repeated([f"{d.expected} {d.target.key}" for d in self.defects]):
             raise ValueError(
                 "dos defectos con la misma medida, objetivo y regla o criterio: "
                 + ", ".join(repeated)
+            )
+        absent = {d.expected for d in self.defects if d.target.kind is TargetKind.NONE}
+        if shadowed := sorted(
+            d.id
+            for d in self.defects
+            if d.target.kind is not TargetKind.NONE and d.expected in absent
+        ):
+            raise ValueError(
+                "un defecto de ausencia (`target: none`) casa con cualquier hallazgo de su medida "
+                "y regla o criterio; no convive con otro de objetivo concreto: "
+                + ", ".join(shadowed)
             )
         return self
 
@@ -587,6 +599,22 @@ class BaselineEntry(Strict):
     cases: list[CaseResult] = Field(
         description="Detalle por caso: la puerta recalcula A y B sobre los casos sin cambios."
     )
+
+    @model_validator(mode="after")
+    def _consistent(self) -> Self:
+        """`detected` y `totals` se derivan de `cases`: las dos mitades de la puerta juzgan lo
+        mismo."""
+        from ens_evidence.benchmark.score import totals  # score importa este módulo
+
+        judged = {len(c.repetitions) for c in self.cases if c.judgment}
+        if len(judged) > 1:
+            raise ValueError("los casos de juicio no tienen el mismo número de repeticiones")
+        detected = sorted(d.defect for c in self.cases for d in c.defects if d.detected)
+        if self.detected != detected:
+            raise ValueError("`detected` no coincide con los defectos detectados en `cases`")
+        if self.totals != totals(self.cases):
+            raise ValueError("`totals` no coincide con los totales de `cases`")
+        return self
 
 
 class Retired(Strict):

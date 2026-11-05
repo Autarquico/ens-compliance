@@ -333,13 +333,6 @@ def scored(*runs: CaseRun) -> BaselineEntry:
     return entry_of(Provider.CLAUDE_CODE, "claude-opus-5-5", score(runs))
 
 
-def entry(t: Totals) -> BaselineEntry:
-    """Una entrada sin detalle por caso, para las puertas que solo miran los totales."""
-    return BaselineEntry(
-        provider=Provider.CLAUDE_CODE, model="claude-opus-5-5", detected=[], totals=t, cases=[]
-    )
-
-
 def baseline(entries: list[BaselineEntry], inventory: dict[str, str] = INVENTORY) -> Baseline:
     return Baseline(
         format="ens-benchmark-baseline/1",
@@ -348,6 +341,26 @@ def baseline(entries: list[BaselineEntry], inventory: dict[str, str] = INVENTORY
         inventory=inventory,
         entries=entries,
     )
+
+
+@pytest.mark.parametrize(
+    ("field", "value", "problem"),
+    [
+        ("detected", [], "`detected` no coincide"),
+        ("totals", totals(), "`totals` no coincide"),
+    ],
+)
+def test_una_entrada_cuyos_agregados_no_salen_de_sus_casos_se_rechaza(field, value, problem):
+    data = scored(defective(HIT_X, HIT_Y), correct()).model_dump() | {field: value}
+    with pytest.raises(ValueError, match=problem):
+        BaselineEntry.model_validate(data)
+
+
+def test_una_entrada_con_repeticiones_desiguales_se_rechaza():
+    data = scored(defective(HIT_X, HIT_Y), correct()).model_dump()
+    data["cases"][1]["repetitions"].pop()
+    with pytest.raises(ValueError, match="mismo número de repeticiones"):
+        BaselineEntry.model_validate(data)
 
 
 def problems_of(
@@ -374,10 +387,7 @@ def test_baseline_igual_pasa() -> None:
 
 def test_regresion_de_un_solo_defecto() -> None:
     problems = problems_of([scored(defective(HIT_X), correct())], BASE)
-    assert problems == [
-        "dev/c#y se detectaba y ya no",
-        "la detección agregada baja de 100.0 % a 50.0 %",
-    ]
+    assert problems == ["dev/c#y se detectaba y ya no"]
 
 
 def test_cambiar_un_defecto_detectado_por_otro_sigue_fallando() -> None:
@@ -427,25 +437,21 @@ def test_el_caso_nuevo_sigue_contando_en_la_puerta_determinista() -> None:
 
 
 def test_falta_un_proveedor_de_la_linea_base() -> None:
-    codex = BaselineEntry(
-        provider=Provider.CODEX,
-        model="gpt-6.1-sol",
-        detected=[],
-        totals=totals(det=(0, 0)),
-        cases=[],
-    )
+    codex = entry_of(Provider.CODEX, "gpt-6.1-sol", score([]))
     base = baseline([*BASE.entries, codex])
     problems = problems_of([scored(defective(HIT_X, HIT_Y), correct())], base)
     assert problems == ["falta codex/gpt-6.1-sol, que la línea base tenía"]
 
 
 def test_determinista_por_debajo_del_cien_falla_incluso_sin_linea_base() -> None:
-    current = entry(totals(det=(5, 6), jud=(0, 0)))
-    assert any("5/6" in p for p in problems_of([current], baseline([])))
+    current = scored(case("n", [[]] * 3, [d_defect("d", "R", EV)], judgment=False))
+    assert any("0/1" in p for p in problems_of([current], baseline([])))
 
 
 def test_linea_base_vacia_solo_puntua_lo_determinista() -> None:
-    assert problems_of([entry(totals(det=(6, 6), jud=(0, 10)))], baseline([])) == []
+    found = determined("op.exp.1", "R", EV)
+    current = scored(case("c", [[found]] * 3, [d_defect("d", "R", EV), j_defect("x")]))
+    assert problems_of([current], baseline([])) == []
 
 
 WITHOUT_Y = {"dev/c": SHA, "dev/c#x": SHA, "dev/ok": SHA}

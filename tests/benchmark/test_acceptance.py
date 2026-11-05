@@ -405,7 +405,6 @@ def test_una_grabacion_nueva_que_pierde_un_defecto_sale_con_1(dev, memo):
 
     assert result.exit_code == 1, result.output
     assert f"{DEV_JUDGED}#normativa-incoherente se detectaba y ya no" in result.output
-    assert "la detección agregada baja de 100.0 % a 50.0 %" in result.output
     assert_report(result.output)
 
 

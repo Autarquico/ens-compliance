@@ -369,15 +369,10 @@ def regression_problems(
     previous_inventory: Mapping[str, str],
 ) -> list[str]:
     """Regresiones de un proveedor y modelo frente a su entrada en la línea base, sobre lo que
-    no ha cambiado: perder un defecto, bajar la detección agregada o subir A o B."""
+    no ha cambiado: perder un defecto o subir A o B."""
     defects, cases = _unchanged(inventory, previous_inventory)
     was, now = defects & set(previous.detected), defects & set(current.detected)
     problems = [f"{d} se detectaba y ya no" for d in sorted(was - now)]
-    if len(now) < len(was):
-        problems.append(
-            f"la detección agregada baja de {_percent(Fraction(len(was), len(defects)))}"
-            f" a {_percent(Fraction(len(now), len(defects)))}"
-        )
     base = totals([c for c in previous.cases if c.case in cases])
     head = totals([c for c in current.cases if c.case in cases])
     for name, attr in (("A", "false_alarms"), ("B", "correct_with_false_alarms")):

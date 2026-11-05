@@ -103,6 +103,14 @@ def read_bench_bytes(path: Path, base: Path) -> bytes:
     return path.read_bytes()
 
 
+def bench_dir(directory: Path, root: Path) -> Path:
+    """`directory` si queda dentro del banco `root` sin ser un enlace simbólico; si no,
+    `BenchError`. Es la base de `read_bench_bytes`: si la base escapa, el fichero también."""
+    if _escapes(directory, root):
+        raise BenchError([f"{_shown(directory, root)}: {OUTSIDE}"])
+    return directory
+
+
 def _escapes(path: Path, base: Path) -> bool:
     return path.is_symlink() or not path.resolve().is_relative_to(base.resolve())
 
@@ -318,6 +326,8 @@ def _reference_problems(root: Path, case: Case, profile: Profile) -> list[str]:
 
 
 def _scan_tree(directory: Path, root: Path) -> list[str]:
+    if _escapes(directory, root):
+        return [f"{_shown(directory, root)}: {OUTSIDE}"]
     if not directory.is_dir():
         return []
     found = sorted(p for p in directory.rglob("*") if p.is_file() or p.is_symlink())

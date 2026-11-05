@@ -31,7 +31,7 @@ from ens_evidence.benchmark.build import (
     run_step,
     seeded_ids,
 )
-from ens_evidence.benchmark.cases import BenchError, case_files_dir, read_bench_bytes
+from ens_evidence.benchmark.cases import BenchError, bench_dir, case_files_dir, read_bench_bytes
 from ens_evidence.benchmark.model import (
     Case,
     CollectedOverride,
@@ -74,7 +74,7 @@ def build_case(root: Path, case: Case, destination: Path) -> Build:
     if case.profile is None:
         raise BenchError([f"{case.key}: las bases `workspace:` aún no se construyen"])
     base = build_bench_profile(root, case.profile, destination, steps=BASE_STEPS)
-    return finish_case(base, case, case_files_dir(root, case))
+    return finish_case(base, case, bench_dir(case_files_dir(root, case), root))
 
 
 def finish_case(base: Build, case: Case, files: Path) -> Build:

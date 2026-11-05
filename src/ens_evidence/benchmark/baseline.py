@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from ens_evidence.benchmark.cases import case_files_dir, read_bench_bytes
+from ens_evidence.benchmark.cases import bench_dir, case_files_dir, read_bench_bytes
 from ens_evidence.benchmark.model import Baseline, BaselineEntry, Retired
 from ens_evidence.benchmark.recordings import BenchCase
 from ens_evidence.preaudit.payload import canonical_json
@@ -38,7 +38,7 @@ def inventory(root: Path, cases: Sequence[BenchCase]) -> dict[str, str]:
     found: dict[str, str] = {}
     for bench in cases:
         case = bench.case
-        files = case_files_dir(root, case)
+        files = bench_dir(case_files_dir(root, case), root)
         contents = sorted(
             (
                 p.relative_to(files).as_posix(),

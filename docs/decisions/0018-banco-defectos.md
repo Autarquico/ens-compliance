@@ -119,8 +119,10 @@ del payload. Lo prueban los tests, también en dos procesos separados.
 
 Dentro de un caso no puede haber dos defectos con la misma medida, el mismo
 objetivo y la misma regla o el mismo criterio: competirían por los mismos
-hallazgos. Los ids de caso no se repiten entre
-particiones.
+hallazgos. Por lo mismo, un defecto de ausencia (`target: none`) no convive
+con otro de objetivo concreto con su misma medida y regla o criterio: la
+ausencia casa con cualquier hallazgo que case el otro. Los ids de caso no se
+repiten entre particiones.
 
 ### Grabación y su ligadura
 
@@ -201,13 +203,12 @@ los cubren los tests de la pre-auditoría.
 base.** Falla si:
 
 - un defecto detectado en la línea base deja de detectarse;
-- baja la detección agregada (deterministas más juicio);
 - sube la tasa A o la tasa B;
 - falta un proveedor y modelo que la línea base tenía;
 - lo determinista baja del 100 %;
 - el inventario cambia sin una retirada anotada.
 
-Las tres primeras se miden solo sobre lo que no ha cambiado: los defectos
+Las dos primeras se miden solo sobre lo que no ha cambiado: los defectos
 con su huella y la de su caso iguales en los dos inventarios, y, para A y B,
 los casos con todo su inventario igual (la línea base guarda el detalle por
 caso para recalcularlas). Así un caso o un defecto nuevo nunca cuenta como

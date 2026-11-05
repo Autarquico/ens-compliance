@@ -244,6 +244,25 @@ def test_dos_defectos_deterministas_con_misma_medida_objetivo_y_regla_se_rechaza
         Case.model_validate(data)
 
 
+@pytest.mark.parametrize("layer", ["judgment", "deterministic"])
+def test_una_ausencia_junto_a_un_objetivo_concreto_con_la_misma_regla_o_criterio_se_rechaza(
+    layer,
+):
+    concrete = judgment_defect() if layer == "judgment" else case()["defects"][1]
+    absence = concrete | {"id": "ausencia", "target": {"kind": "none"}}
+    data = case(defects=[absence, concrete])
+    with pytest.raises(
+        ValueError, match=rf"no convive con otro de objetivo concreto: {concrete['id']}"
+    ):
+        Case.model_validate(data)
+
+
+def test_una_ausencia_con_otro_criterio_no_es_ambigua():
+    absence = judgment_defect(id="ausencia", target={"kind": "none"})
+    other = judgment_defect(expected_criterion="calidad-documental")
+    Case.model_validate(case(defects=[absence, other]))
+
+
 def test_con_otro_criterio_u_objetivo_no_es_ambiguo():
     other = judgment_defect(id="otro", expected_criterion="calidad-documental")
     Case.model_validate(case(defects=[judgment_defect(), other]))

@@ -27,6 +27,7 @@ from ens_evidence.assessment.dossier.build import DossierRejected
 from ens_evidence.assessment.dossier.store import load_snapshot, save_markdown, save_snapshot
 from ens_evidence.benchmark.cases import (
     BenchError,
+    bench_dir,
     load_profile,
     profile_files_dir,
     read_bench_bytes,
@@ -648,7 +649,7 @@ def build_bench_profile(
 ) -> Build:
     """Carga `profiles/<profile_id>` de un banco y lo construye."""
     profile = load_profile(root, profile_id)
-    files = profile_files_dir(root, profile_id)
+    files = bench_dir(profile_files_dir(root, profile_id), root)
     return build_profile(profile, files, destination, seed=seed, steps=steps)
 
 

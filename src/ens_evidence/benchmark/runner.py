@@ -15,6 +15,7 @@ from pathlib import Path
 from ens_evidence.benchmark.build import BASE_STEPS, Build, build_bench_profile
 from ens_evidence.benchmark.cases import (
     BenchError,
+    bench_dir,
     case_files_dir,
     case_paths,
     load_case,
@@ -99,7 +100,8 @@ class ProfileCache:
             where = self._scratch / case.profile
             base = build_bench_profile(root, case.profile, where, steps=BASE_STEPS)
             self._bases[case.profile] = base
-        return finish_case(base.fork(destination), case, case_files_dir(root, case))
+        files = bench_dir(case_files_dir(root, case), root)
+        return finish_case(base.fork(destination), case, files)
 
 
 CaseBuilder = Callable[[Path, Case, Path], Build]
