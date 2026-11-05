@@ -131,6 +131,78 @@ info_transmision:
 info_otras:
   not_applicable: true
   reason: No hay otras actividades de tratamiento; la destrucción de papel la hace una empresa con certificado de destrucción.
+analisis_riesgos:
+  - ambito: Sistema de la clínica (historias, radiografías, programa de gestión y servidor)
+    quien: Responsable de la seguridad
+    pasos: Cada septiembre redacta el análisis con la directora y el responsable de sistemas, anotando los activos más valiosos, las amenazas más probables, las salvaguardas y los riesgos que la clínica acepta; lo repasa antes si cambian el servidor, el programa de gestión o la forma de entregar radiografías.
+    herramienta: Documento de texto en la carpeta Seguridad del servidor
+    evidencia: Análisis de riesgos fechado, con la revisión de la directora y del responsable de sistemas
+inventario_activos:
+  - ambito: Servidor, portátil de dirección, programa de gestión, base de datos de pacientes y puestos
+    quien: Responsable de sistemas
+    pasos: Anota cada equipo o programa con su naturaleza y la persona que decide sobre él cuando entra, sale o cambia, y repasa la lista completa cada marzo y cada septiembre; los cuatro puestos sin datos locales se llevan en la hoja de puestos del servidor.
+    herramienta: Inventario de activos y hoja de puestos en la carpeta Seguridad
+    evidencia: Inventario con la fecha de su última revisión y quién la hizo
+gestion_cuentas:
+  - ambito: Programa de gestión clínica
+    quien: Responsable de sistemas
+    pasos: Con la petición firmada de la directora crea un usuario propio para cada persona, con el perfil de su puesto; lo desactiva el último día de contrato, al cambiar de puesto o cuando la directora lo ordena, y conserva la cuenta desactivada cinco años, el plazo mínimo de conservación de la historia, para que el registro de accesos siga identificando a su titular.
+    herramienta: Consola de administración del programa de gestión clínica
+    evidencia: Petición firmada y registro de altas y bajas
+credenciales:
+  - ambito: Usuarios del programa de gestión, equipos de la clínica y acceso remoto de la directora
+    quien: Responsable de sistemas
+    pasos: Entrega la contraseña inicial en persona después de que la persona firme el acuse de la normativa y de sus obligaciones con las credenciales, y el programa obliga a cambiarla en el primer acceso; se cambian cada año o ante sospecha, y la cuenta se bloquea en el día si se pierde el móvil del doble factor, si se cree que alguien conoce la contraseña o si termina la relación con la clínica.
+    herramienta: Consola del programa de gestión y aplicación de doble factor del acceso remoto
+    evidencia: Acuse firmado en el archivador de personal y registro de altas y bajas
+actualizaciones:
+  - ambito: Servidor, portátil de dirección, puestos Windows y programa de gestión clínica
+    quien: Técnico externo de mantenimiento, supervisado por el responsable de sistemas
+    pasos: El responsable de sistemas sigue los avisos de defectos del fabricante del servidor y del proveedor del programa y decide con el técnico qué se instala en la visita del segundo martes de cada mes; las de seguridad se aplican ese mes tras probarlas el día antes en el ordenador de recepción, las que el proveedor no califica de seguridad pueden esperar al mes siguiente y un aviso crítico se aplica sin esperar a la visita. Solo el técnico contratado y el responsable de sistemas tocan los equipos.
+    herramienta: Servicio de actualizaciones del sistema operativo y avisos del proveedor del programa
+    evidencia: Parte mensual de mantenimiento firmado
+codigo_danino:
+  - ambito: Servidor, portátil de dirección y ordenadores de recepción y gabinetes
+    quien: Responsable de sistemas
+    pasos: Mantiene el antivirus gestionado en todos los equipos, con protección en tiempo real y las firmas que publica el fabricante, y con la política que analiza memorias y adjuntos antes de abrirlos; cada mes revisa el informe de la consola y, si salta una alerta, aísla el equipo, avisa a la responsable de seguridad y lo anota en el registro de incidencias.
+    herramienta: Consola del antivirus gestionado
+    evidencia: Informe mensual exportado de la consola del antivirus
+registro_actividad:
+  - ambito: Programa de gestión clínica y servidor
+    quien: Responsable de la seguridad
+    pasos: El programa guarda de cada acceso a una historia el usuario, la fecha y hora, el paciente consultado, la acción y si se completó, y el servidor registra los inicios de sesión; los registros se conservan dos años en el servidor y la responsable de seguridad los revisa cada mes.
+    herramienta: Registro de accesos del programa de gestión y visor de eventos del servidor
+    evidencia: Hoja de revisión mensual de accesos en la carpeta Seguridad
+perimetro:
+  - ambito: Router de la clínica (red de gabinetes, wifi de pacientes y salida a internet)
+    quien: Responsable de la seguridad
+    pasos: Todo acceso nuevo desde o hacia internet, como el acceso remoto de la directora, se pide por escrito con su motivo; la responsable de seguridad lo autoriza antes de que el responsable de sistemas o el técnico lo configure en el router, que solo deja pasar el tráfico autorizado y mantiene la wifi de pacientes fuera de la red de gabinetes.
+    herramienta: Router de la clínica
+    evidencia: Autorización firmada y registro de reglas del router en la carpeta Seguridad
+puesta_en_produccion:
+  - ambito: Versiones nuevas del programa de gestión clínica y del software de radiografía
+    quien: Responsable de sistemas
+    pasos: Antes de instalar una versión lee las notas del proveedor y la prueba el día anterior en el ordenador de recepción, comprobando que el programa arranca, abre una historia y no cambia perfiles ni desactiva el antivirus; solo entonces se instala en el servidor fuera del horario de consulta, y si algo falla no se instala y se avisa al proveedor.
+    herramienta: Ordenador de recepción como equipo de prueba
+    evidencia: Parte mensual de mantenimiento firmado
+informacion_deberes:
+  - ambito: Toda la plantilla (odontólogos, higienista, recepción y administración)
+    quien: Responsable de la seguridad
+    pasos: El primer día entrega la normativa con los deberes del puesto, el deber de confidencialidad sobre las historias, las medidas disciplinarias y lo que hay que devolver o dejar de usar al salir o al cambiar de puesto, y la persona firma el acuse de lectura; al cambiar de puesto o terminar el contrato se le recuerdan por escrito.
+    herramienta: Normativa de seguridad y acuse en papel
+    evidencia: Acuse de lectura firmado en el archivador de personal
+concienciacion:
+  - ambito: Toda la plantilla
+    quien: Responsable de la seguridad
+    pasos: En la reunión de personal de cada trimestre dedica un rato a recordar el buen uso de los equipos y un engaño reciente, como las llamadas que suplantan al proveedor del programa, qué señales hay que comunicar y que se avisa de todo incidente aunque luego resulte una falsa alarma; tras cada simulacro comenta lo aprendido.
+    herramienta: Reunión de personal y carteles en recepción y gabinetes
+    evidencia: Orden del día de la reunión con las firmas de asistencia
+formacion:
+  - ambito: Toda la plantilla
+    quien: Responsable de la seguridad
+    pasos: Cada septiembre, y al incorporarse alguien, imparte dos horas sobre configuración segura del puesto, cómo reconocer y avisar de un incidente y cómo guardar, enviar, copiar, entregar y destruir historias, radiografías e informes; al final pasa un cuestionario de diez preguntas y repite la formación a quien no llegue al 80 %.
+    herramienta: Sesión presencial y cuestionario
+    evidencia: Hoja de asistencia firmada y cuestionarios corregidos
 aut_instalaciones:
   - elemento: Clínica de Villadiente
     quien: Directora médica

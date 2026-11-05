@@ -127,6 +127,78 @@ info_transmision:
 info_otras:
   not_applicable: true
   reason: No hay otras actividades de tratamiento; los albaranes en papel se destruyen en la trituradora de la oficina.
+analisis_riesgos:
+  - ambito: Tienda en línea, base de datos de pedidos y proveedores de los que depende
+    quien: Responsable de la seguridad
+    pasos: Cada septiembre lo redacta con la fundadora y el responsable del sistema, con los activos más valiosos, las amenazas más probables, las salvaguardas, el riesgo que se acepta y el servicio mínimo que hay que pactar con cada proveedor; lo repasa antes si cambian el alojamiento, la pasarela de pago o la forma de publicar la tienda.
+    herramienta: Documento en la carpeta Seguridad de la nube de la empresa
+    evidencia: Análisis de riesgos fechado y revisado con la fundadora y el responsable del sistema
+inventario_activos:
+  - ambito: Portátiles, servidor virtual, aplicación de la tienda, base de datos y cuenta del repositorio
+    quien: Responsable del sistema
+    pasos: Anota cada elemento con su naturaleza y la persona que decide sobre él en la semana en que entra, sale o cambia, por ejemplo al sustituir un disco, y revisa la lista completa cada abril y cada octubre.
+    herramienta: Inventario en la carpeta Seguridad de la nube de la empresa
+    evidencia: Inventario con la fecha de su última actualización y quién la hizo
+gestion_cuentas:
+  - ambito: Panel de la tienda, consola del alojamiento y organización del repositorio
+    quien: Desarrollador y administrador de la tienda
+    pasos: Con la petición por escrito de la fundadora crea una cuenta nominal para cada persona, con doble factor; la retira el día en que la persona deja la empresa o cambia de función, o cuando la fundadora lo ordena, y la conserva bloqueada un año para que los registros sigan identificando a su titular antes de borrarla.
+    herramienta: Panel de administración, consola del alojamiento y ajustes de la organización del repositorio
+    evidencia: Petición por correo y registro de cuentas
+credenciales:
+  - ambito: Cuentas del panel, del alojamiento, del repositorio y del correo
+    quien: Desarrollador y administrador de la tienda
+    pasos: Antes de dar acceso, la persona confirma por correo que ha leído la normativa y sus obligaciones con las credenciales; la contraseña inicial se comparte por el gestor de contraseñas y se cambia en el primer acceso, cuando se activa el doble factor. Se cambian ante cualquier sospecha, y la cuenta se bloquea en el día si se pierde un portátil o el móvil del doble factor o si termina la relación con la empresa.
+    herramienta: Gestor de contraseñas de la empresa
+    evidencia: Confirmación de lectura por correo y registro de cuentas
+actualizaciones:
+  - ambito: Servidor Debian, dependencias de la tienda y portátiles Ubuntu
+    quien: Desarrollador y administrador de la tienda
+    pasos: Cada lunes revisa los avisos de dependencias del repositorio y los anuncios de seguridad de Debian; aplica los de seguridad en la semana tras pasar las pruebas automáticas, un aviso crítico el mismo día después de una copia y el resto el primer lunes de mes. El mantenimiento del servidor solo lo hace él.
+    herramienta: Avisos de dependencias del repositorio y actualizaciones de Debian
+    evidencia: Registro semanal de actualizaciones
+codigo_danino:
+  - ambito: Servidor de la tienda, portátiles y correo de la empresa
+    quien: Desarrollador y administrador de la tienda
+    pasos: El servidor analiza cada fichero que se sube, como las fotos del catálogo, y comprueba cada día la integridad de los ficheros de la aplicación; los portátiles tienen protección en tiempo real y analizan las memorias al conectarlas, y el filtro del proveedor analiza los adjuntos antes de entregarlos. Las firmas se actualizan a diario según el fabricante y ante una detección se aísla el fichero o el equipo y se avisa al responsable de seguridad.
+    herramienta: Analizador de ficheros del servidor, protección de los portátiles y filtro del correo
+    evidencia: Estado trimestral de la protección frente a código dañino
+registro_actividad:
+  - ambito: Servidor web, panel de administración y sistema operativo del servidor
+    quien: Desarrollador y administrador de la tienda, con revisión del responsable de la seguridad
+    pasos: Mantiene activos el registro de peticiones del servidor web, el del panel con usuario, fecha y hora, objeto, acción y resultado, y el de inicios de sesión y usos de sudo, que se envía cada hora a un almacenamiento aparte y se conserva 180 días; el responsable de seguridad revisa cada lunes los accesos fallidos al panel.
+    herramienta: Registros del servidor web y del panel y almacenamiento aparte de registros
+    evidencia: Comprobación fechada de la configuración de registros
+perimetro:
+  - ambito: Cortafuegos del servidor virtual de la tienda
+    quien: Responsable de la seguridad
+    pasos: Abrir un puerto o añadir una regla se pide por escrito con su motivo y el responsable de seguridad lo autoriza antes de que el responsable del sistema lo configure; solo está autorizado el tráfico web de la tienda y la administración entra por la red privada del alojamiento. Las reglas se revisan cada trimestre.
+    herramienta: Cortafuegos del servidor y consola del alojamiento
+    evidencia: Petición autorizada por correo y revisión trimestral del cortafuegos
+puesta_en_produccion:
+  - ambito: Código de la tienda y extensiones del panel
+    quien: Desarrollador y administrador de la tienda, con la revisión de otra persona del equipo
+    pasos: Cada cambio entra por una petición en el repositorio que revisa otra persona y solo se despliega si pasan las pruebas automáticas, que incluyen las de seguridad; los cambios que tocan pagos o envíos se prueban antes en el entorno de pruebas con pedidos ficticios, y se despliega fuera de las horas de más venta.
+    herramienta: Repositorio con pruebas automáticas y entorno de pruebas
+    evidencia: Historial de peticiones de cambio y de despliegues
+informacion_deberes:
+  - ambito: Las tres personas del equipo
+    quien: Responsable de la seguridad
+    pasos: Al incorporarse alguien o cambiar de función le envía la normativa con los deberes de su puesto, el deber de confidencialidad sobre los datos de clientes, las medidas disciplinarias y lo que debe devolver o retirar al salir, y la persona confirma la lectura por correo; al salir se le recuerda por escrito la confidencialidad.
+    herramienta: Correo de la empresa y carpeta Seguridad
+    evidencia: Confirmaciones de lectura que guarda el responsable de seguridad
+concienciacion:
+  - ambito: Las tres personas del equipo
+    quien: Responsable de la seguridad
+    pasos: Una vez por trimestre, en la reunión mensual de coordinación, recuerda el buen uso de los portátiles y del panel, el último engaño visto (pedidos fraudulentos o correos que suplantan a la pasarela de pago), qué señales hay que comunicar y que se avisa de todo incidente aunque resulte una falsa alarma.
+    herramienta: Reunión de coordinación por videollamada
+    evidencia: Punto anotado en el acta de la reunión
+formacion:
+  - ambito: Las tres personas del equipo
+    quien: Responsable de la seguridad
+    pasos: Cada septiembre, y al incorporarse alguien, imparte una sesión de hora y media sobre pedidos fraudulentos y suplantaciones, contraseñas y doble factor, cómo avisar de un incidente, publicación segura de cambios y tratamiento de los datos de clientes en el panel y con la empresa de transporte; al final cada persona resuelve casos prácticos y se repasan los fallos.
+    herramienta: Sesión con casos prácticos
+    evidencia: Registro de la sesión con sus contenidos y el resultado de los casos
 aut_instalaciones:
   - elemento: Taller y oficina
     quien: Fundadora

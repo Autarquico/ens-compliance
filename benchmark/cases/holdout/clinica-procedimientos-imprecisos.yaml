@@ -17,6 +17,12 @@ mutations:
     key: procedimientos.1.pasos
     value: Se mira si la copia ha salido bien y, si no, ya se verá.
   - op: set_answer
+    key: gestion_cuentas.0.quien
+    value: Cualquiera de la clínica que tenga un rato
+  - op: set_answer
+    key: gestion_cuentas.0.pasos
+    value: Se crea o se quita la cuenta cuando alguien se acuerda.
+  - op: set_answer
     key: incidentes_informe_eventos
     value: Si alguien ve algo raro en un ordenador, que lo comente en el café.
   - op: set_answer
