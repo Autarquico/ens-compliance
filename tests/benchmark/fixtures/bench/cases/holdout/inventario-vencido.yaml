@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: inventario-vencido
+partition: holdout
+profile: mini
+kind: defective
+mutations:
+  - op: expire_evidence
+    alias: inventario
+    valid_until: "2026-08-15T00:00:00+00:00"
+defects:
+  - id: inventario-vencido
+    layer: deterministic
+    measure: op.exp.1
+    target: {kind: evidence, alias: inventario}
+    expected_rule: EVIDENCE_EXPIRED
+    requirement:
+      measure: op.exp.1
+      clause: op.exp.1.1
+      quote: detallando su naturaleza e identificando a su responsable
+    rationale: El inventario aportado venció el 15 de agosto y no se ha renovado.

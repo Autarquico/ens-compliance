@@ -1,0 +1,16 @@
+format: ens-benchmark-case/1
+id: procedimientos-sin-responsable
+partition: holdout
+profile: mini
+kind: defective
+defects:
+  - id: procedimientos-sin-responsable
+    layer: judgment
+    measure: org.3
+    target: {kind: evidence, alias: revision-anual}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: org.3
+      clause: org.3.2
+      quote: Quién debe hacer cada tarea.
+    rationale: El acta enumera las tareas de operación sin decir quién hace cada una.
