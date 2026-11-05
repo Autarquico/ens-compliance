@@ -260,7 +260,8 @@ def test_analyze_sin_confirmar_la_elevacion_se_rechaza_y_dice_que_significa(at_s
 
     assert result.exit_code == 1
     assert "--elevated" in result.output
-    help_text = " ".join(helped.output.replace("│", " ").split())
+    plain = re.sub(r"\x1b\[[0-9;]*m", "", helped.output)
+    help_text = " ".join(plain.replace("│", " ").split())
     assert "elevado las conclusiones" in help_text
     assert "juicio manual" in help_text
 
