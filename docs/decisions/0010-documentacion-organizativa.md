@@ -65,6 +65,13 @@ mínimo y quién aprueba:
   modificar una existente sí. El procedimiento de incidentes
   (`procedimiento-incidentes`, 0013) entra en v1. El articulado empaquetado
   incluye también los arts. 25.1, 25.2 y 33.7, con su revisión humana firmada.
+- **v2 (procedimientos operativos):** `procedimientos-seguridad` añade los
+  procedimientos de medidas op./mp. de BÁSICA (op.pl.1, op.exp.1/4/6/8,
+  op.acc.1/2/4/6, mp.info.6, mp.com.1, mp.sw.2), con `covers` a sus cláusulas.
+  Así el documento se cita junto a la medida, pero esa cobertura solo llega al
+  expediente y la pre-auditoría: la matriz no la cuenta como evidencia (solo un
+  enlace explícito en `matrix.yaml` lo hace), y la medida sin evidencia sigue
+  con `MISSING_EVIDENCE`.
 
 ## Consecuencias
 

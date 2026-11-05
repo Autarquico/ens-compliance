@@ -154,7 +154,7 @@ def test_respuestas_que_dejan_de_ser_validas_dejan_obsoleto_el_documento(approve
 @pytest.mark.parametrize(
     ("field", "value", "reason"),
     [
-        ("template.version", 2, "plantilla cambiada de versión"),
+        ("template.version", 1, "plantilla cambiada de versión"),
         ("renderer_version", 2, "renderizador cambiado"),
         ("catalog_sha256", "b" * 64, "catálogo cambiado"),
         ("articulado_sha256", "c" * 64, "fuente del articulado cambiada"),

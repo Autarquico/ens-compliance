@@ -130,6 +130,60 @@ info_transmision:
 info_otras:
   not_applicable: true
   reason: No hay otras actividades de tratamiento; la destrucción de papel se recoge en el procedimiento de soportes.
+analisis_riesgos:
+  - ambito: Servidor de ficheros, correo y portal de clientes
+    quien: Responsable de la seguridad
+    pasos: Cada año y tras cada cambio relevante se revisan los activos, amenazas, salvaguardas y riesgos residuales y se presenta a la gerencia.
+    herramienta: Hoja del análisis de riesgos en la carpeta Seguridad
+    evidencia: Análisis de riesgos fechado y acta de presentación
+inventario_activos:
+  - ambito: Equipos, servidor y servicios en la nube
+    quien: Administrador de sistemas
+    pasos: Se anota cada alta y baja de equipo o servicio con su responsable y se revisa el inventario cada semestre.
+    herramienta: Hoja de inventario en el servidor
+    evidencia: Inventario con fecha de última revisión
+gestion_cuentas:
+  - ambito: Cuentas del dominio y del correo
+    quien: Administrador de sistemas
+    pasos: Alta nominal a petición del jefe de área; baja el mismo día en que la persona deja la empresa o la función; las cuentas inhabilitadas se conservan un año.
+    herramienta: Consola de administración del correo
+    evidencia: Ticket de alta o baja
+credenciales:
+  - ambito: Contraseñas del personal
+    quien: Administrador de sistemas
+    pasos: La persona firma la normativa antes de recibir la contraseña inicial, que cambia en el primer acceso; se bloquea si se sospecha que se ha revelado.
+    herramienta: Consola de administración del correo
+    evidencia: Acuse de recibo firmado
+actualizaciones:
+  - ambito: Equipos y servidor
+    quien: Administrador de sistemas
+    pasos: Cada semana se revisan los avisos del fabricante, se priorizan los parches críticos y se aplican en 48 horas.
+    herramienta: Consola de actualizaciones
+    evidencia: Informe semanal de actualizaciones
+codigo_danino:
+  - ambito: Todos los equipos
+    quien: Administrador de sistemas
+    pasos: El antivirus analiza cada fichero externo; ante una alerta se aísla el equipo y se avisa a la responsable de la seguridad.
+    herramienta: Consola del antivirus
+    evidencia: Informe mensual de la consola del antivirus
+registro_actividad:
+  - ambito: Servidor de ficheros y correo
+    quien: Administrador de sistemas
+    pasos: Se registran los accesos con usuario, fecha y resultado y se conservan un año.
+    herramienta: Registro de auditoría del servidor
+    evidencia: Exportación mensual del registro
+perimetro:
+  - ambito: Cortafuegos de la oficina
+    quien: Responsable del sistema
+    pasos: Cada nueva regla se pide por correo, la autoriza el responsable del sistema y se anota en el registro de cambios.
+    herramienta: Consola del cortafuegos
+    evidencia: Registro de cambios del cortafuegos
+puesta_en_produccion:
+  - ambito: Aplicaciones nuevas o actualizadas
+    quien: Responsable del sistema
+    pasos: Antes de usarla se prueba en un equipo aparte con los criterios de seguridad y se comprueba que no afecta al resto de servicios.
+    herramienta: Equipo de pruebas
+    evidencia: Acta de aceptación firmada
 aut_instalaciones:
   - elemento: Oficina principal de Villaficticia
     quien: Gerente
