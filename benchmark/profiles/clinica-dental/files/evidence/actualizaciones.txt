@@ -1,8 +1,9 @@
-Parte mensual de mantenimiento, 9 de septiembre de 2026.
+Parte mensual de mantenimiento, martes 8 de septiembre de 2026.
 Técnico externo de mantenimiento; supervisa y firma Jorge Molar (responsable de sistemas).
 
-Actualizaciones de seguridad de Windows instaladas en el servidor y en los seis equipos
-fuera del horario de consulta, tras probarlas en el ordenador de recepción el día anterior.
+Actualizaciones de seguridad de Windows instaladas en los seis equipos (servidor, portátil de
+dirección y los cuatro puestos) fuera del horario de consulta, tras probarlas el día anterior
+en el ordenador de recepción.
 Actualización 4.2 del programa de gestión clínica anunciada por el proveedor: se aplaza a
 octubre porque corrige un fallo menor; el proveedor no la califica de seguridad.
 Se revisan los avisos del fabricante del servidor: sin defectos pendientes.

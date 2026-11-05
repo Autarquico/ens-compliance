@@ -60,7 +60,7 @@ uso_servicios:
   - El correo y la nube de la empresa se usan solo para el trabajo y nunca para guardar listados de clientes en cuentas personales.
   - El panel de administración de la tienda solo se abre desde los portátiles de la empresa.
 uso_instalaciones:
-  - El taller se cierra con llave al terminar y el portátil se guarda en el armario de la oficina.
+  - El taller se cierra con llave al terminar y los portátiles se guardan en el armario de la oficina.
   - Los alumnos de los cursos de cerámica no entran en la oficina.
 uso_indebido:
   - Exportar listados de clientes para usos que no sean los pedidos.
@@ -115,7 +115,7 @@ info_copias:
 info_etiquetado:
   - informacion: Soportes con datos de clientes
     quien: Atención al cliente y calidad
-    pasos: No se usan soportes extraíbles; si hiciera falta uno, se etiqueta con su contenido y su responsable y se anota en el registro.
+    pasos: Los datos de clientes no se copian a soportes extraíbles; las memorias USB solo llevan fotos del catálogo y, como cualquier soporte, se etiquetan con su contenido y su responsable y se anotan en el registro.
     herramienta: Registro de soportes
     evidencia: Registro de soportes
 info_transmision:

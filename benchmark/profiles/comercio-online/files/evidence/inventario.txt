@@ -2,6 +2,8 @@ Inventario de activos de Barro Ficticio Cerámica (empresa ficticia).
 Actualizado el 1 de octubre de 2026 por Pablo Horno, responsable del sistema.
 
 - lap-taller: portátil Ubuntu 24.04 con disco cifrado; responsable Nuria Torno.
+- lap-atencion: portátil Ubuntu 24.04 con disco cifrado; responsable Óscar Arcilla.
+- lap-desarrollo: portátil Ubuntu 24.04 con disco cifrado; responsable Pablo Horno.
 - vps-tienda: servidor virtual Debian 12 en un alojamiento de la UE; responsable Pablo Horno.
 - app-tienda: aplicación de la tienda en línea, código en barro-ficticio/tienda; responsable
   Nuria Torno (decide qué se vende y qué datos se piden).

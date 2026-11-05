@@ -29,7 +29,7 @@ coordinacion: Los cuatro responsables se reúnen el último viernes de cada mes 
 resolucion_conflictos: Si dos responsables discrepan, decide la directora en un plazo de una semana y la decisión se anota en el acta de la reunión siguiente.
 comite:
   - nombre: Comité de Seguridad y Protección de Datos
-    ambito: Revisión mensual de accesos a historias, copias, incidencias y avisos del proveedor del programa.
+    ambito: Revisa en cada reunión de coordinación los accesos a historias, las copias, las incidencias y los avisos del proveedor del programa.
     integrantes: Elena Muela, Hugo Encía, Irene Esmalte, Jorge Molar
     relacion: Informa a la dirección; Jorge Molar traslada sus acuerdos al técnico externo y al proveedor del programa de gestión.
 documentacion_estructura: Seis documentos (política, designación, normativa, procedimientos, proceso de autorización y procedimiento de incidentes) en la carpeta Seguridad del servidor, cada uno con versión y fecha de aprobación en el nombre.
@@ -59,6 +59,7 @@ relacion_seguridad_sistema: distintas y sin dependencia jerárquica
 uso_equipos:
   - Los ordenadores de recepción y de los gabinetes se usan solo para la actividad de la clínica; nadie instala programas sin permiso de Jorge Molar.
   - La sesión se bloquea al levantarse del puesto y la pantalla de recepción no queda orientada hacia la sala de espera.
+  - Todos los equipos, también el servidor, llevan el antivirus gestionado de la clínica, que analiza memorias y adjuntos antes de abrirlos.
 uso_servicios:
   - El correo de la clínica se usa solo para la actividad profesional y nunca para enviar historias o radiografías a cuentas personales.
   - Las radiografías y los informes se guardan únicamente en el programa de gestión clínica, no en el escritorio ni en memorias USB.
@@ -193,12 +194,12 @@ incidentes_informe_eventos: Cualquier persona de la clínica avisa en persona, p
 incidentes_niveles:
   - nivel: Bajo
     criterio: Sin acceso indebido a historias ni pérdida de datos y con la consulta funcionando.
-    escalado: La responsable de seguridad lo resuelve con el responsable de sistemas y lo presenta en la reunión mensual del comité.
+    escalado: La responsable de seguridad lo resuelve con el responsable de sistemas y lo presenta en la siguiente reunión del comité.
   - nivel: Alto
     criterio: Acceso indebido a historias, pérdida de datos de pacientes o consulta sin programa más de media jornada.
     escalado: La responsable de seguridad avisa en el momento a la directora y reúne al comité ese mismo día.
 incidentes_analisis: La responsable de seguridad dirige el análisis con el responsable de sistemas y el técnico externo, determina el alcance y la causa, aplica la contención y cierra el incidente cuando el servicio funciona y la causa está corregida.
-incidentes_comunicacion: La directora decide qué se comunica a los pacientes y al servicio de salud; la responsable de seguridad informa al personal en la reunión de la semana.
+incidentes_comunicacion: La directora decide qué se comunica a los pacientes y al servicio de salud; la responsable de seguridad informa al personal en la siguiente reunión de personal.
 incidentes_registro: La responsable de seguridad anota en el registro de la herramienta (ens-evidence incident) el aviso inicial, los avances, las actuaciones de emergencia, los cambios en el sistema y el cierre.
 incidentes_mejora: El comité revisa cada trimestre los incidentes cerrados y la responsable de seguridad propone las medidas correctoras, que quedan en el acta.
 incidentes_datos_personales: La responsable de seguridad determina si el incidente afecta a datos personales de pacientes; si es así, avisa a la directora y al delegado de protección de datos externo para decidir qué comunicaciones exigen el RGPD y la Ley Orgánica 3/2018.

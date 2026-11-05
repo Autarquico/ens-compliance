@@ -7,6 +7,22 @@ assets:
     owner: Nuria Torno
     encrypted: true
     usage: Gestión de pedidos, atención a clientes y administración de la tienda
+  - id: lap-atencion
+    type: laptop
+    deployment: deployed
+    hostname: lap-atencion.barro-ficticio.example
+    os: Ubuntu 24.04 LTS
+    owner: Óscar Arcilla
+    encrypted: true
+    usage: Atención al cliente, revisión de pedidos sospechosos y documentación de seguridad
+  - id: lap-desarrollo
+    type: laptop
+    deployment: deployed
+    hostname: lap-desarrollo.barro-ficticio.example
+    os: Ubuntu 24.04 LTS
+    owner: Pablo Horno
+    encrypted: true
+    usage: Desarrollo de la tienda y administración del servidor
   - id: vps-tienda
     type: server
     deployment: deployed
