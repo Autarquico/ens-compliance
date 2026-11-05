@@ -51,6 +51,9 @@ Trabajamos en **es**. Issues, comentarios, informes y commits del PM en es.
 - Comentar en issues
 - Ejecutar `/pm sync`
 
+### Partición reservada del banco
+- Nunca leer `benchmark/cases/holdout/` ni ejecutar el banco sobre ella sin petición expresa del usuario y `--measurement` (ADR 0018)
+
 ### Requiere confirmación explícita
 - Cerrar issues
 - Mover a Done

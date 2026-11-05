@@ -51,11 +51,15 @@ Valida la pre-auditoría contra la legislación con el método y el umbral de do
 
 ## Tasks (no autoritativo — el board manda)
 
-- [ ] Formato de caso
-- [ ] Defectos sembrados
-- [ ] Casos correctos y sintéticos
-- [ ] Puntuación
-- [ ] Runner + CI
+- [x] Formato de caso: perfiles, casos, defectos con cita literal del anexo II, mutaciones y grabaciones (`src/ens_evidence/benchmark/`, ADR 0018)
+- [x] Defectos sembrados: partición de desarrollo (`consultora-tic`, `gestoria`) y reservada, escrita por un agente distinto
+- [x] Casos correctos y sintéticos: pymes ficticias en `benchmark/profiles/`
+- [x] Puntuación: casado por medida y objetivo, duplicados una vez, mayoría 2 de 3, tasas A y B, puertas `threshold` y `baseline`
+- [x] Runner + CI: `ens-evidence benchmark validate|build|prepare|record|run|baseline`; job `benchmark` sobre la partición de desarrollo
+- [x] ADR 0018 y runbook `docs/runbooks/banco-defectos.md`
+- [ ] U1: grabar la partición de desarrollo con `claude-code/claude-opus-5-5` y `codex/gpt-6.1-sol` y escribir la línea base (usuario)
+- [ ] U2: medir la reservada con `--gate threshold --measurement` (usuario; cierra v0.1)
+- [ ] U3: variantes con datos reales de Autarqui fuera del repo (pendiente: el runner aún no construye bases `workspace:`)
 
 ## Referencias
 

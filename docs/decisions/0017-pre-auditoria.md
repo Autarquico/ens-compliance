@@ -227,6 +227,7 @@ cumplir lo que se le exigió al registrarlo: se comprueba en cada lectura.
 - Los tests usan respuestas grabadas y CLIs falsas. Prueban el contrato, no
   la eficacia. La eficacia la mide `audit-benchmark`, con el umbral que fije
   el usuario.
+- El banco que mide esa eficacia, su puntuación y su umbral: ADR 0018.
 - Las personas que no constan en ningún registro ni en las respuestas de
   org-docs pueden seguir apareciendo por su nombre en el texto de un
   documento o de una evidencia. Revisa el payload antes de consentir.
