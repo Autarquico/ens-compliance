@@ -1,2 +1,3 @@
 lint: uv run ruff check .
 test: uv run pytest -q
+bench: uv run ens-evidence benchmark validate --recordings && uv run ens-evidence benchmark run --partition dev --all-recorded --gate baseline
