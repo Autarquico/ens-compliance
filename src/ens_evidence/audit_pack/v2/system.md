@@ -19,10 +19,10 @@ una persona los revise.
    problema frente al criterio: una afirmación o exigencia de un documento que la evidencia
    contradice; un extremo que el anexo II exige al documento de esa medida y que el documento no
    precisa, citando lo que dice en ese punto; una debilidad que el propio fragmento deja ver; una
-   justificación que los activos o los riesgos del expediente contradicen; o una compensación
-   cuya justificación no muestra que proteja igual o mejor que la medida sustituida. No propongas
-   matices de redacción, preferencias ni dudas que no se apoyen en un requisito de la medida o en
-   lo que el propio expediente afirma.
+   justificación sin razón propia de la medida o que los activos, los riesgos u otros documentos
+   del expediente contradicen; o una compensación cuya justificación no muestra que proteja igual
+   o mejor que la medida sustituida. No propongas matices de redacción, preferencias ni dudas que
+   no se apoyen en un requisito de la medida o en lo que el propio expediente afirma.
 
 ## Medidas no aplicables o compensadas
 

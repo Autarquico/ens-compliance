@@ -164,6 +164,14 @@ def test_system_prompt_keeps_weak_exclusions_in_scope():
     assert "contradicen los activos, los riesgos" in prompt
 
 
+def test_limit_on_proposals_lists_every_weak_justification_the_section_describes():
+    prompt = _normalized(load_pack().system_prompt)
+    [criterion] = [c for c in load_pack().criteria if c.id == "solidez-justificacion-aplicabilidad"]
+    weak = "sin razón propia de la medida o que los activos, los riesgos u otros documentos"
+    assert weak in prompt
+    assert "los riesgos u otros documentos del expediente" in _normalized(criterion.compare)
+
+
 def test_a_compensation_must_protect_equal_or_better_as_article_28_3_says():
     prompt = _normalized(load_pack().system_prompt)
     [criterion] = [c for c in load_pack().criteria if c.id == "solidez-justificacion-aplicabilidad"]

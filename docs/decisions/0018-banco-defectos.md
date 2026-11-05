@@ -264,15 +264,15 @@ La línea base guarda una huella por caso (su YAML sin los defectos, más sus
 ficheros y los de su perfil: `profile.yaml` y `files/`) y otra por defecto.
 Cambiar un perfil cambia la huella de todos sus casos: la puerta los da por
 cambiados y exige retirarlos con la huella que imprime; retirados, quedan
-fuera de la comparación de regresiones hasta la siguiente línea base. En la puerta `baseline`, un caso o un defecto
-de la línea base que falta o cambia de huella falla, salvo que
-`baseline/dev.json` del árbol de trabajo lo anote en `retired: [{id, sha256,
-reason}]`. Las altas no necesitan anotación. `sha256` es la huella de lo
-retirado (con sus defectos, si es un caso) en la línea base de la rama base,
-y la puerta la imprime: una retirada solo cubre esa versión, así que un
-cambio posterior del mismo id exige anotar la nueva huella. `benchmark
-baseline --write` conserva las retiradas que ya había; las de versiones
-pasadas no cubren nada.
+fuera de la comparación de regresiones hasta la siguiente línea base. En la
+puerta `baseline`, un caso o un defecto de la línea base que falta o cambia de
+huella falla, salvo que `baseline/dev.json` del árbol de trabajo lo anote en
+`retired: [{id, sha256, reason}]`. Las altas no necesitan anotación. `sha256`
+es la huella de lo retirado (con sus defectos, si es un caso) en la línea base
+de la rama base, y la puerta la imprime: una retirada solo cubre esa versión,
+así que un cambio posterior del mismo id exige anotar la nueva huella.
+`benchmark baseline --write` conserva las retiradas que ya había; las de
+versiones pasadas no cubren nada.
 
 ### Informe
 

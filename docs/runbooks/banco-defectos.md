@@ -257,11 +257,11 @@ la puerta (§ 6) lo rechaza e imprime su huella en la línea base
 ]
 ```
 
-Un `id` sin `#` retira el caso entero con sus defectos. **Cambiar un
-perfil** (`profile.yaml` o un fichero de `files/`) cambia la huella de todos
-sus casos: la puerta los lista y hay que retirar cada uno con su huella. Sin esa entrada, la
-puerta del CI falla. Una retirada solo cubre la versión cuya huella anota: si
-el mismo id vuelve a cambiar en otro PR, sustituye su `sha256` por la nueva
+Un `id` sin `#` retira el caso entero con sus defectos. **Cambiar un perfil**
+(`profile.yaml` o un fichero de `files/`) cambia la huella de todos sus casos:
+la puerta los lista y hay que retirar cada uno con su huella. Sin esa entrada,
+la puerta del CI falla. Una retirada solo cubre la versión cuya huella anota:
+si el mismo id vuelve a cambiar en otro PR, sustituye su `sha256` por la nueva
 que imprime la puerta.
 
 **Añadir un caso o un defecto** no necesita anotación ni cuenta como
