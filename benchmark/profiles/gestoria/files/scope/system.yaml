@@ -1,0 +1,8 @@
+name: Sistema de Gestoría Albar
+description: >-
+  Sistema de información de Gestoría Albar S.L. (empresa ficticia): la oficina con su servidor
+  de ficheros, los portátiles de la plantilla, el correo en la nube y la aplicación de gestión
+  fiscal y laboral contratada como servicio, con la que se tramitan los expedientes de los clientes.
+included_assets: [lap-elena, lap-raul, lap-pilar, lap-jorge, srv-ficheros, id-correo, st-nube, bk-ficheros, prov-gestion, prov-informatica]
+included_services: [svc-tramites]
+exclusions: []

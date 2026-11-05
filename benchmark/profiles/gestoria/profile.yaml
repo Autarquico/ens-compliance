@@ -1,0 +1,197 @@
+format: ens-benchmark-profile/1
+fictional: true
+id: gestoria
+title: Gestoría Albar S.L., gestoría administrativa de cuatro personas con oficina y servidor propio (ficticia)
+clock:
+  start: "2026-10-01T09:00:00+00:00"
+categorization: {C: BAJO, I: BAJO, T: BAJO, A: BAJO, D: BAJO}
+people:
+  - id: elena
+    name: Elena Tamarit
+    roles: [management, information_owner]
+  - id: jorge
+    name: Jorge Salvatierra
+    roles: [service_owner]
+  - id: raul
+    name: Raúl Monteagudo
+    roles: [security_officer]
+  - id: pilar
+    name: Pilar Aranda
+    roles: [system_administrator, system_owner]
+reinforcements:
+  op.acc.5: [R1]
+  op.acc.6: [R2]
+  mp.s.2: [R1]
+not_required_justification: >-
+  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de
+  septiembre de 2026 no la pide para los expedientes ni para el servicio de tramitación.
+documents:
+  - {ref: politica-seguridad, approved_by: elena}
+  - {ref: normativa-seguridad, approved_by: elena}
+  - {ref: designacion-responsables, approved_by: elena}
+  - {ref: procedimientos-seguridad, approved_by: raul}
+  - {ref: proceso-autorizacion, approved_by: raul}
+  - {ref: procedimiento-incidentes, approved_by: raul}
+evidence:
+  - alias: inventario
+    file: evidence/inventario.txt
+    source: manual
+    asset: srv-ficheros
+    valid_until: "2027-03-16T00:00:00+00:00"
+    links:
+      - {measure: op.exp.1, covers: [base]}
+  - alias: analisis-riesgos
+    file: evidence/analisis-riesgos.txt
+    source: manual
+    asset: srv-ficheros
+    valid_until: "2027-09-08T00:00:00+00:00"
+    links:
+      - {measure: op.pl.1, covers: [base]}
+  - alias: arquitectura
+    file: evidence/arquitectura.txt
+    source: manual
+    asset: srv-ficheros
+    valid_until: "2027-09-12T00:00:00+00:00"
+    links:
+      - {measure: op.pl.2, covers: [base]}
+      - {measure: mp.com.1, covers: [base]}
+  - alias: acta-revision
+    file: evidence/acta-revision.txt
+    source: manual
+    asset: srv-ficheros
+    valid_until: "2027-09-24T00:00:00+00:00"
+    links:
+      - {measure: org.1, covers: [base]}
+      - {measure: org.2, covers: [base]}
+      - {measure: org.3, covers: [base]}
+      - {measure: org.4, covers: [base]}
+      - {measure: op.pl.3, covers: [base]}
+      - {measure: op.pl.4, covers: [base]}
+  - alias: accesos
+    file: evidence/accesos.txt
+    source: manual
+    asset: id-correo
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.acc.1, covers: [base]}
+      - {measure: op.acc.2, covers: [base]}
+      - {measure: op.acc.4, covers: [base]}
+      - {measure: op.acc.5, covers: [base, R1]}
+      - {measure: op.acc.6, covers: [base, R2, R8, R9]}
+  - alias: mantenimiento
+    file: evidence/mantenimiento.txt
+    source: manual
+    asset: srv-ficheros
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.2, covers: [base]}
+      - {measure: op.exp.3, covers: [base]}
+      - {measure: op.exp.4, covers: [base]}
+      - {measure: op.exp.6, covers: [base]}
+  - alias: registros
+    file: evidence/registros.txt
+    source: manual
+    asset: srv-ficheros
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.8, covers: [base]}
+      - {measure: op.mon.1, covers: [base]}
+      - {measure: op.mon.2, covers: [base]}
+      - {measure: op.mon.3, covers: [base]}
+  - alias: copias
+    file: evidence/copias.txt
+    source: manual
+    asset: bk-ficheros
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: mp.info.6, covers: [base]}
+  - alias: claves
+    file: evidence/claves.txt
+    source: manual
+    asset: srv-ficheros
+    valid_until: "2027-09-22T00:00:00+00:00"
+    links:
+      - {measure: op.exp.10, covers: [base]}
+  - alias: formacion
+    file: evidence/formacion.txt
+    source: manual
+    asset: id-correo
+    valid_until: "2027-09-15T00:00:00+00:00"
+    links:
+      - {measure: mp.per.2, covers: [base]}
+      - {measure: mp.per.3, covers: [base]}
+      - {measure: mp.per.4, covers: [base]}
+  - alias: oficina
+    file: evidence/oficina.txt
+    source: manual
+    asset: srv-ficheros
+    valid_until: "2027-09-26T00:00:00+00:00"
+    links:
+      - {measure: mp.if.1, covers: [base]}
+      - {measure: mp.if.2, covers: [base]}
+      - {measure: mp.if.3, covers: [base]}
+      - {measure: mp.if.4, covers: [base]}
+      - {measure: mp.if.5, covers: [base]}
+      - {measure: mp.if.7, covers: [base]}
+      - {measure: mp.eq.1, covers: [base]}
+      - {measure: mp.eq.3, covers: [mp.eq.3.1, mp.eq.3.2, mp.eq.3.3, mp.eq.3.4]}
+      - {measure: mp.eq.4, covers: [base]}
+      - {measure: mp.si.3, covers: [base]}
+      - {measure: mp.si.4, covers: [base]}
+      - {measure: mp.si.5, covers: [base]}
+  - alias: correo-servicios
+    file: evidence/correo-servicios.txt
+    source: manual
+    asset: id-correo
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.nub.1, covers: [base]}
+      - {measure: mp.com.2, covers: [base]}
+      - {measure: mp.com.3, covers: [base]}
+      - {measure: mp.sw.2, covers: [base]}
+      - {measure: mp.info.1, covers: [base]}
+      - {measure: mp.info.3, covers: [base]}
+      - {measure: mp.info.5, covers: [base]}
+      - {measure: mp.s.1, covers: [mp.s.1.1, mp.s.1.2, mp.s.1.3, mp.s.1.4, mp.s.1.5, mp.s.1.6, mp.s.1.7]}
+      - {measure: mp.s.2, covers: [base, R1]}
+      - {measure: mp.s.3, covers: [base]}
+  - alias: certificado-proveedor
+    file: evidence/certificado-proveedor.txt
+    source: manual
+    asset: prov-gestion
+    valid_until: "2027-03-15T00:00:00+00:00"
+    links:
+      - {measure: op.nub.1, covers: [base]}
+incident_drill:
+  alias: simulacro
+  by: raul
+  title: Simulacro de robo de un portátil en teletrabajo
+  action: Se bloquea la cuenta de correo de la persona afectada, se ordena el borrado remoto del portátil desde la consola del proveedor y se cambian sus contraseñas
+  conclusion: El aviso llegó al responsable de seguridad en 15 minutos y el borrado remoto se confirmó en una hora; el disco estaba cifrado, por lo que no hubo exposición de expedientes.
+  auditable_events_detail: Los registros del correo y de la consola del proveedor ya recogen el bloqueo de la cuenta y la orden de borrado.
+  links:
+    - {measure: op.exp.9, covers: [base]}
+document_links:
+  - {measure: org.1, document: politica-seguridad, covers: [base]}
+  - {measure: org.2, document: normativa-seguridad, covers: [base]}
+  - {measure: org.3, document: procedimientos-seguridad, covers: [base]}
+  - {measure: org.4, document: proceso-autorizacion, covers: [base]}
+  - {measure: op.exp.7, document: procedimiento-incidentes, covers: [base]}
+matrix:
+  - measure: mp.info.6
+    owner: pilar
+    review_every_days: 90
+    reviewed_by: pilar
+    assessment: COMPLIANT
+    conclusion: Copia diaria local y externa cifrada, con la prueba de restauración semestral superada en septiembre.
+  - measure: op.nub.1
+    owner: elena
+    review_every_days: 180
+    reviewed_by: pilar
+    assessment: COMPLIANT
+    conclusion: El proveedor de la aplicación de gestión está certificado en el ENS para el servicio contratado.
+matrix_defaults:
+  owner: raul
+  review_every_days: 365
+  reviewed_by: pilar
+  conclusion: Revisada con la evidencia enlazada, el acta del Comité de Seguridad de septiembre y los documentos aprobados.

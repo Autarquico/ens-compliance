@@ -1,0 +1,18 @@
+Revisión de la oficina, los equipos y los soportes — Gestoría Albar S.L. (empresa ficticia)
+26 de septiembre de 2026. Realiza: Raúl Monteagudo.
+
+Instalaciones: el servidor está en el armario rack cerrado de la zona de trabajo, con llave en
+poder de Pilar Aranda y de la gerente; la zona de trabajo está separada de la recepción por una
+puerta con llave; las visitas se anotan en recepción. El local tiene extintores revisados en
+mayo, climatización y SAI para el servidor y el router. La entrada y salida de equipos se anota
+en el inventario.
+
+Equipos: los cuatro portátiles tienen disco cifrado y bloqueo automático; se comprobó que cada
+uno está en poder de su responsable; en teletrabajo se conectan por VPN. Mesas despejadas al final
+de la jornada y documentación de clientes en armarios con llave. La impresora multifunción no
+guarda copias y está en la red de trabajo; no hay otros dispositivos conectados.
+
+Soportes: el disco externo D-01 está etiquetado y cifrado y se guarda en la caja fuerte; el
+portátil dado de baja en julio se borró de forma segura y su disco se destruyó con certificado.
+Los expedientes en papel se trasladan en carpeta cerrada y se destruyen en la destructora de corte
+cruzado.

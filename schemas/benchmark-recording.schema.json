@@ -1,0 +1,189 @@
+{
+  "$defs": {
+    "Provider": {
+      "enum": [
+        "anthropic",
+        "openai",
+        "claude-code",
+        "codex"
+      ],
+      "title": "Provider",
+      "type": "string"
+    },
+    "ProviderErrorKind": {
+      "enum": [
+        "CONFIG",
+        "CLI_MISSING",
+        "TIMEOUT",
+        "TRANSPORT",
+        "REDIRECT",
+        "HTTP",
+        "RESPONSE"
+      ],
+      "title": "ProviderErrorKind",
+      "type": "string"
+    },
+    "Repetition": {
+      "additionalProperties": false,
+      "properties": {
+        "at": {
+          "format": "date-time",
+          "title": "At",
+          "type": "string"
+        },
+        "kind": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/ProviderErrorKind"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "n": {
+          "minimum": 1,
+          "title": "N",
+          "type": "integer"
+        },
+        "outcome": {
+          "$ref": "#/$defs/RepetitionOutcome"
+        },
+        "response": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Texto devuelto por `judge()`, solo si pas\u00f3 el esquema.",
+          "title": "Response"
+        }
+      },
+      "required": [
+        "n",
+        "at",
+        "outcome"
+      ],
+      "title": "Repetition",
+      "type": "object"
+    },
+    "RepetitionOutcome": {
+      "enum": [
+        "response",
+        "provider_error",
+        "schema_error"
+      ],
+      "title": "RepetitionOutcome",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Respuestas grabadas de un proveedor para un caso, ligadas al pack y al payload completo.",
+  "properties": {
+    "case": {
+      "pattern": "^(dev|holdout)/[a-z0-9][a-z0-9-]*$",
+      "title": "Case",
+      "type": "string"
+    },
+    "case_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Case Sha256",
+      "type": "string"
+    },
+    "catalog_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Catalog Sha256",
+      "type": "string"
+    },
+    "destination": {
+      "description": "Sin la ruta absoluta del ejecutable.",
+      "minLength": 1,
+      "title": "Destination",
+      "type": "string"
+    },
+    "format": {
+      "const": "ens-benchmark-recording/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "model": {
+      "minLength": 1,
+      "title": "Model",
+      "type": "string"
+    },
+    "pack_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Pack Sha256",
+      "type": "string"
+    },
+    "pack_version": {
+      "minLength": 1,
+      "title": "Pack Version",
+      "type": "string"
+    },
+    "payload_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Payload Sha256",
+      "type": "string"
+    },
+    "provider": {
+      "$ref": "#/$defs/Provider"
+    },
+    "recorded_at": {
+      "format": "date-time",
+      "title": "Recorded At",
+      "type": "string"
+    },
+    "recorded_by": {
+      "minLength": 1,
+      "title": "Recorded By",
+      "type": "string"
+    },
+    "repetitions": {
+      "items": {
+        "$ref": "#/$defs/Repetition"
+      },
+      "minItems": 1,
+      "title": "Repetitions",
+      "type": "array"
+    },
+    "temperature": {
+      "default": null,
+      "title": "Temperature",
+      "type": "null"
+    },
+    "temperature_note": {
+      "default": "no aplica: JudgmentConfig no expone temperatura y los clientes no la env\u00edan; rige la del proveedor",
+      "title": "Temperature Note",
+      "type": "string"
+    },
+    "tool_version": {
+      "minLength": 1,
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "case",
+    "case_sha256",
+    "provider",
+    "model",
+    "destination",
+    "pack_version",
+    "pack_sha256",
+    "payload_sha256",
+    "tool_version",
+    "catalog_sha256",
+    "recorded_at",
+    "recorded_by",
+    "repetitions"
+  ],
+  "title": "Recording",
+  "type": "object"
+}

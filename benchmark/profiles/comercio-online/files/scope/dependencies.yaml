@@ -1,0 +1,4 @@
+dependencies:
+  - id: dep-tienda-db
+    asset: app-tienda
+    depends_on: db-pedidos

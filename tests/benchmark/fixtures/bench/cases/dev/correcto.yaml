@@ -1,0 +1,5 @@
+format: ens-benchmark-case/1
+id: correcto
+partition: dev
+profile: mini
+kind: correct

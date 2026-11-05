@@ -1,0 +1,8 @@
+Informe de copias de la base de datos de pedidos, septiembre de 2026.
+Revisado el 30 de septiembre de 2026 por Pablo Horno.
+
+Copias diarias cifradas a un almacenamiento de otro proveedor: 30 de 30 correctas.
+Retención: 35 días. La clave de cifrado de las copias está en el gestor de contraseñas de la
+empresa y solo la conocen Pablo Horno y Nuria Torno.
+Prueba de restauración trimestral: el 18 de septiembre se restauró la copia del día anterior
+en un servidor de pruebas; la tienda arrancó con todos los pedidos y se borró al terminar.

@@ -1,0 +1,7 @@
+Estado de las actualizaciones de la tienda, 30 de septiembre de 2026 (Pablo Horno).
+
+No hay calendario: se actualiza cuando hay tiempo entre pedidos.
+- Sistema del servidor: Debian 10, sin soporte de seguridad del fabricante desde 2024; la
+  migración está pendiente «para después de Navidad».
+- Avisos de dependencias del repositorio: 14 abiertos, 3 críticos desde mayo, sin revisar.
+- Última actualización aplicada: la del certificado del sitio web, en marzo.

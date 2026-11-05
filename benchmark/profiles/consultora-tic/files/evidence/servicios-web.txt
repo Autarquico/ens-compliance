@@ -1,0 +1,22 @@
+Seguridad del portal, del correo y de los servicios en la nube — Robledal Sistemas S.L. (empresa ficticia)
+Revisión del 28 de septiembre de 2026 por Tomás Pradera.
+
+Portal web: análisis dinámico de caja negra con herramienta automática antes de cada versión
+mayor y cada trimestre (último: 12 de septiembre, 0 altas, 2 bajas corregidas). Protección frente a
+manipulación de URL, de cookies, escalado de privilegios y cross site scripting cubierta por las
+pruebas automáticas del portal. Cada versión se prueba en preproducción antes de desplegarla y la
+acepta otra persona en la solicitud de cambios.
+
+Comunicaciones: todo el tráfico del portal va cifrado por TLS hasta la red perimetral y por el
+túnel hasta el servidor; la administración pasa por el acceso con identidad y doble factor.
+
+Correo: filtrado de correo no deseado y de código dañino del proveedor activado, SPF, DKIM y DMARC
+en modo rechazo; normas de uso del correo en la normativa. Navegación: filtrado DNS de dominios
+maliciosos en los portátiles. Código dañino: protección integrada del sistema operativo activa en
+los tres portátiles y análisis de los ficheros subidos al portal.
+
+Nube: el proveedor del servidor y el del almacenamiento declaran conformidad con el ENS en su
+página de cumplimiento; se revisó la configuración de seguridad de ambos con su guía de
+bastionado. Los documentos que se publican se limpian de metadatos antes de subirlos. Los datos
+personales de contacto se tratan según los contratos de encargo. Firma electrónica: las ofertas
+al ayuntamiento se firman con el certificado cualificado de representante de la gerente.

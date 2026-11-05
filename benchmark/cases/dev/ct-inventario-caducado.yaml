@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: ct-inventario-caducado
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: expire_evidence
+    alias: inventario
+    valid_until: "2026-09-28T00:00:00+00:00"
+defects:
+  - id: inventario-caducado
+    layer: deterministic
+    measure: op.exp.1
+    target: {kind: evidence, alias: inventario}
+    expected_rule: EVIDENCE_EXPIRED
+    requirement:
+      measure: op.exp.1
+      clause: op.exp.1.1
+      quote: Se mantendrá un inventario actualizado de todos los elementos del sistema
+    rationale: El inventario aportado dejó de estar vigente el 28 de septiembre y no se ha renovado.

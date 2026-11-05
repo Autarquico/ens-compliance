@@ -1,0 +1,9 @@
+Configuración de registros de actividad del servidor de la tienda, comprobada el 30 de
+septiembre de 2026 por Pablo Horno.
+
+- El servidor web guarda cada petición con fecha y hora, dirección de origen y resultado.
+- El panel de administración registra usuario, fecha y hora, objeto (pedido, producto o
+  cliente), tipo de acción y si tuvo éxito o falló.
+- Los inicios de sesión del sistema operativo y los usos de sudo se registran y se envían
+  cada hora a un almacenamiento aparte, donde se conservan 180 días.
+- El responsable de seguridad revisa cada lunes los accesos fallidos al panel.

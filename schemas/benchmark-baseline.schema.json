@@ -1,0 +1,390 @@
+{
+  "$defs": {
+    "BaselineEntry": {
+      "additionalProperties": false,
+      "properties": {
+        "cases": {
+          "description": "Detalle por caso: la puerta recalcula A y B sobre los casos sin cambios.",
+          "items": {
+            "$ref": "#/$defs/CaseResult"
+          },
+          "title": "Cases",
+          "type": "array"
+        },
+        "detected": {
+          "description": "Defectos detectados, `<partici\u00f3n>/<caso>#<defecto>`.",
+          "items": {
+            "type": "string"
+          },
+          "title": "Detected",
+          "type": "array"
+        },
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        },
+        "totals": {
+          "$ref": "#/$defs/Totals"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "detected",
+        "totals",
+        "cases"
+      ],
+      "title": "BaselineEntry",
+      "type": "object"
+    },
+    "CaseKind": {
+      "enum": [
+        "defective",
+        "correct"
+      ],
+      "title": "CaseKind",
+      "type": "string"
+    },
+    "CaseResult": {
+      "additionalProperties": false,
+      "properties": {
+        "case": {
+          "minLength": 1,
+          "title": "Case",
+          "type": "string"
+        },
+        "case_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Case Sha256",
+          "type": "string"
+        },
+        "defects": {
+          "items": {
+            "$ref": "#/$defs/DefectResult"
+          },
+          "title": "Defects",
+          "type": "array"
+        },
+        "judgment": {
+          "title": "Judgment",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/CaseKind"
+        },
+        "payload_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload Sha256"
+        },
+        "repetitions": {
+          "items": {
+            "$ref": "#/$defs/RepetitionResult"
+          },
+          "minItems": 1,
+          "title": "Repetitions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case",
+        "kind",
+        "judgment",
+        "case_sha256",
+        "repetitions"
+      ],
+      "title": "CaseResult",
+      "type": "object"
+    },
+    "DefectLayer": {
+      "enum": [
+        "deterministic",
+        "judgment"
+      ],
+      "title": "DefectLayer",
+      "type": "string"
+    },
+    "DefectResult": {
+      "additionalProperties": false,
+      "properties": {
+        "defect": {
+          "description": "`<partici\u00f3n>/<caso>#<defecto>`.",
+          "minLength": 1,
+          "title": "Defect",
+          "type": "string"
+        },
+        "detected": {
+          "description": "Detectado en la mayor\u00eda de las repeticiones.",
+          "title": "Detected",
+          "type": "boolean"
+        },
+        "detected_by_repetition": {
+          "items": {
+            "type": "boolean"
+          },
+          "minItems": 1,
+          "title": "Detected By Repetition",
+          "type": "array"
+        },
+        "layer": {
+          "$ref": "#/$defs/DefectLayer"
+        }
+      },
+      "required": [
+        "defect",
+        "layer",
+        "detected_by_repetition",
+        "detected"
+      ],
+      "title": "DefectResult",
+      "type": "object"
+    },
+    "Provider": {
+      "enum": [
+        "anthropic",
+        "openai",
+        "claude-code",
+        "codex"
+      ],
+      "title": "Provider",
+      "type": "string"
+    },
+    "Rate": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "value": {
+          "description": "0 si el denominador es 0; se informa aparte.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "numerator",
+        "denominator",
+        "value"
+      ],
+      "title": "Rate",
+      "type": "object"
+    },
+    "RepetitionOutcome": {
+      "enum": [
+        "response",
+        "provider_error",
+        "schema_error"
+      ],
+      "title": "RepetitionOutcome",
+      "type": "string"
+    },
+    "RepetitionResult": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic_unmatched": {
+          "minimum": 0,
+          "title": "Deterministic Unmatched",
+          "type": "integer"
+        },
+        "judgment_emitted": {
+          "description": "Tras agrupar duplicados.",
+          "minimum": 0,
+          "title": "Judgment Emitted",
+          "type": "integer"
+        },
+        "judgment_false_alarms": {
+          "minimum": 0,
+          "title": "Judgment False Alarms",
+          "type": "integer"
+        },
+        "n": {
+          "minimum": 1,
+          "title": "N",
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepetitionOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None en un caso solo determinista."
+        }
+      },
+      "required": [
+        "n",
+        "judgment_emitted",
+        "judgment_false_alarms",
+        "deterministic_unmatched"
+      ],
+      "title": "RepetitionResult",
+      "type": "object"
+    },
+    "Retired": {
+      "additionalProperties": false,
+      "description": "Migraci\u00f3n expl\u00edcita: un caso o un defecto que sale del inventario o cambia de huella.",
+      "properties": {
+        "id": {
+          "minLength": 1,
+          "title": "Id",
+          "type": "string"
+        },
+        "reason": {
+          "minLength": 1,
+          "title": "Reason",
+          "type": "string"
+        },
+        "sha256": {
+          "description": "Huella de lo retirado en la l\u00ednea base de la rama base (la imprime la puerta). Solo cubre esa versi\u00f3n: un cambio posterior exige otra.",
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Sha256",
+          "type": "string"
+        }
+      },
+      "required": [
+        "id",
+        "sha256",
+        "reason"
+      ],
+      "title": "Retired",
+      "type": "object"
+    },
+    "Totals": {
+      "additionalProperties": false,
+      "properties": {
+        "correct_with_false_alarms": {
+          "$ref": "#/$defs/Rate",
+          "description": "Tasa B: expedientes correctos con alguna falsa alarma / correctos."
+        },
+        "correct_with_false_alarms_by_repetition": {
+          "description": "Tasa B de cada repetici\u00f3n; la de arriba es su mediana.",
+          "items": {
+            "$ref": "#/$defs/Rate"
+          },
+          "title": "Correct With False Alarms By Repetition",
+          "type": "array"
+        },
+        "deterministic": {
+          "$ref": "#/$defs/Rate"
+        },
+        "deterministic_unmatched": {
+          "default": 0,
+          "description": "Hallazgos deterministas sin casar: fallo de puerta.",
+          "minimum": 0,
+          "title": "Deterministic Unmatched",
+          "type": "integer"
+        },
+        "false_alarms": {
+          "$ref": "#/$defs/Rate",
+          "description": "Tasa A: falsas alarmas de juicio / emitidos."
+        },
+        "false_alarms_by_repetition": {
+          "description": "Tasa A de cada repetici\u00f3n; `false_alarms` es su mediana.",
+          "items": {
+            "$ref": "#/$defs/Rate"
+          },
+          "title": "False Alarms By Repetition",
+          "type": "array"
+        },
+        "judgment": {
+          "$ref": "#/$defs/Rate"
+        },
+        "zero_emitted_repetitions": {
+          "description": "Repeticiones sin hallazgos de juicio emitidos: su tasa A es 0.",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Zero Emitted Repetitions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "deterministic",
+        "judgment",
+        "false_alarms",
+        "correct_with_false_alarms"
+      ],
+      "title": "Totals",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "entries": {
+      "items": {
+        "$ref": "#/$defs/BaselineEntry"
+      },
+      "title": "Entries",
+      "type": "array"
+    },
+    "format": {
+      "const": "ens-benchmark-baseline/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "inventory": {
+      "additionalProperties": {
+        "pattern": "^[0-9a-f]{64}$",
+        "type": "string"
+      },
+      "description": "Huella de cada caso y defecto del banco.",
+      "title": "Inventory",
+      "type": "object"
+    },
+    "pack_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Pack Sha256",
+      "type": "string"
+    },
+    "partition": {
+      "const": "dev",
+      "default": "dev",
+      "title": "Partition",
+      "type": "string"
+    },
+    "retired": {
+      "items": {
+        "$ref": "#/$defs/Retired"
+      },
+      "title": "Retired",
+      "type": "array"
+    },
+    "written_at": {
+      "format": "date-time",
+      "title": "Written At",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "written_at",
+    "pack_sha256"
+  ],
+  "title": "Baseline",
+  "type": "object"
+}

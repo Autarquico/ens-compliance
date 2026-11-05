@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: ct-doble-factor-desactivado
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: collected_override
+    alias: github
+    file: github.json
+defects:
+  - id: organizacion-sin-doble-factor
+    layer: deterministic
+    measure: op.acc.6
+    target: {kind: none}
+    expected_rule: CHECK_FAIL
+    requirement:
+      measure: op.acc.6
+      clause: op.acc.6.r8.1
+      quote: Para el acceso desde o a través de zonas no controladas se requerirá un doble factor de autenticación
+    rationale: La última recogida muestra que la organización de código ya no exige doble factor a sus miembros.

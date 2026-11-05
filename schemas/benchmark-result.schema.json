@@ -1,0 +1,511 @@
+{
+  "$defs": {
+    "CaseKind": {
+      "enum": [
+        "defective",
+        "correct"
+      ],
+      "title": "CaseKind",
+      "type": "string"
+    },
+    "CaseResult": {
+      "additionalProperties": false,
+      "properties": {
+        "case": {
+          "minLength": 1,
+          "title": "Case",
+          "type": "string"
+        },
+        "case_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Case Sha256",
+          "type": "string"
+        },
+        "defects": {
+          "items": {
+            "$ref": "#/$defs/DefectResult"
+          },
+          "title": "Defects",
+          "type": "array"
+        },
+        "judgment": {
+          "title": "Judgment",
+          "type": "boolean"
+        },
+        "kind": {
+          "$ref": "#/$defs/CaseKind"
+        },
+        "payload_sha256": {
+          "anyOf": [
+            {
+              "pattern": "^[0-9a-f]{64}$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Payload Sha256"
+        },
+        "repetitions": {
+          "items": {
+            "$ref": "#/$defs/RepetitionResult"
+          },
+          "minItems": 1,
+          "title": "Repetitions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "case",
+        "kind",
+        "judgment",
+        "case_sha256",
+        "repetitions"
+      ],
+      "title": "CaseResult",
+      "type": "object"
+    },
+    "DefectLayer": {
+      "enum": [
+        "deterministic",
+        "judgment"
+      ],
+      "title": "DefectLayer",
+      "type": "string"
+    },
+    "DefectResult": {
+      "additionalProperties": false,
+      "properties": {
+        "defect": {
+          "description": "`<partici\u00f3n>/<caso>#<defecto>`.",
+          "minLength": 1,
+          "title": "Defect",
+          "type": "string"
+        },
+        "detected": {
+          "description": "Detectado en la mayor\u00eda de las repeticiones.",
+          "title": "Detected",
+          "type": "boolean"
+        },
+        "detected_by_repetition": {
+          "items": {
+            "type": "boolean"
+          },
+          "minItems": 1,
+          "title": "Detected By Repetition",
+          "type": "array"
+        },
+        "layer": {
+          "$ref": "#/$defs/DefectLayer"
+        }
+      },
+      "required": [
+        "defect",
+        "layer",
+        "detected_by_repetition",
+        "detected"
+      ],
+      "title": "DefectResult",
+      "type": "object"
+    },
+    "DeterministicRule": {
+      "enum": [
+        "CHECK_FAIL",
+        "EVIDENCE_MISSING",
+        "EVIDENCE_EXPIRED",
+        "CHECK_UNKNOWN",
+        "HASH_MISMATCH",
+        "DOSSIER_INTEGRITY"
+      ],
+      "title": "DeterministicRule",
+      "type": "string"
+    },
+    "Partition": {
+      "enum": [
+        "dev",
+        "holdout"
+      ],
+      "title": "Partition",
+      "type": "string"
+    },
+    "Provider": {
+      "enum": [
+        "anthropic",
+        "openai",
+        "claude-code",
+        "codex"
+      ],
+      "title": "Provider",
+      "type": "string"
+    },
+    "ProviderResult": {
+      "additionalProperties": false,
+      "properties": {
+        "cases": {
+          "items": {
+            "$ref": "#/$defs/CaseResult"
+          },
+          "title": "Cases",
+          "type": "array"
+        },
+        "destination": {
+          "minLength": 1,
+          "title": "Destination",
+          "type": "string"
+        },
+        "gate_passed": {
+          "anyOf": [
+            {
+              "type": "boolean"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None si no se aplic\u00f3 puerta.",
+          "title": "Gate Passed"
+        },
+        "gate_problems": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Gate Problems",
+          "type": "array"
+        },
+        "model": {
+          "minLength": 1,
+          "title": "Model",
+          "type": "string"
+        },
+        "provider": {
+          "$ref": "#/$defs/Provider"
+        },
+        "recorded_at": {
+          "items": {
+            "format": "date-time",
+            "type": "string"
+          },
+          "title": "Recorded At",
+          "type": "array"
+        },
+        "recorded_by": {
+          "items": {
+            "type": "string"
+          },
+          "title": "Recorded By",
+          "type": "array"
+        },
+        "recordings_sha256": {
+          "pattern": "^[0-9a-f]{64}$",
+          "title": "Recordings Sha256",
+          "type": "string"
+        },
+        "temperature": {
+          "default": null,
+          "title": "Temperature",
+          "type": "null"
+        },
+        "temperature_note": {
+          "default": "no aplica: JudgmentConfig no expone temperatura y los clientes no la env\u00edan; rige la del proveedor",
+          "title": "Temperature Note",
+          "type": "string"
+        },
+        "totals": {
+          "$ref": "#/$defs/Totals"
+        }
+      },
+      "required": [
+        "provider",
+        "model",
+        "destination",
+        "recordings_sha256",
+        "cases",
+        "totals"
+      ],
+      "title": "ProviderResult",
+      "type": "object"
+    },
+    "Rate": {
+      "additionalProperties": false,
+      "properties": {
+        "denominator": {
+          "minimum": 0,
+          "title": "Denominator",
+          "type": "integer"
+        },
+        "numerator": {
+          "minimum": 0,
+          "title": "Numerator",
+          "type": "integer"
+        },
+        "value": {
+          "description": "0 si el denominador es 0; se informa aparte.",
+          "maximum": 1,
+          "minimum": 0,
+          "title": "Value",
+          "type": "number"
+        }
+      },
+      "required": [
+        "numerator",
+        "denominator",
+        "value"
+      ],
+      "title": "Rate",
+      "type": "object"
+    },
+    "RepetitionOutcome": {
+      "enum": [
+        "response",
+        "provider_error",
+        "schema_error"
+      ],
+      "title": "RepetitionOutcome",
+      "type": "string"
+    },
+    "RepetitionResult": {
+      "additionalProperties": false,
+      "properties": {
+        "deterministic_unmatched": {
+          "minimum": 0,
+          "title": "Deterministic Unmatched",
+          "type": "integer"
+        },
+        "judgment_emitted": {
+          "description": "Tras agrupar duplicados.",
+          "minimum": 0,
+          "title": "Judgment Emitted",
+          "type": "integer"
+        },
+        "judgment_false_alarms": {
+          "minimum": 0,
+          "title": "Judgment False Alarms",
+          "type": "integer"
+        },
+        "n": {
+          "minimum": 1,
+          "title": "N",
+          "type": "integer"
+        },
+        "outcome": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/RepetitionOutcome"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "None en un caso solo determinista."
+        }
+      },
+      "required": [
+        "n",
+        "judgment_emitted",
+        "judgment_false_alarms",
+        "deterministic_unmatched"
+      ],
+      "title": "RepetitionResult",
+      "type": "object"
+    },
+    "Totals": {
+      "additionalProperties": false,
+      "properties": {
+        "correct_with_false_alarms": {
+          "$ref": "#/$defs/Rate",
+          "description": "Tasa B: expedientes correctos con alguna falsa alarma / correctos."
+        },
+        "correct_with_false_alarms_by_repetition": {
+          "description": "Tasa B de cada repetici\u00f3n; la de arriba es su mediana.",
+          "items": {
+            "$ref": "#/$defs/Rate"
+          },
+          "title": "Correct With False Alarms By Repetition",
+          "type": "array"
+        },
+        "deterministic": {
+          "$ref": "#/$defs/Rate"
+        },
+        "deterministic_unmatched": {
+          "default": 0,
+          "description": "Hallazgos deterministas sin casar: fallo de puerta.",
+          "minimum": 0,
+          "title": "Deterministic Unmatched",
+          "type": "integer"
+        },
+        "false_alarms": {
+          "$ref": "#/$defs/Rate",
+          "description": "Tasa A: falsas alarmas de juicio / emitidos."
+        },
+        "false_alarms_by_repetition": {
+          "description": "Tasa A de cada repetici\u00f3n; `false_alarms` es su mediana.",
+          "items": {
+            "$ref": "#/$defs/Rate"
+          },
+          "title": "False Alarms By Repetition",
+          "type": "array"
+        },
+        "judgment": {
+          "$ref": "#/$defs/Rate"
+        },
+        "zero_emitted_repetitions": {
+          "description": "Repeticiones sin hallazgos de juicio emitidos: su tasa A es 0.",
+          "items": {
+            "type": "integer"
+          },
+          "title": "Zero Emitted Repetitions",
+          "type": "array"
+        }
+      },
+      "required": [
+        "deterministic",
+        "judgment",
+        "false_alarms",
+        "correct_with_false_alarms"
+      ],
+      "title": "Totals",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "baseline_source": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "De d\u00f3nde sale la l\u00ednea base de la puerta `baseline`.",
+      "title": "Baseline Source"
+    },
+    "cases_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Cases Sha256",
+      "type": "string"
+    },
+    "catalog_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Catalog Sha256",
+      "type": "string"
+    },
+    "deterministic_rules": {
+      "description": "Reglas deterministas que siembra el banco.",
+      "items": {
+        "$ref": "#/$defs/DeterministicRule"
+      },
+      "title": "Deterministic Rules",
+      "type": "array"
+    },
+    "deterministic_scope": {
+      "const": "El 100 % determinista cubre solo las reglas incluidas en el banco; DOSSIER_INTEGRITY queda fuera: la preparaci\u00f3n rechaza un expediente que no es \u00edntegro.",
+      "default": "El 100 % determinista cubre solo las reglas incluidas en el banco; DOSSIER_INTEGRITY queda fuera: la preparaci\u00f3n rechaza un expediente que no es \u00edntegro.",
+      "title": "Deterministic Scope",
+      "type": "string"
+    },
+    "format": {
+      "const": "ens-benchmark-result/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "gate": {
+      "anyOf": [
+        {
+          "enum": [
+            "baseline",
+            "threshold"
+          ],
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Gate"
+    },
+    "gate_passed": {
+      "anyOf": [
+        {
+          "type": "boolean"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "None si no se aplic\u00f3 puerta.",
+      "title": "Gate Passed"
+    },
+    "gate_problems": {
+      "description": "Problemas que no son de un proveedor y modelo.",
+      "items": {
+        "type": "string"
+      },
+      "title": "Gate Problems",
+      "type": "array"
+    },
+    "mode": {
+      "const": "replay",
+      "title": "Mode",
+      "type": "string"
+    },
+    "notice": {
+      "const": "Cobertura del banco, no garant\u00eda universal. Superar el banco no aprueba un expediente real.",
+      "default": "Cobertura del banco, no garant\u00eda universal. Superar el banco no aprueba un expediente real.",
+      "title": "Notice",
+      "type": "string"
+    },
+    "pack_sha256": {
+      "pattern": "^[0-9a-f]{64}$",
+      "title": "Pack Sha256",
+      "type": "string"
+    },
+    "pack_version": {
+      "minLength": 1,
+      "title": "Pack Version",
+      "type": "string"
+    },
+    "partition": {
+      "$ref": "#/$defs/Partition"
+    },
+    "results": {
+      "items": {
+        "$ref": "#/$defs/ProviderResult"
+      },
+      "title": "Results",
+      "type": "array"
+    },
+    "run_at": {
+      "format": "date-time",
+      "title": "Run At",
+      "type": "string"
+    },
+    "tool_version": {
+      "minLength": 1,
+      "title": "Tool Version",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "mode",
+    "partition",
+    "run_at",
+    "tool_version",
+    "pack_version",
+    "pack_sha256",
+    "catalog_sha256",
+    "cases_sha256",
+    "results"
+  ],
+  "title": "BenchmarkResult",
+  "type": "object"
+}

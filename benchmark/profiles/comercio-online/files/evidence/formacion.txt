@@ -1,0 +1,8 @@
+Registro de formación en seguridad, 24 de septiembre de 2026.
+Sesión de hora y media impartida por Óscar Arcilla al equipo completo (tres personas).
+
+Contenidos: pedidos fraudulentos y correos que suplantan a la pasarela de pago, gestión de
+contraseñas y doble factor, cómo avisar de un incidente, publicación segura de cambios y
+tratamiento de los datos de clientes en el panel y con la empresa de transporte.
+Al final, cada persona resolvió tres casos prácticos de pedidos sospechosos; todos correctos.
+Próxima sesión: septiembre de 2027 o al incorporarse alguien.

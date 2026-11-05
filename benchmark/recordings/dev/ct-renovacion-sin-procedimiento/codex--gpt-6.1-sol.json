@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/ct-renovacion-sin-procedimiento",
+  "case_sha256": "a5f03876ced63a9a3e505f940ffa30ae6d2d1214d6f02f5bfc15fb853d8740a2",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "1.0.0",
+  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
+  "payload_sha256": "a337de59eefea9e2b577056f19e93bd5ffde23e71d5883a7a76dab7eb4457c34",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-05T10:25:12.463257Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-05T10:24:27.692923Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.1\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"politica-seguridad\",\"quote\":\"Renovación: Los nombramientos no caducan; si algún día hace falta cambiar a alguien, la gerente lo decidirá en ese momento.\"},{\"ref\":\"designacion-responsables\",\"quote\":\"Renovación: Los nombramientos no caducan; si algún día hace falta cambiar a alguien, la gerente lo decidirá en ese momento.\"}],\"evidence\":[{\"ref\":\"EV-20261001-37fc9354\",\"quote\":\"1. Revisión anual de la documentación: la política, la normativa, la designación, los\\n   procedimientos, el proceso de autorización y el procedimiento de incidentes siguen describiendo\\n   el sistema; se actualiza la lista de servicios de terceros. Se aprueban sin más cambios.\"}],\"justifications\":[],\"reason\":\"Los documentos posponen la definición de cómo renovar los responsables a una decisión futura de la gerente, sin precisar el procedimiento de renovación exigido por org.1.3; la revisión anual los mantiene sin cambios. Se propone NC_MENOR por un incumplimiento parcial del contenido documental de la medida, sujeto a revisión humana.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-05T10:24:42.953746Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-05T10:24:56.126191Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.1\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"politica-seguridad\",\"quote\":\"Renovación: Los nombramientos no caducan; si algún día hace falta cambiar a alguien, la gerente lo decidirá en ese momento.\"},{\"ref\":\"designacion-responsables\",\"quote\":\"Renovación: Los nombramientos no caducan; si algún día hace falta cambiar a alguien, la gerente lo decidirá en ese momento.\"}],\"evidence\":[{\"ref\":\"EV-20261001-37fc9354\",\"quote\":\"1. Revisión anual de la documentación: la política, la normativa, la designación, los\\n   procedimientos, el proceso de autorización y el procedimiento de incidentes siguen describiendo\\n   el sistema; se actualiza la lista de servicios de terceros. Se aprueban sin más cambios.\"}],\"justifications\":[],\"reason\":\"Los documentos remiten la renovación a una decisión futura sin precisar cómo se tramita, aunque org.1.3 exige definir su procedimiento; el acta mantiene esos documentos sin cambios. Se propone NC_MENOR por una definición documental parcial del requisito, pendiente de revisión humana.\"}]}",
+      "kind": null
+    }
+  ]
+}

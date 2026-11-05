@@ -1,0 +1,11 @@
+Acuerdos de nivel de servicio de los proveedores de la tienda, revisados el 25 de septiembre
+de 2026 por Nuria Torno (fundadora) y Óscar Arcilla (responsable de la seguridad).
+
+- Alojamiento del servidor virtual: disponibilidad mensual del 99,9 %; servicio mínimo
+  admisible, la tienda accesible y la base de datos íntegra; respuesta a incidencias críticas
+  en dos horas; si incumple, descuento del 25 % de la cuota del mes y posibilidad de rescindir.
+- Pasarela de pago: disponibilidad del 99,95 %; el proveedor responde de los datos de tarjeta
+  y de su certificación; penalización según el anexo de servicio.
+- Almacenamiento de copias: copias recuperables durante 35 días; si una copia no se puede
+  restaurar, el proveedor devuelve la cuota anual.
+Todos los contratos incluyen el acuerdo de encargo de tratamiento firmado.

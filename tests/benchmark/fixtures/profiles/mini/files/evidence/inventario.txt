@@ -1,0 +1,9 @@
+Inventario de activos de Asesoría Ficticia, revisado el 30 de septiembre de 2026.
+
+Responsable del inventario: Bruno Ensayo (responsable del sistema).
+
+- lap-ana: portátil de Ana Prueba, cifrado, gestión de nóminas.
+- srv-nominas: servidor Debian 12 en la oficina; aloja la aplicación de nóminas.
+- app-nominas: aplicación de nóminas, código en asesoria-ficticia/nominas.
+- db-nominas: base de datos PostgreSQL 16 con nóminas y datos de clientes; copia diaria.
+- gh-asesoria: cuenta de alojamiento de código asesoria-ficticia.

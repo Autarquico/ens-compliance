@@ -1,0 +1,7 @@
+services:
+  - id: svc-portal
+    name: Portal de proyectos para clientes
+    assets: [app-portal, db-portal, vps-portal, cf-robledal]
+  - id: svc-soporte
+    name: Soporte y mantenimiento de aplicaciones de clientes
+    assets: [gh-robledal, ws-robledal, lap-lucia, lap-tomas, lap-nora]

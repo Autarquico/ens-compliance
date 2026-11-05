@@ -1,0 +1,4 @@
+dependencies:
+  - id: dep-app-db
+    asset: app-nominas
+    depends_on: db-nominas

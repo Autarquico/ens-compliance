@@ -1,0 +1,14 @@
+Formación y concienciación en seguridad — Robledal Sistemas S.L. (empresa ficticia)
+Sesión anual del 10 de septiembre de 2026 (2 horas), impartida por Tomás Pradera.
+Asistentes: Lucía Robledal, Tomás Pradera, Nora Vilaplana (las tres personas de la plantilla).
+
+Contenidos: normativa de uso de equipos y servicios; correo fraudulento e ingeniería social, con
+tres ejemplos recibidos en el año; cómo y a quién avisar de un incidente o de una falsa alarma;
+gestión de la información de clientes (dónde se guarda, cómo se transmite, copias y borrado);
+configuración segura de los portátiles y respuesta a incidentes para quien administra.
+
+Evaluación: cuestionario de 10 preguntas, todas las personas por encima de 8; Nora Vilaplana
+propuso añadir un simulacro de correo fraudulento, que se programa para marzo.
+
+Deberes: las tres personas tienen firmada la aceptación de la normativa y de sus deberes de
+confidencialidad desde su alta. Recordatorios mensuales en la reunión del Comité de Seguridad.

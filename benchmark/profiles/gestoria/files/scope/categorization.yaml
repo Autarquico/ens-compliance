@@ -1,0 +1,25 @@
+information:
+  - id: expedientes-clientes
+    description: Expedientes fiscales, laborales y administrativos de los clientes
+    ratings:
+      C: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado y reparable a los clientes (anexo I, 3); la gestoría no trata datos de nivel medio en este sistema."}
+      I: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado y reparable a los clientes (anexo I, 3); la gestoría no trata datos de nivel medio en este sistema."}
+      T: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado y reparable a los clientes (anexo I, 3); la gestoría no trata datos de nivel medio en este sistema."}
+      A: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado y reparable a los clientes (anexo I, 3); la gestoría no trata datos de nivel medio en este sistema."}
+      D: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado y reparable a los clientes (anexo I, 3); la gestoría no trata datos de nivel medio en este sistema."}
+    valuation:
+      valued_by: Elena Tamarit
+      role: information_owner
+      valued_at: "2026-09-10T10:00:00+00:00"
+services:
+  - id: svc-tramites
+    ratings:
+      C: {level: BAJO, justification: "Una interrupción de pocos días se cubre con prórrogas y presentación desde la aplicación del proveedor (anexo I, 3)."}
+      I: {level: BAJO, justification: "Una interrupción de pocos días se cubre con prórrogas y presentación desde la aplicación del proveedor (anexo I, 3)."}
+      T: {level: BAJO, justification: "Una interrupción de pocos días se cubre con prórrogas y presentación desde la aplicación del proveedor (anexo I, 3)."}
+      A: {level: BAJO, justification: "Una interrupción de pocos días se cubre con prórrogas y presentación desde la aplicación del proveedor (anexo I, 3)."}
+      D: {level: BAJO, justification: "Una interrupción de pocos días se cubre con prórrogas y presentación desde la aplicación del proveedor (anexo I, 3)."}
+    valuation:
+      valued_by: Jorge Salvatierra
+      role: service_owner
+      valued_at: "2026-09-10T10:00:00+00:00"

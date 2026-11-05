@@ -103,6 +103,7 @@ from ens_evidence.backup import (
 from ens_evidence.backup.environment import ACCESS_KEY_VAR, SECRET_KEY_VAR, redact
 from ens_evidence.backup.records import SetupFailure
 from ens_evidence.backup.transfer import export_all, import_all
+from ens_evidence.benchmark.cli import app as benchmark_app
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import MeasuresFileError, init_measures
 from ens_evidence.catalog.model import Catalog, Group, MeasureCard
@@ -359,6 +360,7 @@ app.add_typer(risk_app, name="risk")
 app.add_typer(matrix_app, name="matrix")
 app.add_typer(incident_app, name="incident")
 app.add_typer(preaudit_app, name="preaudit")
+app.add_typer(benchmark_app, name="benchmark")
 
 SCHEMAS_DIR = Path("schemas")
 

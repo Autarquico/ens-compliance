@@ -1,0 +1,7 @@
+name: Sistema de Asesoría Ficticia
+description: >-
+  Sistema de información que soporta la gestión de nóminas que presta a sus clientes
+  Asesoría Ficticia (empresa ficticia).
+included_assets: [lap-ana, srv-nominas, app-nominas, db-nominas, gh-asesoria]
+included_services: [svc-nominas]
+exclusions: []

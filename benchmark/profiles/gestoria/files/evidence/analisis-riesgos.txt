@@ -1,0 +1,22 @@
+Análisis de riesgos informal de Gestoría Albar S.L. (empresa ficticia)
+Elaborado por Raúl Monteagudo (responsable de la seguridad) el 8 de septiembre de 2026 y
+aprobado por la gerente en el Comité de Seguridad del 24 de septiembre.
+
+Activos más valiosos: el servidor de ficheros con los expedientes de los 220 clientes; la
+aplicación de gestión, donde están la contabilidad, los impuestos y las nóminas; el correo, por
+donde llegan los documentos de los clientes.
+
+Amenazas más probables:
+- Correo fraudulento que suplanta a un cliente o a la Agencia Tributaria para robar credenciales
+  o cambiar la cuenta bancaria de un cobro.
+- Código dañino que cifre el servidor de ficheros.
+- Pérdida o robo de un portátil en teletrabajo.
+- Avería del servidor o del disco de la copia local.
+
+Salvaguardas: doble factor en correo y aplicación de gestión; antivirus gestionado por el
+proveedor; discos cifrados; copia diaria local y externa cifrada; formación anual; permisos por
+cliente; procedimiento de verificación telefónica de cualquier cambio de cuenta bancaria.
+
+Riesgos residuales: la copia externa depende de la línea de la oficina (se acepta: se comprueba
+cada mañana); el proveedor informático tiene acceso de administración (contrato con
+confidencialidad y registro de cada conexión remota).

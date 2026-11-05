@@ -1,0 +1,8 @@
+name: Sistema de la Clínica Dental Sonrisa Ficticia
+description: >-
+  Sistema de información que soporta la gestión de citas, historias clínicas y facturación de la
+  Clínica Dental Sonrisa Ficticia (empresa ficticia), incluida la atención concertada con el
+  servicio de salud de la comunidad.
+included_assets: [lap-direccion, srv-clinica, app-historias, db-pacientes]
+included_services: [svc-atencion]
+exclusions: []

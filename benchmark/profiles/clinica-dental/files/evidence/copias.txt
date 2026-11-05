@@ -1,0 +1,10 @@
+Informe de copias de seguridad, semana del 21 al 27 de septiembre de 2026.
+Revisado el 28 de septiembre de 2026 por Jorge Molar (responsable de sistemas).
+
+Copias nocturnas de la base de datos de pacientes y de la carpeta de radiografías: 7 de 7
+terminadas sin errores, cifradas y enviadas al almacenamiento externo contratado.
+Retención: 30 copias diarias. Acceso a las copias: solo el responsable de sistemas.
+
+Prueba de restauración trimestral: el 15 de septiembre se restauró en el portátil de pruebas
+la historia completa de un paciente con sus radiografías; se comprobó que abre y coincide
+con la del servidor. Acta firmada por Irene Esmalte.

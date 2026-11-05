@@ -1,0 +1,24 @@
+Arquitectura de seguridad del sistema de Robledal Sistemas S.L. (empresa ficticia)
+Documento técnico mantenido por Nora Vilaplana; versión del 20 de septiembre de 2026.
+
+Instalaciones: el equipo trabaja en un puesto fijo de un espacio de coworking con acceso por
+tarjeta y en teletrabajo autorizado. No hay sala de servidores propia: el servidor y las copias
+están en centros de datos del proveedor de nube en la UE.
+
+Sistema y conexiones: tres portátiles corporativos; el servidor vps-portal con el portal y su base
+de datos; el alojamiento de código con integración continua; la identidad corporativa con correo y
+documentos. Los puestos de administración son los portátiles de Nora Vilaplana y Tomás Pradera.
+
+Líneas de defensa: el tráfico de los clientes entra por la red perimetral (DNS, cortafuegos de
+aplicaciones web con reglas gestionadas y túnel cifrado hasta el servidor). El servidor no abre
+puertos a internet; su cortafuegos local solo admite el túnel. La administración por SSH pasa por
+el acceso con identidad corporativa y doble factor de la red perimetral. Las copias se guardan en
+otro proveedor de almacenamiento y región, con claves distintas.
+
+Identificación y autenticación: cada persona tiene una cuenta nominal en la identidad corporativa
+con doble factor por aplicación o llave física; el portal, el código y la red perimetral usan esa
+identidad. Los clientes acceden al portal con usuario nominal, contraseña y código de un solo uso.
+Las contraseñas de servicio están en el gestor de contraseñas, en bóvedas por función.
+
+La relación de cada elemento con su naturaleza y su responsable se mantiene en el inventario de
+activos; este documento describe cómo se conectan y protegen.

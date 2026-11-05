@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: ct-claves-alteradas
+partition: dev
+profile: consultora-tic
+kind: defective
+judgment: false
+mutations:
+  - op: tamper_artifact
+    alias: claves
+defects:
+  - id: registro-claves-alterado
+    layer: deterministic
+    measure: op.exp.10
+    target: {kind: evidence, alias: claves}
+    expected_rule: HASH_MISMATCH
+    requirement:
+      measure: op.exp.10
+      clause: op.exp.10.1
+      quote: Las claves criptográficas se protegerán durante todo su ciclo de vida
+    rationale: El registro de claves se editó después de importarlo y ya no es el que se aportó.

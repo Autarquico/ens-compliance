@@ -12,7 +12,8 @@ from typing import Annotated
 
 from pydantic import Field, ValidationError
 
-from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, import_generated
+from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE, IdFactory, import_generated
+from ens_evidence.evidence.layout import new_evidence_id
 from ens_evidence.evidence.verify import verify_one
 from ens_evidence.incidents.errors import IncidentRejected
 from ens_evidence.incidents.layout import StoredRecord, asset_id, incident_of_asset
@@ -65,7 +66,12 @@ def _entry(scan: IncidentScan, stored: StoredRecord) -> HistoryEntry:
 
 
 def record_history(
-    store: WorkspaceStore, incident_id: str, *, by: str, now: datetime
+    store: WorkspaceStore,
+    incident_id: str,
+    *,
+    by: str,
+    now: datetime,
+    id_factory: IdFactory = new_evidence_id,
 ) -> EvidenceManifest:
     """Genera la evidencia `incident-history` de un incidente cerrado y sin problemas.
 
@@ -88,6 +94,7 @@ def record_history(
         submitted_by=by,
         now=now,
         collected_at=scan.records[-1].record.recorded_at,
+        id_factory=id_factory,
     )
 
 

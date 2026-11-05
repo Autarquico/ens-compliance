@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/ct-inventario-caducado",
+  "case_sha256": "e568fcd9fb096d973898849ffe8290d72da3936f73e33cfd364d581bc2b4cb4b",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.317, sesión del usuario (plan contratado); ejecutable 2.1.317 (sha256 09f153b46b5df9e8b3454716d682a91901de020cbca630f61dec1a015b32b5e9); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "1.0.0",
+  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
+  "payload_sha256": "5917fa78d2d2e79ba357948e0f9b3b1fdb67cb0f4725c036e7a3d044e5ee7be5",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-05T10:33:50.856379Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-05T10:31:36.256081Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.sw.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.sw.1\", \"quote\": \"el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera\"}], \"reason\": \"La justificación es una fórmula genérica que no menciona ni activos ni riesgos concretos. La organización se dedica a desarrollar aplicaciones web y tiene la aplicación del portal como activo principal, así que conviene revisar si basta para dejar fuera la medida de desarrollo de aplicaciones.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera.\"}], \"reason\": \"La justificación repite el mismo texto que el resto de medidas no seleccionadas y no analiza los riesgos sobre los activos. El sistema depende de un proveedor de nube y de otros servicios de terceros, así que conviene revisar si basta para dejar fuera la contratación y los acuerdos de nivel de servicio.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-05T10:32:25.300736Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"politica-seguridad\", \"quote\": \"Coordinación: Los tres responsables se reúnen el primer martes de cada mes por videoconferencia; [responsable de la seguridad] redacta el acta y la guarda en la unidad compartida Seguridad.\"}], \"evidence\": [{\"ref\": \"EV-20261001-37fc9354\", \"quote\": \"Fecha: 22 de septiembre de 2026, por videoconferencia.\"}], \"justifications\": [], \"reason\": \"La política fija la reunión de coordinación el primer martes de cada mes, pero el acta aportada es del 22 de septiembre de 2026, que no es el primer martes del mes (fue el 1 de septiembre), y no se aporta acta de esa fecha. Hay que confirmar si la periodicidad declarada se cumple o si el documento no refleja la práctica real.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.sw.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.sw.1\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera.\"}], \"reason\": \"La justificación es una fórmula genérica sin análisis propio. La organización desarrolla aplicaciones web y su análisis de riesgos (evidencia EV-20261001-68ef9c3a, no enlazada a esta medida) cita como amenaza probable la explotación de una vulnerabilidad de la aplicación web, así que la afirmación de que no hay amenaza que la requiera parece insuficientemente razonada.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.cont.2\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.cont.2\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera.\"}], \"reason\": \"La justificación es genérica y afirma que el análisis de riesgos no identifica ninguna amenaza que requiera la medida. Sin embargo, ese análisis (evidencia EV-20261001-68ef9c3a, no enlazada a esta medida) incluye la caída del proveedor de nube entre las amenazas más probables y la dependencia de un único proveedor como riesgo residual. Esto puede derivar en un problema de continuidad no tratado documentalmente.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-05T10:33:06.188576Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"No aplica: No hay otras actividades de tratamiento; el borrado de soportes se recoge en el inventario de soportes.\"}], \"evidence\": [{\"ref\": \"EV-20261001-37fc9354\", \"quote\": \"Se aprueban sin más cambios.\"}], \"justifications\": [], \"reason\": \"El apartado de otras actividades (org.3.4 f) dice que no hay otras actividades, pero nombra el borrado de soportes y solo remite al inventario sin explicar cómo se hace. Aun así, el comité aprobó los procedimientos sin cambios. Es una debilidad que podría acabar en problema.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.4\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera.\"}], \"reason\": \"La justificación usa el mismo texto genérico que las demás medidas no seleccionadas. No nombra ningún activo ni ningún riesgo concreto, aunque el sistema se conecta con sistemas de terceros, como la sede electrónica del ayuntamiento cliente. Debe confirmarse que basta para el riesgo sobre los activos.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no identifica una amenaza que la requiera.\"}], \"reason\": \"La justificación es genérica y no se apoya en activos ni riesgos concretos, aunque la organización depende de proveedores externos (nube, alojamiento de código, red perimetral, identidad). Debe confirmarse que basta para el riesgo sobre los activos.\"}]}",
+      "kind": null
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+information:
+  - id: datos-proyectos
+    description: Proyectos, tickets y ficheros que los clientes suben al portal
+    ratings:
+      C: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado: datos de gestión de proyectos, sin categorías especiales (anexo I, 3)."}
+      I: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado: datos de gestión de proyectos, sin categorías especiales (anexo I, 3)."}
+      T: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado: datos de gestión de proyectos, sin categorías especiales (anexo I, 3)."}
+      A: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado: datos de gestión de proyectos, sin categorías especiales (anexo I, 3)."}
+      D: {level: BAJO, justification: "Un incidente causaría un perjuicio limitado: datos de gestión de proyectos, sin categorías especiales (anexo I, 3)."}
+    valuation:
+      valued_by: Lucía Robledal
+      role: information_owner
+      valued_at: "2026-09-15T10:00:00+00:00"
+services:
+  - id: svc-portal
+    ratings:
+      C: {level: BAJO, justification: "Una interrupción de días retrasa proyectos sin perjuicio grave para los clientes (anexo I, 3)."}
+      I: {level: BAJO, justification: "Una interrupción de días retrasa proyectos sin perjuicio grave para los clientes (anexo I, 3)."}
+      T: {level: BAJO, justification: "Una interrupción de días retrasa proyectos sin perjuicio grave para los clientes (anexo I, 3)."}
+      A: {level: BAJO, justification: "Una interrupción de días retrasa proyectos sin perjuicio grave para los clientes (anexo I, 3)."}
+      D: {level: BAJO, justification: "Una interrupción de días retrasa proyectos sin perjuicio grave para los clientes (anexo I, 3)."}
+    valuation:
+      valued_by: Lucía Robledal
+      role: service_owner
+      valued_at: "2026-09-15T10:00:00+00:00"
+  - id: svc-soporte
+    ratings:
+      C: {level: BAJO, justification: "El soporte admite demoras de días y no trata datos sensibles de los clientes (anexo I, 3)."}
+      I: {level: BAJO, justification: "El soporte admite demoras de días y no trata datos sensibles de los clientes (anexo I, 3)."}
+      T: {level: BAJO, justification: "El soporte admite demoras de días y no trata datos sensibles de los clientes (anexo I, 3)."}
+      A: {level: BAJO, justification: "El soporte admite demoras de días y no trata datos sensibles de los clientes (anexo I, 3)."}
+      D: {level: BAJO, justification: "El soporte admite demoras de días y no trata datos sensibles de los clientes (anexo I, 3)."}
+    valuation:
+      valued_by: Lucía Robledal
+      role: service_owner
+      valued_at: "2026-09-15T10:00:00+00:00"

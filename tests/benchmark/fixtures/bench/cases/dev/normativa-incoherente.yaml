@@ -1,0 +1,16 @@
+format: ens-benchmark-case/1
+id: normativa-incoherente
+partition: dev
+profile: mini
+kind: defective
+defects:
+  - id: normativa-incoherente
+    layer: judgment
+    measure: org.2
+    target: {kind: evidence, alias: revision-anual}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: org.2
+      clause: org.2.1
+      quote: El uso correcto de equipos, servicios e instalaciones
+    rationale: El acta de revisión no trata el uso de equipos que la normativa regula.

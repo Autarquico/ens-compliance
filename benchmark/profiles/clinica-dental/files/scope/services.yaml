@@ -1,0 +1,4 @@
+services:
+  - id: svc-atencion
+    name: Atención odontológica y gestión de pacientes
+    assets: [app-historias, db-pacientes, srv-clinica]

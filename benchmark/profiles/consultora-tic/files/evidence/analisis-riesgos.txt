@@ -1,0 +1,27 @@
+Análisis de riesgos informal de Robledal Sistemas S.L. (empresa ficticia)
+Elaborado por Tomás Pradera (responsable de la seguridad) el 18 de septiembre de 2026 y revisado
+con la gerente en la reunión del Comité de Seguridad del 22 de septiembre.
+
+Activos más valiosos
+- La base de datos del portal (db-portal) con proyectos, tickets y ficheros de clientes.
+- Las cuentas de la identidad corporativa y del alojamiento de código, que dan acceso a todo lo demás.
+- Las copias cifradas en st-copias, única vía de recuperación si se pierde el servidor.
+
+Amenazas más probables
+- Robo de credenciales por correo fraudulento dirigido a alguna de las tres personas.
+- Explotación de una vulnerabilidad de la aplicación web o de una dependencia sin actualizar.
+- Pérdida o robo de un portátil en el coworking o en un desplazamiento.
+- Caída del proveedor de nube o borrado accidental de datos del portal.
+
+Salvaguardas que protegen de ellas
+- Doble factor obligatorio en identidad, código, red perimetral y gestor de contraseñas.
+- Revisión por otra persona de cada cambio, pruebas automáticas y alertas de dependencias vulnerables.
+- Discos cifrados, bloqueo automático y borrado remoto de los portátiles.
+- Copia diaria cifrada en otra región, con prueba de restauración trimestral.
+- El servidor no expone puertos: solo se llega a él por el túnel, detrás del cortafuegos web.
+
+Riesgos residuales principales
+- Dependencia de un único proveedor de nube para el servidor: aceptado por la gerente; la
+  restauración en otro proveedor se probó en junio y tarda unas seis horas.
+- Con tres personas, la ausencia de la administradora retrasa la respuesta; Lucía Robledal tiene
+  acceso de respaldo documentado.

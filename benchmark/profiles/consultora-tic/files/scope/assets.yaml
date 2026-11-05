@@ -1,0 +1,93 @@
+assets:
+  - id: lap-lucia
+    type: laptop
+    deployment: deployed
+    hostname: lap-lucia.robledal.example
+    os: macOS 15
+    owner: Lucía Robledal
+    encrypted: true
+    usage: Gerencia, propuestas y relación con clientes
+  - id: lap-tomas
+    type: laptop
+    deployment: deployed
+    hostname: lap-tomas.robledal.example
+    os: Ubuntu 24.04
+    owner: Tomás Pradera
+    encrypted: true
+    usage: Desarrollo y revisión de seguridad
+  - id: lap-nora
+    type: laptop
+    deployment: deployed
+    hostname: lap-nora.robledal.example
+    os: macOS 15
+    owner: Nora Vilaplana
+    encrypted: true
+    usage: Administración de sistemas y despliegue
+  - id: vps-portal
+    type: server
+    deployment: deployed
+    hostname: vps-portal.robledal.example
+    function: Aloja el portal de proyectos y su base de datos
+    os: Debian 12
+    environment: producción
+    location: Proveedor de nube, centro de datos en la UE
+  - id: app-portal
+    type: application
+    deployment: deployed
+    service: Portal de proyectos
+    domain: portal.robledal.example
+    repo: robledal-sistemas/portal
+    database: db-portal
+  - id: db-portal
+    type: database
+    deployment: deployed
+    engine: PostgreSQL 16
+    location: vps-portal
+    data: Proyectos, tickets y ficheros de los clientes
+    backup: Diaria con restic al almacenamiento de objetos
+  - id: gh-robledal
+    type: code_hosting
+    deployment: deployed
+    account: robledal-sistemas
+    repos: [portal, infra]
+    actions: Pruebas automáticas y despliegue al servidor
+  - id: cf-robledal
+    type: edge_network
+    deployment: deployed
+    account: robledal-sistemas
+    zones: [robledal.example]
+    tunnel: Túnel hacia vps-portal; el servidor no expone puertos
+    waf: Reglas gestionadas activas en el portal
+    access: Panel de administración solo tras identidad corporativa y doble factor
+  - id: ws-robledal
+    type: identity
+    deployment: deployed
+    users: Lucía Robledal, Tomás Pradera, Nora Vilaplana
+    admins: Nora Vilaplana (Lucía Robledal como respaldo)
+    mfa: true
+  - id: pw-robledal
+    type: password_manager
+    deployment: deployed
+    mode: Servicio alojado con bóvedas compartidas por función
+    recovery: Kit de recuperación impreso en el armario cerrado de la gerencia
+    mfa: true
+  - id: st-copias
+    type: storage
+    deployment: deployed
+    buckets: [robledal-copias]
+    location: UE, región distinta de la del servidor
+    encryption: Cifrado en el proveedor y cifrado de restic
+    access: Solo la clave de servicio de copias, de solo escritura y lectura
+  - id: bk-portal
+    type: backup
+    deployment: deployed
+    source: db-portal y ficheros del portal
+    destination: st-copias
+    frequency: Diaria a las 02:00
+    restoration: Prueba trimestral de restauración completa
+  - id: prov-nube
+    type: provider
+    deployment: deployed
+    service: Servidor virtual y almacenamiento de objetos
+    function: Aloja vps-portal y st-copias
+    dependency: Disponibilidad del portal y de las copias

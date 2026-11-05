@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: escaneo-desactivado
+partition: dev
+profile: mini
+kind: defective
+mutations:
+  - op: collected_override
+    alias: github
+    file: github.json
+defects:
+  - id: escaneo-desactivado
+    layer: deterministic
+    measure: op.exp.1
+    target: {kind: none}
+    expected_rule: CHECK_FAIL
+    requirement:
+      measure: op.exp.1
+      clause: op.exp.1.1
+      quote: Se mantendrá un inventario actualizado de todos los elementos del sistema
+    rationale: La última recogida muestra el escaneo de secretos desactivado en el repositorio.

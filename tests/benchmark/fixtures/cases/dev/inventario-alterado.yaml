@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: inventario-alterado
+partition: dev
+profile: mini
+kind: defective
+judgment: false
+mutations:
+  - op: tamper_artifact
+    alias: inventario
+defects:
+  - id: inventario-alterado
+    layer: deterministic
+    measure: op.exp.1
+    target: {kind: evidence, alias: inventario}
+    expected_rule: HASH_MISMATCH
+    requirement:
+      measure: op.exp.1
+      clause: op.exp.1.1
+      quote: Se mantendrá un inventario actualizado de todos los elementos del sistema
+    rationale: El fichero del inventario se editó después de importarlo y ya no es el que se aportó.

@@ -1,0 +1,15 @@
+Acta del Comité de Seguridad de Gestoría Albar S.L. (empresa ficticia)
+24 de septiembre de 2026. Asisten: Elena Tamarit, Jorge Salvatierra, Raúl Monteagudo y Pilar
+Aranda. Redacta: Raúl Monteagudo.
+
+1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios
+   salvo la actualización de la lista de proveedores.
+2. Autorizaciones del trimestre: alta de lap-jorge por renovación (ficha del proveedor),
+   teletrabajo de Raúl Monteagudo los viernes y conexión remota del proveedor en 3 intervenciones,
+   todas registradas.
+3. Adquisiciones: el cambio de proveedor de almacenamiento para la copia externa se valoró con el
+   análisis de riesgos (cifrado antes de subir, centro de datos en la UE, contrato de encargo).
+4. Capacidad: el servidor usa el 61 % del disco; la copia local crece 6 GB al mes. Se planifica
+   ampliar el disco en el primer trimestre de 2027, con presupuesto aprobado.
+5. Incidentes: un correo fraudulento que suplantaba a un cliente, detectado por Jorge Salvatierra
+   y no abierto; registrado como evento sin impacto.

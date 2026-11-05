@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/ge-portatiles-compensados",
+  "case_sha256": "b65a8601c141d10fed93a752dc82af3f332f67b60a3886a4ca3e413ada20a045",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "1.0.0",
+  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
+  "payload_sha256": "ad412d02d7190aec761d70641ae7603da91be3ea5365dde26127a8f355607a74",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-05T10:31:13.421797Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-05T10:30:23.891670Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.eq.3\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[{\"ref\":\"EV-20261001-751fd139\",\"quote\":\"uno está en poder de su responsable; en teletrabajo se conectan por VPN.\"}],\"justifications\":[{\"ref\":\"justification:compensation:mp.eq.3:base\",\"quote\":\"Los portátiles casi nunca salen de la oficina y, cuando están en ella, el puesto despejado y el armario con llave ya los protegen.\"}],\"reason\":\"La justificación limita la protección compensatoria a la estancia en la oficina, aunque reconoce salidas y la evidencia confirma el uso en teletrabajo; no justifica una protección igual o mejor frente al riesgo sobre los portátiles fuera de ella. Se propone NC_MENOR por insuficiencia parcial de la justificación documental de la compensación.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-05T10:30:41.687365Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.eq.3\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[{\"ref\":\"EV-20261001-751fd139\",\"quote\":\"en teletrabajo se conectan por VPN.\"}],\"justifications\":[{\"ref\":\"justification:compensation:mp.eq.3:base\",\"quote\":\"Los portátiles casi nunca salen de la oficina y, cuando están en ella, el puesto despejado y el armario con llave ya los protegen.\"}],\"reason\":\"La compensación se justifica mediante protecciones circunscritas a la oficina, mientras que la evidencia confirma el uso de portátiles en teletrabajo. Se propone NC_MENOR por insuficiencia parcial de la justificación: no explica cómo las medidas compensatorias protegen igual o mejor frente al riesgo sobre los dispositivos fuera de la oficina.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-05T10:30:57.226998Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.eq.3\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[{\"ref\":\"EV-20261001-751fd139\",\"quote\":\"Equipos: los cuatro portátiles tienen disco cifrado y bloqueo automático; se comprobó que cada\\nuno está en poder de su responsable; en teletrabajo se conectan por VPN.\"}],\"justifications\":[{\"ref\":\"justification:compensation:mp.eq.3:base\",\"quote\":\"Los portátiles casi nunca salen de la oficina y, cuando están en ella, el puesto despejado y el armario con llave ya los protegen.\"}],\"reason\":\"La justificación limita la protección compensatoria a la oficina, mientras que la evidencia confirma el uso de los portátiles en teletrabajo; no explica cómo la compensación protege igual o mejor frente al riesgo fuera de ella. Se propone NC_MENOR por insuficiencia parcial de la justificación documental de la compensación, para revisión humana.\"}]}",
+      "kind": null
+    }
+  ]
+}

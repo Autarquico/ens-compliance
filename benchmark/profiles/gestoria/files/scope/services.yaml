@@ -1,0 +1,4 @@
+services:
+  - id: svc-tramites
+    name: Tramitación fiscal, laboral y administrativa para clientes
+    assets: [srv-ficheros, prov-gestion, id-correo, lap-elena, lap-raul, lap-pilar, lap-jorge]

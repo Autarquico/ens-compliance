@@ -24,7 +24,8 @@ from datetime import datetime
 from pydantic import ValidationError
 
 from ens_evidence.chain import SequenceTaken, render_record, reserve_sequence
-from ens_evidence.evidence.importer import INCIDENT_RECORD_SOURCE, import_generated
+from ens_evidence.evidence.importer import INCIDENT_RECORD_SOURCE, IdFactory, import_generated
+from ens_evidence.evidence.layout import new_evidence_id
 from ens_evidence.evidence.verify import verify_one
 from ens_evidence.incidents.errors import IncidentRejected
 from ens_evidence.incidents.history import record_history
@@ -127,7 +128,13 @@ def simulation_procedure(store: WorkspaceStore) -> Procedure:
 
 
 def record_incident(
-    store: WorkspaceStore, state: IncidentState, *, kind: RecordKind, by: str, now: datetime
+    store: WorkspaceStore,
+    state: IncidentState,
+    *,
+    kind: RecordKind,
+    by: str,
+    now: datetime,
+    id_factory: IdFactory = new_evidence_id,
 ) -> Recorded:
     """Añade un registro al incidente. `IncidentRejected` si no se escribe nada o el incidente
     está roto; `now` es el `recorded_at` y el instante de la evidencia."""
@@ -185,6 +192,7 @@ def record_incident(
         submitted_by=by,
         now=now,
         collected_at=now,
+        id_factory=id_factory,
     )
     key = record_key(record, data)
     store.create_bytes(key, data)
@@ -194,7 +202,7 @@ def record_incident(
     if kind is not RecordKind.CLOSED:
         return recorded
     try:
-        history = record_history(store, state.id, by=by, now=now)
+        history = record_history(store, state.id, by=by, now=now, id_factory=id_factory)
     except IncidentRejected as exc:
         return replace(recorded, history_problems=exc.errors)
     return replace(recorded, history_evidence_id=history.id)

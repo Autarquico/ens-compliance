@@ -1,0 +1,15 @@
+Registro de actividad y vigilancia — revisión de septiembre de 2026
+Robledal Sistemas S.L. (empresa ficticia). Revisa: Tomás Pradera, 30 de septiembre de 2026.
+
+Registros activos: el servidor registra los accesos SSH, sudo y los eventos del sistema; el portal
+registra inicios de sesión, descargas y cambios de permisos con usuario, fecha y hora, objeto y
+resultado; la identidad corporativa, el alojamiento de código y la red perimetral guardan su
+registro de auditoría. Los registros del servidor se envían cada hora al almacenamiento de
+copias y se conservan 12 meses.
+
+Detección de intrusión: el cortafuegos de aplicaciones web bloqueó 3.412 peticiones (reglas
+gestionadas) y fail2ban 0 intentos, porque SSH no está expuesto. Sin alertas críticas.
+Métricas del mes: disponibilidad del portal 99,9 %, 2 alertas de inicio de sesión inusual
+(ambas de Lucía Robledal de viaje, verificadas por teléfono), 0 incidentes.
+
+Revisión: se revisaron los registros buscando patrones anormales; sin hallazgos.

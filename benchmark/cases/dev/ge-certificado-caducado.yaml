@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: ge-certificado-caducado
+partition: dev
+profile: gestoria
+kind: defective
+mutations:
+  - op: expire_evidence
+    alias: certificado-proveedor
+    valid_until: "2026-09-25T00:00:00+00:00"
+defects:
+  - id: certificado-proveedor-caducado
+    layer: deterministic
+    measure: op.nub.1
+    target: {kind: evidence, alias: certificado-proveedor}
+    expected_rule: EVIDENCE_EXPIRED
+    requirement:
+      measure: op.nub.1
+      clause: op.nub.1.2
+      quote: >-
+        Cuando se utilicen servicios en la nube suministrados por terceros, los sistemas de
+        información que los soportan deberán ser conformes con el ENS o cumplir con las medidas
+        desarrolladas en una guía CCN-STIC
+    rationale: La ficha de cumplimiento del proveedor de la aplicación de gestión dejó de estar vigente el 25 de septiembre.

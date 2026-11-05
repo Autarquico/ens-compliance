@@ -1,0 +1,6 @@
+Despliegues de la tienda, septiembre de 2026.
+
+- Viernes 25, 21:40: subida directa por FTP desde el portátil del taller de la nueva página de
+  campaña, sin petición de cambio ni revisión, porque la campaña empezaba el lunes.
+- Las pruebas automáticas del repositorio están desactivadas desde agosto porque fallaban.
+- El lunes 28 varios clientes no pudieron pagar hasta que se deshizo el cambio a mediodía.

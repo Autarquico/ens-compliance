@@ -1,0 +1,15 @@
+Informe de copias de seguridad y prueba de restauración — tercer trimestre de 2026
+Robledal Sistemas S.L. (empresa ficticia). Elabora: Nora Vilaplana, 26 de septiembre de 2026.
+
+Política aplicada (procedimientos de seguridad): copia diaria cifrada con restic de db-portal y de
+los ficheros del portal a st-copias, en otra región y otro proveedor; retención de 30 copias
+diarias y 12 mensuales; acceso a las copias solo con la clave de servicio, custodiada en la bóveda
+Producción del gestor de contraseñas.
+
+Resultado de las copias: 92 copias diarias en el trimestre (1 de julio a 30 de septiembre), 91
+correctas; la del 14 de agosto falló por un corte del proveedor y se repitió a las 09:10 del mismo
+día. Comprobación de integridad (restic check) mensual sin errores.
+
+Prueba de restauración: el 19 de septiembre se restauró la copia del día anterior en un servidor
+temporal; la base de datos arrancó, se comprobaron 3 proyectos al azar y sus ficheros, y el
+servidor temporal se destruyó. Duración: 47 minutos.

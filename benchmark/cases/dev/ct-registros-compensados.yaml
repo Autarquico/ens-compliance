@@ -1,0 +1,29 @@
+format: ens-benchmark-case/1
+id: ct-registros-compensados
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: compensate
+    measure: op.exp.8
+    measures: [op.mon.2]
+    replaces: [base]
+    justification: Somos tres personas y nos conocemos; cualquier cambio en el servidor se comenta en el chat del equipo, que hace las veces de registro de actividad.
+defects:
+  - id: registro-actividad-sustituido-por-chat
+    layer: judgment
+    measure: op.exp.8
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.exp.8
+      clause: op.exp.8.1
+      quote: >-
+        Se generará un registro de auditoría, que incluirá, al menos, el identificador del usuario o
+        entidad asociado al evento, fecha y hora, sobre qué información se realiza el evento, tipo de
+        evento y el resultado del evento (fallo o éxito), según la política de seguridad y los
+        procedimientos asociados a la misma.
+    rationale: >-
+      Un chat donde las personas cuentan lo que hacen no registra al usuario, la hora, el objeto ni
+      el resultado de cada evento, y no deja rastro de una cuenta robada o de un acceso externo: la
+      compensación no protege igual del riesgo sobre el servidor.

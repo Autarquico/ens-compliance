@@ -1,0 +1,23 @@
+Inventario de activos de Robledal Sistemas S.L. (empresa ficticia)
+Versión 2026-09, revisado el 25 de septiembre de 2026 por Nora Vilaplana (responsable del sistema).
+
+Cada elemento indica su naturaleza y la persona que toma las decisiones sobre él.
+
+| Id          | Naturaleza                                   | Responsable      |
+|-------------|----------------------------------------------|------------------|
+| lap-lucia   | Portátil macOS 15, disco cifrado              | Lucía Robledal   |
+| lap-tomas   | Portátil Ubuntu 24.04, disco cifrado          | Tomás Pradera    |
+| lap-nora    | Portátil macOS 15, disco cifrado              | Nora Vilaplana   |
+| vps-portal  | Servidor virtual Debian 12 en la UE           | Nora Vilaplana   |
+| app-portal  | Aplicación web del portal de proyectos        | Tomás Pradera    |
+| db-portal   | Base de datos PostgreSQL 16 en vps-portal     | Nora Vilaplana   |
+| gh-robledal | Alojamiento de código, repositorios portal e infra | Tomás Pradera |
+| cf-robledal | Red perimetral: DNS, túnel, cortafuegos web   | Nora Vilaplana   |
+| ws-robledal | Identidad corporativa, correo y documentos    | Nora Vilaplana   |
+| pw-robledal | Gestor de contraseñas con bóvedas por función | Tomás Pradera    |
+| st-copias   | Almacenamiento de objetos para copias, otra región | Nora Vilaplana |
+| bk-portal   | Copia diaria con restic de db-portal y ficheros | Nora Vilaplana |
+| prov-nube   | Proveedor del servidor y del almacenamiento   | Lucía Robledal   |
+
+Cambios desde la versión anterior (2026-06): alta de lap-tomas tras la renovación del equipo y
+baja del portátil antiguo, borrado según el procedimiento de soportes el 2 de septiembre.

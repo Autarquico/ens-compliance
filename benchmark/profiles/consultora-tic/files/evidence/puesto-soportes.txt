@@ -1,0 +1,17 @@
+Revisión de instalaciones, equipos y soportes — Robledal Sistemas S.L. (empresa ficticia)
+Fecha: 27 de septiembre de 2026. Realiza: Tomás Pradera.
+
+Instalaciones: el puesto del coworking está en una zona de oficinas con acceso por tarjeta
+nominal, registro de visitas en recepción, climatización, extinción automática y alimentación
+ininterrumpida del edificio. No hay equipamiento de servidor propio en el local; el servidor y las
+copias están en el proveedor de nube. La entrada y salida de los portátiles se anota en el
+inventario.
+
+Equipos: los tres portátiles tienen disco cifrado, bloqueo automático y borrado remoto desde la
+identidad corporativa; se comprobó en la reunión de septiembre que cada uno está en poder de su
+responsable. Al terminar la jornada se guardan en la taquilla con llave. La impresora del coworking
+no se usa para documentos de clientes. No hay otros dispositivos conectados a la red propia.
+
+Soportes: un disco externo etiquetado (D-01), cifrado, custodiado en la taquilla, sin uso este
+trimestre. El portátil antiguo se borró de forma segura el 2 de septiembre y se anotó en el
+inventario de soportes. No se transportan soportes con datos de clientes.

@@ -1,0 +1,25 @@
+information:
+  - id: datos-pedidos
+    description: Pedidos, direcciones de envío y cuentas de clientes de la tienda
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      I: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      T: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      A: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      D: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+    valuation:
+      valued_by: Nuria Torno
+      role: information_owner
+      valued_at: "2026-10-01T09:00:00+00:00"
+services:
+  - id: svc-tienda
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      I: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      T: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      A: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      D: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+    valuation:
+      valued_by: Nuria Torno
+      role: service_owner
+      valued_at: "2026-10-01T09:00:00+00:00"

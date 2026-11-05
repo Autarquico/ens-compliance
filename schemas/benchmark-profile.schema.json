@@ -1,0 +1,561 @@
+{
+  "$defs": {
+    "ApplicabilityDecision": {
+      "additionalProperties": false,
+      "description": "Decisi\u00f3n que difiere de la propuesta de la herramienta, con su justificaci\u00f3n.",
+      "properties": {
+        "applicable": {
+          "title": "Applicable",
+          "type": "boolean"
+        },
+        "justification": {
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "applicable",
+        "justification"
+      ],
+      "title": "ApplicabilityDecision",
+      "type": "object"
+    },
+    "Clock": {
+      "additionalProperties": false,
+      "properties": {
+        "start": {
+          "format": "date-time",
+          "title": "Start",
+          "type": "string"
+        }
+      },
+      "required": [
+        "start"
+      ],
+      "title": "Clock",
+      "type": "object"
+    },
+    "Dimension": {
+      "enum": [
+        "C",
+        "I",
+        "T",
+        "A",
+        "D"
+      ],
+      "title": "Dimension",
+      "type": "string"
+    },
+    "DocumentLink": {
+      "additionalProperties": false,
+      "properties": {
+        "covers": {
+          "items": {
+            "pattern": "^(base|compensation|R[0-9]+|[a-z]+(\\.[a-z0-9]+)+)$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Covers",
+          "type": "array"
+        },
+        "document": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Document",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "document",
+        "covers"
+      ],
+      "title": "DocumentLink",
+      "type": "object"
+    },
+    "EvidenceLink": {
+      "additionalProperties": false,
+      "properties": {
+        "check": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "En una recogida, el check que la valora: la recogida cuenta por su check.",
+          "title": "Check"
+        },
+        "covers": {
+          "items": {
+            "pattern": "^(base|compensation|R[0-9]+|[a-z]+(\\.[a-z0-9]+)+)$",
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Covers",
+          "type": "array"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "covers"
+      ],
+      "title": "EvidenceLink",
+      "type": "object"
+    },
+    "EvidenceSource": {
+      "enum": [
+        "manual",
+        "collected"
+      ],
+      "title": "EvidenceSource",
+      "type": "string"
+    },
+    "IncidentDrill": {
+      "additionalProperties": false,
+      "description": "Un simulacro de incidente (`incident new --simulated`, una actuaci\u00f3n de emergencia y el\ncierre). Su historial es la evidencia que admite `op.exp.9`.",
+      "properties": {
+        "action": {
+          "minLength": 1,
+          "title": "Action",
+          "type": "string"
+        },
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "auditable_events_detail": {
+          "minLength": 1,
+          "title": "Auditable Events Detail",
+          "type": "string"
+        },
+        "by": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "By",
+          "type": "string"
+        },
+        "conclusion": {
+          "minLength": 1,
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/EvidenceLink"
+          },
+          "minItems": 1,
+          "title": "Links",
+          "type": "array"
+        },
+        "title": {
+          "minLength": 1,
+          "title": "Title",
+          "type": "string"
+        }
+      },
+      "required": [
+        "alias",
+        "by",
+        "title",
+        "action",
+        "conclusion",
+        "auditable_events_detail",
+        "links"
+      ],
+      "title": "IncidentDrill",
+      "type": "object"
+    },
+    "MatrixDefaults": {
+      "additionalProperties": false,
+      "description": "Responsable, periodicidad y revisi\u00f3n de las medidas sin fila propia en `matrix`. Una\nmedida aplicable sin fila se revisa como `COMPLIANT`; una no aplicable confirma la decisi\u00f3n.",
+      "properties": {
+        "conclusion": {
+          "minLength": 1,
+          "title": "Conclusion",
+          "type": "string"
+        },
+        "owner": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Owner",
+          "type": "string"
+        },
+        "review_every_days": {
+          "maximum": 365,
+          "minimum": 1,
+          "title": "Review Every Days",
+          "type": "integer"
+        },
+        "reviewed_by": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Reviewed By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "owner",
+        "review_every_days",
+        "reviewed_by",
+        "conclusion"
+      ],
+      "title": "MatrixDefaults",
+      "type": "object"
+    },
+    "MatrixRow": {
+      "additionalProperties": false,
+      "properties": {
+        "assessment": {
+          "$ref": "#/$defs/MeasureAssessment"
+        },
+        "conclusion": {
+          "anyOf": [
+            {
+              "minLength": 1,
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Conclusion"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "owner": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Owner",
+          "type": "string"
+        },
+        "review_every_days": {
+          "maximum": 365,
+          "minimum": 1,
+          "title": "Review Every Days",
+          "type": "integer"
+        },
+        "reviewed_by": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Reviewed By",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "owner",
+        "review_every_days",
+        "reviewed_by",
+        "assessment"
+      ],
+      "title": "MatrixRow",
+      "type": "object"
+    },
+    "MeasureAssessment": {
+      "enum": [
+        "COMPLIANT",
+        "NON_COMPLIANT",
+        "REQUIRES_REVIEW",
+        "NOT_ASSESSED"
+      ],
+      "title": "MeasureAssessment",
+      "type": "string"
+    },
+    "OrgDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "approved_by": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Approved By",
+          "type": "string"
+        },
+        "ref": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "ref",
+        "approved_by"
+      ],
+      "title": "OrgDocument",
+      "type": "object"
+    },
+    "Person": {
+      "additionalProperties": false,
+      "properties": {
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "name": {
+          "minLength": 1,
+          "title": "Name",
+          "type": "string"
+        },
+        "roles": {
+          "items": {
+            "$ref": "#/$defs/Role"
+          },
+          "minItems": 1,
+          "title": "Roles",
+          "type": "array"
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "roles"
+      ],
+      "title": "Person",
+      "type": "object"
+    },
+    "ProfileEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "asset": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "description": "Activo del alcance de una evidencia manual; la recogida lo trae en su JSON.",
+          "title": "Asset"
+        },
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "links": {
+          "items": {
+            "$ref": "#/$defs/EvidenceLink"
+          },
+          "minItems": 1,
+          "title": "Links",
+          "type": "array"
+        },
+        "source": {
+          "$ref": "#/$defs/EvidenceSource"
+        },
+        "valid_until": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Valid Until"
+        }
+      },
+      "required": [
+        "alias",
+        "file",
+        "source",
+        "links"
+      ],
+      "title": "ProfileEvidence",
+      "type": "object"
+    },
+    "Role": {
+      "enum": [
+        "system_administrator",
+        "system_administrator_delegate",
+        "security_officer",
+        "system_owner",
+        "management",
+        "information_owner",
+        "service_owner"
+      ],
+      "title": "Role",
+      "type": "string"
+    },
+    "SecurityLevel": {
+      "enum": [
+        "BAJO",
+        "MEDIO",
+        "ALTO"
+      ],
+      "title": "SecurityLevel",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Pyme ficticia completa y correcta: con la capa determinista, cero hallazgos.",
+  "properties": {
+    "applicability": {
+      "items": {
+        "$ref": "#/$defs/ApplicabilityDecision"
+      },
+      "title": "Applicability",
+      "type": "array"
+    },
+    "categorization": {
+      "additionalProperties": {
+        "$ref": "#/$defs/SecurityLevel"
+      },
+      "minProperties": 1,
+      "propertyNames": {
+        "$ref": "#/$defs/Dimension"
+      },
+      "title": "Categorization",
+      "type": "object"
+    },
+    "clock": {
+      "$ref": "#/$defs/Clock"
+    },
+    "document_links": {
+      "items": {
+        "$ref": "#/$defs/DocumentLink"
+      },
+      "title": "Document Links",
+      "type": "array"
+    },
+    "documents": {
+      "items": {
+        "$ref": "#/$defs/OrgDocument"
+      },
+      "title": "Documents",
+      "type": "array"
+    },
+    "evidence": {
+      "items": {
+        "$ref": "#/$defs/ProfileEvidence"
+      },
+      "title": "Evidence",
+      "type": "array"
+    },
+    "fictional": {
+      "const": true,
+      "title": "Fictional",
+      "type": "boolean"
+    },
+    "format": {
+      "const": "ens-benchmark-profile/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "incident_drill": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/IncidentDrill"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "matrix": {
+      "items": {
+        "$ref": "#/$defs/MatrixRow"
+      },
+      "title": "Matrix",
+      "type": "array"
+    },
+    "matrix_defaults": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/MatrixDefaults"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "not_required_justification": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Justificaci\u00f3n de no aplicar lo no exigido por el anexo II y no decidido aqu\u00ed.",
+      "title": "Not Required Justification"
+    },
+    "people": {
+      "items": {
+        "$ref": "#/$defs/Person"
+      },
+      "minItems": 1,
+      "title": "People",
+      "type": "array"
+    },
+    "reinforcements": {
+      "description": "Refuerzo elegido de cada grupo alternativo de las medidas aplicables.",
+      "patternProperties": {
+        "^[a-z]+(\\.[a-z0-9]+)+$": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "type": "array"
+        }
+      },
+      "title": "Reinforcements",
+      "type": "object"
+    },
+    "title": {
+      "minLength": 1,
+      "title": "Title",
+      "type": "string"
+    }
+  },
+  "required": [
+    "format",
+    "fictional",
+    "id",
+    "title",
+    "clock",
+    "categorization",
+    "people"
+  ],
+  "title": "Profile",
+  "type": "object"
+}

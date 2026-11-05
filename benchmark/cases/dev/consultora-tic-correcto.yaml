@@ -1,0 +1,5 @@
+format: ens-benchmark-case/1
+id: consultora-tic-correcto
+partition: dev
+profile: consultora-tic
+kind: correct

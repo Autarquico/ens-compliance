@@ -1,0 +1,2129 @@
+{
+  "format": "ens-benchmark-baseline/1",
+  "partition": "dev",
+  "written_at": "2026-11-05T11:26:23.767554Z",
+  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
+  "inventory": {
+    "dev/consultora-tic-correcto": "6320f255f76efe590c54079901460d31b69986d1ff8e9f14964dd5b49098bc91",
+    "dev/ct-claves-alteradas": "031c5d9fa8ec9cc9bd7fd69bba160fb95fb273e41fa995e131568293a96cd60f",
+    "dev/ct-claves-alteradas#registro-claves-alterado": "ba20b7f1acb7dab43bcf7211a886c2941fb20f8eb3c258f78422a2c062a6fa77",
+    "dev/ct-copias-compensadas": "54e087e8bdcf19fa945a1d878b74d07d052b7bfaad79883624400594f71c465d",
+    "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente": "882eeacd59333e1c01facefd08775fb063d3f907a51337e14321d036bd812c96",
+    "dev/ct-copias-desenlazadas": "ed1b32ee212c306e58011a505fdc7cd38256e1f3b77210d11d6c57f8dea91532",
+    "dev/ct-copias-desenlazadas#copias-sin-evidencia": "1cf5fce51f980fb117011a1e98de053f59d1f1c869ad637f8d44ea91d9c7f115",
+    "dev/ct-copias-semanales": "a3065128b4347210072f06d649aa6e00c23efdda6d2178d6d2cba48eba9699fd",
+    "dev/ct-copias-semanales#copias-contradicen-procedimiento": "a46a94a0598b1e81ac440e993e5a3f4044f06343054d2e4f4d0378f111e01f63",
+    "dev/ct-cuenta-compartida": "e7364211321ba55d6e18ab03996ef07eb6a61aa88d4df0ade24128871d82e8fc",
+    "dev/ct-cuenta-compartida#administracion-compartida": "a22d859529871182dc36b6ae4105339251380975f5b6ef530dc63ed1c71d1fd8",
+    "dev/ct-dependencias-sin-estado": "681e340e326dc8f3d2842114a76ece454bdeb4b634effc75902893371abc0548",
+    "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar": "ab689c3f2d1b4cad0c5ee02f3444523635b21c1dbeec92a873fae38dcedcbea2",
+    "dev/ct-doble-factor-desactivado": "f54ed6b1b53b86923ce460a45be5d3286e5d274ebaef51191a649a45262f6e9e",
+    "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor": "158e95ae5d1e3a56b3f5f7bbb4f65e1f6d711ab4159b2a1663e22c7e96e4c747",
+    "dev/ct-inventario-caducado": "6ac386ec12a9f8a368c6fc591382bf83bc81f36fc805f69b9efabf8197074c21",
+    "dev/ct-inventario-caducado#inventario-caducado": "55bf04b50bf482ae0ae5f5ad2ed44ed736dfe53f83fde6259de9b14fa18cf2c8",
+    "dev/ct-parches-atrasados": "c208c49f9646201fc4de26eb491a0109b2e1acde7838eac521192ac528dd9980",
+    "dev/ct-parches-atrasados#actualizaciones-sin-aplicar": "f05d8f92a2fbbb0cc0873d96e233bc1b08fc44d5dbf4fd87b3539bfa71900a95",
+    "dev/ct-registros-compensados": "9cf8ee03bbe50cd13efd2bd7cf58218e624d77e5ab2eedffdc93815edbb82ac3",
+    "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat": "fd8eac069d6799aba9f68b42ad8e91ba4b9204def75a9de2f3143a963ed9d222",
+    "dev/ct-renovacion-sin-procedimiento": "ace1f2bb194db5ed6283e6fff8442f7d05c547dab5b3ef8fbefd3810fe316244",
+    "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida": "63c68646968c77a5612671b8d5af8668264f2fcdafeda5275ee586c152f88212",
+    "dev/ct-sanciones-indefinidas": "b85faca53ca33ea2d538911280c079e9e08db91148f373bf1201a446fc3ed6a3",
+    "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias": "64147ec826106676c7679ddcc5f2330b87b27b8608bd9b722bb1d9c1dfaff352",
+    "dev/ge-certificado-caducado": "4547dd61aaabfcf99579132288e59efc4e68842c4b5f8f6116a607775fd522f5",
+    "dev/ge-certificado-caducado#certificado-proveedor-caducado": "73fe3ac0b280a9d5e1950b16f921a2c706d49e56d141d3d7b77f45c6c351dfe6",
+    "dev/ge-comite-indeterminado": "e7697cb1a613179603cfed6067b41723932d6aa2a9a4553d0bd28c7c554b0585",
+    "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito": "b68b79367c2ba9f3b4a72e11971e5db479c2e86aefa699ec39f7fd9f909237af",
+    "dev/ge-copias-alteradas": "42738ba094217ea25ec7629207676c5652030a3f917f16331856ce2b7e5f59b6",
+    "dev/ge-copias-alteradas#copias-sin-evidencia-valida": "3ad89ed8cd86179b56607cefa58e56cfe1d08486bbad2f7b6b14a074f6e55dd3",
+    "dev/ge-copias-alteradas#informe-copias-alterado": "b60850dabce53e069128d7c0edcbd7c940f84b1ba0656fd8d43ef135d8a4f1f0",
+    "dev/ge-copias-sin-procedimiento": "7239bb0fdf4220ac342d9021467976874ddc3b9ff3abff7fc700be541182ac43",
+    "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago": "4b546e953a129d3d65f4ada0870ef3a1c89a27b03167695d6bd78021e17fcda0",
+    "dev/ge-correo-compensado": "b94e553aa8fb0108c44e37f4864020036d2ce1a35fe97753e627c06e7ae9ae73",
+    "dev/ge-correo-compensado#correo-compensado-por-antivirus": "548adb322f4e9dd582934ed8c882af2bd4f1380edf899f5d8d21bdf6e91495d8",
+    "dev/ge-formacion-caducada": "d85b02edc7f08849ad1f75dbfcc8fad6751ca75c54d1859588e34edb16bb4c92",
+    "dev/ge-formacion-caducada#formacion-no-anual": "8965c4c504d91d78d5c04359ace19176df9a3caa3d593ab053d91ed171c459a0",
+    "dev/ge-incidentes-sin-procedimiento": "1096931aedbb7edcee8c7f8dc14ab44030f599d25c008664ca19ecc384670d82",
+    "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo": "68398ca809828efca2d51252c1ca8a81665c30857586ffcf767ac4903680c469",
+    "dev/ge-niveles-sin-criterio": "8eb963b0e95b935c58f58e690f1720a51f629d5e806e1ace8b45067a97a5382f",
+    "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia": "5c1518e42f46d6e06e8bbd3489518a5c775867658788cd0b2c6deb79dce1c570",
+    "dev/ge-portatiles-compensados": "4ffde916280f5ef6836f6ce9aa3273857a09847ad9bc7a97205264e36b4ab937",
+    "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado": "c2856bb9067a3d8615e732d071632e805f3304185cd91ec8479f53223794cc9b",
+    "dev/gestoria-correcta": "543105e007be5e38425e0dd4efd5f408b9c3e58639b512c3c8ccf24265a4fd74"
+  },
+  "entries": [
+    {
+      "provider": "claude-code",
+      "model": "claude-opus-5-5",
+      "detected": [
+        "dev/ct-claves-alteradas#registro-claves-alterado",
+        "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
+        "dev/ct-copias-desenlazadas#copias-sin-evidencia",
+        "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
+        "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
+        "dev/ct-inventario-caducado#inventario-caducado",
+        "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
+        "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
+        "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
+        "dev/ge-certificado-caducado#certificado-proveedor-caducado",
+        "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
+        "dev/ge-copias-alteradas#informe-copias-alterado",
+        "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
+        "dev/ge-correo-compensado#correo-compensado-por-antivirus",
+        "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo",
+        "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado"
+      ],
+      "totals": {
+        "deterministic": {
+          "numerator": 9,
+          "denominator": 9,
+          "value": 1.0
+        },
+        "judgment": {
+          "numerator": 7,
+          "denominator": 13,
+          "value": 0.5384615384615384
+        },
+        "false_alarms": {
+          "numerator": 35,
+          "denominator": 42,
+          "value": 0.8333333333333334
+        },
+        "correct_with_false_alarms": {
+          "numerator": 2,
+          "denominator": 2,
+          "value": 1.0
+        },
+        "false_alarms_by_repetition": [
+          {
+            "numerator": 35,
+            "denominator": 42,
+            "value": 0.8333333333333334
+          },
+          {
+            "numerator": 46,
+            "denominator": 53,
+            "value": 0.8679245283018868
+          },
+          {
+            "numerator": 35,
+            "denominator": 42,
+            "value": 0.8333333333333334
+          }
+        ],
+        "correct_with_false_alarms_by_repetition": [
+          {
+            "numerator": 2,
+            "denominator": 2,
+            "value": 1.0
+          },
+          {
+            "numerator": 2,
+            "denominator": 2,
+            "value": 1.0
+          },
+          {
+            "numerator": 2,
+            "denominator": 2,
+            "value": 1.0
+          }
+        ],
+        "zero_emitted_repetitions": [],
+        "deterministic_unmatched": 0
+      },
+      "cases": [
+        {
+          "case": "dev/consultora-tic-correcto",
+          "kind": "correct",
+          "judgment": true,
+          "case_sha256": "e00122e09e5567f34e6a46308eb786c41b0d90ee899f52881cd696ef036aebb1",
+          "payload_sha256": "8e07ea0ed996aafd906984748b57bb190d96e9c4b48afb8d03d756b436e2b129",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 4,
+              "judgment_false_alarms": 4,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 5,
+              "judgment_false_alarms": 5,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": []
+        },
+        {
+          "case": "dev/ct-claves-alteradas",
+          "kind": "defective",
+          "judgment": false,
+          "case_sha256": "9e17c6836fc00cb6675ae1c57cb647d186d448dcc602c50b029f646fa1f2154a",
+          "payload_sha256": null,
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-claves-alteradas#registro-claves-alterado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-copias-compensadas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "cd124b7dc9b4bc20f902b94ebf4779a152ba0f294b445761481ba7754faddb48",
+          "payload_sha256": "9128f689a2bbba6cad4c3a082112881a601591d8144c91b9c3cae916a725b29c",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-copias-desenlazadas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "486d0ed0575d2191367019582f9100ab3946312cc5563dca4ce23a722c5ed819",
+          "payload_sha256": "b7ecf2d5ab9b187abd8bb34a8ef5de49fef28149c018acad9504377e279ce092",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 5,
+              "judgment_false_alarms": 5,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-copias-desenlazadas#copias-sin-evidencia",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-copias-semanales",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "9830d680257457c6dd7d5edca0506d00c2ffa974f426100a22c5971bd4574711",
+          "payload_sha256": "494cf2e9903188ca443b5df3bace97b39d74ddff90ce85988a812e542d043652",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-copias-semanales#copias-contradicen-procedimiento",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-cuenta-compartida",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "60a261952eb395c8644dae3726966d1ccf999ad3a839b10115af38de6c477dcb",
+          "payload_sha256": "9e1f30fd782e9841e88d10b11276df64c19c0d50ec39e84d4a5203040fe5cd7a",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 5,
+              "judgment_false_alarms": 5,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-cuenta-compartida#administracion-compartida",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-dependencias-sin-estado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "bf1559125a56ef34e35989a2eca842cc9a276dc0848f103588a2b740c87eddef",
+          "payload_sha256": "bc9e14c029e58e4d3ab2f459bb6653d3c8851540207be1459f7216c315c5cd49",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-doble-factor-desactivado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "33f86670bf6a99a01ec613502196aaf210405fc575f2a2027c6cd30d5676c26e",
+          "payload_sha256": "75d4462c4f62b1a846717174c6d74b5bd5faa63933958ac1c9e6fcf81d6a73cd",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 5,
+              "judgment_false_alarms": 5,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-inventario-caducado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "e568fcd9fb096d973898849ffe8290d72da3936f73e33cfd364d581bc2b4cb4b",
+          "payload_sha256": "5917fa78d2d2e79ba357948e0f9b3b1fdb67cb0f4725c036e7a3d044e5ee7be5",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-inventario-caducado#inventario-caducado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-parches-atrasados",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "a149e5dab511197ece5833c2ee26d3f639a518524c7be7c64a0337e53d2380b3",
+          "payload_sha256": "b371b57dbccaa9d6c11cf91e6ba9e0537977882f425d01ebeaf233f1e0845c75",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-registros-compensados",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "624e3369f1b2ebee5d0b5b3094100562309e8e307db62e887cd22e862e7938bc",
+          "payload_sha256": "a3d8f3e94696bd4a6ec4eed1309cd1a2c7bf40c45df2bf78a1cf780dc6e60bed",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-renovacion-sin-procedimiento",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "a5f03876ced63a9a3e505f940ffa30ae6d2d1214d6f02f5bfc15fb853d8740a2",
+          "payload_sha256": "a337de59eefea9e2b577056f19e93bd5ffde23e71d5883a7a76dab7eb4457c34",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 4,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-sanciones-indefinidas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "25e40a4e825ed7db11102901dcb40d4d4dc4c01bb32243b41cea02f0aab94345",
+          "payload_sha256": "3cfd11907d9f7f76db73d3c722151eeefbd46df136957579159334823e4b7bc8",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-certificado-caducado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "4965cdbebcdafd2e5ef588f35c90149f194dc4d3b0708066a2a17a9af619584a",
+          "payload_sha256": "83e86b0f6a9ef27fa11a107070c5815572e3117b11c6274c115dd45b399d4b0b",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-certificado-caducado#certificado-proveedor-caducado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-comite-indeterminado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "ab37b342f89620420b792f8cd86c9e4187c20ad58a88008720bb557bb4d09d32",
+          "payload_sha256": "f17e207d7cb56c9e88bb54604c64a5bb84be503c549e9708e34d2fc6c0f7f495",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-copias-alteradas",
+          "kind": "defective",
+          "judgment": false,
+          "case_sha256": "5108a67e7386ca36be16e07b74208064eeda938648549b9816978aa2de9028e1",
+          "payload_sha256": null,
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/ge-copias-alteradas#informe-copias-alterado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-copias-sin-procedimiento",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "97b6990d6b9425fcee44a9432af6d7e4b9ce9c10fb11bfc3668672f95dbeafa0",
+          "payload_sha256": "ba3d1058f674ed0050a86b1a20bf10a69f7e1c7a6b88b41668f3e7e2ee13213f",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-correo-compensado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "ef34946b64445be10a9e660c0597cc31488acdba9d0c12d5cf82ae3a049fed6c",
+          "payload_sha256": "29d44fd051991b316a70bda695035ab55115f6d78abb699ad5ec222adf08b6ac",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 2,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-correo-compensado#correo-compensado-por-antivirus",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-formacion-caducada",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "ba8a2189cf79e75aac9005e8d3effc0deaaf5e8e422f3553e59fe593ae97ce6d",
+          "payload_sha256": "59927496abfcc44e506014a9b5579f6c9abf71b0ed0b6065ca4c13905a9342ed",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-formacion-caducada#formacion-no-anual",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-incidentes-sin-procedimiento",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "00604d6160a2f3dbf3436329672235515f72b876804fda8568c43e7c6b196853",
+          "payload_sha256": "74eb659716feca6f679d6553b05f9f46cf9773b68e52afd75f634f6da30266ff",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-niveles-sin-criterio",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "14e04ff467b4a5fdec7427a6317d9f7c91a0d183bf31519e897a9525e62d772c",
+          "payload_sha256": "b976aaef41cf6554d28c3ee9ac857892821e1665eaa731bfffb9b94c450208c7",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-portatiles-compensados",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "b65a8601c141d10fed93a752dc82af3f332f67b60a3886a4ca3e413ada20a045",
+          "payload_sha256": "ad412d02d7190aec761d70641ae7603da91be3ea5365dde26127a8f355607a74",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/gestoria-correcta",
+          "kind": "correct",
+          "judgment": true,
+          "case_sha256": "6794d6b90de6d6bfcb6be86a0026f92219adebe2c84ef809c3de4aaebec65b5e",
+          "payload_sha256": "68465042070913ba3797954cbc407a5f87469b9ef3271b2d18fa2020f545c220",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 3,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 1,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": []
+        }
+      ]
+    },
+    {
+      "provider": "codex",
+      "model": "gpt-6.1-sol",
+      "detected": [
+        "dev/ct-claves-alteradas#registro-claves-alterado",
+        "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
+        "dev/ct-copias-desenlazadas#copias-sin-evidencia",
+        "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
+        "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
+        "dev/ct-inventario-caducado#inventario-caducado",
+        "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
+        "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
+        "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
+        "dev/ge-certificado-caducado#certificado-proveedor-caducado",
+        "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
+        "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
+        "dev/ge-copias-alteradas#informe-copias-alterado",
+        "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
+        "dev/ge-correo-compensado#correo-compensado-por-antivirus",
+        "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo",
+        "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado"
+      ],
+      "totals": {
+        "deterministic": {
+          "numerator": 9,
+          "denominator": 9,
+          "value": 1.0
+        },
+        "judgment": {
+          "numerator": 8,
+          "denominator": 13,
+          "value": 0.6153846153846154
+        },
+        "false_alarms": {
+          "numerator": 0,
+          "denominator": 7,
+          "value": 0.0
+        },
+        "correct_with_false_alarms": {
+          "numerator": 0,
+          "denominator": 2,
+          "value": 0.0
+        },
+        "false_alarms_by_repetition": [
+          {
+            "numerator": 0,
+            "denominator": 8,
+            "value": 0.0
+          },
+          {
+            "numerator": 0,
+            "denominator": 7,
+            "value": 0.0
+          },
+          {
+            "numerator": 0,
+            "denominator": 8,
+            "value": 0.0
+          }
+        ],
+        "correct_with_false_alarms_by_repetition": [
+          {
+            "numerator": 0,
+            "denominator": 2,
+            "value": 0.0
+          },
+          {
+            "numerator": 0,
+            "denominator": 2,
+            "value": 0.0
+          },
+          {
+            "numerator": 0,
+            "denominator": 2,
+            "value": 0.0
+          }
+        ],
+        "zero_emitted_repetitions": [],
+        "deterministic_unmatched": 0
+      },
+      "cases": [
+        {
+          "case": "dev/consultora-tic-correcto",
+          "kind": "correct",
+          "judgment": true,
+          "case_sha256": "e00122e09e5567f34e6a46308eb786c41b0d90ee899f52881cd696ef036aebb1",
+          "payload_sha256": "8e07ea0ed996aafd906984748b57bb190d96e9c4b48afb8d03d756b436e2b129",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": []
+        },
+        {
+          "case": "dev/ct-claves-alteradas",
+          "kind": "defective",
+          "judgment": false,
+          "case_sha256": "9e17c6836fc00cb6675ae1c57cb647d186d448dcc602c50b029f646fa1f2154a",
+          "payload_sha256": null,
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-claves-alteradas#registro-claves-alterado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-copias-compensadas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "cd124b7dc9b4bc20f902b94ebf4779a152ba0f294b445761481ba7754faddb48",
+          "payload_sha256": "9128f689a2bbba6cad4c3a082112881a601591d8144c91b9c3cae916a725b29c",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-copias-desenlazadas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "486d0ed0575d2191367019582f9100ab3946312cc5563dca4ce23a722c5ed819",
+          "payload_sha256": "b7ecf2d5ab9b187abd8bb34a8ef5de49fef28149c018acad9504377e279ce092",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-copias-desenlazadas#copias-sin-evidencia",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-copias-semanales",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "9830d680257457c6dd7d5edca0506d00c2ffa974f426100a22c5971bd4574711",
+          "payload_sha256": "494cf2e9903188ca443b5df3bace97b39d74ddff90ce85988a812e542d043652",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-copias-semanales#copias-contradicen-procedimiento",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-cuenta-compartida",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "60a261952eb395c8644dae3726966d1ccf999ad3a839b10115af38de6c477dcb",
+          "payload_sha256": "9e1f30fd782e9841e88d10b11276df64c19c0d50ec39e84d4a5203040fe5cd7a",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-cuenta-compartida#administracion-compartida",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-dependencias-sin-estado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "bf1559125a56ef34e35989a2eca842cc9a276dc0848f103588a2b740c87eddef",
+          "payload_sha256": "bc9e14c029e58e4d3ab2f459bb6653d3c8851540207be1459f7216c315c5cd49",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-doble-factor-desactivado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "33f86670bf6a99a01ec613502196aaf210405fc575f2a2027c6cd30d5676c26e",
+          "payload_sha256": "75d4462c4f62b1a846717174c6d74b5bd5faa63933958ac1c9e6fcf81d6a73cd",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-inventario-caducado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "e568fcd9fb096d973898849ffe8290d72da3936f73e33cfd364d581bc2b4cb4b",
+          "payload_sha256": "5917fa78d2d2e79ba357948e0f9b3b1fdb67cb0f4725c036e7a3d044e5ee7be5",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-inventario-caducado#inventario-caducado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-parches-atrasados",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "a149e5dab511197ece5833c2ee26d3f639a518524c7be7c64a0337e53d2380b3",
+          "payload_sha256": "b371b57dbccaa9d6c11cf91e6ba9e0537977882f425d01ebeaf233f1e0845c75",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-registros-compensados",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "624e3369f1b2ebee5d0b5b3094100562309e8e307db62e887cd22e862e7938bc",
+          "payload_sha256": "a3d8f3e94696bd4a6ec4eed1309cd1a2c7bf40c45df2bf78a1cf780dc6e60bed",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-renovacion-sin-procedimiento",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "a5f03876ced63a9a3e505f940ffa30ae6d2d1214d6f02f5bfc15fb853d8740a2",
+          "payload_sha256": "a337de59eefea9e2b577056f19e93bd5ffde23e71d5883a7a76dab7eb4457c34",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                false,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ct-sanciones-indefinidas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "25e40a4e825ed7db11102901dcb40d4d4dc4c01bb32243b41cea02f0aab94345",
+          "payload_sha256": "3cfd11907d9f7f76db73d3c722151eeefbd46df136957579159334823e4b7bc8",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-certificado-caducado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "4965cdbebcdafd2e5ef588f35c90149f194dc4d3b0708066a2a17a9af619584a",
+          "payload_sha256": "83e86b0f6a9ef27fa11a107070c5815572e3117b11c6274c115dd45b399d4b0b",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-certificado-caducado#certificado-proveedor-caducado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-comite-indeterminado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "ab37b342f89620420b792f8cd86c9e4187c20ad58a88008720bb557bb4d09d32",
+          "payload_sha256": "f17e207d7cb56c9e88bb54604c64a5bb84be503c549e9708e34d2fc6c0f7f495",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-copias-alteradas",
+          "kind": "defective",
+          "judgment": false,
+          "case_sha256": "5108a67e7386ca36be16e07b74208064eeda938648549b9816978aa2de9028e1",
+          "payload_sha256": null,
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/ge-copias-alteradas#informe-copias-alterado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-copias-sin-procedimiento",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "97b6990d6b9425fcee44a9432af6d7e4b9ce9c10fb11bfc3668672f95dbeafa0",
+          "payload_sha256": "ba3d1058f674ed0050a86b1a20bf10a69f7e1c7a6b88b41668f3e7e2ee13213f",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-correo-compensado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "ef34946b64445be10a9e660c0597cc31488acdba9d0c12d5cf82ae3a049fed6c",
+          "payload_sha256": "29d44fd051991b316a70bda695035ab55115f6d78abb699ad5ec222adf08b6ac",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-correo-compensado#correo-compensado-por-antivirus",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-formacion-caducada",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "ba8a2189cf79e75aac9005e8d3effc0deaaf5e8e422f3553e59fe593ae97ce6d",
+          "payload_sha256": "59927496abfcc44e506014a9b5579f6c9abf71b0ed0b6065ca4c13905a9342ed",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-formacion-caducada#formacion-no-anual",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-incidentes-sin-procedimiento",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "00604d6160a2f3dbf3436329672235515f72b876804fda8568c43e7c6b196853",
+          "payload_sha256": "74eb659716feca6f679d6553b05f9f46cf9773b68e52afd75f634f6da30266ff",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-niveles-sin-criterio",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "14e04ff467b4a5fdec7427a6317d9f7c91a0d183bf31519e897a9525e62d772c",
+          "payload_sha256": "b976aaef41cf6554d28c3ee9ac857892821e1665eaa731bfffb9b94c450208c7",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/ge-portatiles-compensados",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "b65a8601c141d10fed93a752dc82af3f332f67b60a3886a4ca3e413ada20a045",
+          "payload_sha256": "ad412d02d7190aec761d70641ae7603da91be3ea5365dde26127a8f355607a74",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/gestoria-correcta",
+          "kind": "correct",
+          "judgment": true,
+          "case_sha256": "6794d6b90de6d6bfcb6be86a0026f92219adebe2c84ef809c3de4aaebec65b5e",
+          "payload_sha256": "68465042070913ba3797954cbc407a5f87469b9ef3271b2d18fa2020f545c220",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": []
+        }
+      ]
+    }
+  ],
+  "retired": []
+}

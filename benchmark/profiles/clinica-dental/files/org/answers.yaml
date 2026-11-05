@@ -1,0 +1,209 @@
+# Respuestas de org-docs de la Clínica Dental Sonrisa Ficticia (empresa ficticia del banco).
+organizacion: Clínica Dental Sonrisa Ficticia S.L., clínica odontológica con tres gabinetes
+direccion: La directora médica, Elena Muela, administradora solidaria de la sociedad.
+firmante_direccion: Elena Muela
+mision: Atendemos a unos 2.500 pacientes al año en Villadiente, incluidos los niños derivados por el programa de salud bucodental infantil que nos concierta el servicio de salud autonómico.
+objetivos_seguridad:
+  - Que las historias clínicas y las radiografías solo las vean los profesionales que tratan al paciente.
+  - Poder dar cita y atender aunque se averíe el servidor, recuperando las historias en menos de un día.
+  - Que el personal de recepción y de gabinete sepa qué datos puede consultar y cómo avisar de un problema.
+marco_legal:
+  - Reglamento General de Protección de Datos (RGPD) y Ley Orgánica 3/2018 (LOPDGDD).
+  - Ley 41/2002, básica reguladora de la autonomía del paciente y de la documentación clínica.
+  - Real Decreto 311/2022 (ENS), exigido por el concierto del programa infantil con el servicio de salud.
+riesgos_datos_personales: >-
+  Tratamos datos de salud (historias, radiografías, alergias y medicación) de adultos y menores,
+  además de datos de contacto y de facturación. Una filtración expondría información de salud
+  protegida y una pérdida impediría continuar tratamientos en curso.
+resp_informacion: Elena Muela
+resp_informacion_funciones: Decide qué datos de pacientes se recogen, qué profesionales acceden a cada historia y cuánto tiempo se conservan según la Ley 41/2002.
+resp_servicio: Hugo Encía
+resp_servicio_funciones: Fija el horario de atención, el tiempo máximo admisible sin el programa de citas y lo que se exige al proveedor del programa de gestión clínica.
+resp_seguridad: Irene Esmalte
+resp_seguridad_funciones: Decide las medidas de seguridad, revisa cada trimestre que se aplican, custodia la documentación de seguridad e informa a la dirección de cada incidencia.
+resp_sistema: Jorge Molar
+resp_sistema_funciones: Administra el servidor, los equipos y las copias, aplica las medidas que decide la responsable de seguridad y coordina al técnico externo de mantenimiento.
+designacion_procedimiento: La directora nombra a cada responsable mediante un escrito firmado que se lee en la reunión de personal siguiente y se archiva en la carpeta Seguridad del servidor.
+renovacion_procedimiento: Cada mes de enero la directora confirma o sustituye los nombramientos; si alguien deja la clínica, el nuevo nombramiento se firma en la misma semana.
+coordinacion: Los cuatro responsables se reúnen el último viernes de cada mes antes de la consulta de tarde; Irene Esmalte levanta acta y la guarda en la carpeta Seguridad.
+resolucion_conflictos: Si dos responsables discrepan, decide la directora en un plazo de una semana y la decisión se anota en el acta de la reunión siguiente.
+comite:
+  - nombre: Comité de Seguridad y Protección de Datos
+    ambito: Revisión mensual de accesos a historias, copias, incidencias y avisos del proveedor del programa.
+    integrantes: Elena Muela, Hugo Encía, Irene Esmalte, Jorge Molar
+    relacion: Informa a la dirección; Jorge Molar traslada sus acuerdos al técnico externo y al proveedor del programa de gestión.
+documentacion_estructura: Seis documentos (política, designación, normativa, procedimientos, proceso de autorización y procedimiento de incidentes) en la carpeta Seguridad del servidor, cada uno con versión y fecha de aprobación en el nombre.
+documentacion_gestion: Irene Esmalte custodia los documentos, los revisa una vez al año o tras un cambio relevante en la clínica y mueve las versiones sustituidas a la subcarpeta Histórico.
+documentacion_acceso: Todo el personal puede leerlos en la carpeta Seguridad; solo la responsable de seguridad y la directora pueden modificarlos.
+difusion_personal: Se entregan al incorporarse y tras cada cambio con un acuse de lectura firmado en papel, que Irene Esmalte guarda en el archivador de personal.
+servicios_externalizados: "sí"
+poc_servicios:
+  - servicio: Programa de salud bucodental infantil
+    cliente: Servicio de salud autonómico de la comunidad ficticia
+    poc: Irene Esmalte, seguridad@clinica-sonrisa.example
+    relacion: Es la responsable de la seguridad de la clínica y la interlocutora del concierto.
+personas:
+  - nombre: Elena Muela
+    cargo: Directora médica
+    contacto: elena@clinica-sonrisa.example
+  - nombre: Hugo Encía
+    cargo: Coordinador de recepción y agenda
+    contacto: hugo@clinica-sonrisa.example
+  - nombre: Irene Esmalte
+    cargo: Responsable de administración y calidad
+    contacto: irene@clinica-sonrisa.example
+  - nombre: Jorge Molar
+    cargo: Responsable de sistemas
+    contacto: jorge@clinica-sonrisa.example
+relacion_seguridad_sistema: distintas y sin dependencia jerárquica
+uso_equipos:
+  - Los ordenadores de recepción y de los gabinetes se usan solo para la actividad de la clínica; nadie instala programas sin permiso de Jorge Molar.
+  - La sesión se bloquea al levantarse del puesto y la pantalla de recepción no queda orientada hacia la sala de espera.
+uso_servicios:
+  - El correo de la clínica se usa solo para la actividad profesional y nunca para enviar historias o radiografías a cuentas personales.
+  - Las radiografías y los informes se guardan únicamente en el programa de gestión clínica, no en el escritorio ni en memorias USB.
+uso_instalaciones:
+  - El cuarto técnico permanece cerrado con llave; solo tienen llave la directora y el responsable de sistemas.
+  - Los pacientes y acompañantes no pasan del mostrador a la zona de archivo ni a los gabinetes sin un profesional.
+uso_indebido:
+  - Consultar la historia de un paciente al que no se atiende, aunque sea un familiar o un conocido.
+  - Fotografiar con el móvil radiografías o pantallas del programa de gestión.
+derechos_personal:
+  - Recibir formación en seguridad y protección de datos al incorporarse y cada año.
+  - Plantear dudas a la responsable de seguridad sin que eso suponga ninguna sanción.
+deberes_personal:
+  - Avisar de inmediato de cualquier incidente, pérdida de equipos o sospecha de acceso indebido.
+  - No compartir la contraseña ni dejar la sesión abierta en un puesto sin vigilancia.
+medidas_disciplinarias: Según el convenio colectivo de clínicas dentales de la provincia ficticia y el Estatuto de los Trabajadores. La directora califica la falta como leve, grave o muy grave y decide la sanción tras escuchar a la persona afectada.
+procedimientos:
+  - tarea: Alta y baja de usuarios del programa de gestión
+    quien: Responsable de sistemas
+    pasos: Recibe la petición firmada por la directora, crea o desactiva el usuario con el perfil de su puesto y lo anota en el registro de accesos el mismo día.
+    herramienta: Consola de administración del programa de gestión clínica
+    evidencia: Petición firmada y registro de altas y bajas
+  - tarea: Comprobación de la copia diaria
+    quien: Responsable de sistemas
+    pasos: Revisa cada mañana el correo de resultado de la copia nocturna y, si ha fallado, la relanza antes de abrir la consulta.
+    herramienta: Programa de copias del servidor y correo de aviso
+    evidencia: Correos de resultado archivados y hoja de incidencias de copias
+  - tarea: Actualización de equipos y servidor
+    quien: Técnico externo de mantenimiento, supervisado por el responsable de sistemas
+    pasos: El segundo martes de cada mes instala las actualizaciones fuera del horario de consulta y comprueba que el programa de gestión arranca.
+    herramienta: Servicio de actualizaciones del sistema operativo
+    evidencia: Parte mensual de mantenimiento firmado
+anomalias_identificacion:
+  - Llamadas o correos que dicen ser del proveedor del programa y piden contraseñas.
+  - Historias abiertas a nombre de un profesional que ese día no tenía consulta.
+  - Avisos del antivirus o un equipo que va muy lento sin motivo.
+anomalias_comunicacion: Se avisa por teléfono o en persona a Irene Esmalte en cuanto se detecta, o por correo a seguridad@clinica-sonrisa.example si no está en la clínica.
+anomalias_registro: Irene Esmalte anota en el registro de incidencias la fecha, quién avisa, qué se ha visto y qué se ha hecho.
+info_acceso:
+  - informacion: Historias clínicas y radiografías
+    quien: Directora médica
+    pasos: Cada perfil del programa da acceso solo a lo que necesita el puesto; recepción ve citas y datos de contacto, no la historia clínica.
+    herramienta: Perfiles del programa de gestión clínica
+    evidencia: Revisión trimestral de perfiles y accesos
+info_almacenamiento:
+  - informacion: Historias clínicas y radiografías
+    quien: Responsable de sistemas
+    pasos: Se guardan en la base de datos del servidor, con el disco cifrado, y nunca en los puestos.
+    herramienta: Servidor con cifrado de disco
+    evidencia: Informe de configuración del cifrado
+info_copias:
+  - informacion: Historias clínicas y radiografías
+    quien: Responsable de sistemas
+    pasos: Copia nocturna cifrada a un almacenamiento externo contratado, retención de 30 días y prueba de restauración de una historia cada trimestre.
+    herramienta: Programa de copias del servidor y almacenamiento externo
+    evidencia: Informe de copias y acta de la prueba de restauración
+info_etiquetado:
+  - informacion: Discos de radiografías entregados a otros profesionales
+    quien: Responsable de administración y calidad
+    pasos: Cada disco lleva etiqueta con el nombre del paciente, la fecha y «confidencial», y la entrega se anota en el registro de soportes.
+    herramienta: Etiquetas y registro de soportes
+    evidencia: Registro de soportes entregados
+info_transmision:
+  - informacion: Informes y radiografías para otros profesionales o para el servicio de salud
+    quien: Personal sanitario
+    pasos: Se envían por la plataforma segura del servicio de salud o por correo con el adjunto cifrado y la clave por teléfono.
+    herramienta: Plataforma del servicio de salud y correo con cifrado
+    evidencia: Registro de envíos del programa de gestión
+info_otras:
+  not_applicable: true
+  reason: No hay otras actividades de tratamiento; la destrucción de papel la hace una empresa con certificado de destrucción.
+aut_instalaciones:
+  - elemento: Clínica de Villadiente
+    quien: Directora médica
+    solicitud: Petición verbal a la directora, confirmada por correo
+    registro: Correo archivado en la carpeta Seguridad
+aut_instalaciones_alt:
+  - elemento: Consulta de historias desde el domicilio de la directora
+    quien: Responsable de la seguridad
+    solicitud: Petición por escrito con el motivo y el equipo que se usará
+    registro: Autorización firmada en la carpeta Seguridad
+aut_equipos:
+  - elemento: Ordenadores de gabinete, recepción y servidor
+    quien: Responsable del sistema
+    solicitud: Ficha de alta con la configuración y el antivirus instalado
+    registro: Inventario de equipos actualizado
+aut_criptografia:
+  - elemento: Cifrado de discos y de los adjuntos enviados
+    quien: Responsable de la seguridad
+    solicitud: Petición razonada por escrito
+    registro: Registro de configuración criptográfica
+aut_aplicaciones:
+  - elemento: Programa de gestión clínica y software de radiografía
+    quien: Responsable del sistema
+    solicitud: Petición por escrito con el contrato del proveedor
+    registro: Registro de aplicaciones autorizadas
+aut_enlaces:
+  - elemento: Conexión con la plataforma del programa infantil del servicio de salud
+    quien: Responsable de la seguridad
+    solicitud: Petición por escrito con la finalidad y los datos que se intercambian
+    registro: Registro de enlaces autorizados
+aut_comunicaciones:
+  - elemento: Correo de la clínica y línea telefónica
+    quien: Responsable del sistema
+    solicitud: Alta por escrito a petición de la directora
+    registro: Registro de servicios autorizados
+aut_comunicaciones_alt:
+  not_applicable: true
+  reason: No hay medios alternativos de comunicación; si falla el correo se llama a los pacientes por teléfono.
+aut_soportes:
+  - elemento: Discos de radiografías para pacientes y profesionales
+    quien: Responsable de administración y calidad
+    solicitud: Petición del profesional que deriva o del paciente
+    registro: Registro de soportes entregados
+aut_moviles:
+  - elemento: Portátil de dirección
+    quien: Responsable del sistema
+    solicitud: Petición firmada por la directora
+    registro: Inventario de equipos móviles
+aut_terceros:
+  - elemento: Proveedor del programa de gestión clínica y técnico externo de mantenimiento
+    quien: Directora médica
+    solicitud: Propuesta, contrato y acuerdo de encargo de tratamiento firmados
+    registro: Contratos archivados y registro de proveedores
+autoridad_procedimientos: el responsable de la seguridad
+incidentes_alcance: El servidor, los ordenadores de la clínica, el portátil de dirección, el programa de gestión clínica y el correo. Es incidente cualquier suceso que comprometa la confidencialidad, integridad o disponibilidad de las historias o del servicio de citas.
+incidentes_deteccion:
+  - Avisos del antivirus y del programa de copias, que recibe el responsable de sistemas.
+  - Revisión mensual del registro de accesos del programa de gestión por la responsable de seguridad.
+  - Avisos del personal, de los pacientes o del proveedor del programa a seguridad@clinica-sonrisa.example.
+incidentes_informe_eventos: Cualquier persona de la clínica avisa en persona, por teléfono o por correo a la responsable de seguridad, que anota el evento o la debilidad en el registro de incidencias con fecha, quién avisa y descripción.
+incidentes_niveles:
+  - nivel: Bajo
+    criterio: Sin acceso indebido a historias ni pérdida de datos y con la consulta funcionando.
+    escalado: La responsable de seguridad lo resuelve con el responsable de sistemas y lo presenta en la reunión mensual del comité.
+  - nivel: Alto
+    criterio: Acceso indebido a historias, pérdida de datos de pacientes o consulta sin programa más de media jornada.
+    escalado: La responsable de seguridad avisa en el momento a la directora y reúne al comité ese mismo día.
+incidentes_analisis: La responsable de seguridad dirige el análisis con el responsable de sistemas y el técnico externo, determina el alcance y la causa, aplica la contención y cierra el incidente cuando el servicio funciona y la causa está corregida.
+incidentes_comunicacion: La directora decide qué se comunica a los pacientes y al servicio de salud; la responsable de seguridad informa al personal en la reunión de la semana.
+incidentes_registro: La responsable de seguridad anota en el registro de la herramienta (ens-evidence incident) el aviso inicial, los avances, las actuaciones de emergencia, los cambios en el sistema y el cierre.
+incidentes_mejora: El comité revisa cada trimestre los incidentes cerrados y la responsable de seguridad propone las medidas correctoras, que quedan en el acta.
+incidentes_datos_personales: La responsable de seguridad determina si el incidente afecta a datos personales de pacientes; si es así, avisa a la directora y al delegado de protección de datos externo para decidir qué comunicaciones exigen el RGPD y la Ley Orgánica 3/2018.
+incibe_quien: La responsable de seguridad, a través del equipo de respuesta que forman ella y el responsable de sistemas.
+incibe_como: Por el canal de notificación que indique el INCIBE-CERT, con autorización previa de la directora.
+incibe_cuando: Los de nivel Alto, en cuanto se clasifican; los de nivel Bajo, al cerrarlos.
+incidentes_evidencia: La responsable de seguridad decide qué evidencia se preserva y el despacho jurídico externo de la clínica da el asesoramiento legal.
+incidentes_eventos_auditables: La responsable de seguridad revisa los eventos auditables del programa de gestión al cerrar cada incidente y anota en el registro si hay que añadir alguno.

@@ -1,0 +1,220 @@
+# Respuestas de org-docs de Gestoría Albar S.L. (empresa ficticia del banco de defectos).
+organizacion: Gestoría Albar S.L., gestoría administrativa, fiscal y laboral para autónomos, pymes y comunidades de propietarios
+direccion: La gerente, Elena Tamarit, administradora única de Gestoría Albar S.L.
+firmante_direccion: Elena Tamarit
+mision: Tramitamos impuestos, nóminas, seguros sociales y gestiones administrativas de unos 220 clientes de Valdeprueba y su comarca, entre ellos dos mancomunidades de municipios.
+objetivos_seguridad:
+  - Que los expedientes de los clientes solo los consulte la persona de la gestoría que los lleva.
+  - Presentar impuestos, nóminas y seguros sociales en plazo aunque falle el servidor de la oficina.
+  - Recuperar cualquier carpeta de cliente borrada o dañada en menos de un día laborable.
+  - Que toda la plantilla sepa reconocer y avisar de un correo fraudulento.
+marco_legal:
+  - Reglamento General de Protección de Datos (RGPD) y Ley Orgánica 3/2018 (LOPDGDD).
+  - Real Decreto 311/2022 (ENS), exigido en los contratos con las mancomunidades clientes.
+  - Ley 58/2003 General Tributaria, en cuanto a la conservación de la documentación tributaria.
+  - Contratos de encargo de tratamiento firmados con cada cliente.
+riesgos_datos_personales: >-
+  Tratamos nombres, documentos de identidad, domicilios, cuentas bancarias, nóminas y bajas
+  laborales de los clientes y de sus trabajadores. Una filtración permitiría suplantaciones y
+  fraudes bancarios; una pérdida impediría cumplir los plazos tributarios y laborales.
+resp_informacion: Elena Tamarit
+resp_informacion_funciones: Decide qué información de clientes se guarda, quién de la plantilla accede a cada cliente y cuánto tiempo se conserva cada expediente.
+resp_servicio: Jorge Salvatierra
+resp_servicio_funciones: Fija los plazos de atención y de presentación comprometidos con los clientes y decide cómo se presta el servicio si falla un sistema.
+resp_seguridad: Raúl Monteagudo
+resp_seguridad_funciones: Decide las medidas de seguridad, revisa cada trimestre accesos, copias y actualizaciones, coordina con el proveedor informático e informa a la gerente de los incidentes.
+resp_sistema: Pilar Aranda
+resp_sistema_funciones: Administra las cuentas, el servidor de ficheros y los portátiles con el apoyo del proveedor informático externo, y aplica las medidas que decide el responsable de seguridad.
+designacion_procedimiento: La gerente nombra por escrito a cada responsable, lo comunica en la reunión de plantilla y guarda el nombramiento firmado en la carpeta Seguridad del servidor.
+renovacion_procedimiento: La gerente revisa los nombramientos cada mes de enero y los sustituye en la misma semana si la persona se va o cambia de puesto, con un nuevo escrito y aviso a la plantilla.
+coordinacion: Los cuatro responsables se reúnen el último jueves de cada trimestre y Raúl Monteagudo redacta el acta, que se guarda en la carpeta Seguridad.
+resolucion_conflictos: Decide la gerente en un plazo de cinco días laborables y lo anota en el acta de la reunión siguiente.
+comite:
+  - nombre: Comité de Seguridad
+    ambito: Revisión trimestral de incidentes, accesos, copias, actualizaciones y del trabajo del proveedor informático.
+    integrantes: Elena Tamarit, Jorge Salvatierra, Raúl Monteagudo, Pilar Aranda
+    relacion: Informa a la gerencia; Pilar Aranda traslada sus decisiones al proveedor informático externo.
+documentacion_estructura: Seis documentos (política, designación, normativa, procedimientos, proceso de autorización y procedimiento de incidentes) en la carpeta Seguridad del servidor, con versión y fecha en el nombre del fichero.
+documentacion_gestion: Raúl Monteagudo custodia los documentos, los revisa cada año o tras un cambio importante y conserva las versiones anteriores en la subcarpeta Histórico.
+documentacion_acceso: Toda la plantilla puede leerlos; solo Raúl Monteagudo y la gerente pueden modificarlos.
+difusion_personal: Se entrega por correo a cada persona al incorporarse y tras cada cambio, con respuesta de «leído» que Raúl Monteagudo archiva.
+servicios_externalizados: "sí"
+poc_servicios:
+  - servicio: Gestión laboral y de seguros sociales del personal de la mancomunidad
+    cliente: Mancomunidad de la Vega de Valdeprueba
+    poc: Raúl Monteagudo, seguridad@gestoria-albar.example
+    relacion: Es el propio responsable de la seguridad de Gestoría Albar S.L.
+personas:
+  - nombre: Elena Tamarit
+    cargo: Gerente
+    contacto: elena@gestoria-albar.example
+  - nombre: Jorge Salvatierra
+    cargo: Jefe de administración y atención a clientes
+    contacto: jorge@gestoria-albar.example
+  - nombre: Raúl Monteagudo
+    cargo: Técnico fiscal
+    contacto: raul@gestoria-albar.example
+  - nombre: Pilar Aranda
+    cargo: Técnica laboral
+    contacto: pilar@gestoria-albar.example
+relacion_seguridad_sistema: distintas y sin dependencia jerárquica
+uso_equipos:
+  - Los portátiles son de la gestoría, llevan el disco cifrado y solo instala programas el proveedor informático a petición de Pilar Aranda.
+  - La sesión se bloquea al levantarse del puesto y de forma automática a los cinco minutos.
+  - No se conectan memorias USB personales a los equipos de la oficina.
+uso_servicios:
+  - El correo corporativo se usa solo para trabajo; los documentos de clientes se envían por el portal de la aplicación de gestión o cifrados, nunca a cuentas personales.
+  - Las cuentas del correo y de la aplicación de gestión usan doble factor.
+  - Los ficheros de clientes se guardan en el servidor de la oficina o en la aplicación de gestión, nunca en el escritorio del portátil.
+uso_instalaciones:
+  - La puerta de la oficina se cierra con llave al salir y la alarma la activa la última persona.
+  - Las visitas esperan en recepción y no pasan solas a la zona de trabajo ni al armario del servidor.
+  - Los documentos en papel de clientes se guardan en armarios con llave al terminar la jornada.
+uso_indebido:
+  - Compartir la contraseña o el código del doble factor con otra persona.
+  - Copiar datos de clientes a un pendrive, al móvil personal o a un servicio de almacenamiento personal.
+  - Consultar expedientes de clientes que no se tienen asignados.
+derechos_personal:
+  - Recibir formación en seguridad al incorporarse y una vez al año.
+  - Consultar a Raúl Monteagudo cualquier duda sin que suponga una sanción.
+deberes_personal:
+  - Comunicar de inmediato cualquier incidente o sospecha.
+  - Custodiar las credenciales y cambiarlas si se sospecha que otra persona las conoce.
+medidas_disciplinarias: Según el convenio colectivo de oficinas y despachos aplicable y el Estatuto de los Trabajadores. La gerente califica la falta como leve, grave o muy grave tras oír a la persona afectada y decide la sanción, de la amonestación escrita al despido en las muy graves.
+procedimientos:
+  - tarea: Alta y baja de usuarios
+    quien: Técnica laboral con funciones de sistemas
+    pasos: Recibe la petición firmada por la gerente, crea o desactiva la cuenta del correo, del servidor y de la aplicación de gestión y revisa los permisos el mismo día.
+    herramienta: Consola del correo, del servidor y de la aplicación de gestión
+    evidencia: Petición firmada y registro de altas y bajas
+  - tarea: Copia de seguridad diaria
+    quien: Técnica laboral con funciones de sistemas
+    pasos: Comprueba cada mañana el correo de informe de la copia nocturna local y de la externa y avisa al proveedor si alguna ha fallado.
+    herramienta: Programa de copias del servidor y correo de informe
+    evidencia: Correo de informe archivado y anotación de incidencias
+  - tarea: Actualización de equipos
+    quien: Proveedor informático externo
+    pasos: Aplica las actualizaciones de seguridad del servidor el segundo martes de cada mes fuera de horario y comprueba que los portátiles se actualizan solos en la semana.
+    herramienta: Consola de gestión remota del proveedor
+    evidencia: Informe mensual de mantenimiento del proveedor
+anomalias_identificacion:
+  - Correos que piden contraseñas, pagos urgentes o cambiar la cuenta bancaria de un cliente.
+  - Un equipo que se ralentiza, muestra ventanas que no se han abierto o cifra ficheros.
+  - Carpetas de clientes que han cambiado de nombre o han desaparecido.
+anomalias_comunicacion: Se avisa por teléfono a Raúl Monteagudo o por correo a seguridad@gestoria-albar.example en cuanto se detecta, y como máximo el mismo día.
+anomalias_registro: Raúl Monteagudo anota fecha, persona que avisa y descripción en el registro de incidentes de la herramienta.
+info_acceso:
+  - informacion: Expedientes de clientes (nivel bajo)
+    quien: Responsable de la información
+    pasos: Cada persona solo accede a las carpetas y a los clientes que tiene asignados en el servidor y en la aplicación de gestión; se revisa cada trimestre.
+    herramienta: Permisos de carpetas del servidor y perfiles de la aplicación de gestión
+    evidencia: Acta de revisión trimestral de accesos
+info_almacenamiento:
+  - informacion: Expedientes de clientes (nivel bajo)
+    quien: Técnica laboral con funciones de sistemas
+    pasos: Se guardan en el servidor de ficheros, con disco cifrado, o en la aplicación de gestión; nunca en el escritorio de los portátiles.
+    herramienta: Servidor de ficheros con cifrado de disco
+    evidencia: Informe de configuración del proveedor informático
+info_copias:
+  - informacion: Expedientes de clientes (nivel bajo)
+    quien: Técnica laboral con funciones de sistemas
+    pasos: Copia diaria a las 22:00 en un disco del servidor y otra cifrada en la nube, con 30 días de retención y una copia mensual durante un año; restauración de prueba de una carpeta cada semestre.
+    herramienta: Programa de copias del servidor y almacenamiento en la nube
+    evidencia: Informe de copias y acta de la prueba de restauración
+info_etiquetado:
+  - informacion: Soportes con datos de clientes
+    quien: Responsable de la seguridad
+    pasos: Cada soporte lleva una etiqueta con su número y su responsable y se anota en el inventario de soportes.
+    herramienta: Etiquetas impresas e inventario de soportes
+    evidencia: Inventario de soportes actualizado
+info_transmision:
+  - informacion: Expedientes de clientes (nivel bajo)
+    quien: Toda la plantilla
+    pasos: Se envían a los clientes por el portal de la aplicación de gestión y a las administraciones por sus sedes electrónicas, nunca por mensajería personal.
+    herramienta: Portal de la aplicación de gestión y sedes electrónicas
+    evidencia: Registro de envíos del portal
+info_otras:
+  - informacion: Documentos en papel de clientes
+    quien: Toda la plantilla
+    pasos: Se digitalizan al recibirlos, se devuelven al cliente o se destruyen con la destructora de corte cruzado de la oficina.
+    herramienta: Escáner y destructora de la oficina
+    evidencia: Registro de devoluciones de documentación
+aut_instalaciones:
+  - elemento: Oficina de Valdeprueba
+    quien: Gerente
+    solicitud: Petición verbal a la gerente, anotada en el registro de llaves
+    registro: Registro de llaves y códigos de alarma
+aut_instalaciones_alt:
+  - elemento: Teletrabajo desde el domicilio
+    quien: Gerente
+    solicitud: Petición por correo indicando persona y días
+    registro: Autorización de teletrabajo firmada
+aut_equipos:
+  - elemento: Portátiles y servidor nuevos
+    quien: Responsable del sistema
+    solicitud: Ficha de alta preparada por el proveedor informático
+    registro: Inventario de activos actualizado
+aut_criptografia:
+  - elemento: Cifrado de discos y clave de las copias en la nube
+    quien: Responsable de la seguridad
+    solicitud: Petición razonada por escrito
+    registro: Registro de claves
+aut_aplicaciones:
+  - elemento: Aplicación de gestión y programas de la oficina
+    quien: Responsable del sistema
+    solicitud: Petición por correo con la finalidad
+    registro: Registro de aplicaciones autorizadas
+aut_enlaces:
+  - elemento: Conexión remota del proveedor informático
+    quien: Responsable de la seguridad
+    solicitud: Petición del proveedor para cada intervención
+    registro: Registro de conexiones remotas
+aut_comunicaciones:
+  - elemento: Correo corporativo y teléfono de la oficina
+    quien: Responsable del sistema
+    solicitud: Alta por petición firmada
+    registro: Registro de servicios autorizados
+aut_comunicaciones_alt:
+  - elemento: Conexión compartida desde el móvil de la gerente si falla la línea de la oficina
+    quien: Gerente
+    solicitud: Aviso en el momento a la gerente
+    registro: Anotación en el registro de incidentes
+aut_soportes:
+  - elemento: Discos externos para traer documentación de clientes
+    quien: Responsable de la seguridad
+    solicitud: Petición por correo indicando uso y duración
+    registro: Inventario de soportes
+aut_moviles:
+  - elemento: Portátiles corporativos
+    quien: Responsable del sistema
+    solicitud: Petición firmada por la gerente
+    registro: Inventario de activos
+aut_terceros:
+  - elemento: Proveedor de la aplicación de gestión, del correo, de la nube y proveedor informático
+    quien: Gerente
+    solicitud: Propuesta del responsable del sistema y contrato firmado
+    registro: Contratos archivados y registro de proveedores
+autoridad_procedimientos: el responsable de la seguridad
+incidentes_alcance: El servidor de ficheros, los portátiles, el correo corporativo, la aplicación de gestión y las copias en la nube. Es incidente cualquier suceso que comprometa la confidencialidad, integridad o disponibilidad de los expedientes de clientes o de los servicios que se les prestan.
+incidentes_deteccion:
+  - Alertas del antivirus de los portátiles y del servidor, que recibe el proveedor informático y reenvía a Pilar Aranda.
+  - Fallos en el correo de informe de las copias.
+  - Avisos de la plantilla, de los clientes o del proveedor de la aplicación de gestión a seguridad@gestoria-albar.example.
+incidentes_informe_eventos: Cualquier persona de la plantilla avisa por teléfono o por correo al responsable de seguridad, que anota el evento o la debilidad en el registro de incidentes con fecha, quién avisa y descripción.
+incidentes_niveles:
+  - nivel: Bajo
+    criterio: Sin exposición ni pérdida de expedientes de clientes y sin impedir ninguna presentación en plazo.
+    escalado: El responsable de seguridad lo resuelve con el proveedor y lo comenta en la reunión trimestral del Comité de Seguridad.
+  - nivel: Alto
+    criterio: Exposición o pérdida de expedientes de clientes, equipo cifrado por código dañino o riesgo de no presentar en plazo.
+    escalado: El responsable de seguridad avisa en la hora a la gerente por teléfono y reúne al Comité de Seguridad el mismo día.
+incidentes_analisis: El responsable de seguridad dirige el análisis con la responsable del sistema y el proveedor informático, determina el alcance y la causa, aplica la contención y da el incidente por resuelto cuando el servicio está restablecido y la causa corregida.
+incidentes_comunicacion: La gerente decide qué se comunica a los clientes afectados y lo hace por teléfono o por correo; el responsable de seguridad informa a la plantilla.
+incidentes_registro: El responsable de seguridad anota en el registro de la herramienta (ens-evidence incident) el aviso inicial, los avances, las actuaciones de emergencia, los cambios en el sistema y el cierre.
+incidentes_mejora: El Comité de Seguridad revisa los incidentes cerrados cada trimestre y el responsable de seguridad propone medidas correctoras, que se anotan en el acta.
+incidentes_datos_personales: El responsable de seguridad determina si el incidente afecta a datos personales y lo anota; en ese caso avisa a la gerente, que con la asesoría jurídica externa decide las comunicaciones que exigen el RGPD y la Ley Orgánica 3/2018.
+incibe_quien: El responsable de seguridad, con la responsable del sistema y el proveedor informático como equipo de respuesta.
+incibe_como: Por el canal de notificación que indique el INCIBE-CERT, con autorización previa de la gerente.
+incibe_cuando: Los de nivel Alto, en cuanto se clasifican; los de nivel Bajo, al cerrarlos.
+incidentes_evidencia: El responsable de seguridad decide con el proveedor informático qué registros y equipos se preservan, y la asesoría jurídica externa da el asesoramiento legal.
+incidentes_eventos_auditables: El responsable de seguridad revisa los eventos auditables al cerrar cada incidente y deja constancia en el registro.

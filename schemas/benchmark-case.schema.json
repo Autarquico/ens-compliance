@@ -1,0 +1,570 @@
+{
+  "$defs": {
+    "CaseKind": {
+      "enum": [
+        "defective",
+        "correct"
+      ],
+      "title": "CaseKind",
+      "type": "string"
+    },
+    "CollectedOverride": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "op": {
+          "const": "collected_override",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "alias",
+        "file"
+      ],
+      "title": "CollectedOverride",
+      "type": "object"
+    },
+    "Compensate": {
+      "additionalProperties": false,
+      "properties": {
+        "justification": {
+          "description": "Por qu\u00e9 protegen igual o mejor (art. 28.3); va al payload.",
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "measures": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Measures",
+          "type": "array"
+        },
+        "op": {
+          "const": "compensate",
+          "title": "Op",
+          "type": "string"
+        },
+        "replaces": {
+          "items": {
+            "type": "string"
+          },
+          "minItems": 1,
+          "title": "Replaces",
+          "type": "array"
+        }
+      },
+      "required": [
+        "op",
+        "measure",
+        "measures",
+        "replaces",
+        "justification"
+      ],
+      "title": "Compensate",
+      "type": "object"
+    },
+    "DeclareNotApplicable": {
+      "additionalProperties": false,
+      "properties": {
+        "justification": {
+          "minLength": 1,
+          "title": "Justification",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "op": {
+          "const": "declare_not_applicable",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "measure",
+        "justification"
+      ],
+      "title": "DeclareNotApplicable",
+      "type": "object"
+    },
+    "Defect": {
+      "additionalProperties": false,
+      "properties": {
+        "expected_criterion": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Expected Criterion"
+        },
+        "expected_rule": {
+          "anyOf": [
+            {
+              "$ref": "#/$defs/DeterministicRule"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null
+        },
+        "id": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Id",
+          "type": "string"
+        },
+        "layer": {
+          "$ref": "#/$defs/DefectLayer"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "rationale": {
+          "minLength": 1,
+          "title": "Rationale",
+          "type": "string"
+        },
+        "requirement": {
+          "$ref": "#/$defs/Requirement"
+        },
+        "target": {
+          "$ref": "#/$defs/Target"
+        }
+      },
+      "required": [
+        "id",
+        "layer",
+        "measure",
+        "target",
+        "requirement",
+        "rationale"
+      ],
+      "title": "Defect",
+      "type": "object"
+    },
+    "DefectLayer": {
+      "enum": [
+        "deterministic",
+        "judgment"
+      ],
+      "title": "DefectLayer",
+      "type": "string"
+    },
+    "DeterministicRule": {
+      "enum": [
+        "CHECK_FAIL",
+        "EVIDENCE_MISSING",
+        "EVIDENCE_EXPIRED",
+        "CHECK_UNKNOWN",
+        "HASH_MISMATCH",
+        "DOSSIER_INTEGRITY"
+      ],
+      "title": "DeterministicRule",
+      "type": "string"
+    },
+    "ExpireEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "op": {
+          "const": "expire_evidence",
+          "title": "Op",
+          "type": "string"
+        },
+        "valid_until": {
+          "format": "date-time",
+          "title": "Valid Until",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "alias",
+        "valid_until"
+      ],
+      "title": "ExpireEvidence",
+      "type": "object"
+    },
+    "Partition": {
+      "enum": [
+        "dev",
+        "holdout"
+      ],
+      "title": "Partition",
+      "type": "string"
+    },
+    "ReplaceEvidenceText": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "file": {
+          "title": "File",
+          "type": "string"
+        },
+        "op": {
+          "const": "replace_evidence_text",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "alias",
+        "file"
+      ],
+      "title": "ReplaceEvidenceText",
+      "type": "object"
+    },
+    "Requirement": {
+      "additionalProperties": false,
+      "description": "Requisito del anexo II que el defecto incumple: `quote` es literal del texto de `clause`\nen el cat\u00e1logo empaquetado (solo se normalizan los espacios).",
+      "properties": {
+        "clause": {
+          "minLength": 1,
+          "title": "Clause",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "quote": {
+          "minLength": 1,
+          "title": "Quote",
+          "type": "string"
+        }
+      },
+      "required": [
+        "measure",
+        "clause",
+        "quote"
+      ],
+      "title": "Requirement",
+      "type": "object"
+    },
+    "SetAnswer": {
+      "additionalProperties": false,
+      "properties": {
+        "key": {
+          "description": "Ruta con puntos dentro de `org/answers.yaml`.",
+          "minLength": 1,
+          "title": "Key",
+          "type": "string"
+        },
+        "op": {
+          "const": "set_answer",
+          "title": "Op",
+          "type": "string"
+        },
+        "value": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "integer"
+            },
+            {
+              "type": "boolean"
+            },
+            {
+              "items": {
+                "type": "string"
+              },
+              "type": "array"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "title": "Value"
+        }
+      },
+      "required": [
+        "op",
+        "key",
+        "value"
+      ],
+      "title": "SetAnswer",
+      "type": "object"
+    },
+    "TamperArtifact": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "op": {
+          "const": "tamper_artifact",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "alias"
+      ],
+      "title": "TamperArtifact",
+      "type": "object"
+    },
+    "Target": {
+      "additionalProperties": false,
+      "description": "D\u00f3nde est\u00e1 el defecto: `alias` de una evidencia del perfil o `ref` de un documento. La\njustificaci\u00f3n es la de la medida del defecto; `none`, una ausencia sin objeto que citar.",
+      "properties": {
+        "alias": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Alias"
+        },
+        "kind": {
+          "$ref": "#/$defs/TargetKind"
+        },
+        "ref": {
+          "anyOf": [
+            {
+              "pattern": "^[a-z0-9][a-z0-9-]*$",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Ref"
+        }
+      },
+      "required": [
+        "kind"
+      ],
+      "title": "Target",
+      "type": "object"
+    },
+    "TargetKind": {
+      "enum": [
+        "evidence",
+        "document",
+        "justification",
+        "none"
+      ],
+      "title": "TargetKind",
+      "type": "string"
+    },
+    "UnlinkDocument": {
+      "additionalProperties": false,
+      "properties": {
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "op": {
+          "const": "unlink_document",
+          "title": "Op",
+          "type": "string"
+        },
+        "ref": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Ref",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "ref",
+        "measure"
+      ],
+      "title": "UnlinkDocument",
+      "type": "object"
+    },
+    "UnlinkEvidence": {
+      "additionalProperties": false,
+      "properties": {
+        "alias": {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "title": "Alias",
+          "type": "string"
+        },
+        "measure": {
+          "pattern": "^[a-z]+(\\.[a-z0-9]+)+$",
+          "title": "Measure",
+          "type": "string"
+        },
+        "op": {
+          "const": "unlink_evidence",
+          "title": "Op",
+          "type": "string"
+        }
+      },
+      "required": [
+        "op",
+        "alias",
+        "measure"
+      ],
+      "title": "UnlinkEvidence",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "defects": {
+      "items": {
+        "$ref": "#/$defs/Defect"
+      },
+      "title": "Defects",
+      "type": "array"
+    },
+    "format": {
+      "const": "ens-benchmark-case/1",
+      "title": "Format",
+      "type": "string"
+    },
+    "id": {
+      "pattern": "^[a-z0-9][a-z0-9-]*$",
+      "title": "Id",
+      "type": "string"
+    },
+    "judgment": {
+      "default": true,
+      "description": "False: caso solo determinista; se ejecuta sin consentimiento ni proveedor.",
+      "title": "Judgment",
+      "type": "boolean"
+    },
+    "kind": {
+      "$ref": "#/$defs/CaseKind"
+    },
+    "mutations": {
+      "items": {
+        "discriminator": {
+          "mapping": {
+            "collected_override": "#/$defs/CollectedOverride",
+            "compensate": "#/$defs/Compensate",
+            "declare_not_applicable": "#/$defs/DeclareNotApplicable",
+            "expire_evidence": "#/$defs/ExpireEvidence",
+            "replace_evidence_text": "#/$defs/ReplaceEvidenceText",
+            "set_answer": "#/$defs/SetAnswer",
+            "tamper_artifact": "#/$defs/TamperArtifact",
+            "unlink_document": "#/$defs/UnlinkDocument",
+            "unlink_evidence": "#/$defs/UnlinkEvidence"
+          },
+          "propertyName": "op"
+        },
+        "oneOf": [
+          {
+            "$ref": "#/$defs/ReplaceEvidenceText"
+          },
+          {
+            "$ref": "#/$defs/ExpireEvidence"
+          },
+          {
+            "$ref": "#/$defs/UnlinkEvidence"
+          },
+          {
+            "$ref": "#/$defs/UnlinkDocument"
+          },
+          {
+            "$ref": "#/$defs/SetAnswer"
+          },
+          {
+            "$ref": "#/$defs/DeclareNotApplicable"
+          },
+          {
+            "$ref": "#/$defs/Compensate"
+          },
+          {
+            "$ref": "#/$defs/CollectedOverride"
+          },
+          {
+            "$ref": "#/$defs/TamperArtifact"
+          }
+        ]
+      },
+      "title": "Mutations",
+      "type": "array"
+    },
+    "partition": {
+      "$ref": "#/$defs/Partition"
+    },
+    "profile": {
+      "anyOf": [
+        {
+          "pattern": "^[a-z0-9][a-z0-9-]*$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Profile"
+    },
+    "workspace": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Copia de un workspace real; solo fuera del repo.",
+      "title": "Workspace"
+    }
+  },
+  "required": [
+    "format",
+    "id",
+    "partition",
+    "kind"
+  ],
+  "title": "Case",
+  "type": "object"
+}

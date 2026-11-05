@@ -1,0 +1,90 @@
+{
+  "$defs": {
+    "Provider": {
+      "enum": [
+        "anthropic",
+        "openai",
+        "claude-code",
+        "codex"
+      ],
+      "title": "Provider",
+      "type": "string"
+    }
+  },
+  "additionalProperties": false,
+  "description": "Una l\u00ednea de `measurements.jsonl`: cada mirada a la reservada hecha con la herramienta.",
+  "properties": {
+    "action": {
+      "minLength": 1,
+      "title": "Action",
+      "type": "string"
+    },
+    "at": {
+      "format": "date-time",
+      "title": "At",
+      "type": "string"
+    },
+    "model": {
+      "anyOf": [
+        {
+          "minLength": 1,
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Model"
+    },
+    "pack_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Pack Sha256"
+    },
+    "partition": {
+      "const": "holdout",
+      "default": "holdout",
+      "title": "Partition",
+      "type": "string"
+    },
+    "provider": {
+      "anyOf": [
+        {
+          "$ref": "#/$defs/Provider"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null
+    },
+    "result": {
+      "anyOf": [
+        {
+          "additionalProperties": true,
+          "type": "object"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "title": "Result"
+    }
+  },
+  "required": [
+    "at",
+    "action"
+  ],
+  "title": "Measurement",
+  "type": "object"
+}

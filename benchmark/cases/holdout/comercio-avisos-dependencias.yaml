@@ -1,0 +1,37 @@
+format: ens-benchmark-case/1
+id: comercio-avisos-dependencias
+partition: holdout
+profile: comercio-online
+kind: defective
+mutations:
+  - op: collected_override
+    alias: github
+    file: github.json
+defects:
+  - id: avisos-dependencias-apagados
+    layer: deterministic
+    measure: op.exp.4
+    target: {kind: none}
+    expected_rule: CHECK_FAIL
+    requirement:
+      measure: op.exp.4
+      clause: op.exp.4.1
+      quote: >-
+        Se atenderá a las especificaciones de los fabricantes en lo relativo a instalación y
+        mantenimiento de los sistemas, lo que incluirá un seguimiento continuo de los anuncios
+        de defectos.
+    rationale: >-
+      En la nueva recogida los avisos de dependencias vulnerables del repositorio de la tienda
+      están desactivados: nadie recibe los anuncios de fallos de las bibliotecas.
+  - id: escaneo-secretos-indeterminado
+    layer: deterministic
+    measure: op.exp.10
+    target: {kind: none}
+    expected_rule: CHECK_UNKNOWN
+    requirement:
+      measure: op.exp.10
+      clause: op.exp.10.1
+      quote: Las claves criptográficas se protegerán durante todo su ciclo de vida
+    rationale: >-
+      La misma recogida no informa del estado del escaneo de secretos del repositorio, así que
+      no se sabe si una clave subida por error se detectaría.

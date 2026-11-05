@@ -1,0 +1,3 @@
+Inventario de activos de Asesoría Ficticia, versión de 2024.
+
+- srv-nominas: servidor de la oficina.

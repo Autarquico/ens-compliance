@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: ct-cuenta-compartida
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: control-accesos
+    file: control-accesos.txt
+defects:
+  - id: administracion-compartida
+    layer: judgment
+    measure: op.acc.1
+    target: {kind: evidence, alias: control-accesos}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.acc.1
+      clause: op.acc.1.3
+      quote: Cada entidad (entidad, usuario o proceso) que accede al sistema, contará con un identificador singular
+    rationale: >-
+      La revisión de accesos muestra que Nora Vilaplana y Tomás Pradera administran la nube con
+      una única cuenta «admin» compartida, mientras la normativa declara uso indebido compartir una
+      cuenta y la política afirma cuentas nominales para todo el equipo.

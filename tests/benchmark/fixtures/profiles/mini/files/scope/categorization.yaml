@@ -1,0 +1,25 @@
+information:
+  - id: datos-nominas
+    description: Nóminas y datos laborales de los clientes
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      I: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      T: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      A: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      D: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+    valuation:
+      valued_by: Bruno Ensayo
+      role: information_owner
+      valued_at: "2026-09-30T10:00:00+00:00"
+services:
+  - id: svc-nominas
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      I: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      T: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      A: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+      D: {level: BAJO, justification: "Perjuicio limitado según los criterios del anexo I, 3."}
+    valuation:
+      valued_by: Bruno Ensayo
+      role: service_owner
+      valued_at: "2026-09-30T10:00:00+00:00"

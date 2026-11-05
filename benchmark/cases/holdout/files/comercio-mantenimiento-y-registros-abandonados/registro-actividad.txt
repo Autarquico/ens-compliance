@@ -1,0 +1,6 @@
+Registros del servidor de la tienda, nota del 30 de septiembre de 2026.
+
+En julio se desactivó el registro de peticiones del servidor web para liberar disco, porque
+el alojamiento cobraba el espacio extra. El panel de administración solo conserva la fecha de
+la última conexión de cada usuario; no guarda qué se cambió ni si falló. Los registros del
+sistema se borran al reiniciar.

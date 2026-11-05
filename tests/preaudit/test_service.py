@@ -278,3 +278,78 @@ def test_preaudit_settings_load_from_the_workspace_settings_file(tmp_path):
 def test_invalid_preaudit_settings_are_rejected(tmp_path, preaudit):
     with pytest.raises(SettingsError):
         load_settings(write_settings(tmp_path, preaudit), allow_inside_product=True)
+
+
+# --- cliente inyectado -------------------------------------------------------------------------
+
+
+class StubClient:
+    """Un destino que responde sin red: lo que inyectaría el banco de pruebas."""
+
+    def __init__(self, destination: str, shell: bool = False) -> None:
+        self.destination = destination
+        self.requires_shell_warning = shell
+        self.payloads: list[bytes] = []
+
+    def judge(self, system_prompt, payload, schema, config) -> str:
+        self.payloads.append(payload)
+        return json.dumps({"findings": []})
+
+
+def factory_of(client: StubClient, calls: list):
+    def factory(provider, config):
+        calls.append((provider, config))
+        return client
+
+    return factory
+
+
+def test_an_injected_client_receives_the_call_and_consent_still_binds_it(contradicted):
+    store, dossier, fake = contradicted
+    client, calls = StubClient("anthropic https://api.anthropic.com"), []
+    prepared = prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
+
+    result = send(store, dossier, prepared.payload.sha256, client_factory=factory_of(client, calls))
+
+    assert calls == [(Provider.ANTHROPIC, ANTHROPIC)]
+    assert client.payloads == [prepared.payload.canonical] and fake.requests == []
+    consent = result.record.run.consent
+    assert consent.destination == "anthropic https://api.anthropic.com"
+    assert consent.payload_sha256 == prepared.payload.sha256
+    assert (
+        result.record.run.pack_sha256 == json.loads(store.read_bytes(prepared.key))["pack_sha256"]
+    )
+    assert result.record.run.judgment_status is LayerStatus.DONE
+
+
+def test_an_injected_client_for_another_destination_is_not_sent_to(contradicted):
+    store, dossier, fake = contradicted
+    client = StubClient("anthropic https://gateway.example.com")
+    prepared = prepare(store, dossier, None, ANTHROPIC, now=PREPARED_AT)
+
+    with pytest.raises(PreAuditRejected, match="destino ha cambiado"):
+        send(store, dossier, prepared.payload.sha256, client_factory=factory_of(client, []))
+
+    assert client.payloads == [] and fake.requests == [] and run_keys(store) == []
+
+
+def test_prepare_describes_a_cli_destination_with_the_injected_client(contradicted):
+    store, dossier, _ = contradicted
+    cli = PreAuditSettings(provider=Provider.CLAUDE_CODE, model=MODEL)
+    client, calls = StubClient("claude-code stub", shell=True), []
+
+    prepared = prepare(
+        store, dossier, None, cli, now=PREPARED_AT, client_factory=factory_of(client, calls)
+    )
+
+    assert calls == [(Provider.CLAUDE_CODE, cli)]
+    assert (prepared.destination, prepared.requires_shell_warning) == ("claude-code stub", True)
+    with pytest.raises(PreAuditRejected, match="shell"):
+        send(
+            store,
+            dossier,
+            prepared.payload.sha256,
+            settings=cli,
+            client_factory=factory_of(client, calls),
+        )
+    assert client.payloads == []

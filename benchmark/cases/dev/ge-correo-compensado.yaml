@@ -1,0 +1,25 @@
+format: ens-benchmark-case/1
+id: ge-correo-compensado
+partition: dev
+profile: gestoria
+kind: defective
+mutations:
+  - op: compensate
+    measure: mp.s.1
+    measures: [op.exp.6]
+    replaces: [base]
+    justification: El proveedor del correo ya filtra el correo no deseado y los virus, y el antivirus de los portátiles hace el resto; no hacen falta normas propias de uso del correo.
+defects:
+  - id: correo-compensado-por-antivirus
+    layer: judgment
+    measure: mp.s.1
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: mp.s.1
+      clause: mp.s.1
+      quote: Se establecerán normas de uso del correo electrónico para el personal.
+    rationale: >-
+      El filtrado y el antivirus no sustituyen las normas de uso del correo, la protección de la
+      información que se envía ni la concienciación del personal, y el correo fraudulento es la
+      primera amenaza del análisis de riesgos de la gestoría.

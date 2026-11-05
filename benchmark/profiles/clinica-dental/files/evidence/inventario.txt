@@ -1,0 +1,13 @@
+Inventario de activos de la Clínica Dental Sonrisa Ficticia (empresa ficticia).
+Revisado el 28 de septiembre de 2026 por Jorge Molar, responsable de sistemas.
+
+| Activo        | Naturaleza                                         | Responsable   |
+|---------------|----------------------------------------------------|---------------|
+| lap-direccion | Portátil Windows 11 con disco cifrado              | Elena Muela   |
+| srv-clinica   | Servidor Windows Server 2022 en el cuarto técnico  | Jorge Molar   |
+| app-historias | Programa de gestión clínica (citas e historias)    | Elena Muela   |
+| db-pacientes  | Base de datos SQL Server con historias y facturas  | Elena Muela   |
+
+Puestos de recepción y de los tres gabinetes: cuatro ordenadores Windows 11 sin datos locales,
+asignados al responsable de sistemas; se anotan en la hoja de puestos del servidor.
+Próxima revisión: marzo de 2027 o antes si entra o sale algún equipo.

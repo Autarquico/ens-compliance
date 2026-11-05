@@ -1,0 +1,14 @@
+Inventario de activos de Barro Ficticio Cerámica (empresa ficticia), versión de octubre.
+Actualizado el 3 de octubre de 2026 por Pablo Horno, responsable del sistema, tras sustituir
+el disco del portátil del taller.
+
+| Activo     | Naturaleza                                                 | Responsable  |
+|------------|------------------------------------------------------------|--------------|
+| lap-taller | Portátil Ubuntu 24.04, disco nuevo cifrado el 2 de octubre | Nuria Torno  |
+| vps-tienda | Servidor virtual Debian 12 en un alojamiento de la UE      | Pablo Horno  |
+| app-tienda | Aplicación de la tienda; código en barro-ficticio/tienda   | Nuria Torno  |
+| db-pedidos | MariaDB con pedidos y cuentas de clientes; copia diaria    | Nuria Torno  |
+| gh-tienda  | Cuenta de código barro-ficticio, repositorio tienda        | Pablo Horno  |
+
+El disco retirado del portátil se borró de forma segura y se entregó al punto limpio con
+certificado. Proveedores sin datos propios en el alcance: pasarela de pago y transporte.

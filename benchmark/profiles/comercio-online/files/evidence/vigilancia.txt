@@ -1,0 +1,6 @@
+Detección de intrusiones en el servidor de la tienda, informe de septiembre de 2026.
+
+El servidor tiene un detector que bloquea durante una hora las direcciones con cinco intentos
+de acceso fallidos al panel o a SSH, y el proveedor de alojamiento filtra los ataques de
+denegación de servicio. En septiembre se bloquearon 312 direcciones; ninguna llegó a iniciar
+sesión. Pablo Horno recibe un resumen diario y Óscar Arcilla lo revisa cada lunes.

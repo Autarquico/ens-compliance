@@ -1,0 +1,134 @@
+format: ens-benchmark-profile/1
+fictional: true
+id: mini
+title: Asesoría Ficticia (perfil mínimo de pruebas)
+clock:
+  start: "2026-10-01T09:00:00+00:00"
+categorization: {C: BAJO, I: BAJO, T: BAJO, A: BAJO, D: BAJO}
+people:
+  - id: ana
+    name: Ana Prueba
+    roles: [security_officer]
+  - id: bruno
+    name: Bruno Ensayo
+    roles: [system_owner]
+  - id: carla
+    name: Carla Muestra
+    roles: [management, information_owner]
+  - id: dario
+    name: Dario Ejemplo
+    roles: [system_administrator, service_owner]
+applicability:
+  - measure: op.cont.2
+    applicable: true
+    justification: Seleccionada como adicional por la dependencia del servicio de nóminas.
+reinforcements:
+  op.acc.5: [R1]
+  op.acc.6: [R1]
+  mp.s.2: [R1]
+not_required_justification: >-
+  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos no la pide.
+documents:
+  - {ref: politica-seguridad, approved_by: carla}
+  - {ref: normativa-seguridad, approved_by: carla}
+  - {ref: designacion-responsables, approved_by: carla}
+  - {ref: procedimientos-seguridad, approved_by: ana}
+  - {ref: proceso-autorizacion, approved_by: ana}
+  - {ref: procedimiento-incidentes, approved_by: ana}
+evidence:
+  - alias: inventario
+    file: evidence/inventario.txt
+    source: manual
+    asset: srv-nominas
+    valid_until: "2027-10-01T00:00:00+00:00"
+    links:
+      - {measure: op.exp.1, covers: [base]}
+  - alias: github
+    file: collected/github.json
+    source: collected
+    links:
+      - {measure: op.exp.1, covers: [base], check: github.secret_scanning_enabled}
+  - alias: revision-anual
+    file: evidence/procedimientos.txt
+    source: manual
+    asset: srv-nominas
+    valid_until: "2027-09-28T00:00:00+00:00"
+    links:
+      - {measure: org.1, covers: [base]}
+      - {measure: org.2, covers: [base]}
+      - {measure: org.3, covers: [base]}
+      - {measure: org.4, covers: [base]}
+      - {measure: op.pl.1, covers: [base]}
+      - {measure: op.pl.2, covers: [base]}
+      - {measure: op.pl.3, covers: [base]}
+      - {measure: op.pl.4, covers: [base]}
+      - {measure: op.acc.1, covers: [base]}
+      - {measure: op.acc.2, covers: [base]}
+      - {measure: op.acc.4, covers: [base]}
+      - {measure: op.acc.5, covers: [base, R1]}
+      - {measure: op.acc.6, covers: [base, R1, R8, R9]}
+      - {measure: op.exp.2, covers: [base]}
+      - {measure: op.exp.3, covers: [base]}
+      - {measure: op.exp.4, covers: [base]}
+      - {measure: op.exp.6, covers: [base]}
+      - {measure: op.exp.7, covers: [base]}
+      - {measure: op.exp.8, covers: [base]}
+      - {measure: op.exp.10, covers: [base]}
+      - {measure: op.nub.1, covers: [base]}
+      - {measure: op.cont.2, covers: [base]}
+      - {measure: op.mon.1, covers: [base]}
+      - {measure: op.mon.2, covers: [base]}
+      - {measure: op.mon.3, covers: [base]}
+      - {measure: mp.if.1, covers: [base]}
+      - {measure: mp.if.2, covers: [base]}
+      - {measure: mp.if.3, covers: [base]}
+      - {measure: mp.if.4, covers: [base]}
+      - {measure: mp.if.5, covers: [base]}
+      - {measure: mp.if.7, covers: [base]}
+      - {measure: mp.per.2, covers: [base]}
+      - {measure: mp.per.3, covers: [base]}
+      - {measure: mp.per.4, covers: [base]}
+      - {measure: mp.eq.1, covers: [base]}
+      - {measure: mp.eq.3, covers: [base]}
+      - {measure: mp.eq.4, covers: [base]}
+      - {measure: mp.com.1, covers: [base]}
+      - {measure: mp.com.2, covers: [base]}
+      - {measure: mp.com.3, covers: [base]}
+      - {measure: mp.si.3, covers: [base]}
+      - {measure: mp.si.4, covers: [base]}
+      - {measure: mp.si.5, covers: [base]}
+      - {measure: mp.sw.2, covers: [base]}
+      - {measure: mp.info.1, covers: [base]}
+      - {measure: mp.info.3, covers: [base]}
+      - {measure: mp.info.5, covers: [base]}
+      - {measure: mp.info.6, covers: [base]}
+      - {measure: mp.s.1, covers: [base]}
+      - {measure: mp.s.2, covers: [base, R1]}
+      - {measure: mp.s.3, covers: [base]}
+incident_drill:
+  alias: simulacro
+  by: ana
+  title: Simulacro de correo con enlace malicioso
+  action: Se bloquea el remitente y se revisa el equipo que abrió el correo
+  conclusion: El simulacro confirma que el aviso llega a la responsable de seguridad en el día.
+  auditable_events_detail: Los eventos auditables ya registran los accesos al correo.
+  links:
+    - {measure: op.exp.9, covers: [base]}
+document_links:
+  - {measure: org.1, document: politica-seguridad, covers: [base]}
+  - {measure: org.2, document: normativa-seguridad, covers: [base]}
+  - {measure: org.3, document: procedimientos-seguridad, covers: [base]}
+  - {measure: org.4, document: proceso-autorizacion, covers: [base]}
+  - {measure: op.exp.7, document: procedimiento-incidentes, covers: [base]}
+matrix:
+  - measure: op.exp.1
+    owner: bruno
+    review_every_days: 30
+    reviewed_by: dario
+    assessment: COMPLIANT
+    conclusion: El escaneo de secretos está activo en el único repositorio del alcance.
+matrix_defaults:
+  owner: ana
+  review_every_days: 365
+  reviewed_by: dario
+  conclusion: Revisada con el acta anual de seguridad y los documentos aprobados.

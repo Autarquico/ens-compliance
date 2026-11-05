@@ -1,0 +1,73 @@
+assets:
+  - id: lap-elena
+    type: laptop
+    deployment: deployed
+    hostname: lap-elena.gestoria-albar.example
+    os: Windows 11 Pro
+    owner: Elena Tamarit
+    encrypted: true
+    usage: Gerencia y firma de trámites
+  - id: lap-raul
+    type: laptop
+    deployment: deployed
+    hostname: lap-raul.gestoria-albar.example
+    os: Windows 11 Pro
+    owner: Raúl Monteagudo
+    encrypted: true
+    usage: Gestión fiscal de clientes
+  - id: lap-pilar
+    type: laptop
+    deployment: deployed
+    hostname: lap-pilar.gestoria-albar.example
+    os: Windows 11 Pro
+    owner: Pilar Aranda
+    encrypted: true
+    usage: Gestión laboral y administración de sistemas
+  - id: lap-jorge
+    type: laptop
+    deployment: deployed
+    hostname: lap-jorge.gestoria-albar.example
+    os: Windows 11 Pro
+    owner: Jorge Salvatierra
+    encrypted: true
+    usage: Atención a clientes y trámites administrativos
+  - id: srv-ficheros
+    type: server
+    deployment: deployed
+    hostname: srv-ficheros.gestoria-albar.example
+    function: Servidor de ficheros con las carpetas de expedientes de clientes
+    os: Windows Server 2022
+    environment: producción
+    location: Armario cerrado de la oficina, Valdeprueba
+  - id: id-correo
+    type: identity
+    deployment: deployed
+    users: Las cuatro personas de la plantilla
+    admins: Pilar Aranda y el proveedor informático externo
+    mfa: true
+  - id: st-nube
+    type: storage
+    deployment: deployed
+    buckets: [albar-copias]
+    location: UE
+    encryption: Cifrado en el cliente antes de subir la copia
+    access: Solo la cuenta de servicio de copias del servidor
+  - id: bk-ficheros
+    type: backup
+    deployment: deployed
+    source: srv-ficheros
+    destination: Disco local del servidor y st-nube
+    frequency: Diaria a las 22:00
+    restoration: Prueba semestral de restauración de una carpeta
+  - id: prov-gestion
+    type: provider
+    deployment: deployed
+    service: Aplicación de gestión fiscal y laboral como servicio
+    function: Contabilidad, impuestos y nóminas de los clientes
+    dependency: Sin ella no se pueden presentar impuestos ni nóminas
+  - id: prov-informatica
+    type: provider
+    deployment: deployed
+    service: Soporte informático externo
+    function: Mantiene el servidor, los portátiles y la red de la oficina
+    dependency: Mantenimiento y resolución de averías

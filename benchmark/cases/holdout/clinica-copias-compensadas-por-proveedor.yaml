@@ -1,0 +1,46 @@
+format: ens-benchmark-case/1
+id: clinica-copias-compensadas-por-proveedor
+partition: holdout
+profile: clinica-dental
+kind: defective
+mutations:
+  - op: compensate
+    measure: mp.info.6
+    measures: [El proveedor del programa de gestión guarda una copia de la base de datos]
+    replaces: [base]
+    justification: >-
+      El comercial del proveedor nos dijo por teléfono que ellos también guardan los datos, así
+      que no hace falta que la clínica haga copias propias.
+defects:
+  - id: compensacion-de-palabra
+    layer: judgment
+    measure: mp.info.6
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.2
+      quote: >-
+        Los procedimientos de respaldo establecidos indicarán: a) Frecuencia de las copias. b)
+        Requisitos de almacenamiento en el propio lugar. c) Requisitos de almacenamiento en
+        otros lugares. d) Controles para el acceso autorizado a las copias de respaldo.
+    rationale: >-
+      La compensación descansa en una afirmación verbal sin contrato, sin frecuencia, sin
+      retención y sin prueba de restauración; además la base de datos está en el servidor de la
+      clínica y no en el proveedor, así que no protege igual.
+  - id: copias-compensadas-sin-evidencia
+    layer: deterministic
+    measure: mp.info.6
+    target: {kind: none}
+    expected_rule: EVIDENCE_MISSING
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.1
+      quote: >-
+        Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o
+        intencionadamente. La periodicidad y los plazos de retención de estas copias de
+        seguridad se determinarán en la normativa interna de la organización relativa a copias
+        de seguridad.
+    rationale: >-
+      La medida compensatoria sustituye la obligación base y ninguna evidencia la cubre: el
+      informe de copias enlazado cubría la obligación retirada.

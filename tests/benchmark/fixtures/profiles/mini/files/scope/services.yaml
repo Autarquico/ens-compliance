@@ -1,0 +1,4 @@
+services:
+  - id: svc-nominas
+    name: Gestión de nóminas
+    assets: [app-nominas, db-nominas, srv-nominas]

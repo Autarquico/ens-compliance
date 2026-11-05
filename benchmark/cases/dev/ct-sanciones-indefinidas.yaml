@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ct-sanciones-indefinidas
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: set_answer
+    key: medidas_disciplinarias
+    value: Las que correspondan en cada caso.
+defects:
+  - id: medidas-disciplinarias-vacias
+    layer: judgment
+    measure: org.2
+    target: {kind: document, ref: normativa-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.2
+      clause: org.2.2
+      quote: "derechos, deberes y medidas disciplinarias de acuerdo con la legislación vigente"
+    rationale: >-
+      La normativa no dice qué se considera falta, qué sanciones caben, quién las decide ni con qué
+      legislación o convenio: «las que correspondan» no describe medidas disciplinarias.

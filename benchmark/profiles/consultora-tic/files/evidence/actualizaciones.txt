@@ -1,0 +1,19 @@
+Informe mensual de configuración y actualizaciones — septiembre de 2026
+Robledal Sistemas S.L. (empresa ficticia). Elabora: Nora Vilaplana, 29 de septiembre de 2026.
+
+Configuración base: el servidor se instala desde la plantilla de infra (repositorio infra), sin
+cuentas por defecto, con SSH solo por clave y desde el túnel, y solo los servicios del portal,
+PostgreSQL y el agente de copias. Los portátiles siguen la ficha de alta: disco cifrado, cortafuegos
+activo, cuenta de administración separada y bloqueo automático a los cinco minutos.
+
+Actualizaciones aplicadas:
+- vps-portal: actualizaciones de seguridad de Debian aplicadas los lunes 1, 8, 15, 22 y 29; reinicio
+  programado el día 15 por actualización del núcleo, fuera de horario.
+- Portátiles: lap-lucia y lap-nora en macOS 15 con la última versión menor desde el día 12;
+  lap-tomas actualizado el día 10. Ninguno con más de siete días de retraso.
+- Portal: 6 alertas de dependencias vulnerables recibidas; 5 corregidas por solicitud de cambios
+  revisada en menos de una semana y 1 descartada (la función afectada no se usa), con nota en la
+  alerta.
+
+Cambios de configuración: alta de una regla del cortafuegos web contra un bot de rastreo, aprobada
+por Tomás Pradera el día 18. No hubo cambios sin solicitud registrada.

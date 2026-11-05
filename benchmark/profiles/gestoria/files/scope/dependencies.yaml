@@ -1,0 +1,9 @@
+dependencies:
+  - id: dep-copias-nube
+    asset: bk-ficheros
+    depends_on: st-nube
+    purpose: La copia externa del servidor de ficheros se guarda en el almacenamiento en la nube.
+  - id: dep-ficheros-soporte
+    asset: srv-ficheros
+    depends_on: prov-informatica
+    purpose: El proveedor informático externo mantiene el servidor de ficheros.

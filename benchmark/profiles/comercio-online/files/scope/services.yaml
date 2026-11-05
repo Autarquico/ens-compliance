@@ -1,0 +1,4 @@
+services:
+  - id: svc-tienda
+    name: Tienda en línea y gestión de pedidos
+    assets: [app-tienda, db-pedidos, vps-tienda]

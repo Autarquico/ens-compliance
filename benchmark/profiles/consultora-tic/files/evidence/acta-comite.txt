@@ -1,0 +1,19 @@
+Acta de la reunión del Comité de Seguridad — Robledal Sistemas S.L. (empresa ficticia)
+Fecha: 22 de septiembre de 2026, por videoconferencia. Asisten: Lucía Robledal (gerente),
+Tomás Pradera (responsable de la seguridad) y Nora Vilaplana (responsable del sistema).
+Redacta: Tomás Pradera.
+
+1. Revisión anual de la documentación: la política, la normativa, la designación, los
+   procedimientos, el proceso de autorización y el procedimiento de incidentes siguen describiendo
+   el sistema; se actualiza la lista de servicios de terceros. Se aprueban sin más cambios.
+2. Autorizaciones del trimestre: alta de lap-tomas (ficha de alta firmada por Nora Vilaplana) y
+   nueva regla del cortafuegos web; ambas registradas.
+3. Adquisiciones: antes de contratar el nuevo gestor de contraseñas se comparó con el análisis de
+   riesgos (doble factor, cifrado de extremo a extremo y servidores en la UE); se aprobó.
+4. Capacidad: el servidor usa el 38 % del disco y el 20 % de la memoria; el almacenamiento de
+   copias crece 4 GB al mes. Se revisará en enero; no hace falta ampliar.
+5. Incidentes: ninguno en el trimestre; se prepara para octubre un simulacro de correo fraudulento.
+6. Continuidad: se confirma que el portal se puede restaurar en otro proveedor en unas seis horas
+   con las copias y la plantilla de infra; Lucía Robledal tiene los accesos de respaldo.
+
+Próxima reunión: 6 de octubre de 2026.

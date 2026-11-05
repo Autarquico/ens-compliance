@@ -1,0 +1,20 @@
+format: ens-benchmark-case/1
+id: ct-copias-desenlazadas
+partition: dev
+profile: consultora-tic
+kind: defective
+mutations:
+  - op: unlink_evidence
+    alias: copias
+    measure: mp.info.6
+defects:
+  - id: copias-sin-evidencia
+    layer: deterministic
+    measure: mp.info.6
+    target: {kind: none}
+    expected_rule: EVIDENCE_MISSING
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.1
+      quote: Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o intencionadamente.
+    rationale: La medida de copias de seguridad se declara aplicable y no tiene ninguna evidencia enlazada.
