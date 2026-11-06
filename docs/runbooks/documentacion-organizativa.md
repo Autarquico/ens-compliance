@@ -40,13 +40,24 @@ Algunas preguntas solo aparecen si hacen falta:
   ser proveedor de una administración), el art. 13.5 pide un punto de contacto
   de seguridad por servicio, salvo causa justificada y documentada.
 
+Los **procedimientos de seguridad** preguntan también cómo hacéis las tareas
+operativas de las medidas de BÁSICA: análisis de riesgos (op.pl.1),
+inventario (op.exp.1), cuentas y credenciales (op.acc.1, op.acc.6),
+actualizaciones (op.exp.4), código dañino (op.exp.6), registro de actividad
+(op.exp.8), perímetro (mp.com.1) y puesta en producción (mp.sw.2); el control
+de acceso y las copias citan además op.acc.2, op.acc.4 y mp.info.6. Y cómo
+se trata al personal: información de sus deberes (`informacion_deberes`,
+mp.per.2), concienciación (`concienciacion`, mp.per.3) y formación con la
+evaluación de su eficacia (`formacion`, mp.per.4). Describir un procedimiento
+no lo demuestra: la medida sigue necesitando su evidencia.
+
 ## 2. Genera los documentos
 
 ```bash
 ens-evidence docs build
 ```
 
-Escribe en `org/docs/` los cinco documentos en Markdown, cada uno con una
+Escribe en `org/docs/` los seis documentos en Markdown, cada uno con una
 tabla que dice qué cláusula del RD cubre cada sección y con qué versión de
 plantilla y de catálogo se generó. Si vuelves a generar con las mismas
 respuestas, el resultado es idéntico. Las versiones anteriores quedan en
@@ -77,6 +88,17 @@ ni mayúsculas); un fragmento del nombre no vale. `--role` sigue siendo
 La aprobación deja de valer si cambian el documento, las respuestas, la
 plantilla, el catálogo, el texto legal empaquetado o el alcance: vuelve a
 generar y a aprobar. `docs status` dice por qué.
+
+### Al actualizar desde plantillas v1
+
+Las plantillas pasan a v2 (secciones operativas nuevas en los procedimientos).
+En un workspace generado con v1, `docs status` marca los seis documentos como
+obsoletos («plantilla cambiada de versión») y `docs build` no genera nada
+hasta que respondas las preguntas nuevas (`docs questions` las lista). Tras
+responderlas: `docs build` (las versiones v1 quedan en `org/docs/history/`) y
+vuelve a aprobar los seis documentos. Mientras tanto, los enlaces de la matriz
+a esos documentos no sustentan nada y el expediente no los cita como
+aprobados.
 
 Aprobar un documento no da por cumplida ninguna medida: dice que el documento
 existe y está aprobado. Que se aplica de verdad se demuestra con evidencias en

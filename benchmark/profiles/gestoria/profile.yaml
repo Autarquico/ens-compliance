@@ -22,9 +22,138 @@ reinforcements:
   op.acc.5: [R1]
   op.acc.6: [R2]
   mp.s.2: [R1]
-not_required_justification: >-
-  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de
-  septiembre de 2026 no la pide para los expedientes ni para el servicio de tramitación.
+applicability:
+  - measure: mp.com.4
+    applicable: false
+    justification: >-
+      El anexo II no la exige en categoría BÁSICA. La red de la oficina tiene cuatro portátiles, el
+      servidor, la impresora y el router; aun así, la red de invitados está separada de la de trabajo
+      y el cortafuegos bloquea todo el tráfico entrante salvo la VPN (mp.com.1).
+  - measure: mp.eq.2
+    applicable: false
+    justification: >-
+      Con autenticidad de nivel BAJO el anexo II no la pide. La normativa obliga igualmente a
+      bloquear la sesión al levantarse del puesto y de forma automática a los cinco minutos, y la
+      revisión de la oficina lo comprueba en los cuatro portátiles.
+  - measure: mp.if.6
+    applicable: false
+    justification: >-
+      No la exige el anexo II con disponibilidad de nivel BAJO. El agua dañaría a la vez el servidor
+      y el disco de la copia local, como la avería del servidor que recoge el análisis de riesgos;
+      para ambos casos está la copia externa cifrada fuera de la oficina.
+  - measure: mp.info.2
+    applicable: false
+    justification: >-
+      No se exige con confidencialidad de nivel BAJO. La gestoría no trata materias clasificadas;
+      los expedientes, también los de las mancomunidades, se categorizaron con confidencialidad BAJO,
+      y la política nombra a la responsable de la información (org.1).
+  - measure: mp.info.4
+    applicable: false
+    justification: >-
+      Solo la exige el anexo II con trazabilidad de nivel ALTO, y aquí es BAJO. Las presentaciones
+      ante las administraciones se hacen en sus sedes electrónicas con el certificado cualificado de
+      representante de la gerente (mp.info.3).
+  - measure: mp.per.1
+    applicable: false
+    justification: >-
+      No la exige el anexo II en categoría BÁSICA. Las funciones de seguridad de cada una de las
+      cuatro personas están en la designación de responsables y en la política (org.1), y cada una
+      firma al incorporarse la recepción y custodia de sus credenciales.
+  - measure: mp.s.4
+    applicable: false
+    justification: >-
+      El anexo II no la exige con disponibilidad de nivel BAJO. La gestoría no publica servicios
+      propios en internet: el portal de clientes es el de la aplicación de gestión contratada, cuyo
+      proveedor está certificado en el ENS (op.nub.1), y el cortafuegos de la oficina bloquea todo el
+      tráfico entrante salvo la VPN.
+  - measure: mp.si.1
+    applicable: false
+    justification: >-
+      Con confidencialidad de nivel BAJO no la pide el anexo II, y no hay información que deba llevar
+      marcas de nivel. Los soportes, como el disco externo D-01, llevan una etiqueta con su número y
+      su responsable según los procedimientos de seguridad (org.3).
+  - measure: mp.si.2
+    applicable: false
+    justification: >-
+      No la exige el anexo II con confidencialidad e integridad de nivel BAJO. Aun así, el disco
+      externo D-01, los portátiles y la copia externa van cifrados, como recoge el análisis de riesgos
+      entre sus salvaguardas, y la revisión de la oficina lo comprueba.
+  - measure: mp.sw.1
+    applicable: false
+    justification: >-
+      No la exige el anexo II en categoría BÁSICA, y la gestoría no desarrolla aplicaciones: usa la
+      aplicación de gestión como servicio y programas comerciales que instala el proveedor
+      informático.
+  - measure: op.acc.3
+    applicable: false
+    justification: >-
+      No se exige con los niveles BAJO de esta categorización. Administran el sistema Pilar Aranda y el
+      técnico nominal del proveedor; cada conexión remota del proveedor la autoriza el responsable de
+      la seguridad y queda registrada, como recoge el análisis de riesgos.
+  - measure: op.cont.1
+    applicable: false
+    justification: >-
+      El anexo II no la exige con disponibilidad de nivel BAJO. La política ya fija lo que no se puede
+      interrumpir (presentar en plazo aunque falle el servidor y recuperar una carpeta en menos de un
+      día laborable), y lo crítico para presentar es la aplicación de gestión, contratada como servicio.
+  - measure: op.cont.2
+    applicable: false
+    justification: >-
+      Solo se exige con disponibilidad de nivel ALTO. La avería del servidor que recoge el análisis de
+      riesgos se resuelve restaurando la copia externa, y las presentaciones dependen de la aplicación
+      de gestión en la nube, que sigue disponible aunque falle la oficina.
+  - measure: op.cont.3
+    applicable: false
+    justification: >-
+      El anexo II la pide solo con disponibilidad de nivel ALTO y, sin plan de continuidad, no hay
+      plan que probar. La avería del servidor que recoge el análisis de riesgos se trata restaurando
+      la copia externa.
+  - measure: op.cont.4
+    applicable: false
+    justification: >-
+      Exigida solo con disponibilidad de nivel ALTO. Si falla la línea de la oficina se usa la
+      conexión del móvil de la gerente, autorizada como medio de comunicación alternativo (org.4), y
+      se puede trabajar en teletrabajo por la VPN.
+  - measure: op.exp.5
+    applicable: false
+    justification: >-
+      No la exige el anexo II en categoría BÁSICA. Los cambios de configuración los pide Pilar Aranda
+      al proveedor informático y quedan en su registro de tickets, y los módulos nuevos de la
+      aplicación se prueban con un cliente ficticio antes de activarlos.
+  - measure: op.ext.1
+    applicable: false
+    justification: >-
+      No la exige el anexo II en categoría BÁSICA. Los contratos con el proveedor informático y con el
+      de la aplicación de gestión fijan confidencialidad, encargo de tratamiento y aviso de incidentes;
+      el acceso de administración del proveedor informático es un riesgo residual del análisis,
+      tratado con el contrato de confidencialidad y el registro de cada conexión remota.
+  - measure: op.ext.2
+    applicable: false
+    justification: >-
+      No exigida en categoría BÁSICA. Los contratos no fijan niveles de servicio; las obligaciones
+      del proveedor de la aplicación (aviso de incidentes en 24 horas e informe anual de pruebas de
+      penetración) constan en su ficha de cumplimiento, que la gestoría revisa cada seis meses
+      (op.nub.1), y Pilar Aranda revisa cada mes el informe de mantenimiento del proveedor
+      informático.
+  - measure: op.ext.3
+    applicable: false
+    justification: >-
+      Solo la exige el anexo II en categoría ALTA. Los proveedores de la aplicación de gestión y del
+      almacenamiento de la copia externa declaran conformidad con el ENS, y la gestoría lo comprueba
+      al contratarlos.
+  - measure: op.ext.4
+    applicable: false
+    justification: >-
+      El anexo II no la exige en categoría BÁSICA. La única conexión con otro sistema es la remota del
+      proveedor informático, que se autoriza para cada intervención y queda en el registro de
+      conexiones remotas (org.4); los envíos a las administraciones se hacen por sus sedes
+      electrónicas.
+  - measure: op.pl.5
+    applicable: false
+    justification: >-
+      No la exige el anexo II en categoría BÁSICA. El cortafuegos, el antivirus y la copia externa los
+      aporta el proveedor informático, y el proveedor de la aplicación de gestión está certificado en
+      el ENS para el servicio contratado (op.nub.1).
 documents:
   - {ref: politica-seguridad, approved_by: elena}
   - {ref: normativa-seguridad, approved_by: elena}
@@ -67,6 +196,7 @@ evidence:
       - {measure: org.4, covers: [base]}
       - {measure: op.pl.3, covers: [base]}
       - {measure: op.pl.4, covers: [base]}
+      - {measure: op.exp.7, covers: [base]}
   - alias: accesos
     file: evidence/accesos.txt
     source: manual

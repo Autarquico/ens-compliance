@@ -380,6 +380,7 @@ def _record_all(
 class GateChoice(StrEnum):
     BASELINE = "baseline"
     THRESHOLD = "threshold"
+    TARGET = "target"
 
 
 class OutputFormat(StrEnum):
@@ -422,6 +423,12 @@ def run(
         raise _fail("Error: la puerta baseline es de la partición de desarrollo")
     if gate is GateChoice.THRESHOLD and partition is not Partition.HOLDOUT:
         raise _fail("Error: la puerta threshold es de la partición reservada")
+    if gate is GateChoice.TARGET and partition is not Partition.DEV:
+        raise _fail("Error: la puerta target es de la partición de desarrollo")
+    if gate is GateChoice.TARGET and not all_recorded:
+        raise _fail(
+            "Error: la puerta target exige --all-recorded: deciden los dos pares de la puerta"
+        )
     pair = Pair(provider, model) if provider is not None and model is not None else None
     replayed = _replay(cases, partition, pair, gate is not None, "run", measurement)
     pack_sha256, bench, ran = replayed
@@ -443,7 +450,7 @@ def run(
         inventory=found,
         retired=retired or [],
     )
-    shown = gating if gate is GateChoice.THRESHOLD else ()
+    shown = gating if gate in (GateChoice.THRESHOLD, GateChoice.TARGET) else ()
     if output_format is OutputFormat.JSON:
         text = result.model_dump_json(indent=2) + "\n"
     else:

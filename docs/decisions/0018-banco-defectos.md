@@ -220,6 +220,11 @@ determinista sí le exige el 100 %.
 Bajar la línea base en el mismo PR no sirve: la puerta compara con la de la
 rama base (`--baseline-ref`).
 
+**`target`, sobre la de desarrollo:** los umbrales de `threshold` por cada
+par de la puerta (los dos obligatorios, `--all-recorded`), sin la muestra
+mínima de D7 pero sin denominadores vacíos. Es un objetivo de ajuste, no
+cierra v0.1; se pasa antes de `baseline --write`.
+
 ### Pares de v0.1 (decisiones D4 y D7)
 
 - «Anthropic» es `claude-code/claude-opus-5-5` y «OpenAI» es
@@ -256,15 +261,18 @@ No se ajustan prompts ni criterios con lo que muestre la reservada.
 ### Inventario protegido
 
 La línea base guarda una huella por caso (su YAML sin los defectos, más sus
-ficheros) y otra por defecto. En la puerta `baseline`, un caso o un defecto
-de la línea base que falta o cambia de huella falla, salvo que
-`baseline/dev.json` del árbol de trabajo lo anote en `retired: [{id, sha256,
-reason}]`. Las altas no necesitan anotación. `sha256` es la huella de lo
-retirado (con sus defectos, si es un caso) en la línea base de la rama base,
-y la puerta la imprime: una retirada solo cubre esa versión, así que un
-cambio posterior del mismo id exige anotar la nueva huella. `benchmark
-baseline --write` conserva las retiradas que ya había; las de versiones
-pasadas no cubren nada.
+ficheros y los de su perfil: `profile.yaml` y `files/`) y otra por defecto.
+Cambiar un perfil cambia la huella de todos sus casos: la puerta los da por
+cambiados y exige retirarlos con la huella que imprime; retirados, quedan
+fuera de la comparación de regresiones hasta la siguiente línea base. En la
+puerta `baseline`, un caso o un defecto de la línea base que falta o cambia de
+huella falla, salvo que `baseline/dev.json` del árbol de trabajo lo anote en
+`retired: [{id, sha256, reason}]`. Las altas no necesitan anotación. `sha256`
+es la huella de lo retirado (con sus defectos, si es un caso) en la línea base
+de la rama base, y la puerta la imprime: una retirada solo cubre esa versión,
+así que un cambio posterior del mismo id exige anotar la nueva huella.
+`benchmark baseline --write` conserva las retiradas que ya había; las de
+versiones pasadas no cubren nada.
 
 ### Informe
 

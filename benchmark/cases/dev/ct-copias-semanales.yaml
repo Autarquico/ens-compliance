@@ -18,6 +18,6 @@ defects:
       clause: mp.info.6.1
       quote: La periodicidad y los plazos de retención de estas copias de seguridad se determinarán en la normativa interna de la organización relativa a copias de seguridad.
     rationale: >-
-      Los procedimientos fijan copia diaria, retención de 30 diarias y 12 mensuales en otra región
-      y prueba trimestral; el informe muestra copias semanales, 4 semanas de retención en la misma
-      región del servidor y ninguna prueba de restauración en el año.
+      Los procedimientos fijan copia diaria de la base de datos y los ficheros, retención de 30
+      diarias y 12 mensuales y prueba trimestral; el informe muestra copias semanales, 4 semanas de
+      retención y ninguna prueba de restauración en el trimestre.

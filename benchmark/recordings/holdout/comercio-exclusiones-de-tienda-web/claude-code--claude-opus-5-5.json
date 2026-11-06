@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/comercio-exclusiones-de-tienda-web",
+  "case_sha256": "ee308e78c224ea20e0944cbf78302201e0dbfae9b668c943b8cf32aac3861c98",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "0046bd45463f4c64d0ef6e9744b0c29ee3b8ce2131ce495ce46a26e25d87ce80",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T14:24:18.102037Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T14:22:28.734226Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.s.2\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.s.2:base\", \"quote\": \"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}], \"reason\": \"La compensación solo traslada la responsabilidad al proveedor y no justifica que la protección del alojamiento proteja igual o mejor que mp.s.2.1-2.3. Tampoco cubre la aplicación web, cuyo código es propio según la justificación de mp.sw.1. Además, el análisis de riesgos (EV-20261006-4a88eab8, no enlazado a esta medida) identifica como amenaza un fallo de inyección o la manipulación de precios en la tienda.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}], \"reason\": \"La justificación no da una razón propia de la medida, y el expediente la contradice. El análisis de riesgos (EV-20261006-4a88eab8, no enlazado) dice que para la amenaza 5 «hay que fijar con cada proveedor un servicio mínimo y las consecuencias de incumplirlo». Los procedimientos de seguridad (análisis de riesgos) y la política de seguridad (el responsable del servicio fija qué se exige al proveedor de alojamiento y a la pasarela) dicen lo mismo.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T14:23:05.853201Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.s.2\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.s.2:base\", \"quote\": \"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}], \"reason\": \"La compensación traslada la responsabilidad al proveedor sin justificar que su protección cubra, igual o mejor, las cláusulas sustituidas (mp.s.2.1 a mp.s.2.3). Además, la justificación de mp.sw.1 reconoce que el código de la tienda es propio, y el análisis de riesgos (EV-20261006-4a88eab8) cuenta entre las amenazas más probables un fallo de inyección en la aplicación, que la protección del alojamiento no muestra cubrir.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}], \"reason\": \"La justificación no da una razón propia de la medida y la contradice el análisis de riesgos (EV-20261006-4a88eab8, enlazado a op.pl.1): para la caída o pérdida de datos en los proveedores exige fijar con cada uno un servicio mínimo y las consecuencias de incumplirlo. También la contradice el procedimiento de análisis de riesgos de procedimientos-seguridad, que habla del servicio mínimo que hay que pactar con cada proveedor.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T14:23:44.797341Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.s.2\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.s.2:base\", \"quote\": \"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}], \"reason\": \"La compensación traslada la medida al proveedor sin justificar que la «protección del sitio web» del plan de alojamiento proteja igual o mejor que mp.s.2. Además, el código de la tienda es propio: así lo dice la justificación de mp.sw.1. Y el análisis de riesgos (EV-20261006-4a88eab8) identifica como amenaza un fallo de inyección introducido por un cambio propio, que una protección genérica del alojamiento no cubre.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}], \"reason\": \"La justificación no da una razón propia de la medida, y la contradicen otros elementos del expediente. El análisis de riesgos (EV-20261006-4a88eab8) dice que «Para la amenaza 5 hay que fijar con cada proveedor un servicio mínimo y las consecuencias de incumplirlo». El documento procedimientos-seguridad incluye en el análisis de riesgos «el servicio mínimo que hay que pactar con cada proveedor».\"}]}",
+      "kind": null
+    }
+  ]
+}

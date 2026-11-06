@@ -7,33 +7,33 @@
   "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "1.0.0",
-  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
-  "payload_sha256": "f17e207d7cb56c9e88bb54604c64a5bb84be503c549e9708e34d2fc6c0f7f495",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "773ca7241991b2423bb9a57af0dca2469103d0496922a531ca5a128f72acb5c9",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-05T10:27:14.918241Z",
+  "recorded_at": "2026-11-06T12:06:00.202961Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-05T10:26:30.890368Z",
+      "at": "2026-11-06T12:05:12.481319Z",
       "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.1\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"politica-seguridad\",\"quote\":\"- Ámbito: Los asuntos de seguridad que vayan surgiendo.\\n- Integrantes: Las personas que la gerencia convoque en cada ocasión.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\\n   salvo la actualización de la lista de proveedores.\"}],\"justifications\":[],\"reason\":\"La política deja el ámbito de responsabilidad del comité y su composición sujetos a formulaciones genéricas y a convocatorias ocasionales, sin precisarlos de forma clara como exige org.1.4; la revisión documentada mantiene ese contenido. Se propone NC_MENOR por incumplimiento parcial del contenido requerido para la medida.\"}]}",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.1\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"politica-seguridad\",\"quote\":\"- Ámbito: Los asuntos de seguridad que vayan surgiendo.\\n- Integrantes: Las personas que la gerencia convoque en cada ocasión.\\n- Relación con otros elementos: Informa a la gerencia; [administrador del sistema / responsable del sistema] traslada sus decisiones al proveedor informático externo.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"24 de septiembre de 2026. Asisten: [dirección / responsable de la información], [responsable del servicio], [responsable de la seguridad] y [administrador del sistema / responsable del sistema]. Redacta: [responsable de la seguridad].\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR por incumplimiento parcial de org.1.4: la política deja los integrantes del comité a la convocatoria de cada ocasión, sin precisar las personas que lo componen como exige esa cláusula. El acta identifica asistentes a una reunión concreta, pero no subsana esa indefinición en la política.\"}]}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-05T10:26:44.577990Z",
+      "at": "2026-11-06T12:05:28.843634Z",
       "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.1\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"politica-seguridad\",\"quote\":\"- Ámbito: Los asuntos de seguridad que vayan surgiendo.\\n- Integrantes: Las personas que la gerencia convoque en cada ocasión.\\n- Relación con otros elementos: Informa a la gerencia; [administrador del sistema / responsable del sistema] traslada sus decisiones al proveedor informático externo.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\\n   salvo la actualización de la lista de proveedores.\"}],\"justifications\":[],\"reason\":\"La política deja las personas integrantes del comité a la convocatoria de cada ocasión y describe su ámbito de responsabilidad de forma genérica, sin precisarlos claramente como exige org.1.4; el acta mantiene vigente ese contenido. Se propone NC_MENOR por un incumplimiento parcial del contenido documental exigido, sujeto a revisión humana.\"}]}",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.1\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"politica-seguridad\",\"quote\":\"- Ámbito: Los asuntos de seguridad que vayan surgiendo.\\n- Integrantes: Las personas que la gerencia convoque en cada ocasión.\\n- Relación con otros elementos: Informa a la gerencia; [administrador del sistema / responsable del sistema] traslada sus decisiones al proveedor informático externo.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\\n   salvo la actualización de la lista de proveedores.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR por un incumplimiento parcial del contenido documental exigido por org.1.4: la política remite las personas integrantes del Comité a lo que la gerencia decida en cada convocatoria, sin precisar su composición. La asistencia a una reunión concreta no subsana esa indefinición en la política.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-05T10:26:59.425732Z",
+      "at": "2026-11-06T12:05:44.187872Z",
       "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.1\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"politica-seguridad\",\"quote\":\"- Ámbito: Los asuntos de seguridad que vayan surgiendo.\\n- Integrantes: Las personas que la gerencia convoque en cada ocasión.\\n- Relación con otros elementos: Informa a la gerencia; [administrador del sistema / responsable del sistema] traslada sus decisiones al proveedor informático externo.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\\n   salvo la actualización de la lista de proveedores.\"}],\"justifications\":[],\"reason\":\"La política deja el ámbito de responsabilidad del Comité y sus integrantes sujetos a fórmulas indeterminadas, sin precisarlos claramente como exige org.1.4; el acta mantiene vigente esa redacción. Se propone NC_MENOR por un incumplimiento parcial del contenido documental exigido para org.1.\"}]}",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.1\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"politica-seguridad\",\"quote\":\"- Ámbito: Los asuntos de seguridad que vayan surgiendo.\\n- Integrantes: Las personas que la gerencia convoque en cada ocasión.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\\n   salvo la actualización de la lista de proveedores.\"}],\"justifications\":[],\"reason\":\"La política deja los integrantes del Comité a una convocatoria discrecional y define su ámbito como los asuntos que surjan, sin precisar las personas integrantes ni detallar su ámbito de responsabilidad, extremos exigidos por org.1.4. Se propone NC_MENOR por incumplimiento parcial del contenido documental de la medida.\"}]}",
       "kind": null
     }
   ]

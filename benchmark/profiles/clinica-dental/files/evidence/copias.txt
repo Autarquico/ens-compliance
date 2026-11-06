@@ -5,6 +5,6 @@ Copias nocturnas de la base de datos de pacientes y de la carpeta de radiografí
 terminadas sin errores, cifradas y enviadas al almacenamiento externo contratado.
 Retención: 30 copias diarias. Acceso a las copias: solo el responsable de sistemas.
 
-Prueba de restauración trimestral: el 15 de septiembre se restauró en el portátil de pruebas
-la historia completa de un paciente con sus radiografías; se comprobó que abre y coincide
-con la del servidor. Acta firmada por Irene Esmalte.
+Prueba de restauración trimestral: el 15 de septiembre se restauró en una base de pruebas del
+servidor la historia completa de un paciente con sus radiografías; se comprobó que abre y
+coincide con la original y se borró la base de pruebas. Acta firmada por Irene Esmalte.

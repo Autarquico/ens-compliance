@@ -7,4 +7,6 @@ Llevado por Pablo Horno (responsable del sistema).
   reinicio a las 7:00, antes de la primera hora de venta.
 - 21 de septiembre: sin avisos nuevos.
 - 28 de septiembre: aviso crítico del servidor web; aplicado el mismo día tras una copia.
+- Portátiles Ubuntu: actualizaciones automáticas de seguridad activas en los tres; el 28 se
+  comprueba que no queda ninguna pendiente.
 Todas las versiones del sistema y del lenguaje de la tienda tienen soporte del fabricante.

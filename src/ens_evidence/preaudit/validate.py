@@ -61,7 +61,7 @@ from ens_evidence.preaudit.pack import AuditPack, Criterion, MeasureScope
 from ens_evidence.privacy_text import sensitive_problems
 
 
-# Equivalente pydantic de `audit_pack/v1/response.schema.json` (un test vigila que no derive).
+# Equivalente pydantic del `response.schema.json` del pack vigente (un test vigila que no derive).
 class _Response(BaseModel):
     model_config = ConfigDict(extra="forbid", strict=True)
 

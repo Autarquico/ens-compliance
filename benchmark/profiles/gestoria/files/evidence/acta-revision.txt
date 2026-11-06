@@ -4,12 +4,23 @@ Aranda. Redacta: Raúl Monteagudo.
 
 1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios
    salvo la actualización de la lista de proveedores.
-2. Autorizaciones del trimestre: alta de lap-jorge por renovación (ficha del proveedor),
-   teletrabajo de Raúl Monteagudo los viernes y conexión remota del proveedor en 3 intervenciones,
-   todas registradas.
+2. Autorizaciones del trimestre: alta de lap-jorge por renovación (petición firmada por la gerente
+   y ficha de alta del proveedor), teletrabajo de Raúl Monteagudo los viernes, conexión remota del
+   proveedor en 3 intervenciones y cambio de proveedor de almacenamiento para la copia externa, que
+   la gerente autoriza a propuesta de Pilar Aranda con el contrato firmado; todas registradas.
 3. Adquisiciones: el cambio de proveedor de almacenamiento para la copia externa se valoró con el
    análisis de riesgos (cifrado antes de subir, centro de datos en la UE, contrato de encargo).
 4. Capacidad: el servidor usa el 61 % del disco; la copia local crece 6 GB al mes. Se planifica
    ampliar el disco en el primer trimestre de 2027, con presupuesto aprobado.
 5. Incidentes: un correo fraudulento que suplantaba a un cliente, detectado por Jorge Salvatierra
-   y no abierto; registrado como evento sin impacto.
+   y no abierto; registrado como evento sin impacto. No hay incidentes cerrados que revisar.
+6. Accesos: Pilar Aranda presenta la revisión trimestral de usuarios y permisos del día 23, con la
+   reasignación de dos clientes de Jorge Salvatierra a Raúl Monteagudo.
+7. Copias: Pilar Aranda presenta el estado de las copias local y externa del trimestre y la
+   restauración de prueba del 18 de septiembre.
+8. Actualizaciones: el proveedor informático actualizó el servidor el martes 8 de septiembre y los
+   portátiles en la misma semana; la aplicación de gestión la actualiza su proveedor.
+9. Proveedor informático: se revisan sus 3 conexiones remotas del trimestre y el informe mensual de
+   mantenimiento.
+10. Normativa: se recuerdan a la plantilla los deberes de la normativa y la verificación telefónica
+   de cualquier cambio de cuenta bancaria.

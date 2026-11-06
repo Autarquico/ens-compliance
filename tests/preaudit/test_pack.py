@@ -7,7 +7,8 @@ import pytest
 
 from ens_evidence.models.preaudit import Classification
 from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
-from ens_evidence.preaudit.pack import PACK_V1, MeasureScope, PackError, load_pack
+from ens_evidence.preaudit.pack import CURRENT_PACK, MeasureScope, PackError, load_pack
+from ens_evidence.preaudit.validate import MAX_QUOTE_CHARS, MIN_QUOTE_CHARS, MIN_QUOTE_WORDS
 
 FIXTURES = Path(__file__).parents[1] / "fixtures"
 SOURCE_FIXTURES = {
@@ -37,15 +38,15 @@ UNSUPPORTED = {
 
 @pytest.fixture
 def pack_copy(tmp_path: Path) -> Path:
-    root = tmp_path / "v1"
-    shutil.copytree(Path(str(PACK_V1)), root, ignore=shutil.ignore_patterns("__pycache__"))
+    root = tmp_path / "pack"
+    shutil.copytree(Path(str(CURRENT_PACK)), root, ignore=shutil.ignore_patterns("__pycache__"))
     return root
 
 
 def test_loads_and_exposes_criteria_and_pack_hash():
     pack = load_pack()
-    assert pack.version == "1.0.0"
-    manifest = (Path(str(PACK_V1)) / "manifest.json").read_bytes()
+    assert pack.version == "2.0.0"
+    manifest = (Path(str(CURRENT_PACK)) / "manifest.json").read_bytes()
     assert pack.sha256 == hashlib.sha256(manifest).hexdigest()
     assert {c.id for c in pack.criteria} == {
         "coherencia-politica-evidencia",
@@ -143,6 +144,75 @@ def test_system_prompt_fixes_the_boundaries():
         "solo con un objeto json",
     ):
         assert fragment in prompt
+
+
+def test_system_prompt_states_the_quote_rule_the_validation_applies():
+    prompt = _normalized(load_pack().system_prompt)
+    for fragment in (
+        "carácter a carácter",
+        "todo lo que va entre corchetes",
+        f"menos de {MIN_QUOTE_WORDS} palabras",
+        f"menos de {MIN_QUOTE_CHARS} caracteres que no sean espacios",
+        f"más de {MAX_QUOTE_CHARS} caracteres",
+    ):
+        assert fragment in prompt
+
+
+def test_system_prompt_keeps_weak_exclusions_in_scope():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "no basta, por sí solo, ni para dar por buena su justificación" in prompt
+    assert "contradicen los activos, los riesgos" in prompt
+
+
+def test_limit_on_proposals_lists_every_weak_justification_the_section_describes():
+    prompt = _normalized(load_pack().system_prompt)
+    [criterion] = [c for c in load_pack().criteria if c.id == "solidez-justificacion-aplicabilidad"]
+    weak = "sin razón propia de la medida o que los activos, los riesgos u otros documentos"
+    assert weak in prompt
+    assert "los riesgos u otros documentos del expediente" in _normalized(criterion.compare)
+
+
+def test_a_compensation_must_protect_equal_or_better_as_article_28_3_says():
+    prompt = _normalized(load_pack().system_prompt)
+    [criterion] = [c for c in load_pack().criteria if c.id == "solidez-justificacion-aplicabilidad"]
+    assert "protege, igual o mejor, del riesgo sobre los activos" in prompt
+    assert "artículo 28, apartado 3" in prompt
+    assert "protege, igual o mejor, del riesgo sobre los activos" in _normalized(criterion.compare)
+    assert "Si una medida declarada no aplicable tiene una justificación coherente" in prompt
+    assert "Si es coherente con ellos, no propongas nada" not in prompt
+
+
+def test_documentary_quality_only_weighs_clauses_on_what_a_document_contains():
+    [criterion] = [c for c in load_pack().criteria if c.id == "calidad-documental"]
+    compare = _normalized(criterion.compare)
+    rd311 = _normalized(SOURCE_FIXTURES["rd311"].read_text(encoding="utf-8")).lower()
+    for wording in ("se precise", "describan", "indicarán", "detallando", "precisando"):
+        assert f"«{wording}»" in compare and wording in rd311
+    for wording in ("se comprobará", "se revisará", "deberán conocer y aceptar"):
+        assert f"«{wording}»" in compare and wording in rd311
+    assert "Una cláusula que manda hacer algo" in compare
+    assert "exige que conste en el documento de esa medida" in _normalized(
+        load_pack().system_prompt
+    )
+
+
+def test_system_prompt_leaves_connector_data_to_the_deterministic_layer():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "evidencia con `provenance` `collector`" in prompt
+    assert "su comprobación es determinista" in prompt
+
+
+def test_system_prompt_takes_the_categorisation_as_given():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "los niveles de cada dimensión son datos del expediente" in prompt
+
+
+def test_silence_or_a_possible_consequence_is_not_a_finding_but_compensations_still_are():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "que un texto no mencione algo no contradice nada" in prompt
+    assert "una consecuencia solo posible" in prompt
+    assert "Esto no cambia la regla de las compensaciones" in prompt
+    assert "Es débil si la justificación no lo muestra, aunque dé una razón propia" in prompt
 
 
 def _normalized(text: str) -> str:

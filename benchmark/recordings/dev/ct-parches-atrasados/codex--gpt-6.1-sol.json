@@ -7,33 +7,33 @@
   "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "1.0.0",
-  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
-  "payload_sha256": "b371b57dbccaa9d6c11cf91e6ba9e0537977882f425d01ebeaf233f1e0845c75",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "7136d8626d76ba0b73e30e163b4b7d9c4436ac16284079d4b56417fec31b9676",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-05T10:23:38.582213Z",
+  "recorded_at": "2026-11-06T12:02:00.872535Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-05T10:23:02.484689Z",
+      "at": "2026-11-06T12:01:03.618247Z",
       "outcome": "response",
-      "response": "{\"findings\": []}",
+      "response": "{\"findings\":[{\"criterion\":\"coherencia-politica-evidencia\",\"measure\":\"op.exp.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"Pasos: Sigue los avisos de seguridad de Debian, macOS y Ubuntu y valora el riesgo de cada uno; aplica las actualizaciones de seguridad del servidor cada lunes, con reinicio fuera de horario si tocan el núcleo, y las de los portátiles en un máximo de siete días desde su publicación; si una corrige una vulnerabilidad crítica o que ya se está explotando, la aplica en un máximo de 48 horas sin esperar al calendario.\"},{\"ref\":\"procedimientos-seguridad\",\"quote\":\"Pasos: Revisa cada semana las alertas de dependencias vulnerables y corrige cada una con una solicitud de cambios revisada; si la función afectada no se usa, la descarta con una nota en la alerta.\"}],\"evidence\":[{\"ref\":\"EV-20261001-1c0141a1\",\"quote\":\"- vps-portal: última actualización de paquetes el 14 de junio de 2026. En septiembre hay 37\\n  actualizaciones de seguridad pendientes, 4 de ellas del núcleo; se aplazan hasta que haya una\\n  ventana sin entregas de clientes, sin fecha prevista.\"},{\"ref\":\"EV-20261001-1c0141a1\",\"quote\":\"- Portal: 6 alertas de dependencias vulnerables abiertas, 2 de ellas críticas desde agosto; no se\\n  han revisado.\"}],\"justifications\":[],\"reason\":\"El informe manual contradice el calendario de actualización del servidor y la revisión semanal de alertas de dependencias establecidos en los procedimientos. Se propone NC_MENOR por el fallo parcial en la implantación del mantenimiento y las actualizaciones de seguridad declarados.\"}]}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-05T10:23:17.161073Z",
+      "at": "2026-11-06T12:01:23.476813Z",
       "outcome": "response",
-      "response": "{\"findings\": []}",
+      "response": "{\"findings\":[{\"criterion\":\"coherencia-politica-evidencia\",\"measure\":\"op.exp.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"- Pasos: Sigue los avisos de seguridad de Debian, macOS y Ubuntu y valora el riesgo de cada uno; aplica las actualizaciones de seguridad del servidor cada lunes, con reinicio fuera de horario si tocan el núcleo, y las de los portátiles en un máximo de siete días desde su publicación; si una corrige una vulnerabilidad crítica o que ya se está explotando, la aplica en un máximo de 48 horas sin esperar al calendario.\"},{\"ref\":\"procedimientos-seguridad\",\"quote\":\"- Pasos: Revisa cada semana las alertas de dependencias vulnerables y corrige cada una con una solicitud de cambios revisada; si la función afectada no se usa, la descarta con una nota en la alerta.\"}],\"evidence\":[{\"ref\":\"EV-20261001-1c0141a1\",\"quote\":\"- vps-portal: última actualización de paquetes el 14 de junio de 2026. En septiembre hay 37\\n  actualizaciones de seguridad pendientes, 4 de ellas del núcleo; se aplazan hasta que haya una\\n  ventana sin entregas de clientes, sin fecha prevista.\\n- Portátiles: lap-lucia y lap-nora al día; lap-tomas sigue en una versión de julio porque la\\n  actualización rompía una herramienta de desarrollo.\\n- Portal: 6 alertas de dependencias vulnerables abiertas, 2 de ellas críticas desde agosto; no se\\n  han revisado.\"}],\"justifications\":[],\"reason\":\"El informe contradice los plazos declarados para actualizar el servidor y los portátiles y la revisión semanal de alertas de dependencias: registra actualizaciones aplazadas sin fecha y alertas críticas desde agosto sin revisar. Se propone NC_MENOR por el fallo parcial en la implantación del mantenimiento y las actualizaciones de seguridad.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-05T10:23:26.094428Z",
+      "at": "2026-11-06T12:01:41.610432Z",
       "outcome": "response",
-      "response": "{\"findings\":[]}",
+      "response": "{\"findings\":[{\"criterion\":\"coherencia-politica-evidencia\",\"measure\":\"op.exp.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"Pasos: Sigue los avisos de seguridad de Debian, macOS y Ubuntu y valora el riesgo de cada uno; aplica las actualizaciones de seguridad del servidor cada lunes, con reinicio fuera de horario si tocan el núcleo, y las de los portátiles en un máximo de siete días desde su publicación; si una corrige una vulnerabilidad crítica o que ya se está explotando, la aplica en un máximo de 48 horas sin esperar al calendario.\"},{\"ref\":\"procedimientos-seguridad\",\"quote\":\"Pasos: Revisa cada semana las alertas de dependencias vulnerables y corrige cada una con una solicitud de cambios revisada; si la función afectada no se usa, la descarta con una nota en la alerta.\"}],\"evidence\":[{\"ref\":\"EV-20261001-1c0141a1\",\"quote\":\"Actualizaciones:\\n- vps-portal: última actualización de paquetes el 14 de junio de 2026. En septiembre hay 37\\n  actualizaciones de seguridad pendientes, 4 de ellas del núcleo; se aplazan hasta que haya una\\n  ventana sin entregas de clientes, sin fecha prevista.\\n- Portátiles: lap-lucia y lap-nora al día; lap-tomas sigue en una versión de julio porque la\\n  actualización rompía una herramienta de desarrollo.\\n- Portal: 6 alertas de dependencias vulnerables abiertas, 2 de ellas críticas desde agosto; no se\\n  han revisado.\"}],\"justifications\":[],\"reason\":\"El informe contradice los plazos de actualización del servidor y los portátiles y la revisión semanal de alertas de dependencias establecidos en el procedimiento. Se propone NC_MENOR por el fallo parcial en la implantación del mantenimiento y las actualizaciones de seguridad.\"}]}",
       "kind": null
     }
   ]

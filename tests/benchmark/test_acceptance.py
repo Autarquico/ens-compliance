@@ -405,15 +405,15 @@ def test_sin_cambios_la_particion_de_desarrollo_pasa_contra_su_linea_base(dev):
 def altered_pack(tmp_path, monkeypatch) -> str:
     """Una copia del audit pack con el prompt cambiado y su manifiesto al día: íntegro, pero
     otro pack. Solo este test lo ve."""
-    pack = tmp_path / "pack-v1"
-    shutil.copytree(Path(str(pack_module.PACK_V1)), pack)
+    pack = tmp_path / "pack"
+    shutil.copytree(Path(str(pack_module.CURRENT_PACK)), pack)
     system = pack / "system.md"
     system.write_text(system.read_text(encoding="utf-8") + "\nCambio de prueba.\n", "utf-8")
     manifest = json.loads((pack / "manifest.json").read_text())
     manifest["files"]["system.md"] = hashlib.sha256(system.read_bytes()).hexdigest()
     (pack / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
     before = load_pack().sha256
-    monkeypatch.setattr(pack_module, "PACK_V1", pack)
+    monkeypatch.setattr(pack_module, "CURRENT_PACK", pack)
     assert load_pack().sha256 != before
     return load_pack().sha256
 

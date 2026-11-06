@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/comercio-doble-factor-retirado",
+  "case_sha256": "dbc477551fe01f3849f54d0e45dadb77b7d784f162e2720941e8107c26dba574",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "1052dbda367258e3102794851ffa69ec64768ddde5c488515d62bf9480bb05c1",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T14:22:28.731880Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T14:20:43.504726Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"op.exp.7\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimiento-incidentes\", \"quote\": \"- Criterio: Sin acceso indebido a datos de clientes y con la tienda vendiendo.\"}, {\"ref\": \"procedimiento-incidentes\", \"quote\": \"- Criterio: Acceso indebido a datos de clientes, cambios no autorizados en la tienda o tienda sin vender más de cuatro horas.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a88be403\", \"quote\": \"No se han reutilizado ni retirado soportes en el año. Sin incidentes de seguridad.\"}], \"justifications\": [], \"reason\": \"op.exp.7.1 exige detallar los criterios de clasificación y el escalado. Los dos niveles declarados no cubren un incidente en el que la tienda deja de vender menos de cuatro horas sin que haya acceso indebido a datos: no es Bajo, porque la tienda no vende, ni Alto, porque no pasa de cuatro horas. Ese caso se queda sin nivel y sin escalado definidos.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T14:21:15.003798Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.eq.2\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.eq.2\", \"quote\": \"No se configura el bloqueo por inactividad: la normativa obliga a bloquear cada portátil al dejarlo y a no prestar el del taller a visitas ni a alumnos.\"}], \"reason\": \"La justificación descarta el bloqueo por inactividad y lo fía todo a que cada persona bloquee el portátil a mano. Sin embargo, el análisis de riesgos (evidencia EV-20261006-4a88eab8, no enlazada a esta medida) cuenta entre las amenazas más probables el «Robo de un portátil con la sesión del panel abierta», que es justo el caso en que el bloqueo manual ha fallado y el automático habría protegido.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T14:21:50.513757Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.cont.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.cont.4\", \"quote\": \"No se mantiene un servidor de reserva: si cae el alojamiento, la tienda se restaura desde la copia en menos de un día, parada que el análisis de riesgos acepta como residual.\"}], \"reason\": \"La justificación acepta que la tienda esté parada hasta un día porque no hay un servidor de reserva. En cambio, la política de seguridad (documento politica-seguridad, no enlazado a op.cont.4) fija como objetivo «Que la tienda siga vendiendo en campaña de Navidad aunque falle el servidor», y el análisis de riesgos dice que casi toda la venta sale de la tienda, sobre todo en esa campaña. Renunciar a medios alternativos casa mal con ese objetivo declarado.\"}]}",
+      "kind": null
+    }
+  ]
+}

@@ -1,13 +1,14 @@
 Acta de la revisión anual de seguridad de Barro Ficticio Cerámica (empresa ficticia).
 
-Fecha: 30 de septiembre de 2026, por videollamada.
+Fecha: 2 de septiembre de 2026, reunión de coordinación del primer miércoles del mes, por
+videollamada.
 Asistentes: Nuria Torno (fundadora), Óscar Arcilla (responsable de la seguridad) y Pablo Horno
 (responsable del sistema).
 
-1. Se revisan la política, la normativa, los procedimientos y el proceso de autorización: siguen
-   describiendo la tienda y no se cambian.
-2. Cada persona tiene su cuenta en el panel, el alojamiento y el repositorio, con doble factor;
-   las contraseñas están en el gestor de la empresa y se cambian ante cualquier sospecha.
+1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la
+   versión y la fecha de aprobación vigentes de cada uno.
+2. El panel y el alojamiento exigen doble factor; las contraseñas están en el gestor de la
+   empresa y se cambian cada año, en esta revisión, y ante cualquier sospecha.
 3. El taller y la oficina se cierran con llave; el servidor está en el centro de datos del
    alojamiento, que acredita sus controles físicos, eléctricos y contra incendios.
 4. El proveedor de alojamiento y el de copias entregan su certificado de conformidad con el ENS.

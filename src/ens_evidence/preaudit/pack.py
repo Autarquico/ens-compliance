@@ -19,7 +19,7 @@ from ens_evidence.models.contracts import Strict
 from ens_evidence.models.preaudit import Classification
 from ens_evidence.yaml_unique import safe_load_unique
 
-PACK_V1 = resources.files("ens_evidence.audit_pack") / "v1"
+CURRENT_PACK = resources.files("ens_evidence.audit_pack") / "v2"
 MANIFEST = "manifest.json"
 PACK_FILES = ("criteria.yaml", "system.md", "response.schema.json")
 
@@ -65,8 +65,8 @@ class AuditPack:
 
 
 def load_pack(root: Traversable | None = None) -> AuditPack:
-    """El pack en `root`; sin él, `PACK_V1` en el momento de la llamada."""
-    root = PACK_V1 if root is None else root
+    """El pack en `root`; sin él, `CURRENT_PACK` en el momento de la llamada."""
+    root = CURRENT_PACK if root is None else root
     manifest_bytes = _read(root, MANIFEST)
     manifest = _parse_manifest(manifest_bytes)
     contents = {name: _read(root, name) for name in PACK_FILES}

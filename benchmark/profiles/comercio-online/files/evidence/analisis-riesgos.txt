@@ -1,0 +1,24 @@
+Análisis de riesgos de Barro Ficticio Cerámica (empresa ficticia), septiembre de 2026.
+Redactado por Óscar Arcilla y revisado con Nuria Torno (fundadora) y Pablo Horno (responsable
+del sistema).
+
+Activos más valiosos: la base de datos de pedidos y cuentas de clientes y la aplicación de la
+tienda, de la que sale casi toda la venta, sobre todo en la campaña de Navidad.
+
+Amenazas más probables:
+1. Pedidos fraudulentos con cambio de la dirección de envío.
+2. Correos que suplantan a la pasarela de pago para robar contraseñas del equipo.
+3. Intentos de entrar en el panel o por SSH con contraseñas probadas a ciegas.
+4. Un cambio publicado en la tienda que abre un fallo de inyección o permite tocar precios.
+5. Caída o pérdida de datos en el alojamiento, la pasarela de pago o el almacenamiento de
+   copias, de los que depende la tienda.
+6. Robo de un portátil con la sesión del panel abierta.
+
+Salvaguardas: doble factor en todas las cuentas, revisión por otra persona y pruebas
+automáticas antes de cada despliegue, detector que bloquea los accesos fallidos, copia diaria
+cifrada en otro proveedor con restauración probada cada trimestre, portátiles con disco
+cifrado y bloqueo al dejarlos. Para la amenaza 5 hay que fijar con cada proveedor un servicio
+mínimo y las consecuencias de incumplirlo.
+
+Riesgo residual: si cae el alojamiento, la tienda puede estar hasta un día sin vender mientras
+se restaura desde la copia; se acepta.

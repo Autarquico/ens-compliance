@@ -5,9 +5,11 @@ Perfiles revisados:
 - Odontólogos (3 personas): historias de sus pacientes y radiografías; sin administración.
 - Higienista (1 persona): historias en lectura y registro de limpiezas.
 - Recepción (2 personas): agenda, datos de contacto y facturación; sin acceso a la historia.
+- Administración y calidad (1 persona): facturación y consulta del registro de accesos; sin
+  acceso a la historia.
 - Administración del programa (solo Jorge Molar): altas, bajas y perfiles.
 
-Resultados: se da de baja la cuenta de una auxiliar que terminó su contrato en agosto; no hay
-cuentas compartidas; todos los accesos fuera de horario del trimestre corresponden a la
-directora desde el portátil autorizado. Los permisos se autorizan por escrito y solo los
+Resultados: la cuenta de una auxiliar que terminó su contrato en agosto quedó desactivada su
+último día, como pide el procedimiento; no hay cuentas compartidas; todos los accesos fuera
+de horario del trimestre corresponden a la directora desde el portátil autorizado. Los permisos se autorizan por escrito y solo los
 concede el responsable de sistemas a petición de la directora.

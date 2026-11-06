@@ -17,7 +17,8 @@ Cada elemento indica su naturaleza y la persona que toma las decisiones sobre é
 | pw-robledal | Gestor de contraseñas con bóvedas por función | Tomás Pradera    |
 | st-copias   | Almacenamiento de objetos para copias, otra región | Nora Vilaplana |
 | bk-portal   | Copia diaria con restic de db-portal y ficheros | Nora Vilaplana |
-| prov-nube   | Proveedor del servidor y del almacenamiento   | Lucía Robledal   |
+| prov-nube   | Proveedor del servidor virtual vps-portal     | Lucía Robledal   |
+| prov-copias | Proveedor del almacenamiento st-copias, otra región | Lucía Robledal |
 
 Cambios desde la versión anterior (2026-06): alta de lap-tomas tras la renovación del equipo y
 baja del portátil antiguo, borrado según el procedimiento de soportes el 2 de septiembre.

@@ -27,8 +27,9 @@ defects:
       clause: org.4.8
       quote: Utilización de servicios de terceros, bajo contrato o convenio, concesión, encargo, etc.
     rationale: >-
-      Para alojamiento, pasarela de pago y copias, el proceso de autorización deja la decisión a
-      quien contrate, sin solicitud ni registro: no es un proceso formal de autorización.
+      Para todos los servicios de terceros, del alojamiento y la pasarela de pago a las copias y
+      la nube, el proceso de autorización deja la decisión a quien contrate, sin solicitud ni
+      registro: no es un proceso formal de autorización.
   - id: uso-indebido-sin-concretar
     layer: judgment
     measure: org.2

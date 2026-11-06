@@ -23,6 +23,7 @@ from ens_evidence.benchmark.model import (
 )
 from ens_evidence.benchmark.runner import Pair, PartitionRun, recording_sha256
 from ens_evidence.benchmark.score import (
+    NONEMPTY,
     Score,
     baseline_gate,
     entry_of,
@@ -33,8 +34,12 @@ from ens_evidence.catalog import catalog_sha256
 from ens_evidence.preaudit.pack import load_pack
 from ens_evidence.preaudit.payload import canonical_json
 
-Gate = Literal["baseline", "threshold"]
+Gate = Literal["baseline", "threshold", "target"]
 RESULT_FORMAT = "ens-benchmark-result/1"
+TARGET_NOTE = (
+    "puerta target: objetivo de ajuste sobre la partición de desarrollo, con los umbrales de v0.1 "
+    "sin la muestra mínima; no cierra v0.1, que solo mide la puerta threshold en la reservada."
+)
 
 
 def _sha256(data: object) -> str:
@@ -54,18 +59,21 @@ def assemble(
     inventory: dict[str, str] | None = None,
     retired: Sequence[Retired] = (),
 ) -> BenchmarkResult:
-    """Puntúa cada par y aplica la puerta. Con `threshold`, solo los pares de `gating` deciden;
-    los demás se informan. Con `baseline`, decide la línea base de todos los pares."""
+    """Puntúa cada par y aplica la puerta. Con `threshold` y `target`, solo los pares de `gating`
+    deciden y deben estar todos; los demás se informan. Con `baseline`, decide la línea base de
+    todos los pares."""
     pack = load_pack()
     scores = {pair: score(run.runs[pair]) for pair in run.pairs}
     results = [_provider_result(root, run, pair, scores[pair]) for pair in run.pairs]
     general: list[str] = []
     passed: bool | None = None
-    if gate == "threshold":
+    if gate in ("threshold", "target"):
+        minimum = NONEMPTY if gate == "target" else None
         for result in results:
-            result.gate_problems = threshold_problems(result.totals)
+            result.gate_problems = threshold_problems(result.totals, minimum)
             result.gate_passed = not result.gate_problems
-        passed = all(r.gate_passed for p, r in _pairs(run, results) if p in gating)
+        general = [f"falta {p}, que es puerta" for p in sorted(gating) if p not in run.pairs]
+        passed = not general and all(r.gate_passed for p, r in _pairs(run, results) if p in gating)
     elif gate == "baseline":
         assert baseline is not None and inventory is not None, "la puerta baseline los necesita"
         entries = [entry_of(p.provider, p.model, scores[p]) for p in run.pairs]
@@ -94,6 +102,7 @@ def assemble(
         cases_sha256=_sha256(sorted([b.case.key, b.sha256] for b in run.cases)),
         deterministic_rules=sorted(rules),
         baseline_source=baseline_source if gate == "baseline" else None,
+        gate_note=TARGET_NOTE if gate == "target" else None,
         results=results,
         gate_passed=passed,
         gate_problems=general,
@@ -145,6 +154,8 @@ def render_text(result: BenchmarkResult, gating: Collection[Pair] = ()) -> str:
         f"puerta: {result.gate or 'ninguna'}"
         + (f" (línea base: {result.baseline_source})" if result.baseline_source else ""),
     ]
+    if result.gate_note:
+        lines.append(result.gate_note)
     for provider in result.results:
         pair = Pair(provider.provider, provider.model)
         lines += _provider_lines(provider, result.gate, not gating or pair in gating)
@@ -160,6 +171,8 @@ def render_text(result: BenchmarkResult, gating: Collection[Pair] = ()) -> str:
     else:
         closing = "; v0.1 no cierra" if result.gate == "threshold" else ""
         lines.append(f"resultado: la puerta {result.gate} no pasa{closing}")
+    if result.gate_note:
+        lines.append(result.gate_note)
     lines.append(result.notice)
     return "\n".join(lines) + "\n"
 

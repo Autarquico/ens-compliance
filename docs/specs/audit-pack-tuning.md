@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: null
-prs: []
+prs: [58]
 related_issues: [56]
 depends_on: [audit-benchmark]
 supersedes: []
 related_specs: []
 created: 2026-11-05
-updated: 2026-11-05
+updated: 2026-11-06
 ---
 
 # Ajuste del audit pack hasta el umbral de v0.1

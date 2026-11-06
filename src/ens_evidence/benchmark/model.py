@@ -566,7 +566,7 @@ class BenchmarkResult(Strict):
     format: Literal["ens-benchmark-result/1"]
     mode: Literal["replay"]
     partition: Partition
-    gate: Literal["baseline", "threshold"] | None = None
+    gate: Literal["baseline", "threshold", "target"] | None = None
     run_at: AwareDatetime
     tool_version: str = Field(min_length=1)
     pack_version: str = Field(min_length=1)
@@ -580,6 +580,9 @@ class BenchmarkResult(Strict):
     )
     baseline_source: str | None = Field(
         default=None, description="De dónde sale la línea base de la puerta `baseline`."
+    )
+    gate_note: str | None = Field(
+        default=None, description="Alcance de la puerta `target`: no cierra v0.1."
     )
     results: list[ProviderResult]
     gate_passed: bool | None = Field(default=None, description="None si no se aplicó puerta.")

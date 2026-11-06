@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/comercio-exclusiones-de-tienda-web",
+  "case_sha256": "ee308e78c224ea20e0944cbf78302201e0dbfae9b668c943b8cf32aac3861c98",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "0046bd45463f4c64d0ef6e9744b0c29ee3b8ce2131ce495ce46a26e25d87ce80",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T15:07:17.639781Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T15:05:55.630724Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.s.2\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:mp.s.2:base\",\"quote\":\"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}],\"reason\":\"La justificación atribuye la seguridad web al proveedor sin demostrar que la protección contratada cubra igual o mejor los riesgos de la aplicación propia, incluidos los cambios que permiten inyección o modificación de precios identificados en el análisis de riesgos. Queda sin justificar la cobertura equivalente de la protección de la aplicación web sustituida; se propone NC_MENOR por insuficiencia parcial de la justificación de compensación.\"},{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"op.ext.1\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:not_selected:op.ext.1\",\"quote\":\"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}],\"reason\":\"La afirmación de que no hace falta pactar niveles de servicio contradice el análisis de riesgos EV-20261006-4a88eab8, que exige fijar con cada proveedor un servicio mínimo y las consecuencias de incumplirlo para tratar la amenaza de caída o pérdida de datos. Se propone NC_MENOR por una justificación de no aplicabilidad contradictoria con el tratamiento del riesgo declarado.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T15:06:32.729400Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.s.2\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:mp.s.2:base\",\"quote\":\"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}],\"reason\":\"La justificación atribuye la seguridad web al proveedor sin mostrar que la protección contratada cubra, igual o mejor, la protección de la aplicación sustituida, incluido el riesgo de cambios que introduzcan inyección o permitan alterar precios identificado en el análisis de riesgos. Se propone NC_MENOR por el incumplimiento parcial de la justificación documental de equivalencia de la compensación.\"},{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"op.ext.1\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:not_selected:op.ext.1\",\"quote\":\"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}],\"reason\":\"La afirmación de que no hace falta pactar niveles de servicio contradice el análisis de riesgos de septiembre de 2026, que exige fijar con cada proveedor un servicio mínimo y las consecuencias de incumplirlo para tratar la amenaza de caída o pérdida de datos. Se propone NC_MENOR por esta justificación de no aplicabilidad contradictoria con el riesgo declarado.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T15:06:56.422928Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.s.2\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:mp.s.2:base\",\"quote\":\"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}],\"reason\":\"La justificación atribuye la seguridad web al proveedor sin mostrar que la protección contratada cubra, igual o mejor, los riesgos de la aplicación propia que protege la medida sustituida. En particular, no justifica la cobertura frente a los cambios que introducen inyección o permiten modificar precios, identificados en el análisis de riesgos del expediente.\"},{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"op.ext.1\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:not_selected:op.ext.1\",\"quote\":\"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}],\"reason\":\"La afirmación de que no hace falta pactar niveles de servicio contradice el análisis de riesgos de septiembre de 2026, que exige fijar con cada proveedor un servicio mínimo y las consecuencias de incumplirlo para tratar la caída o pérdida de datos. El tamaño de los proveedores no justifica esa exclusión frente al riesgo identificado.\"}]}",
+      "kind": null
+    }
+  ]
+}

@@ -23,3 +23,17 @@ defects:
     rationale: >-
       Los procedimientos no precisan cómo se realizan las copias de los expedientes: ni frecuencia,
       ni destino, ni retención, ni pruebas; «cuando hay tiempo» no es un procedimiento.
+  - id: respaldo-sin-frecuencia
+    layer: judgment
+    measure: mp.info.6
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.2
+      quote: >-
+        Los procedimientos de respaldo establecidos indicarán: a) Frecuencia de las copias.
+    rationale: >-
+      El mismo apartado documenta el procedimiento de respaldo de mp.info.6, y «cuando hay tiempo»
+      no indica la frecuencia de las copias. Sale de la misma mutación que procedimiento-copias-vago:
+      es un par correlacionado, no dos fallos independientes.

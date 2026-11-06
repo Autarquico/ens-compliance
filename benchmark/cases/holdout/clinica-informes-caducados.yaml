@@ -6,10 +6,10 @@ kind: defective
 mutations:
   - op: expire_evidence
     alias: copias
-    valid_until: "2026-08-31T00:00:00+00:00"
+    valid_until: "2026-10-03T00:00:00+00:00"
   - op: expire_evidence
     alias: antivirus
-    valid_until: "2026-07-15T00:00:00+00:00"
+    valid_until: "2026-10-01T00:00:00+00:00"
 defects:
   - id: copias-vencidas
     layer: deterministic
@@ -23,8 +23,8 @@ defects:
         Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o
         intencionadamente.
     rationale: >-
-      El único informe de copias aportado para la base de pacientes perdió su vigencia el 31 de
-      agosto; no acredita que hoy se copien las historias.
+      El único informe de copias aportado para la base de pacientes, el de la última semana de
+      septiembre, perdió su vigencia el 3 de octubre; no acredita que hoy se copien las historias.
   - id: antivirus-vencido
     layer: deterministic
     measure: op.exp.6
@@ -35,8 +35,8 @@ defects:
       clause: op.exp.6.4
       quote: Las bases de datos de detección de código dañino permanecerán permanentemente actualizadas.
     rationale: >-
-      El informe de la consola del antivirus vale hasta mediados de julio; pasado ese día no
-      prueba que las firmas sigan al día en los seis equipos.
+      El informe de la consola del antivirus, exportado el 30 de septiembre, valía hasta el 1 de
+      octubre; pasado ese día no prueba que las firmas sigan al día en los seis equipos.
   - id: copias-sin-cobertura
     layer: deterministic
     measure: mp.info.6

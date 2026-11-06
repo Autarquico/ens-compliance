@@ -17,6 +17,12 @@ mutations:
     key: procedimientos.1.pasos
     value: Se mira si la copia ha salido bien y, si no, ya se verá.
   - op: set_answer
+    key: gestion_cuentas.0.quien
+    value: Cualquiera de la clínica que tenga un rato
+  - op: set_answer
+    key: gestion_cuentas.0.pasos
+    value: Se crea o se quita la cuenta cuando alguien se acuerda.
+  - op: set_answer
     key: incidentes_informe_eventos
     value: Si alguien ve algo raro en un ordenador, que lo comente en el café.
   - op: set_answer
@@ -52,3 +58,36 @@ defects:
       El procedimiento de incidentes de la clínica reduce el aviso de eventos a comentarlo «en
       el café» y deja sin anotar lo ocurrido salvo petición expresa: no hay un informe de eventos
       ni de debilidades con destinatario y registro.
+  - id: cuentas-sin-retencion-definida
+    layer: judgment
+    measure: op.acc.1
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.acc.1
+      clause: op.acc.1.4
+      quote: >-
+        Las cuentas se retendrán durante el periodo necesario para atender a las necesidades de
+        trazabilidad de los registros de actividad asociados a las mismas.
+    rationale: >-
+      Es la misma sección de altas, bajas y retención de cuentas que también cubre op.acc.1: deja
+      crear y quitar cuentas a «cualquiera» «cuando alguien se acuerda», no fija ningún periodo
+      de retención de las cuentas ni su inhabilitación al cambiar de función o por orden de quien
+      la autorizó.
+  - id: altas-de-usuarios-sin-competencia
+    layer: judgment
+    measure: op.acc.4
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.acc.4
+      clause: op.acc.4.4
+      quote: >-
+        Capacidad de autorizar: Exclusivamente el personal con competencia para ello podrá
+        conceder, alterar o anular la autorización de acceso a los recursos, conforme a los
+        criterios establecidos por su responsable.
+    rationale: >-
+      Las tareas de los procedimientos dejan dar de alta o de baja a los usuarios del programa a
+      «cualquiera de la clínica que tenga un rato», sin petición de la directora: conceder y
+      anular el acceso no queda reservado a personal con competencia, aunque el apartado de
+      control de acceso del mismo documento lo reserve al responsable de sistemas.

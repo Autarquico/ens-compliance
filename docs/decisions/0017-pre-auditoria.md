@@ -80,7 +80,9 @@ La confirma una persona.
 
 ### Audit pack versionado
 
-El pack v1 está en `src/ens_evidence/audit_pack/v1/`:
+El pack vigente es v2, en `src/ens_evidence/audit_pack/v2/` (spec
+audit-pack-tuning). v1 se retira, como las plantillas v1: nada lo cargaba y
+queda en el historial de Git. Cada versión tiene:
 
 - `criteria.yaml`: cada criterio con su id, su texto, su fuente con cita
   literal, las medidas a las que aplica y las propuestas que admite;
@@ -172,6 +174,10 @@ hallazgos. Si la cumple, se descarta cada hallazgo que no se apoye en el
 payload: criterio inexistente, medida fuera del catálogo o del alcance del
 criterio, documento o evidencia no enlazados a esa medida, o cita que no
 aparece literalmente. El número de descartes queda visible.
+
+Limitación conocida: un criterio `applicable` exige citar documento y
+evidencia aunque el defecto esté solo en el documento (calidad documental);
+no se cambia el contrato (spec audit-pack-tuning, P2).
 
 ### Disposición humana
 

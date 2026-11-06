@@ -18,13 +18,15 @@ from ens_evidence.benchmark.baseline import BASELINE_FILE
 from ens_evidence.benchmark.build import Build
 from ens_evidence.benchmark.cases import load_case
 from ens_evidence.benchmark.model import (
+    Partition,
     Recording,
     Repetition,
     RepetitionOutcome,
 )
 from ens_evidence.benchmark.mutations import build_case
 from ens_evidence.benchmark.recordings import recording_path, write_recording
-from ens_evidence.benchmark.runner import REQUIRED_PAIRS, Pair, ProfileCache
+from ens_evidence.benchmark.report import assemble
+from ens_evidence.benchmark.runner import REQUIRED_PAIRS, Pair, PartitionRun, ProfileCache
 from ens_evidence.catalog import catalog_sha256
 from ens_evidence.cli import app
 from ens_evidence.preaudit import service
@@ -240,6 +242,81 @@ def test_la_puerta_threshold_en_desarrollo_es_un_error_de_uso_sin_repetir_nada(b
     assert "falta la grabación" not in result.output
 
 
+TARGET_NOTE = "objetivo de ajuste sobre la partición de desarrollo"
+
+
+@pytest.mark.parametrize(
+    ("args", "error"),
+    [
+        (
+            ("--partition", "holdout", "--all-recorded", "--gate", "target"),
+            "la puerta target es de la partición de desarrollo",
+        ),
+        (
+            ("--provider", CLAUDE.provider.value, "--model", CLAUDE.model, "--gate", "target"),
+            "la puerta target exige --all-recorded",
+        ),
+    ],
+    ids=["reservada", "un-par"],
+)
+def test_la_puerta_target_fuera_de_su_uso_es_un_error_sin_repetir_nada(bench, args, error):
+    result = run(bench, *args)
+
+    assert result.exit_code == 2, result.output
+    assert error in result.output
+    assert not (bench / MEASUREMENTS_FILE).exists()
+
+
+def test_la_puerta_target_pasa_en_desarrollo_como_objetivo_de_ajuste(bench, memo):
+    record_all(bench, memo)
+
+    result = run(bench, "--all-recorded", "--gate", "target")
+
+    assert result.exit_code == 0, result.output
+    assert "resultado: la puerta target pasa" in result.output
+    assert result.output.count(TARGET_NOTE) == 2
+    assert "no cierra v0.1" in result.output
+    assert "puerta target: pasa\n" in result.output
+    assert not VERDICT_WORDS.search(result.output), result.output
+    assert not (bench / MEASUREMENTS_FILE).exists()
+
+
+def test_la_puerta_target_falla_si_un_par_de_la_puerta_no_llega_al_80_de_juicio(bench, memo):
+    record_all(bench, memo)
+    record(bench, memo, "dev/juicio", CODEX, [EMPTY] * 3)
+
+    out = bench / "target.json"
+    result = run(bench, "--all-recorded", "--gate", "target", "--format", "json", "--out", str(out))
+
+    assert result.exit_code == 1, result.output
+    data = json.loads(out.read_text())
+    assert data["gate"] == "target" and data["gate_passed"] is False
+    assert TARGET_NOTE in data["gate_note"] and "no cierra v0.1" in data["gate_note"]
+    assert not VERDICT_WORDS.search(out.read_text())
+    by_pair = {f"{r['provider']}/{r['model']}": r for r in data["results"]}
+    assert by_pair[str(CLAUDE)]["gate_passed"] is True
+    assert by_pair[str(CODEX)]["gate_problems"] == ["detección de juicio 0.0 % (mínimo 80 %)"]
+
+
+def test_la_puerta_target_sin_las_grabaciones_de_un_par_de_la_puerta_sale_con_3(bench, memo):
+    record_all(bench, memo, pairs=[CLAUDE])
+
+    result = run(bench, "--all-recorded", "--gate", "target")
+
+    assert result.exit_code == 3, result.output
+    assert f"falta la grabación de {CODEX}" in result.output and "que es puerta" in result.output
+
+
+@pytest.mark.parametrize("gate", ["threshold", "target"])
+def test_assemble_no_pasa_la_puerta_si_falta_un_par_de_la_puerta(tmp_path, gate):
+    ran = PartitionRun(cases=[], pairs=[CLAUDE], runs={CLAUDE: []})
+
+    result = assemble(tmp_path, Partition.DEV, ran, now=AT, gate=gate, gating=REQUIRED_PAIRS)
+
+    assert result.gate_passed is False
+    assert result.gate_problems == [f"falta {CODEX}, que es puerta"]
+
+
 def test_todo_grabado_y_detectado_sale_con_0_con_los_avisos(bench, memo):
     record_all(bench, memo)
 
@@ -443,6 +520,42 @@ def test_retirar_un_caso_exige_anotarlo(bench, memo):
     ]
     (bench / BASELINE_FILE).write_text(json.dumps(annotated))
     result = run(bench, "--all-recorded", "--gate", "baseline", "--baseline", str(reference))
+    assert result.exit_code == 0, result.output
+
+
+@pytest.mark.parametrize(
+    "changed",
+    ["profile.yaml", "files/evidence"],
+    ids=["profile-yaml", "fichero-del-perfil"],
+)
+def test_cambiar_el_perfil_cambia_la_huella_de_sus_casos_y_exige_retirarlos(bench, memo, changed):
+    record_all(bench, memo)
+    assert baseline(bench, "--write").exit_code == 0
+    profile = bench / "profiles" / "mini"
+    target = profile / changed
+    if target.is_dir():
+        target = next(p for p in sorted(target.rglob("*")) if p.is_file())
+    target.write_bytes(target.read_bytes() + b"\n# cambio del perfil\n")
+
+    unannotated = run(bench, "--all-recorded", "--gate", "baseline")
+    assert unannotated.exit_code == 1, unannotated.output
+    cases = sorted(p.stem for p in (bench / "cases" / "dev").glob("*.yaml"))
+    shas = dict(
+        re.findall(
+            r"(dev/[a-z-]+) cambia de huella sin una entrada `retired` "
+            r"\(sha256 en la línea base: ([0-9a-f]{64})\)",
+            unannotated.output,
+        )
+    )
+    assert sorted(shas) == [f"dev/{c}" for c in cases], unannotated.output
+    assert "#" not in unannotated.output.split("problemas generales:")[1].split("resultado:")[0]
+
+    annotated = json.loads((bench / BASELINE_FILE).read_text())
+    annotated["retired"] = [
+        {"id": key, "sha256": sha, "reason": "cambia el perfil mini"} for key, sha in shas.items()
+    ]
+    (bench / BASELINE_FILE).write_text(json.dumps(annotated))
+    result = run(bench, "--all-recorded", "--gate", "baseline")
     assert result.exit_code == 0, result.output
 
 

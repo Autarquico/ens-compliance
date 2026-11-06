@@ -5,7 +5,7 @@ from importlib import resources
 ANSWERS_KEY = "org/answers.yaml"
 DOCS_PREFIX = "org/docs"
 HISTORY_PREFIX = f"{DOCS_PREFIX}/history"
-TEMPLATES_VERSION = 1
+TEMPLATES_VERSION = 2
 TEMPLATES = resources.files("ens_evidence.orgdocs") / "templates" / f"v{TEMPLATES_VERSION}"
 
 

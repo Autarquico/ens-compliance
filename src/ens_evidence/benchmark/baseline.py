@@ -14,7 +14,7 @@ from pathlib import Path
 
 from pydantic import ValidationError
 
-from ens_evidence.benchmark.cases import bench_dir, case_files_dir, read_bench_bytes
+from ens_evidence.benchmark.cases import bench_dir, case_files_dir, profiles_dir, read_bench_bytes
 from ens_evidence.benchmark.model import Baseline, BaselineEntry, Retired
 from ens_evidence.benchmark.recordings import BenchCase
 from ens_evidence.preaudit.payload import canonical_json
@@ -32,24 +32,36 @@ def _sha256(data: object) -> str:
     return hashlib.sha256(canonical_json(data)).hexdigest()
 
 
+def _tree(directory: Path) -> list[tuple[str, str]]:
+    """La ruta relativa y el sha256 de cada fichero bajo `directory`, en orden."""
+    return sorted(
+        (
+            p.relative_to(directory).as_posix(),
+            hashlib.sha256(read_bench_bytes(p, directory)).hexdigest(),
+        )
+        for p in (directory.rglob("*") if directory.is_dir() else ())
+        if p.is_file()
+    )
+
+
 def inventory(root: Path, cases: Sequence[BenchCase]) -> dict[str, str]:
-    """La huella de cada caso (sin sus defectos, con sus ficheros) y de cada defecto. Cambiar o
-    quitar cualquiera exige una entrada `retired`."""
+    """La huella de cada caso (sin sus defectos, con sus ficheros y los de su perfil:
+    `profile.yaml` y `files/`) y de cada defecto. Cambiar o quitar cualquiera exige una entrada
+    `retired`: cambiar un perfil cambia la huella de todos sus casos."""
+    profiles: dict[str, list[tuple[str, str]]] = {}
     found: dict[str, str] = {}
     for bench in cases:
         case = bench.case
-        files = bench_dir(case_files_dir(root, case), root)
-        contents = sorted(
-            (
-                p.relative_to(files).as_posix(),
-                hashlib.sha256(read_bench_bytes(p, files)).hexdigest(),
-            )
-            for p in (files.rglob("*") if files.is_dir() else ())
-            if p.is_file()
-        )
-        found[case.key] = _sha256(
-            {"case": case.model_dump(mode="json", exclude={"defects"}), "files": contents}
-        )
+        files = _tree(bench_dir(case_files_dir(root, case), root))
+        fingerprint: dict[str, object] = {
+            "case": case.model_dump(mode="json", exclude={"defects"}),
+            "files": files,
+        }
+        if case.profile is not None:
+            if case.profile not in profiles:
+                profiles[case.profile] = _tree(bench_dir(profiles_dir(root) / case.profile, root))
+            fingerprint["profile"] = profiles[case.profile]
+        found[case.key] = _sha256(fingerprint)
         for defect in case.defects:
             found[f"{case.key}#{defect.id}"] = _sha256(defect.model_dump(mode="json"))
     return found

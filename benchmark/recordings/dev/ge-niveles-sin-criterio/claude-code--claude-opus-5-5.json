@@ -7,33 +7,33 @@
   "destination": "claude-code 2.1.317, sesión del usuario (plan contratado); ejecutable 2.1.317 (sha256 09f153b46b5df9e8b3454716d682a91901de020cbca630f61dec1a015b32b5e9); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "1.0.0",
-  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
-  "payload_sha256": "b976aaef41cf6554d28c3ee9ac857892821e1665eaa731bfffb9b94c450208c7",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "85b0164e7c69c6a99c26500a9d6ac81b1b640d5f7592e81320478b03da838f3e",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-05T10:52:53.121633Z",
+  "recorded_at": "2026-11-06T02:17:52.452219Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-05T10:51:05.736252Z",
+      "at": "2026-11-06T02:16:43.364699Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"politica-seguridad\", \"quote\": \"Ámbito: Revisión trimestral de incidentes, accesos, copias, actualizaciones y del trabajo del proveedor informático.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\"}, {\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"5. Incidentes: un correo fraudulento que suplantaba a un cliente, detectado por [responsable del servicio]\"}], \"justifications\": [], \"reason\": \"Según la política, el Comité de Seguridad revisa cada trimestre los incidentes, los accesos, las copias, las actualizaciones y el trabajo del proveedor. El acta del trimestre enlazada a org.1 trata documentos, autorizaciones, adquisiciones, capacidad e incidentes, pero no recoge la revisión de accesos, copias ni actualizaciones. Es una debilidad que puede llegar a ser un problema: lo que la política dice del comité no coincide del todo con lo que muestra el acta.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"op.exp.7\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimiento-incidentes\", \"quote\": \"### Bajo\\n\\n- Criterio: Los que parezcan leves.\\n- Escalado: Se avisa a quien corresponda.\\n\\n### Alto\\n\\n- Criterio: Los que parezcan graves.\\n- Escalado: Se avisa a quien corresponda.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"5. Incidentes: un correo fraudulento que suplantaba a un cliente, detectado por [responsable del servicio]\\n   y no abierto; registrado como evento sin impacto.\"}], \"justifications\": [], \"reason\": \"op.exp.7.1 exige que el proceso detalle los criterios de clasificación y el escalado de la notificación. El procedimiento no da ningún criterio objetivo («Los que parezcan leves/graves») ni dice a quién se escala («Se avisa a quien corresponda»). Así, la clasificación y el momento de notificar al INCIBE-CERT, que dependen de esos niveles, quedan sin determinar.\"}]}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-05T10:51:36.507940Z",
+      "at": "2026-11-06T02:17:06.419804Z",
       "outcome": "response",
-      "response": "{\"findings\": []}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"op.exp.7\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimiento-incidentes\", \"quote\": \"Criterio: Los que parezcan leves.\\n- Escalado: Se avisa a quien corresponda.\"}, {\"ref\": \"procedimiento-incidentes\", \"quote\": \"Criterio: Los que parezcan graves.\\n- Escalado: Se avisa a quien corresponda.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"5. Incidentes: un correo fraudulento que suplantaba a un cliente, detectado por [responsable del servicio]\"}], \"justifications\": [], \"reason\": \"op.exp.7.1 exige que el proceso detalle los criterios de clasificación y el escalado de la notificación. El procedimiento solo dice «Los que parezcan leves/graves» y «Se avisa a quien corresponda»: no da un criterio objetivo para clasificar ni dice a quién se escala. Además, los plazos de notificación al INCIBE-CERT dependen de esos niveles sin definir.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-05T10:52:21.439633Z",
+      "at": "2026-11-06T02:17:27.274844Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"politica-seguridad\", \"quote\": \"Ámbito: Revisión trimestral de incidentes, accesos, copias, actualizaciones y del trabajo del proveedor informático.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"24 de septiembre de 2026. Asisten: [dirección / responsable de la información], [responsable del servicio], [responsable de la seguridad] y [administrador del sistema / responsable del sistema]. Redacta: [responsable de la seguridad].\"}, {\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\"}], \"justifications\": [], \"reason\": \"La política dice que el Comité de Seguridad revisa cada trimestre los accesos, las copias, las actualizaciones y el trabajo del proveedor informático. El acta de la reunión trimestral enlazada trata documentos, autorizaciones, adquisiciones, capacidad e incidentes, pero no recoge esas revisiones. Es una debilidad que puede llegar a ser un problema.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"op.exp.7\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimiento-incidentes\", \"quote\": \"- Criterio: Los que parezcan graves.\\n- Escalado: Se avisa a quien corresponda.\"}, {\"ref\": \"procedimiento-incidentes\", \"quote\": \"- Criterio: Los que parezcan leves.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"registrado como evento sin impacto. No hay incidentes cerrados que revisar.\"}], \"justifications\": [], \"reason\": \"op.exp.7.1 exige que el proceso detalle los criterios de clasificación y el escalado de la notificación. El procedimiento solo dice «parezcan leves/graves» y «se avisa a quien corresponda», así que no precisa ni los criterios ni a quién se escala. Además, de esos niveles depende cuándo se notifica al INCIBE-CERT.\"}]}",
       "kind": null
     }
   ]

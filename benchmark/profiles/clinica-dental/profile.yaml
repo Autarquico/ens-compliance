@@ -23,14 +23,137 @@ applicability:
     applicable: true
     justification: >-
       Seleccionada como adicional: la clínica entrega a pacientes y a otros profesionales discos
-      con radiografías, y el análisis de riesgos identifica su pérdida fuera de la clínica.
+      con radiografías, que salen del local y cuya pérdida expondría datos de salud de sus
+      pacientes.
+  - measure: op.pl.5
+    applicable: false
+    justification: >-
+      La clínica no compra productos de seguridad que necesiten certificación: el programa de
+      gestión, el componente más crítico, lo aporta un proveedor que acredita cada año su
+      conformidad con el ENS. El anexo II no la exige en categoría BÁSICA.
+  - measure: op.acc.3
+    applicable: false
+    justification: >-
+      Con ocho personas y un único responsable de sistemas no hay plantilla para repartir las
+      tareas críticas entre varias personas, y la clínica no tiene personal dedicado a la
+      administración que pudiera actuar sin la supervisión de la directora. No exigida en
+      categoría BÁSICA.
+  - measure: op.exp.5
+    applicable: false
+    justification: >-
+      No hay desarrollo propio ni cambios frecuentes de configuración: los únicos cambios son las
+      actualizaciones mensuales del técnico externo, probadas antes en recepción y anotadas en el
+      parte de mantenimiento (op.exp.4). La categoría BÁSICA no la exige.
+  - measure: op.ext.1
+    applicable: false
+    justification: >-
+      Los proveedores del programa de gestión, del mantenimiento y del almacenamiento externo de
+      copias entran con contrato y encargo de tratamiento según el proceso de autorización, y
+      ninguno presta un servicio cuya caída deje a la clínica sin atender: se puede dar cita y
+      atender con la agenda en papel. No exigida en BÁSICA.
+  - measure: op.ext.2
+    applicable: false
+    justification: >-
+      La relación con los proveedores se reduce a la visita mensual del técnico externo, que
+      supervisa el responsable de sistemas, y a los avisos del proveedor del programa que revisa
+      el comité; no hay servicios gestionados por terceros que requieran una supervisión diaria.
+      BÁSICA no pide más.
+  - measure: op.ext.3
+    applicable: false
+    justification: >-
+      El único componente crítico de un tercero es el programa de gestión, cuyo proveedor entrega
+      cada año su certificado de conformidad con el ENS, como recoge el acta anual. Los demás
+      terceros no ven datos legibles ni sostienen la atención: el almacenamiento externo solo
+      recibe copias ya cifradas en la clínica, y el software de radiografía y el antivirus son
+      productos estándar autorizados en el proceso de autorización. No exigida en BÁSICA.
+  - measure: op.ext.4
+    applicable: false
+    justification: >-
+      El sistema no se interconecta con otros: los informes para el servicio de salud se suben a
+      mano en su plataforma web por conexión cifrada, sin intercambio automático entre sistemas.
+      El anexo II no la exige en categoría BÁSICA.
+  - measure: op.cont.1
+    applicable: false
+    justification: >-
+      La disponibilidad se valora en nivel BAJO y la política ya fija el objetivo que importa:
+      recuperar las historias en menos de un día y atender mientras con la agenda en papel. No se
+      hace un análisis de impacto aparte, que BÁSICA no pide.
+  - measure: op.cont.2
+    applicable: false
+    justification: >-
+      Sin plan de continuidad formal: con disponibilidad BAJA, la agenda en papel y el teléfono
+      cubren una parada de hasta un día, el plazo que la política fija para recuperar las
+      historias. No exigida en categoría BÁSICA.
+  - measure: op.cont.3
+    applicable: false
+    justification: >-
+      Al no haber plan de continuidad no hay plan que probar: la parada que admite la
+      disponibilidad BAJA se atiende con la agenda en papel y el teléfono, sin medios que ensayar.
+      La medida no se exige en BÁSICA.
+  - measure: op.cont.4
+    applicable: false
+    justification: >-
+      No se mantienen medios alternativos de tratamiento: si caen el servidor o las
+      comunicaciones, la clínica atiende con agenda en papel y teléfono, una parada que su
+      disponibilidad BAJA admite. El anexo II no la exige en BÁSICA.
+  - measure: mp.if.6
+    applicable: false
+    justification: >-
+      El cuarto técnico de la planta baja, donde está el servidor, no tiene conducciones de agua,
+      y los puestos de recepción y gabinetes no guardan datos locales. Medida no exigida en
+      categoría BÁSICA.
+  - measure: mp.per.1
+    applicable: false
+    justification: >-
+      Son cuatro puestos fijos (odontólogos, higienista, recepción y administración), y a cada
+      persona se le informa de los deberes de su puesto al incorporarse (mp.per.2); no se redacta
+      una caracterización de puestos aparte, que BÁSICA no exige.
+  - measure: mp.eq.2
+    applicable: false
+    justification: >-
+      No se configura el bloqueo automático por inactividad: la normativa obliga a bloquear la
+      sesión al levantarse del puesto y la pantalla de recepción no mira a la sala de espera. No
+      es exigible en categoría BÁSICA.
+  - measure: mp.com.4
+    applicable: false
+    justification: >-
+      La única separación que necesita la red, la wifi de pacientes frente a la red de gabinetes,
+      ya la hace el router como parte de la protección perimetral (mp.com.1); no hay otros flujos
+      que segregar. No exigida en BÁSICA.
+  - measure: mp.si.1
+    applicable: false
+    justification: >-
+      No se adopta un esquema de marcado: el único soporte que sale de la clínica, el disco de
+      radiografías, ya lleva una etiqueta con el paciente, la fecha y «confidencial» y su entrega
+      se anota en el registro de soportes. No exigida en categoría BÁSICA.
+  - measure: mp.sw.1
+    applicable: false
+    justification: >-
+      La clínica no desarrolla aplicaciones: usa el programa de gestión y el software de
+      radiografía de sus proveedores, autorizados en el proceso de autorización. Sin desarrollo
+      propio la medida no procede y BÁSICA tampoco la exige.
+  - measure: mp.info.2
+    applicable: false
+    justification: >-
+      Toda la información del sistema se trata con el cuidado que pide la más sensible, la
+      historia clínica, así que no hace falta calificarla por niveles. El anexo II no la exige en
+      categoría BÁSICA.
+  - measure: mp.info.4
+    applicable: false
+    justification: >-
+      Ningún proceso necesita sellos de tiempo: la directora firma los informes desde su portátil
+      y el programa guarda la fecha y el autor de cada anotación en la historia. No exigida en
+      BÁSICA.
+  - measure: mp.s.4
+    applicable: false
+    justification: >-
+      Desde fuera solo es accesible el acceso remoto de la directora, con doble factor; los
+      pacientes piden cita por teléfono o en el mostrador. Una interrupción de horas se atiende
+      con la agenda en papel, que la disponibilidad BAJA admite. No exigida en BÁSICA.
 reinforcements:
   op.acc.5: [R1]
   op.acc.6: [R1]
   mp.s.2: [R1]
-not_required_justification: >-
-  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de la
-  clínica no identifica una amenaza que la pida.
 documents:
   - {ref: politica-seguridad, approved_by: elena}
   - {ref: normativa-seguridad, approved_by: elena}
@@ -92,7 +215,7 @@ evidence:
     file: evidence/acta-anual.txt
     source: manual
     asset: srv-clinica
-    valid_until: "2027-09-26T00:00:00+00:00"
+    valid_until: "2027-09-25T00:00:00+00:00"
     links:
       - {measure: org.1, covers: [base]}
       - {measure: org.2, covers: [base]}

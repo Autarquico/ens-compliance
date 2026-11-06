@@ -97,10 +97,10 @@ def test_cada_documento_declara_la_version_de_plantilla_catalogo_y_fuente(built,
     document = built.read_text(f"org/docs/{name}.md")
     meta = read_meta(built, name)
 
-    assert f"Plantilla `{name}` v1" in document
+    assert f"Plantilla `{name}` v2" in document
     assert catalog_sha256()[:12] in document
     assert articulado_sha256()[:12] in document
-    assert (meta.template.id, meta.template.version) == (name, 1)
+    assert (meta.template.id, meta.template.version) == (name, 2)
     assert meta.catalog_sha256 == catalog_sha256()
     assert meta.articulado_sha256 == articulado_sha256()
     assert meta.catalog_consolidation_date.isoformat() in document

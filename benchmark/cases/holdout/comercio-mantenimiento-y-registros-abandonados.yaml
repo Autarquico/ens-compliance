@@ -23,9 +23,9 @@ defects:
         Se dispondrá de un procedimiento para analizar, priorizar y determinar cuándo aplicar las
         actualizaciones de seguridad, parches, mejoras y nuevas versiones.
     rationale: >-
-      El procedimiento aprobado fija revisión semanal y parches de seguridad en la semana, y el
-      inventario habla de Debian 12; la evidencia dice que el servidor sigue en una versión sin
-      soporte y que hay avisos críticos sin revisar desde mayo.
+      El procedimiento aprobado fija revisión semanal y parches de seguridad en la semana; la
+      evidencia dice que no hay calendario, que el servidor no recibe parches desde marzo, que la
+      tienda corre en una versión sin soporte y que hay avisos críticos sin revisar desde mayo.
   - id: registro-web-desactivado
     layer: judgment
     measure: op.exp.8

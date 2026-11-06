@@ -72,7 +72,7 @@ def test_prepare_records_fingerprint_destination_and_pack_and_sends_nothing(cont
     record = json.loads(store.read_bytes(prepared.key))
     assert record["payload_sha256"] == prepared.payload.sha256
     assert record["destination"] == "anthropic https://api.anthropic.com"
-    assert record["pack_version"] == "1.0.0" and record["dossier"] == dossier
+    assert record["pack_version"] == "2.0.0" and record["dossier"] == dossier
     assert store.read_bytes(record["payload"]) == prepared.payload.canonical
     assert prepared.key.startswith(f"{PREAUDITS_PREFIX}/")
     assert prepared.payload.sha256[:12] in prepared.key

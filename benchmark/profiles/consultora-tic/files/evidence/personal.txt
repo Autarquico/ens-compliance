@@ -8,7 +8,7 @@ gestión de la información de clientes (dónde se guarda, cómo se transmite, c
 configuración segura de los portátiles y respuesta a incidentes para quien administra.
 
 Evaluación: cuestionario de 10 preguntas, todas las personas por encima de 8; Nora Vilaplana
-propuso añadir un simulacro de correo fraudulento, que se programa para marzo.
+propuso añadir un simulacro de correo fraudulento, que se programa para octubre.
 
 Deberes: las tres personas tienen firmada la aceptación de la normativa y de sus deberes de
 confidencialidad desde su alta. Recordatorios mensuales en la reunión del Comité de Seguridad.

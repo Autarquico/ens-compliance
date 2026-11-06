@@ -12,6 +12,7 @@ from ens_evidence.benchmark.model import (
     Totals,
 )
 from ens_evidence.benchmark.score import (
+    NONEMPTY,
     CaseRun,
     ExpectedDefect,
     Observed,
@@ -322,6 +323,34 @@ def test_un_banco_pequeno_pasa_con_su_muestra_minima_explicita() -> None:
 def test_sin_expedientes_correctos_la_tasa_b_no_cuenta_como_cero() -> None:
     t = totals(det=(1, 1), jud=(1, 1), a=(0, 1), b=(0, 0))
     assert threshold_problems(t, SMALL) == ["no hay expedientes correctos"]
+
+
+# --- puerta target ---------------------------------------------------------------------------
+
+TINY = {"det": (1, 1), "jud": (1, 1), "a": (0, 1), "b": (0, 1)}
+
+
+@pytest.mark.parametrize(
+    ("changes", "problem"),
+    [
+        ({}, None),
+        ({"det": (0, 1)}, "deterministas detectados 0/1 (se exige el 100 %)"),
+        ({"unmatched": 1}, "1 hallazgos deterministas sin casar"),
+        ({"jud": (3, 4)}, "detección de juicio 75.0 % (mínimo 80 %)"),
+        ({"jud": (4, 5)}, None),
+        ({"a": (1, 4)}, "falsas alarmas sobre emitidos (A) 25.0 % (máximo 20 %)"),
+        ({"b": (1, 4)}, "expedientes correctos con falsas alarmas (B) 25.0 % (máximo 20 %)"),
+        ({"b": (1, 5)}, None),
+        ({"det": (0, 0)}, "no hay defectos deterministas"),
+        ({"jud": (0, 0)}, "no hay defectos de juicio"),
+        ({"b": (0, 0)}, "no hay expedientes correctos"),
+    ],
+)
+def test_puerta_target_umbrales_de_v01_sin_muestra_minima_ni_denominadores_vacios(
+    changes: dict, problem: str | None
+) -> None:
+    problems = threshold_problems(totals(**(TINY | changes)), NONEMPTY)
+    assert problems == ([] if problem is None else [problem])
 
 
 # --- puerta baseline -------------------------------------------------------------------------

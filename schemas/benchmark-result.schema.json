@@ -420,7 +420,8 @@
         {
           "enum": [
             "baseline",
-            "threshold"
+            "threshold",
+            "target"
           ],
           "type": "string"
         },
@@ -430,6 +431,19 @@
       ],
       "default": null,
       "title": "Gate"
+    },
+    "gate_note": {
+      "anyOf": [
+        {
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Alcance de la puerta `target`: no cierra v0.1.",
+      "title": "Gate Note"
     },
     "gate_passed": {
       "anyOf": [

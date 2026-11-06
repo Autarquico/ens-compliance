@@ -1,39 +1,39 @@
 {
   "format": "ens-benchmark-recording/1",
   "case": "dev/ge-copias-sin-procedimiento",
-  "case_sha256": "97b6990d6b9425fcee44a9432af6d7e4b9ce9c10fb11bfc3668672f95dbeafa0",
+  "case_sha256": "0f676e219d0b1e1e8b86b2e0e37ed473525338af81ee3af7dcfb3eeda81b65a1",
   "provider": "claude-code",
   "model": "claude-opus-5-5",
   "destination": "claude-code 2.1.317, sesión del usuario (plan contratado); ejecutable 2.1.317 (sha256 09f153b46b5df9e8b3454716d682a91901de020cbca630f61dec1a015b32b5e9); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "1.0.0",
-  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
-  "payload_sha256": "ba3d1058f674ed0050a86b1a20bf10a69f7e1c7a6b88b41668f3e7e2ee13213f",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "03a09ffacb35178f6705d9c7a2662c532c8d5d903f2b6264ea2a95080c051e09",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-05T10:45:29.620436Z",
+  "recorded_at": "2026-11-06T02:11:58.248258Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-05T10:44:01.688750Z",
+      "at": "2026-11-06T02:10:58.052283Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\"}], \"justifications\": [], \"reason\": \"org.3.4 c) pide precisar de forma clara cómo se hacen las copias de la información, pero el procedimiento solo dice «cuando hay tiempo», sin frecuencia, método ni destino. Además, el acta del Comité aprobó el documento sin cambios, así que el defecto sigue vigente.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"- Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado\"}], \"justifications\": [], \"reason\": \"El anexo II (mp.info.6.2) exige que los procedimientos de respaldo indiquen la frecuencia de las copias, los requisitos de almacenamiento en el propio lugar y en otros lugares, y los controles de acceso a las copias. La sección del procedimiento dedicada a las copias de los expedientes solo dice «cuando hay tiempo», sin fijar frecuencia, almacenamiento ni controles de acceso, aunque el informe de copias muestra una práctica diaria y definida.\"}]}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-05T10:44:33.421328Z",
+      "at": "2026-11-06T02:11:17.533857Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\"}], \"justifications\": [], \"reason\": \"En el apartado de copias de los expedientes, el procedimiento no explica cómo, cuándo ni con qué frecuencia se hacen, y org.3.4 c) exige precisarlo. Además choca con la tarea «Copia de seguridad diaria» del mismo documento. Aun así, el Comité lo dio por vigente y lo aprobó sin cambios.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.2\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.2\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no la pide para los expedientes ni para el servicio de tramitación.\"}], \"reason\": \"Es el mismo texto genérico que se usa en todas las medidas no seleccionadas. No nombra los activos ni los riesgos concretos de la gestión diaria de proveedores externos, de los que depende el sistema, así que puede no bastar para el riesgo sobre los activos.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.cont.2\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.cont.2\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no la pide para los expedientes ni para el servicio de tramitación.\"}], \"reason\": \"Es una fórmula genérica y repetida que no analiza el riesgo de quedarse sin servicio para los activos concretos. La política declara como objetivo presentar en plazo aunque falle el servidor de la oficina, y la justificación no dice cómo se cubre eso sin plan de continuidad.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado\"}], \"justifications\": [], \"reason\": \"El anexo II (mp.info.6.2) exige que el procedimiento de respaldo indique la frecuencia de las copias, los requisitos de almacenamiento en el propio lugar y en otros lugares y los controles de acceso a las copias. En ese punto el procedimiento solo dice «cuando hay tiempo», mientras que la evidencia describe copias diarias, local y externa, con retención y acceso restringido que el documento no recoge.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-05T10:45:07.884807Z",
+      "at": "2026-11-06T02:11:37.650416Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\"}], \"justifications\": [], \"reason\": \"org.3.4 exige que el procedimiento precise de forma clara cómo se hacen las copias de la información. «Cuando hay tiempo» no fija ni frecuencia ni método, y contradice la copia diaria que describe el mismo documento. Aun así, el acta del Comité aprobó el documento sin cambios.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado, con 30 días\"}], \"justifications\": [], \"reason\": \"mp.info.6.2 exige que los procedimientos de respaldo indiquen la frecuencia de las copias. En el apartado de realización de copias, el procedimiento solo dice «cuando hay tiempo»: no fija ninguna frecuencia y además choca con la copia diaria que recoge la evidencia. Tampoco precisa en ese punto los requisitos de almacenamiento ni los controles de acceso a las copias.\"}]}",
       "kind": null
     }
   ]

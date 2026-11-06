@@ -19,9 +19,136 @@ reinforcements:
   op.acc.5: [R2]
   op.acc.6: [R2]
   mp.s.2: [R1]
-not_required_justification: >-
-  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de
-  septiembre de 2026 no identifica una amenaza que la requiera.
+applicability:
+  - measure: op.exp.5
+    applicable: true
+    justification: >-
+      Se aplica aunque el anexo II no la exige en categoría BÁSICA: el análisis de riesgos trata la
+      explotación de una vulnerabilidad del portal con la revisión por otra persona de cada cambio,
+      y esa revisión solo se sostiene si cada cambio se registra y se planifica.
+  - measure: mp.com.4
+    applicable: false
+    justification: >-
+      El anexo II no la exige en categoría BÁSICA. No hay red local propia que segmentar: el equipo
+      trabaja con sus portátiles desde el coworking o el domicilio, y el servidor no abre puertos y
+      solo recibe tráfico por el túnel de la red perimetral (mp.com.1).
+  - measure: mp.eq.2
+    applicable: false
+    justification: >-
+      No se selecciona porque el anexo II no la pide con autenticidad de nivel BAJO. El bloqueo
+      automático a los cinco minutos, que el análisis de riesgos cita frente a la pérdida o el robo de
+      un portátil, sigue siendo obligatorio por la normativa de uso de equipos y se comprueba en la
+      revisión de instalaciones y equipos.
+  - measure: mp.if.6
+    applicable: false
+    justification: >-
+      Con disponibilidad de nivel BAJO el anexo II no la exige. No hay locales propios con sistemas:
+      el servidor y las copias están en centros de datos de los proveedores de nube en la UE, y en el
+      puesto del coworking solo hay portátiles.
+  - measure: mp.info.2
+    applicable: false
+    justification: >-
+      El anexo II no la exige con confidencialidad de nivel BAJO. El sistema no trata materias
+      clasificadas; la información de los clientes, incluidas las capturas con datos de ciudadanos, se
+      categorizó con confidencialidad BAJO, y la política nombra a su responsable (org.1).
+  - measure: mp.info.4
+    applicable: false
+    justification: >-
+      Solo la exige el anexo II con trazabilidad de nivel ALTO, y aquí es BAJO. El portal no genera
+      información destinada a servir de evidencia electrónica; las ofertas al ayuntamiento se firman
+      con el certificado cualificado de la gerente (mp.info.3).
+  - measure: mp.per.1
+    applicable: false
+    justification: >-
+      El anexo II no la exige en categoría BÁSICA. Con tres personas, las funciones de seguridad de
+      cada una están en la designación de responsables y en la política (org.1), y los deberes de
+      confidencialidad se firman al incorporarse (mp.per.2).
+  - measure: mp.s.4
+    applicable: false
+    justification: >-
+      No exigida con disponibilidad de nivel BAJO. El análisis de riesgos no recoge la denegación de
+      servicio entre las amenazas probables; el portal está detrás del cortafuegos de aplicaciones de
+      la red perimetral (mp.s.2) y el servidor no expone puertos a internet.
+  - measure: mp.si.1
+    applicable: false
+    justification: >-
+      Con confidencialidad de nivel BAJO el anexo II no la pide, y no hay información que deba llevar
+      marcas de nivel. El único soporte, el disco externo D-01, ya lleva etiqueta con su número y su
+      responsable según los procedimientos de seguridad (org.3).
+  - measure: mp.si.2
+    applicable: false
+    justification: >-
+      El anexo II no la exige con confidencialidad e integridad de nivel BAJO. Los soportes se cifran
+      igualmente (el disco D-01, los discos de los portátiles y las copias con restic), y no se
+      transportan soportes con datos de clientes.
+  - measure: mp.sw.1
+    applicable: false
+    justification: >-
+      No la exige el anexo II en categoría BÁSICA. La amenaza de explotación de una vulnerabilidad de
+      la aplicación web que recoge el análisis de riesgos se trata con la revisión por otra persona de
+      cada cambio, las pruebas automáticas y la aceptación en preproducción (mp.sw.2); el desarrollo
+      se hace en los portátiles y en la integración continua, fuera del servidor de producción.
+  - measure: op.acc.3
+    applicable: false
+    justification: >-
+      No se exige con los niveles BAJO de esta categorización. Con tres personas no siempre se pueden
+      separar desarrollo y operación; como contrapeso, ningún cambio llega a producción sin la
+      revisión de una persona distinta de quien lo propone.
+  - measure: op.cont.1
+    applicable: false
+    justification: >-
+      El anexo II no la exige con disponibilidad de nivel BAJO. La interrupción tolerable ya está
+      fijada en la política (recuperar el portal en menos de dos días laborables), y la restauración
+      en otro proveedor tarda unas seis horas según el análisis de riesgos.
+  - measure: op.cont.2
+    applicable: false
+    justification: >-
+      Solo se exige con disponibilidad de nivel ALTO. La caída del proveedor de nube que recoge el
+      análisis de riesgos se cubre con la restauración del portal en otro proveedor; la dependencia
+      de un único proveedor es un riesgo residual que aceptó la gerente.
+  - measure: op.cont.3
+    applicable: false
+    justification: >-
+      El anexo II la pide solo con disponibilidad de nivel ALTO y, sin plan de continuidad, no hay
+      plan que probar. Ante la caída del proveedor de nube, el análisis de riesgos prevé restaurar
+      el portal en otro proveedor.
+  - measure: op.cont.4
+    applicable: false
+    justification: >-
+      Exigida solo con disponibilidad de nivel ALTO. Si falla un portátil se trabaja desde otro,
+      porque el código está en el alojamiento de código y los datos de los clientes en el servidor; si falta la administradora, Lucía Robledal
+      tiene el acceso de respaldo documentado que recoge el análisis de riesgos.
+  - measure: op.ext.1
+    applicable: false
+    justification: >-
+      No la exige el anexo II en categoría BÁSICA. Los servicios externos se contratan con las
+      condiciones estándar del proveedor y los autoriza la gerente según el proceso de autorización
+      (org.4); depender de un único proveedor de nube es un riesgo residual aceptado, con la
+      restauración en otro proveedor que prevé el análisis de riesgos.
+  - measure: op.ext.2
+    applicable: false
+    justification: >-
+      No exigida en categoría BÁSICA. Sin acuerdo de nivel de servicio no hay obligaciones de
+      servicio que medir; la disponibilidad del portal se sigue en las métricas mensuales (op.mon.2) y
+      la configuración de los proveedores de nube se revisa con su guía de bastionado (op.nub.1).
+  - measure: op.ext.3
+    applicable: false
+    justification: >-
+      Solo la exige el anexo II en categoría ALTA. Los proveedores del servidor y del almacenamiento
+      declaran conformidad con el ENS (op.nub.1), y cada dependencia nueva del portal entra por una
+      solicitud de cambios revisada.
+  - measure: op.ext.4
+    applicable: false
+    justification: >-
+      El anexo II no la exige en categoría BÁSICA. La única conexión con otro sistema, la de la sede
+      electrónica del ayuntamiento cliente, se pide por escrito con su finalidad y se anota en el
+      registro de enlaces autorizados (org.4).
+  - measure: op.pl.5
+    applicable: false
+    justification: >-
+      No la exige el anexo II en categoría BÁSICA. Los servicios de la arquitectura de seguridad se
+      eligen comparándolos con el análisis de riesgos, como recoge el acta del Comité para el gestor
+      de contraseñas, y los proveedores de nube declaran conformidad con el ENS (op.nub.1).
 documents:
   - {ref: politica-seguridad, approved_by: lucia}
   - {ref: normativa-seguridad, approved_by: lucia}
@@ -103,6 +230,13 @@ evidence:
     valid_until: "2026-12-31T00:00:00+00:00"
     links:
       - {measure: mp.info.6, covers: [mp.info.6.1, mp.info.6.2]}
+  - alias: cambios
+    file: evidence/cambios.txt
+    source: manual
+    asset: gh-robledal
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.5, covers: [base]}
   - alias: claves
     file: evidence/claves.txt
     source: manual

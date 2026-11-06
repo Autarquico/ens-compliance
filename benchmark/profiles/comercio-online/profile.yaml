@@ -21,13 +21,134 @@ applicability:
     justification: >-
       Seleccionada como adicional: la tienda depende del alojamiento, la pasarela de pago y el
       almacenamiento de copias, y el análisis de riesgos pide fijar con ellos un servicio mínimo.
+  - measure: op.pl.5
+    applicable: false
+    justification: >-
+      La tienda no compra productos de seguridad que el análisis de riesgos pida certificar: el
+      servidor está en un alojamiento cuyo proveedor acredita su conformidad con el ENS. No
+      exigida en BÁSICA.
+  - measure: op.acc.3
+    applicable: false
+    justification: >-
+      Con tres personas no se pueden separar todas las funciones, pero cada una tiene un cargo
+      distinto en la designación de responsables y nadie decide y aplica a la vez un permiso: los
+      pide por escrito la fundadora y los aplica el responsable del sistema. El anexo II no la
+      exige en categoría BÁSICA.
+  - measure: op.exp.5
+    applicable: false
+    justification: >-
+      Los cambios de la tienda se tratan en su aceptación y puesta en producción (mp.sw.2) y los
+      del servidor en su mantenimiento y actualización (op.exp.4); con un solo servidor y una sola
+      aplicación no se lleva una gestión de cambios aparte, que BÁSICA no pide.
+  - measure: op.ext.2
+    applicable: false
+    justification: >-
+      Los proveedores (alojamiento, pasarela de pago, almacenamiento de copias, transporte,
+      repositorio de código y servicios en la nube de la empresa) prestan servicios estándar y
+      ninguno administra por su cuenta la tienda ni el servidor, que administra el responsable
+      del sistema: sus avisos e incidencias se tratan en la reunión mensual de los responsables,
+      que decide qué reclamar a cada uno. No hace falta una gestión diaria aparte en categoría
+      BÁSICA.
+  - measure: op.ext.3
+    applicable: false
+    justification: >-
+      Los proveedores críticos, alojamiento y copias, entregan su certificado de conformidad con
+      el ENS según el acta anual, y la pasarela de pago responde de su propia certificación. El
+      análisis de riesgos no identifica otra amenaza en la cadena de suministro; no exigida en
+      BÁSICA.
+  - measure: op.ext.4
+    applicable: false
+    justification: >-
+      Las únicas conexiones con otros sistemas son las integraciones con la pasarela de pago y con
+      la empresa de transporte, cifradas y autorizadas una a una en el proceso de autorización con
+      su finalidad y sus datos. La medida no se exige en categoría BÁSICA.
+  - measure: op.cont.1
+    applicable: false
+    justification: >-
+      Con la disponibilidad valorada en BAJO, el análisis de riesgos ya fija el objetivo,
+      recuperar la tienda en menos de un día desde la copia diaria, y acepta esa parada. No se
+      hace un análisis de impacto aparte; el anexo II no lo exige en BÁSICA.
+  - measure: op.cont.2
+    applicable: false
+    justification: >-
+      Con la disponibilidad valorada en BAJO, la parada que el análisis de riesgos acepta, hasta
+      un día sin vender, se cubre restaurando la tienda desde la copia diaria cifrada en otro
+      proveedor; no se redacta un plan formal, que no es exigible en categoría BÁSICA.
+  - measure: op.cont.3
+    applicable: false
+    justification: >-
+      Sin plan de continuidad formal no hay plan que probar; lo que sí se prueba cada trimestre es
+      restaurar la tienda completa en un servidor de pruebas, dentro de mp.info.6. No exigida en
+      BÁSICA.
+  - measure: op.cont.4
+    applicable: false
+    justification: >-
+      No se mantiene un servidor de reserva: si cae el alojamiento, la tienda se restaura desde la
+      copia en menos de un día, parada que el análisis de riesgos acepta como residual. El anexo
+      II no la pide en BÁSICA.
+  - measure: mp.if.6
+    applicable: false
+    justification: >-
+      El servidor está en el centro de datos del alojamiento, que acredita sus controles físicos;
+      en el taller no queda ningún equipo con datos, porque los portátiles se guardan en el
+      armario de la oficina. El análisis de riesgos no cuenta la inundación; no exigida en BÁSICA.
+  - measure: mp.per.1
+    applicable: false
+    justification: >-
+      Son tres puestos con funciones ya descritas en la designación de responsables (fundadora,
+      seguridad y sistema); no se redacta una caracterización de puestos aparte, que la categoría
+      BÁSICA no exige.
+  - measure: mp.eq.2
+    applicable: false
+    justification: >-
+      No se configura el bloqueo por inactividad: la normativa obliga a bloquear cada portátil al
+      dejarlo y a no prestar el del taller a visitas ni a alumnos. La medida no es exigible en categoría
+      BÁSICA.
+  - measure: mp.com.4
+    applicable: false
+    justification: >-
+      Todo el sistema es un único servidor virtual en el alojamiento, con la base de datos en el
+      mismo servidor, así que no hay redes internas propias ni segmentos entre los que separar
+      flujos. No exigida en BÁSICA.
+  - measure: mp.si.1
+    applicable: false
+    justification: >-
+      Los datos de clientes no se copian a soportes extraíbles; las memorias USB autorizadas solo
+      llevan fotos del catálogo y ya se etiquetan y anotan en el registro de soportes. No hay
+      información clasificada que marcar; no exigida en BÁSICA.
+  - measure: mp.si.2
+    applicable: false
+    justification: >-
+      Ningún soporte extraíble lleva datos de clientes: las memorias solo guardan las fotos del
+      catálogo que se publican en la tienda, y los portátiles tienen el disco cifrado. La
+      categoría BÁSICA no exige esta medida.
+  - measure: mp.sw.1
+    applicable: false
+    justification: >-
+      El código de la tienda es propio, pero es una sola aplicación pequeña que mantiene una
+      persona y el anexo II no exige esta medida en categoría BÁSICA; el riesgo de cada cambio se
+      trata en su aceptación y puesta en producción (mp.sw.2).
+  - measure: mp.info.2
+    applicable: false
+    justification: >-
+      Toda la información del sistema, pedidos, direcciones y cuentas de clientes, recibe el trato
+      que piden los datos de clientes, así que no hace falta calificarla por niveles. El anexo II
+      no lo exige en categoría BÁSICA.
+  - measure: mp.info.4
+    applicable: false
+    justification: >-
+      Ningún proceso de la tienda necesita sellos de tiempo: los pedidos llevan la fecha que
+      registra el panel y las facturas se envían firmadas por correo. No exigida en BÁSICA.
+  - measure: mp.s.4
+    applicable: false
+    justification: >-
+      El proveedor de alojamiento ya filtra en su red los ataques de denegación de servicio, como
+      recoge el informe de vigilancia, y la disponibilidad se valora en BAJO; no se contrata una
+      protección propia, que BÁSICA no exige.
 reinforcements:
   op.acc.5: [R1]
   op.acc.6: [R1]
   mp.s.2: [R1]
-not_required_justification: >-
-  No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de la
-  tienda no la pide.
 documents:
   - {ref: politica-seguridad, approved_by: nuria}
   - {ref: normativa-seguridad, approved_by: nuria}
@@ -43,6 +164,13 @@ evidence:
     valid_until: "2027-04-01T00:00:00+00:00"
     links:
       - {measure: op.exp.1, covers: [base]}
+  - alias: analisis-riesgos
+    file: evidence/analisis-riesgos.txt
+    source: manual
+    asset: vps-tienda
+    valid_until: "2027-09-30T00:00:00+00:00"
+    links:
+      - {measure: op.pl.1, covers: [base]}
   - alias: github
     file: collected/github.json
     source: collected
@@ -117,13 +245,12 @@ evidence:
     file: evidence/acta-anual.txt
     source: manual
     asset: vps-tienda
-    valid_until: "2027-09-30T00:00:00+00:00"
+    valid_until: "2027-09-02T00:00:00+00:00"
     links:
       - {measure: org.1, covers: [base]}
       - {measure: org.2, covers: [base]}
       - {measure: org.3, covers: [base]}
       - {measure: org.4, covers: [base]}
-      - {measure: op.pl.1, covers: [base]}
       - {measure: op.pl.2, covers: [base]}
       - {measure: op.pl.3, covers: [base]}
       - {measure: op.pl.4, covers: [base]}

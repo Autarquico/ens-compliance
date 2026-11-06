@@ -7,8 +7,8 @@ PostgreSQL y el agente de copias. Los portátiles siguen la ficha de alta: disco
 activo, cuenta de administración separada y bloqueo automático a los cinco minutos.
 
 Actualizaciones aplicadas:
-- vps-portal: actualizaciones de seguridad de Debian aplicadas los lunes 1, 8, 15, 22 y 29; reinicio
-  programado el día 15 por actualización del núcleo, fuera de horario.
+- vps-portal: actualizaciones de seguridad de Debian aplicadas los lunes 7, 14, 21 y 28; reinicio
+  programado el día 14 por actualización del núcleo, fuera de horario.
 - Portátiles: lap-lucia y lap-nora en macOS 15 con la última versión menor desde el día 12;
   lap-tomas actualizado el día 10. Ninguno con más de siete días de retraso.
 - Portal: 6 alertas de dependencias vulnerables recibidas; 5 corregidas por solicitud de cambios

@@ -1,0 +1,523 @@
+id: procedimientos-seguridad
+title: "Procedimientos de seguridad"
+questions:
+  - id: organizacion
+    text: "¿Cómo se llama la organización y a qué se dedica?"
+    clause: org.1.1
+    help: "Nombre legal y una frase sobre qué hace. Ejemplo: «Talleres Norte S.L., fabricación de piezas para clientes industriales»."
+  - id: procedimientos
+    text: "¿Cuáles son las tareas habituales de operación del sistema?"
+    type: records
+    clause: org.3.1
+    help: "Una fila por tarea: alta y baja de usuarios, copias de seguridad, actualizaciones... Indica quién la hace (org.3.2), los pasos, la herramienta o canal y qué evidencia queda (registro, ticket, correo)."
+    fields:
+      - {id: tarea, text: "Tarea"}
+      - {id: quien, text: "Rol que la hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: anomalias_identificacion
+    text: "¿Qué se considera un comportamiento anómalo?"
+    type: list
+    clause: org.3.3
+    help: "Ejemplos reconocibles por una persona no técnica: correos sospechosos, equipo lento sin motivo, accesos no esperados. Uno por línea."
+  - id: anomalias_comunicacion
+    text: "¿A quién y por qué canal se comunica un comportamiento anómalo, y en qué plazo?"
+    clause: org.3.3
+    help: "Persona o buzón, medio (teléfono, correo) y plazo máximo desde que se detecta."
+  - id: anomalias_registro
+    text: "¿Qué queda registrado cuando se comunica uno?"
+    clause: org.3.3
+    help: "Dónde se anota, quién lo anota y qué datos se guardan."
+  - id: info_acceso
+    text: "¿Cómo se trata la información en cuanto a su control de acceso?"
+    type: records
+    clause: org.3.4
+    help: "Apartado a) de org.3.4. Quién puede acceder a cada tipo de información y cómo se concede, revisa y retira el acceso: quién decide los derechos de cada recurso (op.acc.2.2), quién puede concederlos, cambiarlos o anularlos y cada cuánto se revisan (op.acc.4.4). Una fila por procedimiento, según el nivel de seguridad de la información."
+    fields:
+      - {id: informacion, text: "Información o nivel de seguridad al que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: info_almacenamiento
+    text: "¿Cómo se trata la información en cuanto a su almacenamiento?"
+    type: records
+    clause: org.3.4
+    help: "Apartado b) de org.3.4. Dónde se guarda cada tipo de información y con qué protección. Una fila por procedimiento, según el nivel de seguridad de la información."
+    fields:
+      - {id: informacion, text: "Información o nivel de seguridad al que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: info_copias
+    text: "¿Cómo se trata la información en cuanto a la realización de copias?"
+    type: records
+    clause: org.3.4
+    help: "Apartado c) de org.3.4. Qué se copia, cada cuánto, dónde, quién lo hace y cómo se comprueba que se puede restaurar. mp.info.6.2 pide que el procedimiento de respaldo indique la frecuencia, el almacenamiento en el propio lugar y en otros lugares y los controles de acceso a las copias. Una fila por procedimiento, según el nivel de seguridad de la información."
+    fields:
+      - {id: informacion, text: "Información o nivel de seguridad al que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: info_etiquetado
+    text: "¿Cómo se trata la información en cuanto al etiquetado de soportes?"
+    type: records
+    clause: org.3.4
+    help: "Apartado d) de org.3.4. Cómo se marcan los soportes según el nivel de la información que contienen. Una fila por procedimiento, según el nivel de seguridad de la información."
+    fields:
+      - {id: informacion, text: "Información o nivel de seguridad al que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: info_transmision
+    text: "¿Cómo se trata la información en cuanto a su transmisión telemática?"
+    type: records
+    clause: org.3.4
+    help: "Apartado e) de org.3.4. Por qué canales se puede enviar información y con qué protección. Una fila por procedimiento, según el nivel de seguridad de la información."
+    fields:
+      - {id: informacion, text: "Información o nivel de seguridad al que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: info_otras
+    text: "¿Hay otras actividades relacionadas con el tratamiento de la información?"
+    type: records
+    clause: org.3.4
+    help: "Apartado f) de org.3.4. Por ejemplo, destrucción de documentos o borrado de equipos. Si no hay, indica el motivo."
+    allow_not_applicable: true
+    fields:
+      - {id: informacion, text: "Información o nivel de seguridad al que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: analisis_riesgos
+    text: "¿Cómo se hace y se mantiene el análisis de riesgos?"
+    type: records
+    clause: op.pl.1.intro
+    help: "op.pl.1: análisis de riesgos informal, en lenguaje natural, que identifique los activos más valiosos, las amenazas más probables, las salvaguardas y los riesgos residuales. Describe quién lo hace, cómo, cada cuánto se revisa y dónde queda escrito. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: inventario_activos
+    text: "¿Cómo se mantiene el inventario de activos?"
+    type: records
+    clause: op.exp.1.1
+    help: "op.exp.1.1: inventario actualizado de los elementos del sistema, con su naturaleza y su responsable. Describe dónde se lleva, quién lo actualiza, cuándo (alta o baja de un equipo, revisión periódica) y cómo se identifica al responsable de cada elemento. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: gestion_cuentas
+    text: "¿Cómo se crean, se inhabilitan y se conservan las cuentas de usuario?"
+    type: records
+    clause: op.acc.1.4
+    help: "op.acc.1.3 y op.acc.1.4: identificador singular por usuario o proceso; inhabilitación de la cuenta cuando la persona deja la organización, cesa en la función o quien la autorizó lo ordena; y periodo de retención. Describe cómo lo hacéis en cada sistema. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: credenciales
+    text: "¿Cómo se entregan, se cambian y se inhabilitan las credenciales del personal?"
+    type: records
+    clause: op.acc.6.2
+    help: "op.acc.6.1, 6.2 y 6.4 a 6.6: aceptación de la política antes de recibirlas, acuse de recibo y de sus obligaciones, cambio con la periodicidad de vuestra política e inhabilitación por pérdida, compromiso o fin de la relación. Describe cómo lo hacéis. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: actualizaciones
+    text: "¿Cómo se mantienen los equipos y se aplican las actualizaciones de seguridad?"
+    type: records
+    clause: op.exp.4.2
+    help: "op.exp.4.1 a 4.3: seguimiento de las especificaciones y avisos de defectos del fabricante; procedimiento para analizar, priorizar y decidir cuándo aplicar actualizaciones y parches, teniendo en cuenta la variación del riesgo; mantenimiento solo por personal autorizado. Describe cómo lo hacéis. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: codigo_danino
+    text: "¿Cómo se previene y se reacciona frente a código dañino?"
+    type: records
+    clause: op.exp.6.1
+    help: "op.exp.6.1 y op.exp.6.3: mecanismos de prevención y reacción, con su mantenimiento según el fabricante, y análisis de los ficheros de fuentes externas antes de trabajar con ellos. Describe qué hacéis, quién lo supervisa y qué hacéis cuando salta una alerta. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: registro_actividad
+    text: "¿Cómo se registra y se conserva la actividad de los usuarios en el sistema?"
+    type: records
+    clause: op.exp.8.1
+    help: "op.exp.8.1: registro de auditoría con, al menos, el usuario o entidad, fecha y hora, sobre qué información, tipo de evento y resultado. Describe qué sistemas registran, dónde se guardan los registros, cuánto tiempo y quién los consulta. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: perimetro
+    text: "¿Cómo se autorizan los flujos de información que atraviesan el perímetro de la red?"
+    type: records
+    clause: mp.com.1.2
+    help: "mp.com.1.2: todos los flujos a través del perímetro deben estar autorizados previamente. Describe quién autoriza abrir un acceso o regla en el cortafuegos o equivalente, cómo se pide y dónde queda registrado. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: puesta_en_produccion
+    text: "¿Cómo se comprueba una aplicación antes de ponerla en producción?"
+    type: records
+    clause: mp.sw.2.intro
+    help: "mp.sw.2: antes de pasar a producción se comprueba el correcto funcionamiento de la aplicación, que se cumplen los criterios de aceptación en materia de seguridad y que no se deteriora la seguridad de otros componentes del servicio. Puedes incluir también, como orientación, las aplicaciones adquiridas o en la nube que se ponen en servicio. Una fila por procedimiento o sistema al que aplica."
+    fields:
+      - {id: ambito, text: "Sistema o información a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: informacion_deberes
+    text: "¿Cómo se informa a cada persona de los deberes y responsabilidades de su puesto en materia de seguridad?"
+    type: records
+    clause: mp.per.2.intro
+    help: "mp.per.2: se informa a cada persona que trabaja en el sistema de los deberes de su puesto, contemplando las medidas disciplinarias, las obligaciones al terminar la asignación o cambiar de puesto y el deber de confidencialidad. Describe cuándo se informa (incorporación, cambio de puesto, salida), quién lo hace y qué queda firmado o registrado. Una fila por procedimiento o grupo de personal al que aplica."
+    fields:
+      - {id: ambito, text: "Personal o puestos a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: concienciacion
+    text: "¿Cómo se conciencia regularmente al personal en seguridad?"
+    type: records
+    clause: mp.per.3.intro
+    help: "mp.per.3: acciones para concienciar regularmente al personal de su papel en la seguridad, recordando periódicamente la normativa de buen uso de los equipos y las técnicas de ingeniería social más habituales (mp.per.3.1), cómo identificar incidentes o comportamientos sospechosos que hay que comunicar (mp.per.3.2) y el procedimiento para informar de incidentes, reales o falsas alarmas (mp.per.3.3). Describe qué se recuerda, cada cuánto, quién lo organiza y qué queda registrado. Una fila por acción o grupo de personal al que aplica."
+    fields:
+      - {id: ambito, text: "Personal o puestos a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: formacion
+    text: "¿Cómo se forma regularmente al personal en seguridad y cómo se evalúa esa formación?"
+    type: records
+    clause: mp.per.4.1
+    help: "mp.per.4: formación regular en las materias de seguridad que requiere cada función, en particular configuración de sistemas, detección y reacción ante incidentes y gestión de la información en cualquier soporte (almacenamiento, transferencia, copias, distribución y destrucción); además, se evalúa la eficacia de las acciones formativas. Describe qué formación recibe cada puesto, cada cuánto, quién la imparte, cómo se evalúa y qué queda registrado. Una fila por acción o grupo de personal al que aplica."
+    fields:
+      - {id: ambito, text: "Personal o puestos a los que aplica"}
+      - {id: quien, text: "Rol que lo hace"}
+      - {id: pasos, text: "Pasos"}
+      - {id: herramienta, text: "Herramienta o canal"}
+      - {id: evidencia, text: "Evidencia que deja"}
+  - id: autoridad_procedimientos
+    text: "¿Quién aprueba los procedimientos y el proceso de autorización?"
+    clause: org.3.r1.1
+    help: "Autoridad que valida los procedimientos (org.3 R1: validación por la autoridad correspondiente); para el proceso de autorización es una decisión de esta herramienta. Se registra en la aprobación del documento. Escribe una de estas opciones: la dirección, el responsable de la seguridad o el responsable del sistema."
+    choices: ["la dirección", "el responsable de la seguridad", "el responsable del sistema"]
+  - id: firmante_direccion
+    text: "¿Quién firma en nombre de la dirección?"
+    clause: art.2.3
+    help: "Una persona concreta, con el nombre que figura en la lista de personas, que aprueba los documentos en nombre de la dirección aunque esta sea un órgano (por ejemplo, un consejo de administración). Si no ocupa ningún cargo de seguridad, añádela igualmente a esa lista."
+sections:
+  - id: introduccion
+    title: "Introducción"
+    covers: [org.3.intro]
+    body: |
+      Organización: {{organizacion}}
+  - id: tareas
+    title: "Tareas habituales y quién las hace"
+    covers: [org.3.1, org.3.2]
+    body: |
+      {{#each procedimientos}}
+      ### {{.tarea}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: anomalias
+    title: "Comportamientos anómalos"
+    covers: [org.3.3]
+    body: |
+      Se considera anómalo:
+
+      {{#each anomalias_identificacion}}
+      - {{.}}
+      {{/each}}
+
+      Comunicación: {{anomalias_comunicacion}}
+
+      Registro: {{anomalias_registro}}
+  - id: info_acceso
+    title: "Tratamiento de la información: su control de acceso"
+    covers: [org.3.4, op.acc.2.2, op.acc.4.4]
+    body: |
+      {{#each info_acceso}}
+      ### {{.informacion}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: info_almacenamiento
+    title: "Tratamiento de la información: su almacenamiento"
+    covers: [org.3.4]
+    body: |
+      {{#each info_almacenamiento}}
+      ### {{.informacion}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: info_copias
+    title: "Tratamiento de la información: la realización de copias"
+    covers: [org.3.4, mp.info.6.1, mp.info.6.2]
+    body: |
+      {{#each info_copias}}
+      ### {{.informacion}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: info_etiquetado
+    title: "Tratamiento de la información: el etiquetado de soportes"
+    covers: [org.3.4]
+    body: |
+      {{#each info_etiquetado}}
+      ### {{.informacion}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: info_transmision
+    title: "Tratamiento de la información: su transmisión telemática"
+    covers: [org.3.4]
+    body: |
+      {{#each info_transmision}}
+      ### {{.informacion}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: info_otras
+    title: "Tratamiento de la información: otras actividades"
+    covers: [org.3.4]
+    body: |
+      {{#each info_otras}}
+      ### {{.informacion}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: analisis_riesgos
+    title: "Análisis de riesgos"
+    covers: [op.pl.1.intro]
+    body: |
+      {{#each analisis_riesgos}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: inventario_activos
+    title: "Inventario de activos"
+    covers: [op.exp.1.1]
+    body: |
+      {{#each inventario_activos}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: gestion_cuentas
+    title: "Altas, bajas y retención de cuentas de usuario"
+    covers: [op.acc.1.3, op.acc.1.4]
+    body: |
+      {{#each gestion_cuentas}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: credenciales
+    title: "Entrega, cambio y retirada de credenciales"
+    covers: [op.acc.6.1, op.acc.6.2, op.acc.6.4, op.acc.6.5, op.acc.6.6]
+    body: |
+      {{#each credenciales}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: actualizaciones
+    title: "Mantenimiento y actualizaciones de seguridad"
+    covers: [op.exp.4.1, op.exp.4.2, op.exp.4.3]
+    body: |
+      {{#each actualizaciones}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: codigo_danino
+    title: "Protección frente a código dañino"
+    covers: [op.exp.6.1, op.exp.6.3]
+    body: |
+      {{#each codigo_danino}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: registro_actividad
+    title: "Registro de la actividad"
+    covers: [op.exp.8.1]
+    body: |
+      {{#each registro_actividad}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: perimetro
+    title: "Autorización de flujos a través del perímetro"
+    covers: [mp.com.1.2]
+    body: |
+      {{#each perimetro}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: puesta_en_produccion
+    title: "Aceptación y puesta en servicio de aplicaciones"
+    covers: [mp.sw.2.intro, mp.sw.2.1]
+    body: |
+      {{#each puesta_en_produccion}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: informacion_deberes
+    title: "Información al personal de sus deberes y obligaciones"
+    covers: [mp.per.2.intro]
+    body: |
+      {{#each informacion_deberes}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: concienciacion
+    title: "Concienciación del personal"
+    covers: [mp.per.3.intro, mp.per.3.1, mp.per.3.2, mp.per.3.3]
+    body: |
+      {{#each concienciacion}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: formacion
+    title: "Formación del personal"
+    covers: [mp.per.4.1, mp.per.4.intro]
+    body: |
+      {{#each formacion}}
+      ### {{.ambito}}
+
+      - Quién: {{.quien}}
+      - Pasos: {{.pasos}}
+      - Herramienta o canal: {{.herramienta}}
+      - Evidencia: {{.evidencia}}
+
+      {{/each}}
+  - id: aprobacion_direccion
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["la dirección"]}
+    body: |
+      Los aprueba: la dirección, en cuyo nombre firma {{firmante_direccion}}.
+  - id: aprobacion_seguridad
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["el responsable de la seguridad"]}
+    body: |
+      Los aprueba: el responsable de la seguridad.
+  - id: aprobacion_sistema
+    title: "Aprobación"
+    covers: []
+    when: {question: autoridad_procedimientos, any_of: ["el responsable del sistema"]}
+    body: |
+      Los aprueba: el responsable del sistema.
