@@ -1,0 +1,9 @@
+format: ens-benchmark-case/1
+id: av-correcto-capacidad-revisada
+partition: holdout
+profile: agencia-viajes
+kind: correct
+mutations:
+- op: replace_evidence_text
+  alias: capacidad
+  file: capacidad.md

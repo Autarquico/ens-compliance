@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: av-registros-desactivados
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: codigo-danino
+  file: codigo-danino.md
+defects:
+- id: registros-servidor-apagados
+  layer: judgment
+  measure: op.exp.8
+  target:
+    kind: evidence
+    alias: codigo-danino
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: op.exp.8
+    clause: op.exp.8.2
+    quote: Se activarán los registros de actividad en los servidores
+  rationale: La evidencia desactiva los registros en el servidor de archivos, frente al procedimiento
+    de registro de actividad, que los exige.

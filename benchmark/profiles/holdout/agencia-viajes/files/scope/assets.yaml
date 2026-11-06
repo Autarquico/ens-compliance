@@ -1,0 +1,68 @@
+assets:
+  - id: portatil-gerencia
+    type: laptop
+    deployment: deployed
+    os: macOS 15
+    owner: Rafael Ortuño Cabello
+    encrypted: true
+    usage: Gestión de la agencia, contratos con mayoristas y correo de gerencia
+  - id: portatil-mostrador-1
+    type: laptop
+    deployment: deployed
+    os: Windows 11 Pro
+    owner: Gonzalo Iglesias Pardo
+    encrypted: true
+    usage: Atención al público, reservas y emisión de documentación de viaje
+  - id: portatil-mostrador-2
+    type: laptop
+    deployment: deployed
+    os: Windows 11 Pro
+    owner: Noelia Salvatierra Mena
+    encrypted: true
+    usage: Atención al público, reservas y cobros
+  - id: servidor-archivos
+    type: server
+    deployment: deployed
+    hostname: nas-brujula
+    function: Almacena los expedientes escaneados de viajeros y los contratos de viaje
+    os: DSM 7 del fabricante del equipo de almacenamiento
+    environment: producción
+    location: Cuarto técnico de la oficina, con cerradura
+  - id: crm-reservas
+    type: application
+    deployment: deployed
+    service: reservas-viajes
+    domain: reservas.brujula-austral.example
+    repo: No aplica, servicio contratado a un tercero sin código propio de la agencia
+    database: Base de datos gestionada por el proveedor del programa de reservas
+  - id: cuentas-correo
+    type: identity
+    deployment: deployed
+    users: Cinco cuentas del personal y un buzón compartido de reservas
+    admins: Gonzalo Iglesias Pardo
+    mfa: true
+  - id: gestor-claves
+    type: password_manager
+    deployment: deployed
+    mode: alojado
+    recovery: Clave de recuperación impresa y guardada en la caja fuerte de gerencia
+    mfa: true
+  - id: copia-nube
+    type: backup
+    deployment: deployed
+    source: servidor-archivos
+    destination: Almacenamiento cifrado del proveedor de copias en la Unión Europea y disco externo cifrado en la caja fuerte de gerencia
+    frequency: Diaria, de madrugada, en la nube y mensual en el disco externo
+    restoration: Prueba de restauración de una carpeta cada trimestre, anotada en el registro de copias
+  - id: proveedor-crm
+    type: provider
+    deployment: deployed
+    service: Programa de gestión de reservas contratado como servicio
+    function: Almacena clientes, reservas y facturas de la agencia
+    dependency: Disponibilidad del servicio y copias propias del proveedor
+  - id: proveedor-conectividad
+    type: provider
+    deployment: deployed
+    service: Línea de fibra y router con cortafuegos gestionado
+    function: Conecta la oficina a internet y filtra el tráfico entrante
+    dependency: Disponibilidad de la línea y configuración del cortafuegos del router

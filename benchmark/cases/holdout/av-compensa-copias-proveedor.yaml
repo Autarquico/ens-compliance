@@ -1,0 +1,26 @@
+format: ens-benchmark-case/1
+id: av-compensa-copias-proveedor
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: compensate
+  measure: mp.info.6
+  measures:
+  - Se confía en el proveedor del programa de reservas, que hace sus propias copias.
+  replaces:
+  - base
+  justification: El proveedor es una empresa seria y protege igual.
+defects:
+- id: compensacion-copias-proveedor
+  layer: judgment
+  measure: mp.info.6
+  target:
+    kind: justification
+  expected_criterion: solidez-justificacion-aplicabilidad
+  requirement:
+    measure: mp.info.6
+    clause: mp.info.6.2
+    quote: Los procedimientos de respaldo establecidos indicarán
+  rationale: La compensación sustituye las copias propias por una confianza genérica en el proveedor,
+    sin explicar frecuencia, lugar ni controles.

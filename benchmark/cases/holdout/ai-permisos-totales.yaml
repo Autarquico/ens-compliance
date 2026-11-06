@@ -1,0 +1,24 @@
+format: ens-benchmark-case/1
+id: ai-permisos-totales
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: accesos
+  file: accesos.md
+defects:
+- id: todos-administradores
+  layer: judgment
+  measure: op.acc.4
+  target:
+    kind: evidence
+    alias: accesos
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: op.acc.4
+    clause: op.acc.4.2
+    quote: 'Mínimo privilegio: los privilegios de cada entidad, usuario o proceso se reducirán al mínimo
+      imprescindible'
+  rationale: La evidencia concede administración completa a todo el personal, frente al procedimiento
+    de control de acceso, que concede permisos por decisión del responsable.

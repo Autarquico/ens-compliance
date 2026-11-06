@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: av-obligaciones-vagas
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: set_answer
+  key: deberes_personal
+  value:
+  - Cumplir con lo que corresponda en cada momento.
+defects:
+- id: obligaciones-sin-concretar
+  layer: judgment
+  measure: org.2
+  target:
+    kind: document
+    ref: normativa-seguridad
+  expected_criterion: calidad-documental
+  requirement:
+    measure: org.2
+    clause: org.2.2
+    quote: La responsabilidad del personal con respecto al cumplimiento o violación de la normativa
+  rationale: La normativa lista los deberes del personal con una frase que no concreta ninguna obligación.

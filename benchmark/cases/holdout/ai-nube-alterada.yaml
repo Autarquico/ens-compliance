@@ -1,0 +1,33 @@
+format: ens-benchmark-case/1
+id: ai-nube-alterada
+partition: holdout
+profile: academia-idiomas
+kind: defective
+judgment: false
+mutations:
+- op: tamper_artifact
+  alias: nube
+defects:
+- id: nube-alterada
+  layer: deterministic
+  measure: op.nub.1
+  target:
+    kind: evidence
+    alias: nube
+  expected_rule: HASH_MISMATCH
+  requirement:
+    measure: op.nub.1
+    clause: op.nub.1.2
+    quote: Cuando se utilicen servicios en la nube suministrados por terceros
+  rationale: El fichero guardado de la evidencia se altera a mano y su huella deja de cuadrar.
+- id: nube-sin-cobertura
+  layer: deterministic
+  measure: op.nub.1
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: op.nub.1
+    clause: op.nub.1.1
+    quote: Los sistemas que suministran un servicio en la nube a organismos del sector público
+  rationale: Al dejar de valer la evidencia, la medida queda sin cobertura y las cláusulas sin evidencia.

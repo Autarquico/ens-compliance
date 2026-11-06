@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: ai-antivirus-parcial
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: codigo-danino
+  file: codigo-danino.md
+defects:
+- id: antivirus-no-en-todos
+  layer: judgment
+  measure: op.exp.6
+  target:
+    kind: evidence
+    alias: codigo-danino
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: op.exp.6
+    clause: op.exp.6.2
+    quote: Se instalará software de protección frente a código dañino en todos los equipos
+  rationale: La evidencia admite un portátil sin antivirus, frente al procedimiento de código dañino,
+    que lo instala en todos los equipos.

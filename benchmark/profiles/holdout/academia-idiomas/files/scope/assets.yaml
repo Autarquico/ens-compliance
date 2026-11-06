@@ -1,0 +1,60 @@
+assets:
+  - id: portatil-secretaria
+    type: laptop
+    deployment: deployed
+    os: Windows 11 Pro
+    owner: Lucía Barrios Soto
+    encrypted: true
+    usage: Matrículas, cobros y atención a familias en secretaría
+  - id: portatil-direccion
+    type: laptop
+    deployment: deployed
+    os: Windows 11 Pro
+    owner: Marta Quirós Vidal
+    encrypted: true
+    usage: Gestión de la academia, contratos y correo de dirección
+  - id: app-matricula
+    type: application
+    deployment: deployed
+    service: matricula-alumnado
+    domain: matricula.academia-calaverde.example
+    repo: Repositorio privado de la aplicación en el servicio de código del integrador
+    database: bd-alumnado
+  - id: bd-alumnado
+    type: database
+    deployment: deployed
+    engine: PostgreSQL 16 gestionado por el proveedor de alojamiento
+    location: Centro de datos del proveedor de alojamiento en la Unión Europea
+    data: Fichas de alumnado, grupos, calificaciones y recibos
+    backup: Copia diaria cifrada gestionada por el proveedor, más copia semanal propia
+  - id: cuentas-correo
+    type: identity
+    deployment: deployed
+    users: Seis cuentas del personal y tres buzones compartidos
+    admins: Lucía Barrios Soto
+    mfa: true
+  - id: gestor-claves
+    type: password_manager
+    deployment: deployed
+    mode: alojado
+    recovery: Custodia de la clave de recuperación en sobre cerrado en la caja de la oficina
+    mfa: true
+  - id: copias-semanales
+    type: backup
+    deployment: deployed
+    source: bd-alumnado y carpeta compartida de secretaría
+    destination: Disco externo cifrado en la caja de la oficina y almacenamiento del proveedor
+    frequency: Diaria en el proveedor y semanal en el disco externo
+    restoration: Prueba de restauración trimestral anotada en el registro de copias
+  - id: proveedor-alojamiento
+    type: provider
+    deployment: deployed
+    service: Alojamiento web y base de datos gestionada
+    function: Aloja la aplicación de matrícula y su base de datos
+    dependency: Disponibilidad del servidor y copia diaria de la base de datos
+  - id: proveedor-conectividad
+    type: provider
+    deployment: deployed
+    service: Línea de fibra y router con cortafuegos gestionado
+    function: Conecta la oficina a internet y filtra el tráfico entrante
+    dependency: Disponibilidad de la línea y configuración del cortafuegos del router

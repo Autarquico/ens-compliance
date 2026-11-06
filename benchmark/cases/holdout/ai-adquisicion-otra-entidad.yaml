@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: ai-adquisicion-otra-entidad
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: adquisicion
+  file: adquisicion.md
+defects:
+- id: adquisicion-copiada
+  layer: judgment
+  measure: op.pl.3
+  target:
+    kind: evidence
+    alias: adquisicion
+  expected_criterion: calidad-documental
+  requirement:
+    measure: op.pl.3
+    clause: op.pl.3.2
+    quote: Será acorde a la arquitectura de seguridad escogida
+  rationale: El texto habla de otra organización y de una línea de producción que no existen en este sistema,
+    una copia sin adaptar.

@@ -1,0 +1,24 @@
+format: ens-benchmark-case/1
+id: ai-disco-copias-fuera
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: soportes
+  file: soportes.md
+defects:
+- id: disco-en-domicilio
+  layer: judgment
+  measure: mp.si.3
+  target:
+    kind: evidence
+    alias: soportes
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: mp.si.3
+    clause: mp.si.3.1
+    quote: Se aplicará la debida diligencia y control a los soportes de información que permanecen bajo
+      la responsabilidad de la organización
+  rationale: La evidencia sitúa el disco de copias en un domicilio particular, mientras el inventario
+    y los procedimientos lo ubican en la caja de la oficina.

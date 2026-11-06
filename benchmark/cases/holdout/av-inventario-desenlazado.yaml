@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: av-inventario-desenlazado
+partition: holdout
+profile: agencia-viajes
+kind: defective
+judgment: false
+mutations:
+- op: unlink_document
+  ref: procedimientos-seguridad
+  measure: op.exp.1
+defects:
+- id: inventario-ausente
+  layer: deterministic
+  measure: op.exp.1
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: op.exp.1
+    clause: op.exp.1.1
+    quote: Se mantendrá un inventario actualizado de todos los elementos del sistema
+  rationale: El procedimiento de inventario se desenlaza de su medida, que queda sin evidencia.

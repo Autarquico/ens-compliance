@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ai-claves-sin-evidencia
+partition: holdout
+profile: academia-idiomas
+kind: defective
+judgment: false
+mutations:
+- op: unlink_evidence
+  alias: claves
+  measure: op.exp.10
+defects:
+- id: claves-ausente
+  layer: deterministic
+  measure: op.exp.10
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: op.exp.10
+    clause: op.exp.10.1
+    quote: Las claves criptográficas se protegerán durante todo su ciclo de vida
+  rationale: La protección de claves se desenlaza y la medida queda sin evidencia.

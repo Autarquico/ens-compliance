@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: av-impacto-vago
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: impacto
+  file: impacto.md
+defects:
+- id: impacto-sin-concretar
+  layer: judgment
+  measure: op.cont.1
+  target:
+    kind: evidence
+    alias: impacto
+  expected_criterion: calidad-documental
+  requirement:
+    measure: op.cont.1
+    clause: op.cont.1.1
+    quote: Se realizará un análisis de impacto que permita determinar los requisitos de disponibilidad
+      de cada servicio
+  rationale: El análisis no da tiempos de interrupción tolerables ni nombra los elementos críticos.

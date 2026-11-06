@@ -1,0 +1,17 @@
+dependencies:
+  - id: dep-app-bd
+    asset: app-matricula
+    depends_on: bd-alumnado
+    purpose: La aplicación lee y escribe las fichas del alumnado
+  - id: dep-app-proveedor
+    asset: app-matricula
+    depends_on: proveedor-alojamiento
+    purpose: La aplicación se ejecuta en la infraestructura del proveedor
+  - id: dep-bd-copias
+    asset: bd-alumnado
+    depends_on: copias-semanales
+    purpose: La copia semanal propia incluye la base de datos
+  - id: dep-oficina-conectividad
+    asset: portatil-secretaria
+    depends_on: proveedor-conectividad
+    purpose: Los portátiles acceden a la aplicación de matrícula a través de la línea de la oficina
