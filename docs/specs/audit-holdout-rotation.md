@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Reservada nueva y dev ampliado para el umbral de v0.1"
+title: Reservada nueva y dev ampliado para el umbral de v0.1
 type: task
-status: draft
+status: active
 priority: P0
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [57]
 depends_on: [audit-pack-tuning]
 supersedes: []
 related_specs: [audit-benchmark, audit-pack-tuning]
