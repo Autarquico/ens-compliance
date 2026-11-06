@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/clinica-copias-compensadas-por-proveedor",
+  "case_sha256": "012783e77cdb2e2ce0fecd8dddb052bfb098d5a473149e235e3ea8d95e1a3e52",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "325f270baad848a280b611ec1a8ef6b228a605e0afb64c3ef8964392d8aa24aa",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T13:57:52.302380Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T13:56:36.975156Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Cada noche el programa de copias copia la base de pacientes y la carpeta de radiografías, las cifra y las envía al almacenamiento externo contratado, fuera de la clínica, donde se conservan 30 copias diarias.\"}], \"evidence\": [{\"ref\": \"EV-20261005-e10d1451\", \"quote\": \"Copias nocturnas de la base de datos de pacientes y de la carpeta de radiografías: 7 de 7\\nterminadas sin errores, cifradas y enviadas al almacenamiento externo contratado.\"}], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El comercial del proveedor nos dijo por teléfono que ellos también guardan los datos, así que no hace falta que la clínica haga copias propias.\"}], \"reason\": \"La compensación se apoya solo en una afirmación verbal de un comercial. No justifica que la copia del proveedor proteja igual o mejor que la medida sustituida: deja sin cubrir la frecuencia, la retención, los requisitos de almacenamiento y el control de acceso a las copias (mp.info.6.1 y mp.info.6.2). Además, el procedimiento y la evidencia enlazados la contradicen, porque muestran que la clínica sí hace copias propias.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T13:56:58.809751Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Cada noche el programa de copias copia la base de pacientes y la carpeta de radiografías, las cifra y las envía al almacenamiento externo contratado, fuera de la clínica, donde se conservan 30 copias diarias.\"}], \"evidence\": [{\"ref\": \"EV-20261005-e10d1451\", \"quote\": \"Copias nocturnas de la base de datos de pacientes y de la carpeta de radiografías: 7 de 7\"}], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El comercial del proveedor nos dijo por teléfono que ellos también guardan los datos, así que no hace falta que la clínica haga copias propias.\"}], \"reason\": \"La compensación solo se apoya en lo que dijo por teléfono un comercial. No justifica que la copia del proveedor proteja igual o mejor que la medida sustituida: no fija frecuencia ni retención, no dice dónde se guardan las copias ni cómo se controla el acceso a ellas (mp.info.6.2). Además, el procedimiento y el informe de copias enlazados a la medida dicen que la clínica sí hace copias propias cada noche, lo que contradice la justificación.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T13:57:27.037416Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Cada noche el programa de copias copia la base de pacientes y la carpeta de radiografías, las cifra y las envía al almacenamiento externo contratado, fuera de la clínica, donde se conservan 30 copias diarias.\"}], \"evidence\": [{\"ref\": \"EV-20261005-e10d1451\", \"quote\": \"Copias nocturnas de la base de datos de pacientes y de la carpeta de radiografías: 7 de 7\"}], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El comercial del proveedor nos dijo por teléfono que ellos también guardan los datos, así que no hace falta que la clínica haga copias propias.\"}], \"reason\": \"La compensación se apoya solo en lo que dijo un comercial por teléfono. No justifica documentalmente que la copia del proveedor proteja igual o mejor que la medida sustituida, y no precisa la frecuencia, la retención, los requisitos de almacenamiento ni los controles de acceso a las copias que exige mp.info.6.2. Además, el procedimiento y la evidencia enlazados a la medida dicen lo contrario: la clínica sí hace copias propias cada noche, así que la justificación no cuadra con el propio expediente.\"}]}",
+      "kind": null
+    }
+  ]
+}

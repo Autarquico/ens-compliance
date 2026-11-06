@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/comercio-intrusiones-compensadas",
+  "case_sha256": "458f2aa03d93987dbe8dca127c1497384a499d9b56392e13a38f0ebb67ac434b",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "d899a70f8ccfeba42b2536e7d87b6c0599d838e0c2658484980afdfa789c2dff",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T14:28:00.513186Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T14:26:53.025928Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261006-0e5827a0\", \"quote\": \"En septiembre se bloquearon 312 direcciones; ninguna llegó a iniciar\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación de op.mon.1.1 se basa en que «nunca nos han atacado» y en confiar en que avise el alojamiento, pero no justifica que esa confianza proteja igual o mejor que la detección de intrusión que sustituye. Además, la contradicen la evidencia enlazada (312 direcciones bloqueadas en septiembre) y el análisis de riesgos (EV-20261006-4a88eab8, no enlazado a la medida), que cuenta entre las amenazas más probables los intentos de entrar en el panel o por SSH.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T14:27:18.796969Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261006-0e5827a0\", \"quote\": \"denegación de servicio. En septiembre se bloquearon 312 direcciones; ninguna llegó a iniciar\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación se limita a confiar en que el proveedor de alojamiento avise. No muestra que eso proteja igual o mejor que la detección de intrusión que sustituye (op.mon.1.1). Además, su premisa de que «nunca nos han atacado» la contradice la evidencia enlazada, con 312 direcciones bloqueadas en septiembre. También la contradice el análisis de riesgos (EV-20261006-4a88eab8, no enlazado a op.mon.1), que cuenta entre las amenazas más probables los intentos de entrar en el panel o por SSH.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T14:27:39.657198Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261006-0e5827a0\", \"quote\": \"En septiembre se bloquearon 312 direcciones; ninguna llegó a iniciar\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación no muestra que confiar en los avisos del alojamiento proteja igual o mejor que la detección de intrusión (op.mon.1.1). Además, la evidencia enlazada contradice que «nunca nos han atacado»: registra 312 direcciones bloqueadas en septiembre. El análisis de riesgos (EV-20261006-4a88eab8, no enlazado a la medida) también recoge como amenaza probable los intentos de acceso al panel o por SSH.\"}]}",
+      "kind": null
+    }
+  ]
+}

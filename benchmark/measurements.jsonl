@@ -129,3 +129,10 @@
 {"at":"2026-11-06T10:13:37.487248Z","action":"build","partition":"holdout"}
 {"at":"2026-11-06T11:17:56.313009Z","action":"build","partition":"holdout"}
 {"at":"2026-11-06T11:18:33.841038Z","action":"build","partition":"holdout"}
+{"at":"2026-11-06T13:28:35.668064Z","action":"prepare","partition":"holdout","pack_sha256":"a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e","provider":"claude-code","model":"claude-opus-5-5"}
+{"at":"2026-11-06T13:36:54.844448Z","action":"prepare","partition":"holdout","pack_sha256":"a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e","provider":"codex","model":"gpt-6.1-sol"}
+{"at":"2026-11-06T13:45:19.878646Z","action":"record","partition":"holdout","pack_sha256":"a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e","provider":"claude-code","model":"claude-opus-5-5"}
+{"at":"2026-11-06T14:37:58.001929Z","action":"record","partition":"holdout","pack_sha256":"a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e","provider":"codex","model":"gpt-6.1-sol"}
+{"at":"2026-11-06T15:13:50.927164Z","action":"run","partition":"holdout","pack_sha256":"a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e"}
+{"at":"2026-11-06T15:34:11.684103Z","action":"run-result","partition":"holdout","pack_sha256":"a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e","provider":"claude-code","model":"claude-opus-5-5","result":{"gate":"threshold","gate_passed":false,"deterministic":1.0,"judgment":0.92,"false_alarms":0.4888888888888889,"correct_with_false_alarms":0.75}}
+{"at":"2026-11-06T15:34:11.684103Z","action":"run-result","partition":"holdout","pack_sha256":"a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e","provider":"codex","model":"gpt-6.1-sol","result":{"gate":"threshold","gate_passed":false,"deterministic":1.0,"judgment":0.76,"false_alarms":0.42424242424242425,"correct_with_false_alarms":0.25}}

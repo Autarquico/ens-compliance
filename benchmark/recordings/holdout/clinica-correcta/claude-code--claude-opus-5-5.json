@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/clinica-correcta",
+  "case_sha256": "ffd33a3523bd49ed32fc47d1e2ff79d944b85943f9287e0f271cb8401f56eea6",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "a7a26df049a61664ac068893263dbe7f45f9e181a1ac631fc9aa74e2d94dbce1",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T14:01:10.620006Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T13:59:16.512582Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.4\", \"quote\": \"El sistema no se interconecta con otros: los informes para el servicio de salud se suben a mano en su plataforma web por conexión cifrada, sin intercambio automático entre sistemas.\"}], \"reason\": \"La justificación dice que el sistema no se interconecta con otros. Sin embargo, el documento «proceso-autorizacion», no enlazado a esta medida, recoge en «Enlaces con otros sistemas» (org.4.4) la «Conexión con la plataforma del programa infantil del servicio de salud», con su propio «Registro de enlaces autorizados». Es decir, la propia organización la trata como un enlace de comunicaciones con otro sistema, y eso resta solidez a la razón dada.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T13:59:53.384358Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"ninguno presta un servicio cuya caída deje a la clínica sin atender: se puede dar cita y atender con la agenda en papel.\"}], \"reason\": \"La justificación descarta la medida porque la caída de ningún proveedor dejaría a la clínica sin atender. El análisis de riesgos del expediente (evidencia EV-20261005-3ec562dd, no enlazada a op.ext.1) dice lo contrario: sin el programa de gestión clínica del proveedor «no se puede dar cita ni consultar tratamientos». La justificación de op.ext.3 también lo llama el único componente crítico de un tercero.\"}, {\"criterion\": \"calidad-documental\", \"measure\": \"op.exp.7\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimiento-incidentes\", \"quote\": \"Criterio: Sin acceso indebido a historias ni pérdida de datos y con la consulta funcionando.\"}, {\"ref\": \"procedimiento-incidentes\", \"quote\": \"Criterio: Acceso indebido a historias, pérdida de datos de pacientes o consulta sin programa más de media jornada.\"}], \"evidence\": [{\"ref\": \"EV-20261005-d40b9abe\", \"quote\": \"Sin incidencias en el último año.\"}], \"justifications\": [], \"reason\": \"El anexo II (op.exp.7.1) exige que el procedimiento detalle los criterios de clasificación y el escalado. Los dos niveles declarados no cubren todos los casos: una parada del programa de menos de media jornada no es «Bajo» (que exige la consulta funcionando) ni «Alto» (que exige más de media jornada), así que no tiene clasificación ni escalado.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T14:00:38.950995Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.4\", \"quote\": \"El sistema no se interconecta con otros: los informes para el servicio de salud se suben a mano en su plataforma web por conexión cifrada, sin intercambio automático entre sistemas.\"}], \"reason\": \"La justificación afirma que el sistema no se interconecta con otros. Sin embargo, el documento 'proceso-autorizacion' (no enlazado a op.ext.4) recoge, en el apartado «Enlaces con otros sistemas», la «Conexión con la plataforma del programa infantil del servicio de salud», que se pide «con la finalidad y los datos que se intercambian» y queda anotada en un «Registro de enlaces autorizados». Eso contradice la ausencia de interconexión que se alega.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.3\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.3\", \"quote\": \"Los demás terceros no ven datos legibles ni sostienen la atención: el almacenamiento externo solo recibe copias ya cifradas en la clínica, y el software de radiografía y el antivirus son productos estándar autorizados en el proceso de autorización.\"}], \"reason\": \"La justificación afirma que ningún otro tercero ve datos legibles, pero omite al técnico externo de mantenimiento. El documento 'procedimientos-seguridad' (no enlazado a op.ext.3) dice que este técnico instala las actualizaciones en el servidor y los equipos, y que «Solo el técnico contratado y el responsable de sistemas tocan los equipos». El documento 'procedimiento-incidentes' (tampoco enlazado) también lo hace participar en el análisis de incidentes. Por tanto, un tercero sí accede a los sistemas que tratan las historias.\"}]}",
+      "kind": null
+    }
+  ]
+}

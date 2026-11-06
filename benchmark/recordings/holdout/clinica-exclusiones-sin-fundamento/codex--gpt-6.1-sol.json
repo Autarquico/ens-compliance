@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/clinica-exclusiones-sin-fundamento",
+  "case_sha256": "59e15f5c0347be67384d9fcb35a15bcca9824c264ef3b56838fe35c23566e25d",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "d6b5ffbe4ed2eb211c6102659515ffef283026087a46a823ca2ac9e599b72a2e",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T14:53:45.999898Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T14:52:18.942052Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.per.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"Se formará regularmente al personal en aquellas materias relativas a seguridad de la información que requiera el desempeño de sus funciones, en particular en lo relativo a: a) Configuración de sistemas. b) Detección y reacción ante incidentes. c) Gestión de la información en cualquier soporte en el que se encuentre.\"}],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:mp.per.4:base\",\"quote\":\"El personal ya sabe manejar el ordenador y el programa de citas; con el manual del programa basta y formarlo en seguridad sería perder horas de consulta.\"}],\"reason\":\"La compensación no justifica una protección igual o mejor: saber usar el programa de citas y entregar su manual no cubre la configuración segura, la detección y reacción ante incidentes ni la gestión segura de información en cualquier soporte exigidas por mp.per.4.1. Se propone revisar esta insuficiencia de la justificación, aunque el expediente también aporte formación realizada.\"},{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.si.2\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:not_selected:mp.si.2\",\"quote\":\"Los discos con radiografías se los lleva el paciente; desde que salen por la puerta ya no son responsabilidad de la clínica.\"}],\"reason\":\"La entrega al paciente no justifica prescindir de la protección criptográfica frente al riesgo de pérdida del soporte: el análisis de riesgos identifica expresamente la pérdida de discos entregados a pacientes o profesionales y establece su cifrado como salvaguarda. Además, el acta anual afirma que los discos que salen de la clínica se graban cifrados, contradiciendo el fundamento utilizado para excluir la medida.\"},{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"op.ext.2\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:not_selected:op.ext.2\",\"quote\":\"La relación con los proveedores se reduce a la visita mensual del técnico externo, que supervisa el responsable de sistemas, y a los avisos del proveedor del programa que revisa el comité; no hay servicios gestionados por terceros que requieran una supervisión diaria. BÁSICA no pide más.\"}],\"reason\":\"La afirmación de que la relación con proveedores se reduce al mantenimiento y los avisos contradice el inventario, que incluye almacenamiento externo de copias y consola del antivirus gestionado como servicios de terceros. La justificación no explica la exclusión de la gestión diaria respecto de esos servicios continuados.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T14:52:47.070781Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.per.4\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:mp.per.4:base\",\"quote\":\"El personal ya sabe manejar el ordenador y el programa de citas; con el manual del programa basta y formarlo en seguridad sería perder horas de consulta.\"}],\"reason\":\"La compensación no justifica una protección igual o mejor: saber manejar el programa y entregar su manual no cubre la formación en configuración segura, detección y reacción ante incidentes y gestión de la información que recoge mp.per.4.1. Se propone NC_MENOR por la insuficiencia de la justificación de equivalencia de la medida sustituida.\"},{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.si.2\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:not_selected:mp.si.2\",\"quote\":\"Los discos con radiografías se los lleva el paciente; desde que salen por la puerta ya no son responsabilidad de la clínica.\"}],\"reason\":\"La justificación no explica por qué resulta innecesaria la protección criptográfica de las radiografías ante la pérdida del soporte: el análisis de riesgos identifica expresamente esa amenaza y establece el cifrado de los discos como salvaguarda. Se propone NC_MENOR por una justificación de inaplicabilidad que no atiende al riesgo reconocido en el expediente.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T14:53:15.693168Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.per.4\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:mp.per.4:base\",\"quote\":\"El personal ya sabe manejar el ordenador y el programa de citas; con el manual del programa basta y formarlo en seguridad sería perder horas de consulta.\"}],\"reason\":\"La compensación no justifica protección igual o mejor: el manejo del programa y su manual no cubren la formación en configuración segura, detección y reacción ante incidentes y gestión de información que recoge mp.per.4.1. Además, contradice los procedimientos de seguridad y el registro de formación anual, que describen formación específica en seguridad.\"},{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.si.2\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:not_selected:mp.si.2\",\"quote\":\"Los discos con radiografías se los lleva el paciente; desde que salen por la puerta ya no son responsabilidad de la clínica.\"}],\"reason\":\"La justificación descarta la protección del soporte tras su entrega, mientras que el análisis de riesgos identifica expresamente la pérdida de discos entregados como amenaza y establece su cifrado como salvaguarda. El acta anual también afirma que los discos que salen se graban cifrados; por ello se propone revisar esta justificación, que contradice el tratamiento del riesgo declarado en el expediente.\"}]}",
+      "kind": null
+    }
+  ]
+}

@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/comercio-inventario-renovado",
+  "case_sha256": "2d0063d76fd44a1835a193b0c52cf4cabb326c97553a3adf42d478064c50f6a6",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "cd50e659a68210661661a03c2d69847dd6467ce6053ecd8acc9d3fba998e72a3",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T15:10:01.245718Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T15:09:04.629290Z",
+      "outcome": "response",
+      "response": "{\"findings\":[]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T15:09:28.310211Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T15:09:47.246390Z",
+      "outcome": "response",
+      "response": "{\"findings\":[]}",
+      "kind": null
+    }
+  ]
+}
