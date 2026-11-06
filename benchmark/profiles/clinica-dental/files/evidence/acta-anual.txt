@@ -10,11 +10,13 @@ Jorge Molar (responsable del sistema) y Hugo Encía (responsable del servicio).
    ante sospecha.
 3. El servidor está en el cuarto técnico cerrado, con un sistema de alimentación ininterrumpida,
    extintor revisado en marzo y el cableado protegido por canaleta.
-4. El router de la clínica separa la red de gabinetes de la wifi de pacientes y solo deja salir
-   el tráfico autorizado; la plataforma del servicio de salud se usa por conexión cifrada.
+4. El router de la clínica separa la red de gabinetes de la wifi de pacientes, solo deja pasar
+   el tráfico autorizado y bloquea y anota los intentos de conexión entrantes no autorizados,
+   que Jorge Molar revisa cada mes; la plataforma del servicio de salud se usa por conexión cifrada.
 5. Los registros del servidor y del programa guardan quién accede a cada historia y cuándo.
 6. El proveedor del programa entrega cada año su certificado de conformidad con el ENS.
 7. Se repasan el registro de soportes, la limpieza de metadatos de informes y la destrucción
    de papel por la empresa certificada. Los discos de radiografías que salen de la clínica se
-   graban cifrados con el programa autorizado y la clave se da por teléfono al destinatario.
+   graban cifrados con el programa autorizado, que usa un algoritmo autorizado por el CCN, y la
+   clave se da por teléfono al destinatario.
    Sin incidencias en el último año.

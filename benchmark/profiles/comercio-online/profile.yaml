@@ -43,9 +43,12 @@ applicability:
   - measure: op.ext.2
     applicable: false
     justification: >-
-      Son tres proveedores y ninguno gestiona por su cuenta una parte del sistema: sus avisos e
-      incidencias se tratan en la reunión mensual de los responsables, que decide qué reclamar a
-      cada uno. No hace falta una gestión diaria aparte en categoría BÁSICA.
+      Los proveedores (alojamiento, pasarela de pago, almacenamiento de copias, transporte,
+      repositorio de código y servicios en la nube de la empresa) prestan servicios estándar y
+      ninguno administra por su cuenta la tienda ni el servidor, que administra el responsable
+      del sistema: sus avisos e incidencias se tratan en la reunión mensual de los responsables,
+      que decide qué reclamar a cada uno. No hace falta una gestión diaria aparte en categoría
+      BÁSICA.
   - measure: op.ext.3
     applicable: false
     justification: >-
@@ -68,9 +71,9 @@ applicability:
   - measure: op.cont.2
     applicable: false
     justification: >-
-      La continuidad descansa en la copia diaria cifrada con restauración probada cada trimestre
-      (mp.info.6) y en el acuerdo de nivel de servicio firmado con el alojamiento; no se redacta
-      un plan formal, que no es exigible en categoría BÁSICA.
+      Con la disponibilidad valorada en BAJO, la parada que el análisis de riesgos acepta, hasta
+      un día sin vender, se cubre restaurando la tienda desde la copia diaria cifrada en otro
+      proveedor; no se redacta un plan formal, que no es exigible en categoría BÁSICA.
   - measure: op.cont.3
     applicable: false
     justification: >-
@@ -98,8 +101,8 @@ applicability:
   - measure: mp.eq.2
     applicable: false
     justification: >-
-      No se configura el bloqueo por inactividad: la normativa obliga a bloquear el portátil al
-      dejarlo y a no prestarlo a visitas ni a alumnos. La medida no es exigible en categoría
+      No se configura el bloqueo por inactividad: la normativa obliga a bloquear cada portátil al
+      dejarlo y a no prestar el del taller a visitas ni a alumnos. La medida no es exigible en categoría
       BÁSICA.
   - measure: mp.com.4
     applicable: false

@@ -11,4 +11,9 @@ Actualizado el 1 de octubre de 2026 por Pablo Horno, responsable del sistema.
   responsable Nuria Torno.
 - gh-tienda: cuenta de alojamiento de código barro-ficticio con el repositorio tienda;
   responsable Pablo Horno.
+Servicios de terceros con datos del sistema: almacenamiento de copias cifradas de db-pedidos
+en otro proveedor, almacenamiento aparte de registros del alojamiento y servicios en la nube
+de la empresa (correo, carpeta compartida y gestor de contraseñas); responsable Pablo Horno.
+El servidor de pruebas para restauraciones y cambios se crea en el alojamiento y se borra al
+terminar.
 Proveedores sin datos propios en el alcance: pasarela de pago y empresa de transporte.

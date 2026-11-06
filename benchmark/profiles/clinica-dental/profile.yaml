@@ -47,10 +47,10 @@ applicability:
   - measure: op.ext.1
     applicable: false
     justification: >-
-      Los proveedores del programa de gestión y del mantenimiento entran con contrato y encargo
-      de tratamiento según el proceso de autorización, y ninguno presta un servicio cuya caída
-      deje a la clínica sin atender: se puede dar cita y atender con la agenda en papel. No
-      exigida en BÁSICA.
+      Los proveedores del programa de gestión, del mantenimiento y del almacenamiento externo de
+      copias entran con contrato y encargo de tratamiento según el proceso de autorización, y
+      ninguno presta un servicio cuya caída deje a la clínica sin atender: se puede dar cita y
+      atender con la agenda en papel. No exigida en BÁSICA.
   - measure: op.ext.2
     applicable: false
     justification: >-
@@ -62,8 +62,10 @@ applicability:
     applicable: false
     justification: >-
       El único componente crítico de un tercero es el programa de gestión, cuyo proveedor entrega
-      cada año su certificado de conformidad con el ENS, como recoge el acta anual; la clínica no
-      integra otros productos ni servicios de terceros en su sistema. No exigida en BÁSICA.
+      cada año su certificado de conformidad con el ENS, como recoge el acta anual. Los demás
+      terceros no ven datos legibles ni sostienen la atención: el almacenamiento externo solo
+      recibe copias ya cifradas en la clínica, y el software de radiografía y el antivirus son
+      productos estándar autorizados en el proceso de autorización. No exigida en BÁSICA.
   - measure: op.ext.4
     applicable: false
     justification: >-
@@ -79,15 +81,15 @@ applicability:
   - measure: op.cont.2
     applicable: false
     justification: >-
-      Sin plan de continuidad formal: con disponibilidad BAJA, la recuperación de los datos se
-      trata dentro de la medida de copias de seguridad (mp.info.6) y la agenda en papel y el
-      teléfono cubren una parada de hasta un día. No exigida en categoría BÁSICA.
+      Sin plan de continuidad formal: con disponibilidad BAJA, la agenda en papel y el teléfono
+      cubren una parada de hasta un día, el plazo que la política fija para recuperar las
+      historias. No exigida en categoría BÁSICA.
   - measure: op.cont.3
     applicable: false
     justification: >-
-      Al no haber plan de continuidad no hay plan que probar; las pruebas de recuperación de los
-      datos se tratan dentro de la medida de copias de seguridad (mp.info.6). La medida no se
-      exige en BÁSICA.
+      Al no haber plan de continuidad no hay plan que probar: la parada que admite la
+      disponibilidad BAJA se atiende con la agenda en papel y el teléfono, sin medios que ensayar.
+      La medida no se exige en BÁSICA.
   - measure: op.cont.4
     applicable: false
     justification: >-

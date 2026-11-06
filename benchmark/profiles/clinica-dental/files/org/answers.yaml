@@ -113,7 +113,7 @@ info_almacenamiento:
 info_copias:
   - informacion: Historias clínicas y radiografías
     quien: Responsable de sistemas
-    pasos: Cada noche el programa de copias copia la base de pacientes y la carpeta de radiografías, las cifra y las envía al almacenamiento externo contratado, fuera de la clínica, donde se conservan 30 copias diarias. En la clínica no se guardan copias en los puestos ni en soportes extraíbles; los datos solo están en el servidor del cuarto técnico, cerrado con llave. Solo el responsable de sistemas puede acceder a las copias y a su clave. Cada trimestre se restaura una historia completa en el portátil de pruebas y la responsable de seguridad firma el acta.
+    pasos: Cada noche el programa de copias copia la base de pacientes y la carpeta de radiografías, las cifra y las envía al almacenamiento externo contratado, fuera de la clínica, donde se conservan 30 copias diarias. En la clínica no se guardan copias en los puestos ni en soportes extraíbles; los datos solo están en el servidor del cuarto técnico, cerrado con llave. Solo el responsable de sistemas puede acceder a las copias y a su clave. Cada trimestre se restaura una historia completa en una base de pruebas del propio servidor, que se borra al terminar, y la responsable de seguridad firma el acta.
     herramienta: Programa de copias del servidor y almacenamiento externo
     evidencia: Informe de copias y acta de la prueba de restauración
 info_etiquetado:
@@ -188,7 +188,7 @@ puesta_en_produccion:
 informacion_deberes:
   - ambito: Toda la plantilla (odontólogos, higienista, recepción y administración)
     quien: Responsable de la seguridad
-    pasos: El primer día entrega la normativa con los deberes del puesto, el deber de confidencialidad sobre las historias, las medidas disciplinarias y lo que hay que devolver o dejar de usar al salir o al cambiar de puesto, y la persona firma el acuse de lectura; al cambiar de puesto o terminar el contrato se le recuerdan por escrito.
+    pasos: El primer día entrega la normativa con los deberes del puesto, el deber de confidencialidad sobre las historias mientras trabaje en la clínica y después de dejarla, las medidas disciplinarias del convenio colectivo y lo que hay que devolver o dejar de usar al salir o al cambiar de puesto, y la persona firma el acuse de lectura; al cambiar de puesto o terminar el contrato se le recuerdan por escrito. Para el técnico externo, el contrato de mantenimiento fija los deberes de la clínica, de su empresa y del propio técnico, y que un incumplimiento se comunica a su empresa y lo resuelven la directora y el responsable de sistemas, que pueden retirarle el acceso.
     herramienta: Normativa de seguridad y acuse en papel
     evidencia: Acuse de lectura firmado en el archivador de personal
 concienciacion:
@@ -252,7 +252,7 @@ aut_moviles:
     solicitud: Petición firmada por la directora
     registro: Inventario de equipos móviles
 aut_terceros:
-  - elemento: Proveedor del programa de gestión clínica y técnico externo de mantenimiento
+  - elemento: Proveedor del programa de gestión clínica, técnico externo de mantenimiento y almacenamiento externo de copias
     quien: Directora médica
     solicitud: Propuesta, contrato y acuerdo de encargo de tratamiento firmados
     registro: Contratos archivados y registro de proveedores

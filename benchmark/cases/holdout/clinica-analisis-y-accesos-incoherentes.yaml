@@ -36,6 +36,7 @@ defects:
         Mínimo privilegio: los privilegios de cada entidad, usuario o proceso se reducirán al
         mínimo imprescindible para cumplir sus obligaciones o funciones.
     rationale: >-
-      Las notas describen una cuenta de recepción compartida, todo el personal sanitario como
-      administrador y una baja sin tramitar, cuando los procedimientos dicen que cada perfil ve
-      solo lo de su puesto y que solo el responsable de sistemas concede permisos.
+      Las notas describen todo el personal sanitario como administrador, recepción con acceso a
+      las historias completas y permisos que se dan entre compañeros, cuando los procedimientos
+      dicen que cada perfil ve solo lo de su puesto y que solo el responsable de sistemas concede
+      permisos.

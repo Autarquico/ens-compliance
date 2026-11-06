@@ -10,4 +10,7 @@ Revisado el 28 de septiembre de 2026 por Jorge Molar, responsable de sistemas.
 
 Puestos de recepción y de los tres gabinetes: cuatro ordenadores Windows 11 sin datos locales,
 asignados al responsable de sistemas; se anotan en la hoja de puestos del servidor.
+Router de la clínica (red de gabinetes, wifi de pacientes y salida a internet), responsable
+Jorge Molar. Servicios de terceros: almacenamiento externo de copias cifradas y consola del
+antivirus gestionado, responsable Jorge Molar.
 Próxima revisión: marzo de 2027 o antes si entra o sale algún equipo.

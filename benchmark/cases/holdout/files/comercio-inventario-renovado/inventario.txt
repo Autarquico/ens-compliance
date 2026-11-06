@@ -12,5 +12,11 @@ el disco del portátil del taller.
 | db-pedidos     | MariaDB con pedidos y cuentas de clientes; copia diaria    | Nuria Torno   |
 | gh-tienda      | Cuenta de código barro-ficticio, repositorio tienda        | Pablo Horno   |
 
+Servicios de terceros con datos del sistema: almacenamiento de copias cifradas de db-pedidos
+en otro proveedor, almacenamiento aparte de registros del alojamiento y servicios en la nube
+de la empresa (correo, carpeta compartida y gestor de contraseñas); responsable Pablo Horno.
+El servidor de pruebas para restauraciones y cambios se crea en el alojamiento y se borra al
+terminar.
+
 El disco retirado del portátil se borró de forma segura y se entregó al punto limpio con
 certificado. Proveedores sin datos propios en el alcance: pasarela de pago y transporte.

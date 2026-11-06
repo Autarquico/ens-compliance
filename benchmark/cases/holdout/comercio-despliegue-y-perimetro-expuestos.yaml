@@ -36,6 +36,6 @@ defects:
         Se dispondrá de un sistema de protección perimetral que separe la red interna del
         exterior. Todo el tráfico deberá atravesar dicho sistema.
     rationale: >-
-      Con el cortafuegos en «permitir todo», SSH por contraseña y la base de datos publicada, no
-      hay separación entre la red interna y el exterior, frente a la normativa que restringe la
+      Con el cortafuegos en «permitir todo», FTP y SSH abiertos a cualquier dirección y la base
+      de datos publicada, no hay separación entre la red interna y el exterior, frente a la normativa que restringe la
       administración y los datos de clientes.

@@ -27,7 +27,8 @@ defects:
     rationale: >-
       Los procedimientos aprobados prometen copia nocturna cifrada de la base de pacientes y
       restauración trimestral; la hoja aportada muestra copias quincenales de solo las
-      radiografías a un USB sin cifrar que sale de la clínica y ninguna restauración probada.
+      radiografías a un USB sin cifrar junto al servidor, ninguna fuera de la clínica y ninguna
+      restauración probada.
   - id: servidor-sin-antivirus
     layer: judgment
     measure: op.exp.6

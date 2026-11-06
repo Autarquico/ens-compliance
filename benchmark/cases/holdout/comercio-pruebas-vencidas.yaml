@@ -6,7 +6,7 @@ kind: defective
 mutations:
   - op: expire_evidence
     alias: pruebas-despliegue
-    valid_until: "2026-09-15T00:00:00+00:00"
+    valid_until: "2026-10-01T00:00:00+00:00"
 defects:
   - id: historial-despliegues-vencido
     layer: deterministic
@@ -18,8 +18,8 @@ defects:
       clause: mp.sw.2
       quote: Antes de pasar a producción se comprobará el correcto funcionamiento de la aplicación.
     rationale: >-
-      El historial de despliegues con sus pruebas dejó de estar vigente a mitad de septiembre:
-      no cubre lo publicado en la tienda desde entonces.
+      El historial de despliegues de septiembre con sus pruebas dejó de estar vigente el 1 de
+      octubre: no cubre lo publicado en la tienda desde entonces.
   - id: paso-a-produccion-sin-cobertura
     layer: deterministic
     measure: mp.sw.2

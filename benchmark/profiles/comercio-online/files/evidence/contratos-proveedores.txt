@@ -8,4 +8,7 @@ de 2026 por Nuria Torno (fundadora) y Óscar Arcilla (responsable de la segurida
   y de su certificación; penalización según el anexo de servicio.
 - Almacenamiento de copias: copias recuperables durante 35 días; si una copia no se puede
   restaurar, el proveedor devuelve la cuota anual.
+- Empresa de transporte, repositorio de código y servicios en la nube de la empresa: planes de
+  empresa con disponibilidad mensual del 99,9 % como servicio mínimo, soporte en un día
+  laborable y abono de la parte de la cuota del mes si la incumplen.
 Todos los contratos incluyen el acuerdo de encargo de tratamiento firmado.

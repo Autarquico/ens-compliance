@@ -55,7 +55,7 @@ personas:
 relacion_seguridad_sistema: distintas y sin dependencia jerárquica
 uso_equipos:
   - Los portátiles de la empresa se usan solo para el trabajo; nadie instala programas sin avisar a Pablo Horno.
-  - El portátil del taller se bloquea al dejarlo y no se presta a visitas ni a alumnos de los cursos.
+  - Cada portátil se bloquea al dejarlo, y el del taller no se presta a visitas ni a alumnos de los cursos.
 uso_servicios:
   - El correo y la nube de la empresa se usan solo para el trabajo y nunca para guardar listados de clientes en cuentas personales.
   - El panel de administración de la tienda solo se abre desde los portátiles de la empresa.
@@ -248,7 +248,7 @@ aut_moviles:
     solicitud: Petición por escrito de la fundadora
     registro: Inventario de equipos móviles
 aut_terceros:
-  - elemento: Alojamiento, pasarela de pago, transporte y almacenamiento de copias
+  - elemento: Alojamiento, pasarela de pago, transporte, almacenamiento de copias, repositorio de código y servicios en la nube de la empresa (correo, carpeta compartida y gestor de contraseñas)
     quien: Fundadora
     solicitud: Propuesta, contrato y acuerdo de encargo de tratamiento firmados
     registro: Contratos archivados y registro de proveedores
