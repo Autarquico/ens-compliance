@@ -43,6 +43,10 @@ donde sí se puede diagnosticar y ajustar, y se crea una reservada nueva a ciega
   cláusula enlazada; inventario y arquitectura coherentes; evidencias coherentes con
   procedimientos y justificaciones; fechas coherentes) y los mínimos de D7.
 - Una única medición de la reservada nueva cuando dev pase la puerta `target`.
+- Acotar la regla 3 del pack (`src/ens_evidence/audit_pack/v2/system.md:15-18`, review
+  externa de codex en el PR #58): hoy excluye del juicio toda evidencia `collector`, pero la
+  capa determinista no compara la configuración recogida con la política (por ejemplo,
+  visibilidad de repositorios de GitHub). Solo se excluye lo que cubre un check determinista.
 
 **No entra:**
 - Cambiar el umbral, la puntuación ni los mínimos de D7.
@@ -69,6 +73,13 @@ donde sí se puede diagnosticar y ajustar, y se crea una reservada nueva a ciega
 - **Then** el agente que la creó no leyó el pack, dev ni resultados, y sus miradas quedan
   en `measurements.jsonl` con `--measurement`
 
+### Scenario: una política contradicha por un colector se propone
+- **Given** un caso de dev cuya política exige repositorios privados y cuya evidencia
+  `collector` muestra uno público, sin check determinista que compare la visibilidad
+- **When** se ejecuta `benchmark run --partition dev --all-recorded --gate target`
+- **Then** el defecto de juicio de esa contradicción se detecta, y un caso cuyo fallo ya
+  cubre un check determinista no recibe un hallazgo de juicio duplicado
+
 ### Scenario: la reservada nueva se mide una vez
 - **Given** dev ampliado por encima del umbral
 - **When** se mide `--partition holdout --gate threshold --measurement` con cada par
@@ -88,6 +99,7 @@ donde sí se puede diagnosticar y ajustar, y se crea una reservada nueva a ciega
 - [ ] Reservada actual → dev, con altas en la línea base
 - [ ] Diagnóstico del dev ampliado
 - [ ] Correcciones del banco e iteración del pack
+- [ ] Regla 3 del pack: excluir solo lo cubierto por checks deterministas, con casos de regresión
 - [ ] Reservada nueva a ciegas
 - [ ] Medición única
 
