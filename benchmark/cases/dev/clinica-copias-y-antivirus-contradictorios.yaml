@@ -44,3 +44,35 @@ defects:
       El estado anotado reconoce el servidor sin protección desde mayo, un gabinete con la
       licencia vencida y el portátil con firmas viejas, frente a la normativa que exige
       antivirus en todos los equipos y el análisis de memorias y adjuntos.
+  - id: continuidad-excluida-sin-copia-de-pacientes
+    layer: judgment
+    measure: op.cont.2
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.cont.2
+      clause: op.cont.2.2
+      quote: >-
+        Existirá una previsión para coordinar la entrada en servicio de los medios alternativos de
+        forma que se garantice poder seguir prestando los servicios esenciales de la organización.
+    rationale: >-
+      Consecuencia de la hoja de copias del caso: el perfil excluye el plan de continuidad porque la
+      agenda en papel y el teléfono cubren una parada de hasta un día, el plazo que la política
+      fija para recuperar las historias, pero la base de datos de pacientes no se copia aparte y no
+      se ha probado ninguna restauración, así que ese plazo de recuperación no está respaldado.
+  - id: terceros-excluidos-sin-copia-externa
+    layer: judgment
+    measure: op.ext.3
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.ext.3
+      clause: op.ext.3.1
+      quote: >-
+        Se analizará el impacto que puede tener sobre el sistema un incidente accidental o
+        deliberado que tenga su origen en la cadena de suministro.
+    rationale: >-
+      Consecuencia de la hoja de copias del caso: el perfil excluye la protección de la cadena de
+      suministro porque el almacenamiento externo solo recibe copias ya cifradas en la clínica,
+      pero la hoja muestra un USB sin cifrar junto al servidor y ninguna copia fuera de la
+      clínica.

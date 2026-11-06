@@ -39,3 +39,33 @@ defects:
       Con el cortafuegos en «permitir todo», FTP y SSH abiertos a cualquier dirección y la base
       de datos publicada, no hay separación entre la red interna y el exterior, frente a la normativa que restringe la
       administración y los datos de clientes.
+  - id: desarrollo-excluido-con-subida-directa
+    layer: judgment
+    measure: mp.sw.1
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: mp.sw.1
+      clause: mp.sw.1.1
+      quote: >-
+        El desarrollo de aplicaciones se realizará sobre un sistema diferente y separado del de
+        producción, no debiendo existir herramientas o datos de desarrollo en el entorno de
+        producción, ni datos de producción en el de desarrollo.
+    rationale: >-
+      Consecuencia de la hoja de despliegues del caso: el perfil excluye el desarrollo de
+      aplicaciones porque el riesgo de cada cambio se trata en su aceptación y puesta en producción
+      (mp.sw.2), y la hoja muestra una subida directa por FTP a producción desde un portátil, sin
+      petición ni revisión y con las pruebas automáticas desactivadas.
+  - id: cambios-excluidos-con-subida-directa
+    layer: judgment
+    measure: op.exp.5
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.exp.5
+      clause: op.exp.5.4
+      quote: Mediante un análisis de riesgos se determinará si los cambios son relevantes para la seguridad del sistema.
+    rationale: >-
+      Consecuencia de la hoja de despliegues del caso: el perfil excluye la gestión de cambios
+      porque los cambios de la tienda se tratan en su aceptación y puesta en producción (mp.sw.2),
+      y la hoja muestra un cambio publicado sin petición ni revisión que rompió los pagos.

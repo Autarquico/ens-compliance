@@ -30,7 +30,9 @@ applicability:
     justification: >-
       La clínica no compra productos de seguridad que necesiten certificación: el programa de
       gestión, el componente más crítico, lo aporta un proveedor que acredita cada año su
-      conformidad con el ENS. El anexo II no la exige en categoría BÁSICA.
+      conformidad con el ENS, y el antivirus gestionado, el cifrado de disco y el router son
+      productos estándar de mercado sin exigencia de certificación en categoría BÁSICA. El anexo
+      II no la exige en categoría BÁSICA.
   - measure: op.acc.3
     applicable: false
     justification: >-
@@ -41,23 +43,27 @@ applicability:
   - measure: op.exp.5
     applicable: false
     justification: >-
-      No hay desarrollo propio ni cambios frecuentes de configuración: los únicos cambios son las
+      No hay desarrollo propio ni cambios frecuentes de configuración: los cambios son las
       actualizaciones mensuales del técnico externo, probadas antes en recepción y anotadas en el
-      parte de mantenimiento (op.exp.4). La categoría BÁSICA no la exige.
+      parte de mantenimiento (op.exp.4), las reglas nuevas del router y las versiones nuevas del
+      programa de gestión, cada una con su propio circuito de autorización y aviso descrito en sus
+      procedimientos. La categoría BÁSICA no pide una gestión de cambios aparte.
   - measure: op.ext.1
     applicable: false
     justification: >-
       Los proveedores del programa de gestión, del mantenimiento y del almacenamiento externo de
-      copias entran con contrato y encargo de tratamiento según el proceso de autorización, y
-      ninguno presta un servicio cuya caída deje a la clínica sin atender: se puede dar cita y
-      atender con la agenda en papel. No exigida en BÁSICA.
+      copias entran con contrato y encargo de tratamiento según el proceso de autorización. Si el
+      programa de gestión cae, la clínica cubre la parada con la agenda en papel y el teléfono
+      durante el plazo que admite su disponibilidad BAJA (op.cont.2), sin que ningún proveedor
+      sostenga por sí solo la atención. No exigida en BÁSICA.
   - measure: op.ext.2
     applicable: false
     justification: >-
       La relación con los proveedores se reduce a la visita mensual del técnico externo, que
       supervisa el responsable de sistemas, y a los avisos del proveedor del programa que revisa
-      el comité; no hay servicios gestionados por terceros que requieran una supervisión diaria.
-      BÁSICA no pide más.
+      el comité. Los servicios de terceros son el almacenamiento externo de copias cifradas y la
+      consola del antivirus gestionado; la copia se comprueba cada día y la consola del antivirus se revisa en el informe mensual, y
+      no requieren una supervisión diaria. BÁSICA no pide más.
   - measure: op.ext.3
     applicable: false
     justification: >-
@@ -69,9 +75,9 @@ applicability:
   - measure: op.ext.4
     applicable: false
     justification: >-
-      El sistema no se interconecta con otros: los informes para el servicio de salud se suben a
-      mano en su plataforma web por conexión cifrada, sin intercambio automático entre sistemas.
-      El anexo II no la exige en categoría BÁSICA.
+      El único enlace con otro sistema es la plataforma web del servicio de salud, autorizado en
+      el proceso de autorización; los informes se suben a mano por conexión cifrada, sin
+      intercambio automático entre sistemas. El anexo II no la exige en categoría BÁSICA.
   - measure: op.cont.1
     applicable: false
     justification: >-

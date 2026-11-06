@@ -59,9 +59,10 @@ applicability:
   - measure: op.ext.4
     applicable: false
     justification: >-
-      Las únicas conexiones con otros sistemas son las integraciones con la pasarela de pago y con
+      Las únicas interconexiones de sistemas son las integraciones con la pasarela de pago y con
       la empresa de transporte, cifradas y autorizadas una a una en el proceso de autorización con
-      su finalidad y sus datos. La medida no se exige en categoría BÁSICA.
+      su finalidad y sus datos; el almacenamiento externo y los servicios en la nube son servicios
+      de terceros autorizados como tales. La medida no se exige en categoría BÁSICA.
   - measure: op.cont.1
     applicable: false
     justification: >-
@@ -90,8 +91,8 @@ applicability:
     applicable: false
     justification: >-
       El servidor está en el centro de datos del alojamiento, que acredita sus controles físicos;
-      en el taller no queda ningún equipo con datos, porque los portátiles se guardan en el
-      armario de la oficina. El análisis de riesgos no cuenta la inundación; no exigida en BÁSICA.
+      en el taller no hay equipos con datos: los portátiles llevan el disco cifrado y se guardan
+      en el armario de la oficina. El análisis de riesgos no cuenta la inundación; no exigida en BÁSICA.
   - measure: mp.per.1
     applicable: false
     justification: >-
@@ -107,9 +108,9 @@ applicability:
   - measure: mp.com.4
     applicable: false
     justification: >-
-      Todo el sistema es un único servidor virtual en el alojamiento, con la base de datos en el
-      mismo servidor, así que no hay redes internas propias ni segmentos entre los que separar
-      flujos. No exigida en BÁSICA.
+      El sistema en producción es un único servidor virtual en el alojamiento, con la base de
+      datos en el mismo servidor (el servidor de pruebas se crea y se borra al terminar), así que
+      no hay redes internas propias ni segmentos entre los que separar flujos. No exigida en BÁSICA.
   - measure: mp.si.1
     applicable: false
     justification: >-

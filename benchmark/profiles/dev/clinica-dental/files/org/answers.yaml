@@ -265,7 +265,7 @@ incidentes_deteccion:
 incidentes_informe_eventos: Cualquier persona de la clínica avisa en persona, por teléfono o por correo a la responsable de seguridad, que anota el evento o la debilidad en el registro de incidencias con fecha, quién avisa y descripción.
 incidentes_niveles:
   - nivel: Bajo
-    criterio: Sin acceso indebido a historias ni pérdida de datos y con la consulta funcionando.
+    criterio: Sin acceso indebido a historias ni pérdida de datos y con la consulta funcionando o parada menos de media jornada.
     escalado: La responsable de seguridad lo resuelve con el responsable de sistemas y lo presenta en la siguiente reunión del comité.
   - nivel: Alto
     criterio: Acceso indebido a historias, pérdida de datos de pacientes o consulta sin programa más de media jornada.

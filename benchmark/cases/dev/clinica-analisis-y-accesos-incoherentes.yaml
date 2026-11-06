@@ -40,3 +40,22 @@ defects:
       las historias completas y permisos que se dan entre compañeros, cuando los procedimientos
       dicen que cada perfil ve solo lo de su puesto y que solo el responsable de sistemas concede
       permisos.
+  - id: segregacion-excluida-con-administradores-sin-control
+    layer: judgment
+    measure: op.acc.3
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.acc.3
+      clause: op.acc.3
+      quote: >-
+        El sistema de control de acceso se organizará de forma que se exija la concurrencia de dos o
+        más personas para realizar tareas críticas, anulando la posibilidad de que un solo
+        individuo autorizado pueda abusar de sus derechos para cometer alguna acción ilícita o no
+        autorizada.
+    rationale: >-
+      Consecuencia de la revisión de accesos del caso: el perfil excluye la segregación de
+      funciones porque la clínica no tiene personal dedicado a la administración que pudiera actuar
+      sin la supervisión de la directora, y las notas muestran a los odontólogos y a la higienista
+      con perfil de administrador, que se cambian los permisos entre compañeros sin pedírselo a la
+      directora ni al responsable de sistemas.

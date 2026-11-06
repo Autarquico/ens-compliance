@@ -261,7 +261,7 @@ incidentes_deteccion:
 incidentes_informe_eventos: Cualquier persona del equipo avisa por mensaje, llamada o correo al responsable de seguridad, que anota el evento o la debilidad en el registro de incidencias con fecha, quién avisa y descripción.
 incidentes_niveles:
   - nivel: Bajo
-    criterio: Sin acceso indebido a datos de clientes y con la tienda vendiendo.
+    criterio: Sin acceso indebido a datos de clientes y con la tienda vendiendo o parada de menos de cuatro horas.
     escalado: El responsable de seguridad lo resuelve con el administrador y lo presenta en la reunión mensual del comité.
   - nivel: Alto
     criterio: Acceso indebido a datos de clientes, cambios no autorizados en la tienda o tienda sin vender más de cuatro horas.

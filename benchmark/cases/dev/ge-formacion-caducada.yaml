@@ -21,16 +21,3 @@ defects:
       La normativa reconoce el derecho a formación al incorporarse y una vez al año; la evidencia
       muestra que la última sesión fue en 2024 y que dos personas incorporadas en 2025 no han
       recibido ninguna.
-  - id: concienciacion-sin-sesion
-    layer: judgment
-    measure: mp.per.3
-    target: {kind: evidence, alias: formacion}
-    expected_criterion: coherencia-politica-evidencia
-    requirement:
-      measure: mp.per.3
-      clause: mp.per.3.1
-      quote: La normativa de seguridad relativa al buen uso de los equipos o sistemas y las técnicas de ingeniería social más habituales.
-    rationale: >-
-      Los procedimientos repasan los correos fraudulentos en la sesión anual; la evidencia muestra
-      que la última sesión fue en 2024 y que en 2025 y 2026 no se ha programado ninguna. Sale de la
-      misma mutación que formacion-no-anual.

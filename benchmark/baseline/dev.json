@@ -2403,6 +2403,31 @@
       "id": "dev/gestoria-correcta",
       "sha256": "1ff86efbccc5f1adcb663b40e57499c91ca856546421c9f197787ef973ee80dc",
       "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-cuenta-compartida#administracion-compartida",
+      "sha256": "a22d859529871182dc36b6ae4105339251380975f5b6ef530dc63ed1c71d1fd8",
+      "reason": "audit-holdout-rotation: la rationale absorbe credenciales-compartidas; mismo hecho, mismo fallo, sin cambiar lo esperado"
+    },
+    {
+      "id": "dev/ct-cuenta-compartida#credenciales-compartidas",
+      "sha256": "ad4f3b83f50a2c42107287d938e8d3e25a27894a3b39ae5f6619274bec169b8e",
+      "reason": "audit-holdout-rotation: par correlacionado con administracion-compartida (misma mutación, un hallazgo por hecho en la medida más específica; 0/3 en los dos pares); se retira y se fusiona su texto en la rationale del otro"
+    },
+    {
+      "id": "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
+      "sha256": "4b546e953a129d3d65f4ada0870ef3a1c89a27b03167695d6bd78021e17fcda0",
+      "reason": "audit-holdout-rotation: par correlacionado con respaldo-sin-frecuencia (misma frase, mp.info.6 y org.3; 0/3 en los dos pares); se retira y se fusiona en la rationale del otro"
+    },
+    {
+      "id": "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
+      "sha256": "30feddc000d2a1ed383d66193b518033f8e69785a72a4d3050bc2ae92289292d",
+      "reason": "audit-holdout-rotation: la rationale absorbe procedimiento-copias-vago; mismo hecho, sin cambiar lo esperado"
+    },
+    {
+      "id": "dev/ge-formacion-caducada#concienciacion-sin-sesion",
+      "sha256": "47d5ecd30ceda84796024a47b37460e03c62829446daf04837795daa42b1b34b",
+      "reason": "audit-holdout-rotation: par correlacionado con formacion-no-anual (misma mutación de formacion.txt; mp.per.4 3/3 en los dos pares, mp.per.3 solo en claude); se retira"
     }
   ]
 }

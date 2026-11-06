@@ -8,21 +8,6 @@ mutations:
     key: info_copias.0.pasos
     value: Se hacen copias cuando hay tiempo.
 defects:
-  - id: procedimiento-copias-vago
-    layer: judgment
-    measure: org.3
-    target: {kind: document, ref: procedimientos-seguridad}
-    expected_criterion: calidad-documental
-    requirement:
-      measure: org.3
-      clause: org.3.4
-      quote: >-
-        La forma en que se ha de tratar la información en consideración al nivel de seguridad que
-        requiere, precisando cómo efectuar: a) Su control de acceso. b) Su almacenamiento. c) La
-        realización de copias.
-    rationale: >-
-      Los procedimientos no precisan cómo se realizan las copias de los expedientes: ni frecuencia,
-      ni destino, ni retención, ni pruebas; «cuando hay tiempo» no es un procedimiento.
   - id: respaldo-sin-frecuencia
     layer: judgment
     measure: mp.info.6
@@ -35,5 +20,5 @@ defects:
         Los procedimientos de respaldo establecidos indicarán: a) Frecuencia de las copias.
     rationale: >-
       El mismo apartado documenta el procedimiento de respaldo de mp.info.6, y «cuando hay tiempo»
-      no indica la frecuencia de las copias. Sale de la misma mutación que procedimiento-copias-vago:
-      es un par correlacionado, no dos fallos independientes.
+      no indica la frecuencia de las copias. La misma frase deja sin precisar también el destino, la
+      retención y las pruebas de las copias (org.3.4); es el mismo hecho y no se declara aparte.
