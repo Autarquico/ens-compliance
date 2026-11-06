@@ -88,6 +88,12 @@ assets:
   - id: prov-nube
     type: provider
     deployment: deployed
-    service: Servidor virtual y almacenamiento de objetos
-    function: Aloja vps-portal y st-copias
-    dependency: Disponibilidad del portal y de las copias
+    service: Servidor virtual
+    function: Aloja vps-portal
+    dependency: Disponibilidad del portal
+  - id: prov-copias
+    type: provider
+    deployment: deployed
+    service: Almacenamiento de objetos en otra región
+    function: Aloja st-copias
+    dependency: Disponibilidad de las copias

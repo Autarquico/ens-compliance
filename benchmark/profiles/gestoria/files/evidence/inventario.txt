@@ -14,7 +14,8 @@ informático externo.
 | bk-ficheros      | Copia diaria local y externa del servidor de ficheros     | Pilar Aranda       |
 | prov-gestion     | Aplicación de gestión fiscal y laboral como servicio      | Elena Tamarit      |
 | prov-informatica | Proveedor informático externo, contrato de mantenimiento  | Elena Tamarit      |
+| fw-oficina       | Cortafuegos perimetral del proveedor y VPN del teletrabajo | Pilar Aranda       |
 
-Equipamiento auxiliar etiquetado: router de la oficina (R-01), sistema de alimentación
-ininterrumpida del armario (SAI-01), impresora multifunción (IMP-01, sin disco interno) y disco
-externo de traspaso de documentación (D-01).
+Equipamiento auxiliar etiquetado, con Pilar Aranda como responsable: router de la oficina (R-01),
+sistema de alimentación ininterrumpida del armario (SAI-01), impresora multifunción (IMP-01, sin
+disco interno) y disco externo de traspaso de documentación (D-01).

@@ -130,9 +130,11 @@ applicability:
   - measure: op.ext.2
     applicable: false
     justification: >-
-      No exigida en categoría BÁSICA. Sin acuerdo de nivel de servicio no hay obligaciones que medir;
-      Pilar Aranda revisa cada mes el informe de mantenimiento del proveedor informático y la
-      gestoría comprueba cada seis meses la certificación del proveedor de la aplicación (op.nub.1).
+      No exigida en categoría BÁSICA. Los contratos no fijan niveles de servicio; las obligaciones
+      del proveedor de la aplicación (aviso de incidentes en 24 horas e informe anual de pruebas de
+      penetración) constan en su ficha de cumplimiento, que la gestoría revisa cada seis meses
+      (op.nub.1), y Pilar Aranda revisa cada mes el informe de mantenimiento del proveedor
+      informático.
   - measure: op.ext.3
     applicable: false
     justification: >-

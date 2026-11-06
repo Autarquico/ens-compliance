@@ -5,7 +5,7 @@ Fecha: 24 de septiembre de 2026. Realiza: Nora Vilaplana. Revisa y firma: Tomás
    Pradera, Nora Vilaplana), con doble factor inscrito.
 2. Administración de la nube y del servidor: se mantiene la cuenta genérica «admin» del proveedor
    de nube, que usan indistintamente Nora Vilaplana y Tomás Pradera para las tareas de
-   administración y los despliegues de urgencia. Su contraseña y su segundo factor están en la
+   administración. Su contraseña y su segundo factor están en la
    bóveda Producción del gestor de contraseñas, a la que acceden los dos. El registro del
    proveedor atribuye todas las acciones a «admin», sin distinguir a la persona.
 3. En el servidor vps-portal también se entra por SSH con el usuario común «deploy», cuya clave

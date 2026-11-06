@@ -1,5 +1,5 @@
 Informe de copias de seguridad y prueba de restauración — tercer trimestre de 2026
-Robledal Sistemas S.L. (empresa ficticia). Elabora: Nora Vilaplana, 26 de septiembre de 2026.
+Robledal Sistemas S.L. (empresa ficticia). Elabora: Nora Vilaplana, 30 de septiembre de 2026.
 
 Política aplicada (procedimientos de seguridad): copia diaria cifrada con restic de db-portal y de
 los ficheros del portal a st-copias, en otra región y otro proveedor; retención de 30 copias

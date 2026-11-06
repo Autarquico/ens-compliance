@@ -43,7 +43,7 @@ applicability:
     applicable: false
     justification: >-
       Con disponibilidad de nivel BAJO el anexo II no la exige. No hay locales propios con sistemas:
-      el servidor y las copias están en centros de datos del proveedor de nube en la UE, y en el
+      el servidor y las copias están en centros de datos de los proveedores de nube en la UE, y en el
       puesto del coworking solo hay portátiles.
   - measure: mp.info.2
     applicable: false
@@ -116,7 +116,7 @@ applicability:
     applicable: false
     justification: >-
       Exigida solo con disponibilidad de nivel ALTO. Si falla un portátil se trabaja desde otro,
-      porque el código y los datos no están en los equipos; si falta la administradora, Lucía Robledal
+      porque el código está en el alojamiento de código y los datos de los clientes en el servidor; si falta la administradora, Lucía Robledal
       tiene el acceso de respaldo documentado que recoge el análisis de riesgos.
   - measure: op.ext.1
     applicable: false

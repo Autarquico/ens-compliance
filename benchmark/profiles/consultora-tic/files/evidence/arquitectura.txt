@@ -3,7 +3,7 @@ Documento técnico mantenido por Nora Vilaplana; versión del 20 de septiembre d
 
 Instalaciones: el equipo trabaja en un puesto fijo de un espacio de coworking con acceso por
 tarjeta y en teletrabajo autorizado. No hay sala de servidores propia: el servidor y las copias
-están en centros de datos del proveedor de nube en la UE.
+están en centros de datos de los proveedores de nube en la UE.
 
 Sistema y conexiones: tres portátiles corporativos; el servidor vps-portal con el portal y su base
 de datos; el alojamiento de código con integración continua; la identidad corporativa con correo y

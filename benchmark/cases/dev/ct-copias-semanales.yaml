@@ -19,5 +19,5 @@ defects:
       quote: La periodicidad y los plazos de retención de estas copias de seguridad se determinarán en la normativa interna de la organización relativa a copias de seguridad.
     rationale: >-
       Los procedimientos fijan copia diaria de la base de datos y los ficheros, retención de 30
-      diarias y 12 mensuales y prueba trimestral; el informe muestra copias semanales sin los
-      ficheros, 4 semanas de retención y ninguna prueba de restauración en el trimestre.
+      diarias y 12 mensuales y prueba trimestral; el informe muestra copias semanales, 4 semanas de
+      retención y ninguna prueba de restauración en el trimestre.

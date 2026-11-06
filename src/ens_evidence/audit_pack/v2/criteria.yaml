@@ -25,8 +25,12 @@ criteria:
       El documento que debe respaldar la medida precisa de forma clara los extremos que el
       anexo II exige que contenga; no basta con que exista.
     compare: >-
-      El contenido del documento frente a los requisitos de la medida enlazada (por ejemplo,
-      org.1.1 a org.1.5 para la política de seguridad).
+      El contenido del documento frente a las cláusulas del anexo II de la medida enlazada que
+      dicen qué debe recoger un documento o procedimiento («se precise», «describan»,
+      «indicarán», «detallando», «precisando»; por ejemplo, org.1.1 a org.1.5 para la política
+      de seguridad). Una cláusula que manda hacer algo («se comprobará», «se revisará»,
+      «deberán conocer y aceptar») no es un extremo del documento: que el documento no lo
+      describa no es un hallazgo de este criterio.
     measure_scope: applicable
     allowed_proposals: [NC_MENOR, OBSERVACION]
     source:

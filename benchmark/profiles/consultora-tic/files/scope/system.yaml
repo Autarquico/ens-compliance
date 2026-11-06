@@ -3,6 +3,6 @@ description: >-
   Sistema de información de Robledal Sistemas S.L. (empresa ficticia): el portal de proyectos
   que usan sus clientes, entre ellos un ayuntamiento, y las herramientas en la nube con las que
   el equipo de tres personas desarrolla, despliega y da soporte.
-included_assets: [lap-lucia, lap-tomas, lap-nora, vps-portal, app-portal, db-portal, gh-robledal, cf-robledal, ws-robledal, pw-robledal, st-copias, bk-portal, prov-nube]
+included_assets: [lap-lucia, lap-tomas, lap-nora, vps-portal, app-portal, db-portal, gh-robledal, cf-robledal, ws-robledal, pw-robledal, st-copias, bk-portal, prov-nube, prov-copias]
 included_services: [svc-portal, svc-soporte]
 exclusions: []

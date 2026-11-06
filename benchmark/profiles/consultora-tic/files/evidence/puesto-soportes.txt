@@ -4,7 +4,7 @@ Fecha: 27 de septiembre de 2026. Realiza: Tomás Pradera.
 Instalaciones: el puesto del coworking está en una zona de oficinas con acceso por tarjeta
 nominal, registro de visitas en recepción, climatización, extinción automática y alimentación
 ininterrumpida del edificio. No hay equipamiento de servidor propio en el local; el servidor y las
-copias están en el proveedor de nube. La entrada y salida de los portátiles se anota en el
+copias están en los proveedores de nube. La entrada y salida de los portátiles se anota en el
 inventario.
 
 Equipos: los tres portátiles tienen disco cifrado, bloqueo automático y borrado remoto desde la

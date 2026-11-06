@@ -1,9 +1,9 @@
 Informe de copias de seguridad — tercer trimestre de 2026
-Robledal Sistemas S.L. (empresa ficticia). Elabora: Nora Vilaplana, 26 de septiembre de 2026.
+Robledal Sistemas S.L. (empresa ficticia). Elabora: Nora Vilaplana, 30 de septiembre de 2026.
 
-Copias realizadas: copia semanal cifrada con restic de db-portal, los domingos a las 03:00, a
-st-copias, en otra región y otro proveedor. Retención: las 4 últimas copias semanales. Los ficheros
-que los clientes suben al portal no se incluyen en la copia porque ocupan demasiado espacio.
+Copias realizadas: copia semanal cifrada con restic de db-portal y de los ficheros del portal, los
+domingos a las 03:00, a st-copias, en otra región y otro proveedor. Retención: las 4 últimas copias
+semanales.
 
 Resultado: 13 copias semanales en el trimestre, 11 correctas; las del 9 y 16 de agosto fallaron
 por falta de espacio y no se repitieron.

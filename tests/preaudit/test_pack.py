@@ -182,6 +182,39 @@ def test_a_compensation_must_protect_equal_or_better_as_article_28_3_says():
     assert "Si es coherente con ellos, no propongas nada" not in prompt
 
 
+def test_documentary_quality_only_weighs_clauses_on_what_a_document_contains():
+    [criterion] = [c for c in load_pack().criteria if c.id == "calidad-documental"]
+    compare = _normalized(criterion.compare)
+    rd311 = _normalized(SOURCE_FIXTURES["rd311"].read_text(encoding="utf-8")).lower()
+    for wording in ("se precise", "describan", "indicarán", "detallando", "precisando"):
+        assert f"«{wording}»" in compare and wording in rd311
+    for wording in ("se comprobará", "se revisará", "deberán conocer y aceptar"):
+        assert f"«{wording}»" in compare and wording in rd311
+    assert "Una cláusula que manda hacer algo" in compare
+    assert "exige que conste en el documento de esa medida" in _normalized(
+        load_pack().system_prompt
+    )
+
+
+def test_system_prompt_leaves_connector_data_to_the_deterministic_layer():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "evidencia con `provenance` `collector`" in prompt
+    assert "su comprobación es determinista" in prompt
+
+
+def test_system_prompt_takes_the_categorisation_as_given():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "los niveles de cada dimensión son datos del expediente" in prompt
+
+
+def test_silence_or_a_possible_consequence_is_not_a_finding_but_compensations_still_are():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "que un texto no mencione algo no contradice nada" in prompt
+    assert "una consecuencia solo posible" in prompt
+    assert "Esto no cambia la regla de las compensaciones" in prompt
+    assert "Es débil si la justificación no lo muestra, aunque dé una razón propia" in prompt
+
+
 def _normalized(text: str) -> str:
     return " ".join(text.split())
 

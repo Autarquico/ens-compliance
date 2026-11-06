@@ -118,7 +118,7 @@ info_almacenamiento:
 info_copias:
   - informacion: Expedientes de clientes (nivel bajo)
     quien: Técnica laboral con funciones de sistemas
-    pasos: Copia diaria a las 22:00 en un disco del servidor y otra cifrada en la nube, con 30 días de retención y una copia mensual durante un año; restauración de prueba de una carpeta cada semestre.
+    pasos: Copia diaria a las 22:00 en un disco del servidor y otra cifrada en la nube, con 30 días de retención y una copia mensual durante un año; solo acceden a las copias la cuenta de servicio del servidor y la responsable del sistema, y la clave de cifrado de la copia externa se guarda en sobre cerrado en la caja fuerte de la gerencia; restauración de prueba de una carpeta cada semestre.
     herramienta: Programa de copias del servidor y almacenamiento en la nube
     evidencia: Informe de copias y acta de la prueba de restauración
 info_etiquetado:
@@ -165,9 +165,9 @@ gestion_cuentas:
 credenciales:
   - ambito: Contraseñas y doble factor de la plantilla
     quien: Técnica laboral con funciones de sistemas
-    pasos: Antes de recibir sus credenciales la persona firma la recepción y custodia de credenciales; activa el doble factor por aplicación de autenticación en el primer acceso; cambia la contraseña cada doce meses, cuando la consola del correo lo exige, y antes si sospecha que otra persona la conoce; la cuenta se bloquea si se pierde el portátil o el móvil del doble factor y se inhabilita al terminar la relación con la gestoría.
+    pasos: Antes de recibir sus credenciales la persona firma la aceptación de la normativa y la recepción y custodia de credenciales, con el deber de avisar de inmediato a la responsable del sistema si las pierde; activa el doble factor por aplicación de autenticación en el primer acceso; cambia la contraseña cada doce meses, cuando la consola del correo lo exige, y antes si sospecha que otra persona la conoce; la cuenta se bloquea si se pierde el portátil o el móvil del doble factor y se inhabilita al terminar la relación con la gestoría.
     herramienta: Consola del correo y de la aplicación de gestión
-    evidencia: Recepción de credenciales firmada y revisión trimestral de usuarios y permisos
+    evidencia: Aceptación de la normativa y recepción de credenciales firmadas y revisión trimestral de usuarios y permisos
 actualizaciones:
   - ambito: Servidor de ficheros y portátiles
     quien: Proveedor informático externo

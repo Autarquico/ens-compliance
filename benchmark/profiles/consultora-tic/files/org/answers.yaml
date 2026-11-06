@@ -120,7 +120,7 @@ info_almacenamiento:
 info_copias:
   - informacion: Datos de clientes en el portal (nivel bajo)
     quien: Administradora de sistemas
-    pasos: Copia diaria cifrada con restic a un almacenamiento en otra región, con retención de 30 copias diarias y 12 mensuales, y prueba de restauración cada trimestre.
+    pasos: Copia diaria cifrada con restic de la base de datos y los ficheros del portal a un almacenamiento de objetos de otro proveedor y en otra región, con retención de 30 copias diarias y 12 mensuales; no se guarda ninguna copia en el propio servidor; acceso a las copias solo con la clave de servicio, custodiada en la bóveda Producción del gestor de contraseñas; prueba de restauración cada trimestre.
     herramienta: restic y almacenamiento de objetos
     evidencia: Informe de copias y acta de la prueba de restauración
 info_etiquetado:
@@ -167,7 +167,7 @@ gestion_cuentas:
 credenciales:
   - ambito: Credenciales del equipo en los servicios corporativos
     quien: Administradora de sistemas
-    pasos: Antes de recibir sus credenciales la persona firma la aceptación de la normativa y de la custodia de credenciales; inscribe su doble factor en el primer acceso y guarda sus contraseñas solo en el gestor de contraseñas; las cambia cada doce meses, y antes si sospecha que otra persona las conoce; la cuenta se bloquea si se pierde el dispositivo del segundo factor o se sospecha que está comprometida, y se inhabilita al terminar la relación con la empresa.
+    pasos: Antes de recibir sus credenciales la persona firma la aceptación de la normativa y de la custodia de credenciales, con el deber de avisar de inmediato a la administradora de sistemas si las pierde; inscribe su doble factor en el primer acceso y guarda sus contraseñas solo en el gestor de contraseñas; las cambia cada doce meses, y antes si sospecha que otra persona las conoce; la cuenta se bloquea si se pierde el dispositivo del segundo factor o se sospecha que está comprometida, y se inhabilita al terminar la relación con la empresa.
     herramienta: Identidad corporativa y gestor de contraseñas
     evidencia: Aceptación firmada y revisión trimestral de cuentas
   - ambito: Credenciales de servicio de las bóvedas del gestor de contraseñas
@@ -264,7 +264,7 @@ aut_comunicaciones:
     solicitud: Alta en la identidad corporativa
     registro: Registro de servicios autorizados
 aut_comunicaciones_alt:
-  - elemento: Conexión compartida desde el móvil corporativo
+  - elemento: Conexión compartida desde el móvil de cada persona
     quien: Responsable del sistema
     solicitud: Aviso por el chat del equipo
     registro: Registro de servicios autorizados
@@ -274,12 +274,12 @@ aut_soportes:
     solicitud: Petición por correo indicando uso y duración
     registro: Inventario de soportes
 aut_moviles:
-  - elemento: Portátiles y móviles corporativos
+  - elemento: Portátiles corporativos
     quien: Responsable del sistema
     solicitud: Petición firmada por la gerente
     registro: Inventario de activos
 aut_terceros:
-  - elemento: Proveedor de nube, alojamiento de código, red perimetral e identidad corporativa
+  - elemento: Proveedor de nube, proveedor del almacenamiento de copias, alojamiento de código, red perimetral e identidad corporativa
     quien: Gerente
     solicitud: Propuesta del responsable del sistema y contrato firmado
     registro: Registro de proveedores

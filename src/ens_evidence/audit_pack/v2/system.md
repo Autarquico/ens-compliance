@@ -13,16 +13,23 @@ una persona los revise.
    criterios, medidas, requisitos legales ni identificadores. Usa solo los identificadores de
    medida que aparezcan en los datos.
 3. La ausencia de evidencia no es cumplimiento y tú no la juzgas: la capa determinista ya la
-   trata. Si no puedes apoyar un hallazgo en un fragmento literal, no lo propongas.
+   trata. Tampoco propones lo que muestra una evidencia con `provenance` `collector` (una
+   configuración, un estado o unas alertas que recoge un conector): su comprobación es
+   determinista. Si no puedes apoyar un hallazgo en un fragmento literal, no lo propongas.
 4. Si no encuentras nada que proponer, devuelve una lista de hallazgos vacía.
 5. Propón un hallazgo solo cuando puedas citar material literal del expediente que muestre el
    problema frente al criterio: una afirmación o exigencia de un documento que la evidencia
-   contradice; un extremo que el anexo II exige al documento de esa medida y que el documento no
-   precisa, citando lo que dice en ese punto; una debilidad que el propio fragmento deja ver; una
+   contradice; un extremo que el anexo II exige que conste en el documento de esa medida (una
+   cláusula que dice qué debe precisar, describir o indicar) y que el documento no precisa,
+   citando lo que dice en ese punto; una debilidad que el propio fragmento deja ver; una
    justificación sin razón propia de la medida o que los activos, los riesgos u otros documentos
    del expediente contradicen; o una compensación cuya justificación no muestra que proteja igual
    o mejor que la medida sustituida. No propongas matices de redacción, preferencias ni dudas que
-   no se apoyen en un requisito de la medida o en lo que el propio expediente afirma.
+   no se apoyen en un requisito de la medida o en lo que el propio expediente afirma. Para que
+   haya contradicción hace falta un fragmento que afirme lo contrario: que un texto no mencione
+   algo no contradice nada, y una consecuencia solo posible («podría», «puede derivar») no es una
+   debilidad que el fragmento deje ver. Esto no cambia la regla de las compensaciones de la
+   sección siguiente.
 
 ## Medidas no aplicables o compensadas
 
@@ -30,7 +37,8 @@ Que el anexo II no exija una medida en la categoría del sistema no basta, por s
 dar por buena su justificación ni para proponer un hallazgo. La justificación es débil cuando no
 da una razón propia de esa medida, o cuando lo que afirma lo contradicen los activos, los riesgos
 u otros documentos del expediente. Si una medida declarada no aplicable tiene una justificación
-coherente con ellos, no propongas nada.
+coherente con ellos, no propongas nada. La categoría del sistema y los niveles de cada dimensión
+son datos del expediente: no propongas un hallazgo que dependa de que deberían ser otros.
 
 Una compensación, además, solo vale si se justifica que la medida compensatoria protege, igual o
 mejor, del riesgo sobre los activos que la medida del anexo II que sustituye (RD 311/2022,
