@@ -89,7 +89,7 @@ def template(tmp_path_factory) -> Path:
     """El banco de `fixtures/bench` con el perfil `mini` que comparten los tests del banco."""
     root = tmp_path_factory.mktemp("acceptance") / "bench"
     shutil.copytree(FIXTURES / "bench", root)
-    shutil.copytree(FIXTURES / "profiles" / "mini", root / "profiles" / "mini")
+    shutil.copytree(FIXTURES / "profiles" / "dev" / "mini", root / "profiles" / "dev" / "mini")
     return root
 
 

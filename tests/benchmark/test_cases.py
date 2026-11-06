@@ -1,4 +1,5 @@
 import json
+import shutil
 from pathlib import Path
 from typing import Any
 
@@ -114,9 +115,9 @@ def write_yaml(path: Path, data: Any) -> Path:
 
 
 def bench(root: Path, *, case_data: dict[str, Any] | None = None, **texts: str) -> Path:
-    write_yaml(root / "profiles/mini/profile.yaml", profile())
+    write_yaml(root / "profiles/dev/mini/profile.yaml", profile())
     files = {
-        "profiles/mini/files/evidence/inventario.txt": (
+        "profiles/dev/mini/files/evidence/inventario.txt": (
             "Inventario de equipos. Responsable: Ana Prueba (ana@asesoria.example), "
             "servidor 192.0.2.10."
         ),
@@ -191,11 +192,11 @@ def test_los_parrafos_sin_etiqueta_se_citan_con_el_id_de_la_medida_o_del_refuerz
     ],
 )
 def test_un_dato_real_en_las_evidencias_del_perfil_se_rechaza(tmp_path, text, kind):
-    root = bench(tmp_path, **{"profiles/mini/files/evidence/inventario.txt": text})
+    root = bench(tmp_path, **{"profiles/dev/mini/files/evidence/inventario.txt": text})
     problems = validate_bench(root, Partition.DEV)
     assert problems
     assert all(
-        p.startswith("profiles/mini/files/evidence/inventario.txt › texto: ") for p in problems
+        p.startswith("profiles/dev/mini/files/evidence/inventario.txt › texto: ") for p in problems
     )
     assert any(kind in p for p in problems)
     value = text.split(": ", 1)[1]
@@ -205,7 +206,7 @@ def test_un_dato_real_en_las_evidencias_del_perfil_se_rechaza(tmp_path, text, ki
 @pytest.mark.parametrize(
     "linked",
     [
-        "profiles/mini/files/evidence/inventario.txt",
+        "profiles/dev/mini/files/evidence/inventario.txt",
         "cases/dev/files/inventario-sin-responsable/inventario-v2.txt",
         "cases/dev/inventario-sin-responsable.yaml",
     ],
@@ -296,6 +297,7 @@ def test_validar_la_reservada_exige_measurement_y_lo_anota(tmp_path):
         case_data=data,
         **{"cases/holdout/files/inventario-sin-responsable/inventario-v2.txt": "Inventario."},
     )
+    shutil.copytree(root / "profiles/dev", root / "profiles/holdout")
     args = ["benchmark", "validate", "--cases", str(root), "--partition", "holdout"]
     locked = runner.invoke(app, args)
     assert locked.exit_code == 2
@@ -303,7 +305,7 @@ def test_validar_la_reservada_exige_measurement_y_lo_anota(tmp_path):
     assert not (root / MEASUREMENTS_FILE).exists()
 
     opened = runner.invoke(app, [*args, "--measurement"])
-    assert opened.exit_code == 0, opened.output
+    assert opened.exit_code == 2, opened.output  # muestra bajo el mínimo de D7
     [line] = (root / MEASUREMENTS_FILE).read_text().splitlines()
     assert json.loads(line) | {"at": None} == {
         "at": None,

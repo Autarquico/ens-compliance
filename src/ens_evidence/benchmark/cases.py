@@ -1,6 +1,6 @@
 """Carga y validación estática del banco: perfiles, casos y grabaciones.
 
-Disposición (plan, «Formato de caso»): `profiles/<perfil>/{profile.yaml,files/}`,
+Disposición: `profiles/<partición>/<perfil>/{profile.yaml,files/}`,
 `cases/<partición>/<caso>.yaml`, `cases/<partición>/files/<caso>/`, `recordings/…`.
 """
 
@@ -53,8 +53,8 @@ class BenchError(ValueError):
 # --- carga -----------------------------------------------------------------------------------
 
 
-def profiles_dir(root: Path) -> Path:
-    return root / "profiles"
+def profiles_dir(root: Path, partition: Partition) -> Path:
+    return root / "profiles" / partition.value
 
 
 def cases_dir(root: Path, partition: Partition) -> Path:
@@ -65,8 +65,8 @@ def case_files_dir(root: Path, case: Case) -> Path:
     return cases_dir(root, case.partition) / "files" / case.id
 
 
-def profile_files_dir(root: Path, profile_id: str) -> Path:
-    return profiles_dir(root) / profile_id / "files"
+def profile_files_dir(root: Path, partition: Partition, profile_id: str) -> Path:
+    return profiles_dir(root, partition) / profile_id / "files"
 
 
 def case_paths(root: Path, partition: Partition) -> list[Path]:
@@ -74,8 +74,8 @@ def case_paths(root: Path, partition: Partition) -> list[Path]:
     return sorted(directory.glob("*.yaml")) if directory.is_dir() else []
 
 
-def load_profile(root: Path, profile_id: str) -> Profile:
-    path = profiles_dir(root) / profile_id / PROFILE_FILE
+def load_profile(root: Path, partition: Partition, profile_id: str) -> Profile:
+    path = profiles_dir(root, partition) / profile_id / PROFILE_FILE
     profile = _load_model(path, Profile, _parse_yaml, root)
     if profile.id != profile_id:
         raise BenchError([f"{_shown(path, root)}: el id no coincide con su directorio"])
@@ -187,9 +187,10 @@ def inside_git_repo(path: Path) -> bool:
 
 def validate_bench(root: Path, partition: Partition) -> list[str]:
     """Problemas del banco para una partición: esquema, citas, ids, datos ficticios. De la otra
-    partición solo se miran los nombres de fichero (ids), nunca su contenido."""
+    partición solo se miran los nombres de fichero de los casos (ids), nunca su contenido; sus
+    perfiles no se tocan."""
     problems: list[str] = []
-    profiles = _validated_profiles(root, problems)
+    profiles = _validated_profiles(root, partition, problems)
     cases: list[Case] = []
     for path in case_paths(root, partition):
         try:
@@ -227,16 +228,18 @@ def recording_problems(recording: Recording) -> list[str]:
     return problems
 
 
-def _validated_profiles(root: Path, problems: list[str]) -> dict[str, Profile]:
+def _validated_profiles(
+    root: Path, partition: Partition, problems: list[str]
+) -> dict[str, Profile]:
     profiles: dict[str, Profile] = {}
-    directory = profiles_dir(root)
+    directory = profiles_dir(root, partition)
     if not directory.is_dir():
         return profiles
     measures = clause_texts()
     for path in sorted(directory.glob(f"*/{PROFILE_FILE}")):
         profile_id = path.parent.name
         try:
-            profile = load_profile(root, profile_id)
+            profile = load_profile(root, partition, profile_id)
         except BenchError as exc:
             problems += exc.problems
             continue
@@ -245,7 +248,7 @@ def _validated_profiles(root: Path, problems: list[str]) -> dict[str, Profile]:
             f"perfil {profile_id}: la medida {m} no existe en el catálogo"
             for m in sorted(profile.measures() - measures.keys())
         ]
-        files = profile_files_dir(root, profile_id)
+        files = profile_files_dir(root, partition, profile_id)
         problems += [
             f"perfil {profile_id}: falta el fichero de la evidencia {e.alias}"
             for e in profile.evidence

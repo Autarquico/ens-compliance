@@ -101,7 +101,7 @@ class Memo:
 @pytest.fixture(scope="module")
 def template(tmp_path_factory) -> Path:
     root = tmp_path_factory.mktemp("bench") / "bench"
-    shutil.copytree(FIXTURES / "profiles" / "mini", root / "profiles" / "mini")
+    shutil.copytree(FIXTURES / "profiles" / "dev" / "mini", root / "profiles" / "dev" / "mini")
     dev = root / "cases" / "dev"
     dev.mkdir(parents=True)
     for name in ("inventario-caducado", "inventario-alterado"):
@@ -531,7 +531,7 @@ def test_retirar_un_caso_exige_anotarlo(bench, memo):
 def test_cambiar_el_perfil_cambia_la_huella_de_sus_casos_y_exige_retirarlos(bench, memo, changed):
     record_all(bench, memo)
     assert baseline(bench, "--write").exit_code == 0
-    profile = bench / "profiles" / "mini"
+    profile = bench / "profiles" / "dev" / "mini"
     target = profile / changed
     if target.is_dir():
         target = next(p for p in sorted(target.rglob("*")) if p.is_file())

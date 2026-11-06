@@ -1,5 +1,0 @@
-format: ens-benchmark-case/1
-id: clinica-correcta
-partition: holdout
-profile: clinica-dental
-kind: correct

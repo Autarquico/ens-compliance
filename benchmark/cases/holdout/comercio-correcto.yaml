@@ -1,5 +1,0 @@
-format: ens-benchmark-case/1
-id: comercio-correcto
-partition: holdout
-profile: comercio-online
-kind: correct

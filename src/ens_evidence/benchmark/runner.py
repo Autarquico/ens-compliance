@@ -98,7 +98,7 @@ class ProfileCache:
         base = self._bases.get(case.profile)
         if base is None:
             where = self._scratch / case.profile
-            base = build_bench_profile(root, case.profile, where, steps=BASE_STEPS)
+            base = build_bench_profile(root, case.partition, case.profile, where, steps=BASE_STEPS)
             self._bases[case.profile] = base
         files = bench_dir(case_files_dir(root, case), root)
         return finish_case(base.fork(destination), case, files)

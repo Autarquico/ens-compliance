@@ -21,6 +21,10 @@ visibles las miradas hechas con la herramienta; no impide mirarla por otros
 medios. No abras sus ficheros ni ajustes el pack con lo que muestre
 (`AGENT.md`).
 
+Los perfiles se parten igual que los casos: `profiles/<partición>/<perfil>/`.
+Cada orden de una partición lee solo los perfiles de esa partición; un caso
+que nombra un perfil de la otra da «no existe».
+
 ## 1. Valida el banco
 
 ```bash
@@ -44,7 +48,7 @@ eso construye cada caso grabado).
 
 ```bash
 uv run ens-evidence benchmark build dev/ct-copias-desenlazadas
-uv run ens-evidence benchmark build consultora-tic          # un perfil
+uv run ens-evidence benchmark build consultora-tic          # un perfil de dev (`--partition`)
 uv run ens-evidence benchmark build dev/<caso> --out /tmp/ws-caso
 ```
 
@@ -332,10 +336,41 @@ Si no pasa, no se ajustan prompts ni criterios con lo visto en la reservada.
 Se ajusta con la de desarrollo y se vuelve a medir; la nueva mirada queda
 anotada.
 
+### Rotar la reservada
+
+Una reservada que se ha mirado deja de medir. Para renovarla:
+
+1. Mueve sus casos a desarrollo, con sus ficheros y el campo `partition`:
+
+   ```bash
+   git mv benchmark/cases/holdout/<caso>.yaml benchmark/cases/dev/
+   git mv benchmark/cases/holdout/files/<caso> benchmark/cases/dev/files/
+   # y en cada YAML movido: partition: dev
+   ```
+
+   Mueve igual los perfiles que usaban: `git mv benchmark/profiles/holdout/<perfil>
+   benchmark/profiles/dev/`. Un perfil no se comparte entre particiones.
+2. Retira `benchmark/recordings/holdout/`. Las grabaciones de la reservada
+   antigua no valen para dev: regraba (§ 4).
+3. No toques `benchmark/measurements.jsonl`: es de solo adición.
+4. Crea la reservada nueva a ciegas, sin leer dev: perfiles en
+   `benchmark/profiles/holdout/` y casos en `benchmark/cases/holdout/`, solo
+   de categoría BÁSICA.
+5. Comprueba los recuentos de D7 antes de medir:
+
+   ```bash
+   uv run ens-evidence benchmark validate --partition holdout --measurement
+   ```
+
+   Valida la reservada, imprime los defectos de juicio, deterministas y
+   expedientes correctos, y sale con 2 por debajo del mínimo (20, 10 y 3) o si
+   un perfil no es BÁSICA. Cuenta como mirada: queda en `measurements.jsonl`.
+6. Mide (§ 7).
+
 ## 8. Variantes reales de Autarqui fuera del repo (U3)
 
 `--cases` acepta un banco fuera del repo, con la misma disposición
-(`profiles/`, `cases/dev/`, `recordings/`), y todas las órdenes funcionan
+(`profiles/dev/`, `cases/dev/`, `recordings/`), y todas las órdenes funcionan
 igual:
 
 ```bash

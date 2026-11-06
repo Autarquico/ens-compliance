@@ -28,6 +28,7 @@ from ens_evidence.benchmark.cases import (
     case_paths,
     cases_dir,
     load_case,
+    load_profile,
     validate_bench,
 )
 from ens_evidence.benchmark.model import (
@@ -61,7 +62,14 @@ from ens_evidence.benchmark.runner import (
     required_pair_problems,
     run_partition,
 )
-from ens_evidence.benchmark.score import Score, entry_of
+from ens_evidence.benchmark.score import (
+    HOLDOUT_MINIMUM,
+    Score,
+    entry_of,
+    sample_of,
+    sample_problems,
+)
+from ens_evidence.catalog.model import SecurityLevel
 from ens_evidence.models.preaudit import Provider
 from ens_evidence.preaudit import service
 from ens_evidence.preaudit.pack import PackError, load_pack
@@ -122,6 +130,8 @@ def validate(
     except HoldoutLocked as exc:
         raise _fail(f"Error: {exc}") from None
     problems = validate_bench(cases, partition)
+    if measurement and partition is Partition.HOLDOUT and not problems:
+        problems += _measurement_problems(cases)
     for problem in problems:
         typer.echo(problem, err=True)
     if problems:
@@ -129,6 +139,26 @@ def validate(
     typer.echo(f"banco válido: {len(case_paths(cases, partition))} casos en {partition}")
     if recordings:
         _validate_recordings(cases, partition)
+
+
+def _measurement_problems(root: Path) -> list[str]:
+    """D7 de la reservada: imprime los recuentos y devuelve lo que falta para medirla."""
+    cases = [load_case(path, root) for path in case_paths(root, Partition.HOLDOUT)]
+    sample = sample_of(cases)
+    typer.echo(
+        f"reservada: {sample.judgment} defectos de juicio, {sample.deterministic} "
+        f"deterministas, {sample.correct} expedientes correctos "
+        f"(mínimo {HOLDOUT_MINIMUM.judgment}/{HOLDOUT_MINIMUM.deterministic}/"
+        f"{HOLDOUT_MINIMUM.correct})"
+    )
+    problems = sample_problems(sample, HOLDOUT_MINIMUM)
+    basic = {
+        profile_id: all(level is SecurityLevel.BAJO for level in profile.categorization.values())
+        for profile_id in sorted({c.profile for c in cases if c.profile})
+        for profile in [load_profile(root, Partition.HOLDOUT, profile_id)]
+    }
+    problems += [f"perfil {p}: no es de categoría BÁSICA" for p, ok in basic.items() if not ok]
+    return problems
 
 
 def _validate_recordings(root: Path, partition: Partition) -> None:
@@ -148,13 +178,17 @@ def _validate_recordings(root: Path, partition: Partition) -> None:
 @app.command("build")
 def build(
     target: Annotated[
-        str, typer.Argument(help="Un caso (`<partición>/<caso>`) o un perfil (`<perfil>`).")
+        str,
+        typer.Argument(
+            help="Un caso (`<partición>/<caso>`) o un perfil (`<perfil>`, de `--partition`)."
+        ),
     ],
     cases: CasesOption = BENCH_DIR,
     out: Annotated[
         Path | None,
         typer.Option("--out", help="Directorio nuevo o vacío; por defecto, uno temporal."),
     ] = None,
+    partition: PartitionOption = Partition.DEV,
     measurement: MeasurementOption = False,
 ) -> None:
     """Construye el workspace de un caso o de un perfil y le pasa solo la capa determinista de
@@ -163,17 +197,22 @@ def build(
     if not cases.is_dir():
         raise _fail(f"Error: no existe el banco {cases}")
     if out is not None:
-        _report(_build(cases, target, out, measurement))
+        _report(_build(cases, target, out, partition, measurement))
         return
     with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
-        _report(_build(cases, target, Path(scratch) / "ws", measurement))
+        _report(_build(cases, target, Path(scratch) / "ws", partition, measurement))
 
 
-def _build(root: Path, target: str, destination: Path, measurement: bool) -> Build:
+def _build(
+    root: Path, target: str, destination: Path, profile_partition: Partition, measurement: bool
+) -> Build:
     partition_name, slash, case_id = target.partition("/")
     try:
         if not slash:
-            return build_bench_profile(root, target, destination)
+            open_partition(
+                root, profile_partition, action="build", measurement=measurement, now=clock()
+            )
+            return build_bench_profile(root, profile_partition, target, destination)
         try:
             partition = Partition(partition_name)
         except ValueError:

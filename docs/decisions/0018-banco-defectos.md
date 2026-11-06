@@ -36,14 +36,19 @@ En la raíz del repo, fuera del paquete:
 
 ```
 benchmark/
-  profiles/<perfil>/profile.yaml        # pyme ficticia, completa y correcta
-  profiles/<perfil>/files/...           # alcance, org-docs, evidencias, recogidas
+  profiles/<partición>/<perfil>/profile.yaml   # pyme ficticia, completa y correcta
+  profiles/<partición>/<perfil>/files/...      # alcance, org-docs, evidencias, recogidas
   cases/<partición>/<caso>.yaml
   cases/<partición>/files/<caso>/...    # textos que usan las mutaciones
   recordings/<partición>/<caso>/<provider>--<modelo>.json
   baseline/dev.json
   measurements.jsonl                    # solo adición
 ```
+
+Los perfiles van por partición, como los casos: validar, construir o preparar
+una partición no lee los perfiles de la otra, y la exclusividad de perfiles
+sale por construcción. Rotar la reservada es mover sus casos y perfiles a
+`dev` (runbook, «Rotar la reservada»).
 
 En el repo solo hay pymes ficticias. Los ficheros admitidos son `.txt`,
 `.md`, `.yaml` y `.json`, y `benchmark validate` les pasa la heurística de

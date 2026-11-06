@@ -15,6 +15,7 @@ from fractions import Fraction
 from ens_evidence.benchmark.model import (
     Baseline,
     BaselineEntry,
+    Case,
     CaseKind,
     CaseResult,
     DefectLayer,
@@ -311,18 +312,37 @@ def _deterministic_problems(t: Totals) -> list[str]:
     return problems
 
 
-def _sample_problems(t: Totals, minimum: Sample) -> list[str]:
+def sample_of(cases: Sequence[Case]) -> Sample:
+    """Los denominadores de D7 que declaran estos casos, antes de medir nada."""
+    layers = [d.layer for c in cases for d in c.defects]
+    return Sample(
+        judgment=layers.count(DefectLayer.JUDGMENT),
+        deterministic=layers.count(DefectLayer.DETERMINISTIC),
+        correct=sum(c.kind is CaseKind.CORRECT and c.judgment for c in cases),
+    )
+
+
+def sample_problems(sample: Sample, minimum: Sample) -> list[str]:
     problems = []
     for name, size, required in (
-        ("defectos deterministas", t.deterministic.denominator, minimum.deterministic),
-        ("defectos de juicio", t.judgment.denominator, minimum.judgment),
-        ("expedientes correctos", t.correct_with_false_alarms.denominator, minimum.correct),
+        ("defectos deterministas", sample.deterministic, minimum.deterministic),
+        ("defectos de juicio", sample.judgment, minimum.judgment),
+        ("expedientes correctos", sample.correct, minimum.correct),
     ):
         if not size:
             problems.append(f"no hay {name}")
         elif size < required:
             problems.append(f"{name}: {size} (la muestra exige al menos {required})")
     return problems
+
+
+def _sample_problems(t: Totals, minimum: Sample) -> list[str]:
+    observed = Sample(
+        judgment=t.judgment.denominator,
+        deterministic=t.deterministic.denominator,
+        correct=t.correct_with_false_alarms.denominator,
+    )
+    return sample_problems(observed, minimum)
 
 
 def threshold_problems(t: Totals, minimum: Sample | None = None) -> list[str]:

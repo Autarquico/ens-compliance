@@ -36,6 +36,7 @@ from ens_evidence.benchmark.model import (
     ApplicabilityDecision,
     EvidenceSource,
     MatrixRow,
+    Partition,
     Person,
     Profile,
     ProfileEvidence,
@@ -641,15 +642,16 @@ def run_step(build: Build, name: str, step: Step) -> None:
 
 def build_bench_profile(
     root: Path,
+    partition: Partition,
     profile_id: str,
     destination: Path,
     *,
     seed: str | None = None,
     steps: tuple[tuple[str, Step], ...] = STEPS,
 ) -> Build:
-    """Carga `profiles/<profile_id>` de un banco y lo construye."""
-    profile = load_profile(root, profile_id)
-    files = bench_dir(profile_files_dir(root, profile_id), root)
+    """Carga `profiles/<partición>/<profile_id>` de un banco y lo construye."""
+    profile = load_profile(root, partition, profile_id)
+    files = bench_dir(profile_files_dir(root, partition, profile_id), root)
     return build_profile(profile, files, destination, seed=seed, steps=steps)
 
 

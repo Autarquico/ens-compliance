@@ -82,7 +82,9 @@ def finding(reason: str) -> dict:
 @pytest.fixture(scope="module")
 def mini(tmp_path_factory) -> Build:
     """El perfil mini construido una vez; cada caso es una copia suya."""
-    return build_bench_profile(FIXTURES, "mini", tmp_path_factory.mktemp("mini") / "ws")
+    return build_bench_profile(
+        FIXTURES, Partition.DEV, "mini", tmp_path_factory.mktemp("mini") / "ws"
+    )
 
 
 def fork(mini: Build):
@@ -97,7 +99,7 @@ def bench(tmp_path, mini, monkeypatch) -> Path:
     """Un banco con el perfil mini, un caso correcto de juicio y uno solo determinista. Los
     casos se construyen copiando `mini` (sin pagar la construcción en cada test)."""
     root = tmp_path / "bench"
-    shutil.copytree(FIXTURES / "profiles" / "mini", root / "profiles" / "mini")
+    shutil.copytree(FIXTURES / "profiles" / "dev" / "mini", root / "profiles" / "dev" / "mini")
     for partition in Partition:
         directory = root / "cases" / partition.value
         directory.mkdir(parents=True)
