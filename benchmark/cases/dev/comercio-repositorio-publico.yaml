@@ -1,0 +1,29 @@
+format: ens-benchmark-case/1
+id: comercio-repositorio-publico
+partition: dev
+profile: comercio-online
+kind: defective
+mutations:
+  - op: set_answer
+    key: uso_servicios
+    value:
+      - El correo y la nube de la empresa se usan solo para el trabajo y nunca para guardar listados de clientes en cuentas personales.
+      - El panel de administración de la tienda solo se abre desde los portátiles de la empresa.
+      - El código de la tienda y su configuración viven únicamente en repositorios privados de la organización; ninguno se publica, para que las claves y los secretos que hubiera por error en el historial no queden a la vista de nadie.
+  - op: collected_override
+    alias: github
+    file: github.json
+defects:
+  - id: repositorio-publico-contra-normativa
+    layer: judgment
+    measure: op.exp.10
+    target: {kind: evidence, alias: github}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.exp.10
+      clause: op.exp.10.1
+      quote: Las claves criptográficas se protegerán durante todo su ciclo de vida
+    rationale: >-
+      La normativa exige que el código de la tienda viva solo en repositorios privados para que
+      los secretos del historial no queden a la vista, y la recogida del 3 de octubre muestra el
+      repositorio de la tienda como público. Ningún check determinista compara la visibilidad.
