@@ -9,11 +9,8 @@
 ## Done esta semana
 
 <!-- pm-sync:done-this-week -->
-- #7 Collector de Google Workspace
-- #13 Collector de Restic y pruebas de restauración
 - #14 Informes y scheduling
 - #17 Categorización, riesgos y aplicabilidad
-- #19 Evidencia de endpoints con script guiado
 - #20 Matriz de cumplimiento por medida
 - #21 Plantillas de documentación organizativa
 - #22 Procedimiento y registro de incidentes
@@ -22,6 +19,7 @@
 - #25 Pre-auditoría y audit pack
 - #26 Banco de defectos sembrados
 - #27 Caja mínima en Docker Compose
+- #56 Ajuste del audit pack hasta el umbral de v0.1
 <!-- /pm-sync:done-this-week -->
 
 ---
