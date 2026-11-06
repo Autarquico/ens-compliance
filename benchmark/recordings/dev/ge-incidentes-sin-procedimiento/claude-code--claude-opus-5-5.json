@@ -1,39 +1,39 @@
 {
   "format": "ens-benchmark-recording/1",
   "case": "dev/ge-incidentes-sin-procedimiento",
-  "case_sha256": "00604d6160a2f3dbf3436329672235515f72b876804fda8568c43e7c6b196853",
+  "case_sha256": "5ad40fbe47e610d5f2ddb9a3f45405bb936d42ae8833411cad710176e7cb9121",
   "provider": "claude-code",
   "model": "claude-opus-5-5",
   "destination": "claude-code 2.1.317, sesión del usuario (plan contratado); ejecutable 2.1.317 (sha256 09f153b46b5df9e8b3454716d682a91901de020cbca630f61dec1a015b32b5e9); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "1.0.0",
-  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
-  "payload_sha256": "74eb659716feca6f679d6553b05f9f46cf9773b68e52afd75f634f6da30266ff",
+  "pack_version": "2.0.0",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "payload_sha256": "573bcc80b09a599b11f1fad4617add98637edd64df58110e795d0d38c2d5765c",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-05T10:51:05.733136Z",
+  "recorded_at": "2026-11-06T02:16:43.362891Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-05T10:49:13.660289Z",
+      "at": "2026-11-06T02:14:51.034189Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"politica-seguridad\", \"quote\": \"Ámbito: Revisión trimestral de incidentes, accesos, copias, actualizaciones y del trabajo del proveedor informático.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"4. Capacidad: el servidor usa el 61 % del disco; la copia local crece 6 GB al mes.\"}, {\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"5. Incidentes: un correo fraudulento que suplantaba a un cliente, detectado por [responsable del servicio]\"}], \"justifications\": [], \"reason\": \"Según la política, el Comité de Seguridad revisa cada trimestre accesos, copias, actualizaciones y el trabajo del proveedor. El acta trimestral enlazada solo recoge documentos, autorizaciones, adquisiciones, capacidad e incidentes, sin dejar constancia de esas revisiones. Es una debilidad que podría acabar en un problema, pero no contradice de forma directa la política.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-05T10:50:02.016952Z",
+      "at": "2026-11-06T02:15:29.754962Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no la pide para los expedientes ni para el servicio de tramitación.\"}], \"reason\": \"Es un texto genérico, el mismo para todas las medidas no seleccionadas, y no menciona los activos ni los riesgos concretos. Además, el servicio depende de varios proveedores externos (aplicación de gestión, correo, nube y proveedor informático con acceso de administración), y el análisis de riesgos recoge ese acceso como riesgo residual.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.2\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.2\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no la pide para los expedientes ni para el servicio de tramitación.\"}], \"reason\": \"La justificación es genérica y no habla de la gestión diaria de los proveedores externos de los que depende la operación, entre ellos el mantenimiento, las actualizaciones y las conexiones remotas del proveedor informático. Por eso no queda claro que sea suficiente frente al riesgo sobre los activos.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.cont.2\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.cont.2\", \"quote\": \"No seleccionada: el anexo II no la exige en categoría BÁSICA y el análisis de riesgos de septiembre de 2026 no la pide para los expedientes ni para el servicio de tramitación.\"}], \"reason\": \"La justificación es genérica y no tiene en cuenta que la política fija como objetivo presentar en plazo aunque falle el servidor, ni que el análisis de riesgos identifica la avería del servidor y el cifrado por código dañino como amenazas probables.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-05T10:50:34.171324Z",
+      "at": "2026-11-06T02:16:03.345477Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"politica-seguridad\", \"quote\": \"Ámbito: Revisión trimestral de incidentes, accesos, copias, actualizaciones y del trabajo del proveedor informático.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"5. Incidentes: un correo fraudulento que suplantaba a un cliente, detectado por [responsable del servicio]\"}], \"justifications\": [], \"reason\": \"La política fija como ámbito del Comité una revisión trimestral de incidentes, accesos, copias, actualizaciones y del trabajo del proveedor. El acta del Comité enlazada a org.1 solo recoge incidentes, autorizaciones, adquisiciones y capacidad, sin revisar accesos, copias ni actualizaciones; es una debilidad que podría derivar en un problema.\"}, {\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.4\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"proceso-autorizacion\", \"quote\": \"Lo aprueba: el responsable de la seguridad.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\"}], \"justifications\": [], \"reason\": \"El documento atribuye su aprobación al responsable de la seguridad, mientras que el acta muestra que es el Comité quien aprueba los seis documentos. No queda claro quién tiene la competencia de aprobación.\"}, {\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"org.3\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Los aprueba: el responsable de la seguridad.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"1. Revisión anual de los seis documentos de seguridad: siguen vigentes; se aprueban sin cambios\"}], \"justifications\": [], \"reason\": \"Los procedimientos dicen que los aprueba el responsable de la seguridad, pero el acta del Comité registra su aprobación colegiada. Esta incoherencia sobre el órgano que aprueba podría derivar en un problema de control documental.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     }
   ]

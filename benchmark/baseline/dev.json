@@ -1,75 +1,88 @@
 {
   "format": "ens-benchmark-baseline/1",
   "partition": "dev",
-  "written_at": "2026-11-05T11:26:23.767554Z",
-  "pack_sha256": "77145ef3a4cdbbf263108f050fdc63da2c49b40dbcc5492cadca9c5f848d3fb6",
+  "written_at": "2026-11-06T13:25:44.669386Z",
+  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
   "inventory": {
-    "dev/consultora-tic-correcto": "6320f255f76efe590c54079901460d31b69986d1ff8e9f14964dd5b49098bc91",
-    "dev/ct-claves-alteradas": "031c5d9fa8ec9cc9bd7fd69bba160fb95fb273e41fa995e131568293a96cd60f",
+    "dev/consultora-tic-correcto": "88777456e27cfd388f41847d34a97e75cbd172833d3b694d88a82148a5f4f437",
+    "dev/ct-cambios-excluidos": "145addc8d75619a3b680a5fc0b6dfe45235ffd6cfa0cd78aa2ecb1855400b567",
+    "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos": "53ac305463813a96e0de3c4c3dfa8e25262fb71d1d932c6586bb8de0b710caeb",
+    "dev/ct-claves-alteradas": "8061caca44f8a21620758d004d06b0baf56007a1bc628201bf2f8616454de748",
     "dev/ct-claves-alteradas#registro-claves-alterado": "ba20b7f1acb7dab43bcf7211a886c2941fb20f8eb3c258f78422a2c062a6fa77",
-    "dev/ct-copias-compensadas": "54e087e8bdcf19fa945a1d878b74d07d052b7bfaad79883624400594f71c465d",
+    "dev/ct-copias-compensadas": "dc9ec987d015f15004ffb9da84733fd21dd5dd762b2ebc03db6e3fd2e08de6e0",
     "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente": "882eeacd59333e1c01facefd08775fb063d3f907a51337e14321d036bd812c96",
-    "dev/ct-copias-desenlazadas": "ed1b32ee212c306e58011a505fdc7cd38256e1f3b77210d11d6c57f8dea91532",
+    "dev/ct-copias-desenlazadas": "1bf9762499e45fe69898ae4e3830ffbe87abf5f4bc29ae640ed3db7895923835",
     "dev/ct-copias-desenlazadas#copias-sin-evidencia": "1cf5fce51f980fb117011a1e98de053f59d1f1c869ad637f8d44ea91d9c7f115",
-    "dev/ct-copias-semanales": "a3065128b4347210072f06d649aa6e00c23efdda6d2178d6d2cba48eba9699fd",
-    "dev/ct-copias-semanales#copias-contradicen-procedimiento": "a46a94a0598b1e81ac440e993e5a3f4044f06343054d2e4f4d0378f111e01f63",
-    "dev/ct-cuenta-compartida": "e7364211321ba55d6e18ab03996ef07eb6a61aa88d4df0ade24128871d82e8fc",
+    "dev/ct-copias-semanales": "5cf87d8b96d26cd63cd2695d8fe5246a60a1d4c6e40d5507ef8db9ba314229f2",
+    "dev/ct-copias-semanales#copias-contradicen-procedimiento": "ec3207afa942079d136e3652c41158a50070a4c38d4b80f11c0c765564a928bd",
+    "dev/ct-cuenta-compartida": "289d9dbdc45c951160884715dd8113f94ee8d179caddf2af2e3005605b0235a9",
     "dev/ct-cuenta-compartida#administracion-compartida": "a22d859529871182dc36b6ae4105339251380975f5b6ef530dc63ed1c71d1fd8",
-    "dev/ct-dependencias-sin-estado": "681e340e326dc8f3d2842114a76ece454bdeb4b634effc75902893371abc0548",
+    "dev/ct-cuenta-compartida#credenciales-compartidas": "ad4f3b83f50a2c42107287d938e8d3e25a27894a3b39ae5f6619274bec169b8e",
+    "dev/ct-dependencias-sin-estado": "54025590b7afaeb96b07eb88f50f84c6f5b05f79863be7e78f6ff201be3c5d6f",
     "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar": "ab689c3f2d1b4cad0c5ee02f3444523635b21c1dbeec92a873fae38dcedcbea2",
-    "dev/ct-doble-factor-desactivado": "f54ed6b1b53b86923ce460a45be5d3286e5d274ebaef51191a649a45262f6e9e",
+    "dev/ct-doble-factor-desactivado": "939e7d28114225ce52a193fa959aa1090e8330a42658409ed78b090cfd0ed199",
     "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor": "158e95ae5d1e3a56b3f5f7bbb4f65e1f6d711ab4159b2a1663e22c7e96e4c747",
-    "dev/ct-inventario-caducado": "6ac386ec12a9f8a368c6fc591382bf83bc81f36fc805f69b9efabf8197074c21",
+    "dev/ct-inventario-caducado": "ccaef15195f6d0d2eba19ce147ac2159f03f0b7492b2e195f169bd07eb3966b4",
     "dev/ct-inventario-caducado#inventario-caducado": "55bf04b50bf482ae0ae5f5ad2ed44ed736dfe53f83fde6259de9b14fa18cf2c8",
-    "dev/ct-parches-atrasados": "c208c49f9646201fc4de26eb491a0109b2e1acde7838eac521192ac528dd9980",
+    "dev/ct-parches-atrasados": "61c796c0bc013e0251b0dac479222e6622bc62fc1b6616f791677112afbecf39",
     "dev/ct-parches-atrasados#actualizaciones-sin-aplicar": "f05d8f92a2fbbb0cc0873d96e233bc1b08fc44d5dbf4fd87b3539bfa71900a95",
-    "dev/ct-registros-compensados": "9cf8ee03bbe50cd13efd2bd7cf58218e624d77e5ab2eedffdc93815edbb82ac3",
+    "dev/ct-registros-compensados": "33e43132e8eadae123ab6d470f8813715c98c2bab442fd034e2346264414fcc4",
     "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat": "fd8eac069d6799aba9f68b42ad8e91ba4b9204def75a9de2f3143a963ed9d222",
-    "dev/ct-renovacion-sin-procedimiento": "ace1f2bb194db5ed6283e6fff8442f7d05c547dab5b3ef8fbefd3810fe316244",
+    "dev/ct-renovacion-sin-procedimiento": "0f683f77f440f1e88c84a546d1c415f238e11ff8e8e1b5307ff20dce75b13fcc",
     "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida": "63c68646968c77a5612671b8d5af8668264f2fcdafeda5275ee586c152f88212",
-    "dev/ct-sanciones-indefinidas": "b85faca53ca33ea2d538911280c079e9e08db91148f373bf1201a446fc3ed6a3",
+    "dev/ct-sanciones-indefinidas": "f3f066be57805b6b2824c92159ff1ec9ee5620de72a2448a4445a11797637544",
     "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias": "64147ec826106676c7679ddcc5f2330b87b27b8608bd9b722bb1d9c1dfaff352",
-    "dev/ge-certificado-caducado": "4547dd61aaabfcf99579132288e59efc4e68842c4b5f8f6116a607775fd522f5",
+    "dev/ge-certificado-caducado": "87c84493779aac053abd6af5021509fa2b5af26f41d1e142783562b3ac061977",
     "dev/ge-certificado-caducado#certificado-proveedor-caducado": "73fe3ac0b280a9d5e1950b16f921a2c706d49e56d141d3d7b77f45c6c351dfe6",
-    "dev/ge-comite-indeterminado": "e7697cb1a613179603cfed6067b41723932d6aa2a9a4553d0bd28c7c554b0585",
+    "dev/ge-comite-indeterminado": "a37f53a227ac1c1b3fefaabe8b38de76e5499c9eebab679f0f2a3504dadc664d",
     "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito": "b68b79367c2ba9f3b4a72e11971e5db479c2e86aefa699ec39f7fd9f909237af",
-    "dev/ge-copias-alteradas": "42738ba094217ea25ec7629207676c5652030a3f917f16331856ce2b7e5f59b6",
+    "dev/ge-copias-alteradas": "7902c104e8bf57e54c87a54ff9ab0ebe99077b650e6d3949dc1940d5836abed3",
     "dev/ge-copias-alteradas#copias-sin-evidencia-valida": "3ad89ed8cd86179b56607cefa58e56cfe1d08486bbad2f7b6b14a074f6e55dd3",
     "dev/ge-copias-alteradas#informe-copias-alterado": "b60850dabce53e069128d7c0edcbd7c940f84b1ba0656fd8d43ef135d8a4f1f0",
-    "dev/ge-copias-sin-procedimiento": "7239bb0fdf4220ac342d9021467976874ddc3b9ff3abff7fc700be541182ac43",
+    "dev/ge-copias-sin-procedimiento": "eeddcd4cf280541400d6524e8436810df2eea8a636955cf73251a0fe7ba8f6de",
     "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago": "4b546e953a129d3d65f4ada0870ef3a1c89a27b03167695d6bd78021e17fcda0",
-    "dev/ge-correo-compensado": "b94e553aa8fb0108c44e37f4864020036d2ce1a35fe97753e627c06e7ae9ae73",
+    "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia": "30feddc000d2a1ed383d66193b518033f8e69785a72a4d3050bc2ae92289292d",
+    "dev/ge-correo-compensado": "e3527442a4ece3d864bbb9dadf77726b5aa7c1b11bb76c5bd2a0b983efa19bb9",
     "dev/ge-correo-compensado#correo-compensado-por-antivirus": "548adb322f4e9dd582934ed8c882af2bd4f1380edf899f5d8d21bdf6e91495d8",
-    "dev/ge-formacion-caducada": "d85b02edc7f08849ad1f75dbfcc8fad6751ca75c54d1859588e34edb16bb4c92",
+    "dev/ge-formacion-caducada": "e0ba49983a935852c594f5776237a6881deac39c1ef8f6946d739ff25678c081",
+    "dev/ge-formacion-caducada#concienciacion-sin-sesion": "47d5ecd30ceda84796024a47b37460e03c62829446daf04837795daa42b1b34b",
     "dev/ge-formacion-caducada#formacion-no-anual": "8965c4c504d91d78d5c04359ace19176df9a3caa3d593ab053d91ed171c459a0",
-    "dev/ge-incidentes-sin-procedimiento": "1096931aedbb7edcee8c7f8dc14ab44030f599d25c008664ca19ecc384670d82",
+    "dev/ge-incidentes-sin-procedimiento": "5b06d79168a2ac182a25a314cefcbe63778da24a0f1739bc22ba33f213986b8b",
     "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo": "68398ca809828efca2d51252c1ca8a81665c30857586ffcf767ac4903680c469",
-    "dev/ge-niveles-sin-criterio": "8eb963b0e95b935c58f58e690f1720a51f629d5e806e1ace8b45067a97a5382f",
+    "dev/ge-niveles-sin-criterio": "ff16ddb26aa4b87a1ba09ead3bd1a47fd4d87b05871354e9a441bbeb1091755c",
     "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia": "5c1518e42f46d6e06e8bbd3489518a5c775867658788cd0b2c6deb79dce1c570",
-    "dev/ge-portatiles-compensados": "4ffde916280f5ef6836f6ce9aa3273857a09847ad9bc7a97205264e36b4ab937",
+    "dev/ge-portatiles-compensados": "efb81e4a8159bd7e9e0b328277a47301347d0e3cfa65e7d7ccd23a8b826ee14d",
     "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado": "c2856bb9067a3d8615e732d071632e805f3304185cd91ec8479f53223794cc9b",
-    "dev/gestoria-correcta": "543105e007be5e38425e0dd4efd5f408b9c3e58639b512c3c8ccf24265a4fd74"
+    "dev/gestoria-correcta": "3471d019e7699fde3ad3026cacf5c6ccfbe4382d3c208104680b0b5b5cb40cf6"
   },
   "entries": [
     {
       "provider": "claude-code",
       "model": "claude-opus-5-5",
       "detected": [
+        "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos",
         "dev/ct-claves-alteradas#registro-claves-alterado",
         "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
         "dev/ct-copias-desenlazadas#copias-sin-evidencia",
+        "dev/ct-copias-semanales#copias-contradicen-procedimiento",
+        "dev/ct-cuenta-compartida#administracion-compartida",
         "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
         "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
         "dev/ct-inventario-caducado#inventario-caducado",
+        "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
         "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
         "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
         "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
         "dev/ge-certificado-caducado#certificado-proveedor-caducado",
+        "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
         "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
         "dev/ge-copias-alteradas#informe-copias-alterado",
-        "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
+        "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
         "dev/ge-correo-compensado#correo-compensado-por-antivirus",
+        "dev/ge-formacion-caducada#concienciacion-sin-sesion",
+        "dev/ge-formacion-caducada#formacion-no-anual",
         "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo",
+        "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia",
         "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado"
       ],
       "totals": {
@@ -79,52 +92,52 @@
           "value": 1.0
         },
         "judgment": {
-          "numerator": 7,
-          "denominator": 13,
-          "value": 0.5384615384615384
+          "numerator": 15,
+          "denominator": 17,
+          "value": 0.8823529411764706
         },
         "false_alarms": {
-          "numerator": 35,
-          "denominator": 42,
-          "value": 0.8333333333333334
+          "numerator": 0,
+          "denominator": 15,
+          "value": 0.0
         },
         "correct_with_false_alarms": {
-          "numerator": 2,
+          "numerator": 0,
           "denominator": 2,
-          "value": 1.0
+          "value": 0.0
         },
         "false_alarms_by_repetition": [
           {
-            "numerator": 35,
-            "denominator": 42,
-            "value": 0.8333333333333334
+            "numerator": 0,
+            "denominator": 15,
+            "value": 0.0
           },
           {
-            "numerator": 46,
-            "denominator": 53,
-            "value": 0.8679245283018868
+            "numerator": 0,
+            "denominator": 15,
+            "value": 0.0
           },
           {
-            "numerator": 35,
-            "denominator": 42,
-            "value": 0.8333333333333334
+            "numerator": 0,
+            "denominator": 15,
+            "value": 0.0
           }
         ],
         "correct_with_false_alarms_by_repetition": [
           {
-            "numerator": 2,
+            "numerator": 0,
             "denominator": 2,
-            "value": 1.0
+            "value": 0.0
           },
           {
-            "numerator": 2,
+            "numerator": 0,
             "denominator": 2,
-            "value": 1.0
+            "value": 0.0
           },
           {
-            "numerator": 2,
+            "numerator": 0,
             "denominator": 2,
-            "value": 1.0
+            "value": 0.0
           }
         ],
         "zero_emitted_repetitions": [],
@@ -136,31 +149,73 @@
           "kind": "correct",
           "judgment": true,
           "case_sha256": "e00122e09e5567f34e6a46308eb786c41b0d90ee899f52881cd696ef036aebb1",
-          "payload_sha256": "8e07ea0ed996aafd906984748b57bb190d96e9c4b48afb8d03d756b436e2b129",
+          "payload_sha256": "7f713dc7e410a7877d75097cacee83b7a25b2b1e90606ffe6d11ceddf651dba8",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 4,
-              "judgment_false_alarms": 4,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 5,
-              "judgment_false_alarms": 5,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
           "defects": []
+        },
+        {
+          "case": "dev/ct-cambios-excluidos",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "654521d54aead449adf90eca2e8492c67431dda926a87f1eb14fab3f15424671",
+          "payload_sha256": "4c63439a7fd6edf932594fe2ee5f8ef94d5124c25eb135b77cd8f44ecf22d9d8",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
         },
         {
           "case": "dev/ct-claves-alteradas",
@@ -209,27 +264,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "cd124b7dc9b4bc20f902b94ebf4779a152ba0f294b445761481ba7754faddb48",
-          "payload_sha256": "9128f689a2bbba6cad4c3a082112881a601591d8144c91b9c3cae916a725b29c",
+          "payload_sha256": "217daa1cad797714324ca1112d335a8a905334e81d32598d02398c65e4fc392d",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -251,27 +306,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "486d0ed0575d2191367019582f9100ab3946312cc5563dca4ce23a722c5ed819",
-          "payload_sha256": "b7ecf2d5ab9b187abd8bb34a8ef5de49fef28149c018acad9504377e279ce092",
+          "payload_sha256": "3722bebdad0b35a433111ac989dcdf2010f7b4b41159ecac0e813e011a51b91e",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 5,
-              "judgment_false_alarms": 5,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -292,28 +347,28 @@
           "case": "dev/ct-copias-semanales",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "9830d680257457c6dd7d5edca0506d00c2ffa974f426100a22c5971bd4574711",
-          "payload_sha256": "494cf2e9903188ca443b5df3bace97b39d74ddff90ce85988a812e542d043652",
+          "case_sha256": "9cb30b4cf3b50228257d80107bb4cdee11d5e5f9174ca99db7b6ce52e1706b51",
+          "payload_sha256": "90244ccecb0b546b5e4f11c73e816ff445ddb544269490c64fe3bb1c68ef6421",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -322,11 +377,11 @@
               "defect": "dev/ct-copias-semanales#copias-contradicen-procedimiento",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -334,34 +389,44 @@
           "case": "dev/ct-cuenta-compartida",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "60a261952eb395c8644dae3726966d1ccf999ad3a839b10115af38de6c477dcb",
-          "payload_sha256": "9e1f30fd782e9841e88d10b11276df64c19c0d50ec39e84d4a5203040fe5cd7a",
+          "case_sha256": "00582300a5964b14fa766c19e46f5d3d1f56baab9f07b311bbfb7b49081b8fbd",
+          "payload_sha256": "53878126c1d69da9ddbaa28b6772826d1b97018389ce1a55e41f2d334f432430",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
               "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 5,
-              "judgment_false_alarms": 5,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
           "defects": [
             {
               "defect": "dev/ct-cuenta-compartida#administracion-compartida",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/ct-cuenta-compartida#credenciales-compartidas",
               "layer": "judgment",
               "detected_by_repetition": [
                 false,
@@ -377,27 +442,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "bf1559125a56ef34e35989a2eca842cc9a276dc0848f103588a2b740c87eddef",
-          "payload_sha256": "bc9e14c029e58e4d3ab2f459bb6653d3c8851540207be1459f7216c315c5cd49",
+          "payload_sha256": "1a7226ca5ef689d1cd7d04f2a4bd6b85210262fc282f07e2403c8999dbb3368f",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -419,27 +484,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "33f86670bf6a99a01ec613502196aaf210405fc575f2a2027c6cd30d5676c26e",
-          "payload_sha256": "75d4462c4f62b1a846717174c6d74b5bd5faa63933958ac1c9e6fcf81d6a73cd",
+          "payload_sha256": "6a3601a1010fa110d88b628f161a1f8f51136cc386b84c0b7b8eb5c3a4e3e480",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 5,
-              "judgment_false_alarms": 5,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -461,27 +526,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "e568fcd9fb096d973898849ffe8290d72da3936f73e33cfd364d581bc2b4cb4b",
-          "payload_sha256": "5917fa78d2d2e79ba357948e0f9b3b1fdb67cb0f4725c036e7a3d044e5ee7be5",
+          "payload_sha256": "5b0af47be3f22beabc61932a469e5f917f6d2b18812d912db4d71948a65f479f",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -503,27 +568,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "a149e5dab511197ece5833c2ee26d3f639a518524c7be7c64a0337e53d2380b3",
-          "payload_sha256": "b371b57dbccaa9d6c11cf91e6ba9e0537977882f425d01ebeaf233f1e0845c75",
+          "payload_sha256": "7136d8626d76ba0b73e30e163b4b7d9c4436ac16284079d4b56417fec31b9676",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
               "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -532,11 +597,11 @@
               "defect": "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -545,27 +610,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "624e3369f1b2ebee5d0b5b3094100562309e8e307db62e887cd22e862e7938bc",
-          "payload_sha256": "a3d8f3e94696bd4a6ec4eed1309cd1a2c7bf40c45df2bf78a1cf780dc6e60bed",
+          "payload_sha256": "4b86bdf2675bb7da919b7bf28f8466af6c2b66d62e3989864390e95a0c3b7b00",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -587,27 +652,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "a5f03876ced63a9a3e505f940ffa30ae6d2d1214d6f02f5bfc15fb853d8740a2",
-          "payload_sha256": "a337de59eefea9e2b577056f19e93bd5ffde23e71d5883a7a76dab7eb4457c34",
+          "payload_sha256": "5088c81c32eb81fa894edb4ba1688ee6c4ec038d28dd9f28a510ada155dbd1be",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 4,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -629,27 +694,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "25e40a4e825ed7db11102901dcb40d4d4dc4c01bb32243b41cea02f0aab94345",
-          "payload_sha256": "3cfd11907d9f7f76db73d3c722151eeefbd46df136957579159334823e4b7bc8",
+          "payload_sha256": "d26deb977c396cff4d383750b775ecea6b74c1927093e87e00adcb1bb5e2ca51",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -671,27 +736,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "4965cdbebcdafd2e5ef588f35c90149f194dc4d3b0708066a2a17a9af619584a",
-          "payload_sha256": "83e86b0f6a9ef27fa11a107070c5815572e3117b11c6274c115dd45b399d4b0b",
+          "payload_sha256": "0ff8f859f5544ca02734a8b8ad471bb785d25db8ceee0538a1ebd43de14bc89d",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -713,27 +778,27 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "ab37b342f89620420b792f8cd86c9e4187c20ad58a88008720bb557bb4d09d32",
-          "payload_sha256": "f17e207d7cb56c9e88bb54604c64a5bb84be503c549e9708e34d2fc6c0f7f495",
+          "payload_sha256": "773ca7241991b2423bb9a57af0dca2469103d0496922a531ca5a128f72acb5c9",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
               "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -742,11 +807,11 @@
               "defect": "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -806,8 +871,8 @@
           "case": "dev/ge-copias-sin-procedimiento",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "97b6990d6b9425fcee44a9432af6d7e4b9ce9c10fb11bfc3668672f95dbeafa0",
-          "payload_sha256": "ba3d1058f674ed0050a86b1a20bf10a69f7e1c7a6b88b41668f3e7e2ee13213f",
+          "case_sha256": "0f676e219d0b1e1e8b86b2e0e37ed473525338af81ee3af7dcfb3eeda81b65a1",
+          "payload_sha256": "03a09ffacb35178f6705d9c7a2662c532c8d5d903f2b6264ea2a95080c051e09",
           "repetitions": [
             {
               "n": 1,
@@ -819,8 +884,8 @@
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
@@ -836,6 +901,16 @@
               "defect": "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
               "layer": "judgment",
               "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            },
+            {
+              "defect": "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
+              "layer": "judgment",
+              "detected_by_repetition": [
                 true,
                 true,
                 true
@@ -849,20 +924,20 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "ef34946b64445be10a9e660c0597cc31488acdba9d0c12d5cf82ae3a049fed6c",
-          "payload_sha256": "29d44fd051991b316a70bda695035ab55115f6d78abb699ad5ec222adf08b6ac",
+          "payload_sha256": "278d443f4f8dae335fc92212d0e1ff503f2cbd8fcbc9b8b14df115bdf9eed097",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 2,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 2,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
@@ -890,41 +965,51 @@
           "case": "dev/ge-formacion-caducada",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "ba8a2189cf79e75aac9005e8d3effc0deaaf5e8e422f3553e59fe593ae97ce6d",
-          "payload_sha256": "59927496abfcc44e506014a9b5579f6c9abf71b0ed0b6065ca4c13905a9342ed",
+          "case_sha256": "756ecdc1c38b0efe18dd60987070e17afe97ff99d2b70c1ef2e232c285a2cdb0",
+          "payload_sha256": "254d441cb02dde60edc97b5e6e0bab12721d6b40ebf05c38da89b6c6969abe0a",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
           "defects": [
             {
+              "defect": "dev/ge-formacion-caducada#concienciacion-sin-sesion",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
               "defect": "dev/ge-formacion-caducada#formacion-no-anual",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -932,28 +1017,28 @@
           "case": "dev/ge-incidentes-sin-procedimiento",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "00604d6160a2f3dbf3436329672235515f72b876804fda8568c43e7c6b196853",
-          "payload_sha256": "74eb659716feca6f679d6553b05f9f46cf9773b68e52afd75f634f6da30266ff",
+          "case_sha256": "5ad40fbe47e610d5f2ddb9a3f45405bb936d42ae8833411cad710176e7cb9121",
+          "payload_sha256": "573bcc80b09a599b11f1fad4617add98637edd64df58110e795d0d38c2d5765c",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -975,19 +1060,19 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "14e04ff467b4a5fdec7427a6317d9f7c91a0d183bf31519e897a9525e62d772c",
-          "payload_sha256": "b976aaef41cf6554d28c3ee9ac857892821e1665eaa731bfffb9b94c450208c7",
+          "payload_sha256": "85b0164e7c69c6a99c26500a9d6ac81b1b640d5f7592e81320478b03da838f3e",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
               "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
@@ -995,7 +1080,7 @@
               "n": 3,
               "outcome": "response",
               "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -1004,11 +1089,11 @@
               "defect": "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -1017,7 +1102,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "b65a8601c141d10fed93a752dc82af3f332f67b60a3886a4ca3e413ada20a045",
-          "payload_sha256": "ad412d02d7190aec761d70641ae7603da91be3ea5365dde26127a8f355607a74",
+          "payload_sha256": "f845947fa718616c56dd2fddf2e7b9fce98b0bb64d876477e4db709f01d7152e",
           "repetitions": [
             {
               "n": 1,
@@ -1059,27 +1144,27 @@
           "kind": "correct",
           "judgment": true,
           "case_sha256": "6794d6b90de6d6bfcb6be86a0026f92219adebe2c84ef809c3de4aaebec65b5e",
-          "payload_sha256": "68465042070913ba3797954cbc407a5f87469b9ef3271b2d18fa2020f545c220",
+          "payload_sha256": "094a2b087f764670fb1a309f3d90a4174292738f161307de22e15cafa3c9866e",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 3,
-              "judgment_false_alarms": 3,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 1,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
@@ -1091,12 +1176,16 @@
       "provider": "codex",
       "model": "gpt-6.1-sol",
       "detected": [
+        "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos",
         "dev/ct-claves-alteradas#registro-claves-alterado",
         "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
         "dev/ct-copias-desenlazadas#copias-sin-evidencia",
+        "dev/ct-copias-semanales#copias-contradicen-procedimiento",
+        "dev/ct-cuenta-compartida#administracion-compartida",
         "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
         "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
         "dev/ct-inventario-caducado#inventario-caducado",
+        "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
         "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
         "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
         "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
@@ -1104,9 +1193,11 @@
         "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
         "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
         "dev/ge-copias-alteradas#informe-copias-alterado",
-        "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
+        "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
         "dev/ge-correo-compensado#correo-compensado-por-antivirus",
+        "dev/ge-formacion-caducada#formacion-no-anual",
         "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo",
+        "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia",
         "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado"
       ],
       "totals": {
@@ -1116,13 +1207,13 @@
           "value": 1.0
         },
         "judgment": {
-          "numerator": 8,
-          "denominator": 13,
-          "value": 0.6153846153846154
+          "numerator": 14,
+          "denominator": 17,
+          "value": 0.8235294117647058
         },
         "false_alarms": {
           "numerator": 0,
-          "denominator": 7,
+          "denominator": 13,
           "value": 0.0
         },
         "correct_with_false_alarms": {
@@ -1133,17 +1224,17 @@
         "false_alarms_by_repetition": [
           {
             "numerator": 0,
-            "denominator": 8,
+            "denominator": 14,
             "value": 0.0
           },
           {
             "numerator": 0,
-            "denominator": 7,
+            "denominator": 13,
             "value": 0.0
           },
           {
             "numerator": 0,
-            "denominator": 8,
+            "denominator": 14,
             "value": 0.0
           }
         ],
@@ -1173,7 +1264,7 @@
           "kind": "correct",
           "judgment": true,
           "case_sha256": "e00122e09e5567f34e6a46308eb786c41b0d90ee899f52881cd696ef036aebb1",
-          "payload_sha256": "8e07ea0ed996aafd906984748b57bb190d96e9c4b48afb8d03d756b436e2b129",
+          "payload_sha256": "7f713dc7e410a7877d75097cacee83b7a25b2b1e90606ffe6d11ceddf651dba8",
           "repetitions": [
             {
               "n": 1,
@@ -1198,6 +1289,48 @@
             }
           ],
           "defects": []
+        },
+        {
+          "case": "dev/ct-cambios-excluidos",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "654521d54aead449adf90eca2e8492c67431dda926a87f1eb14fab3f15424671",
+          "payload_sha256": "4c63439a7fd6edf932594fe2ee5f8ef94d5124c25eb135b77cd8f44ecf22d9d8",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
         },
         {
           "case": "dev/ct-claves-alteradas",
@@ -1246,7 +1379,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "cd124b7dc9b4bc20f902b94ebf4779a152ba0f294b445761481ba7754faddb48",
-          "payload_sha256": "9128f689a2bbba6cad4c3a082112881a601591d8144c91b9c3cae916a725b29c",
+          "payload_sha256": "217daa1cad797714324ca1112d335a8a905334e81d32598d02398c65e4fc392d",
           "repetitions": [
             {
               "n": 1,
@@ -1288,7 +1421,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "486d0ed0575d2191367019582f9100ab3946312cc5563dca4ce23a722c5ed819",
-          "payload_sha256": "b7ecf2d5ab9b187abd8bb34a8ef5de49fef28149c018acad9504377e279ce092",
+          "payload_sha256": "3722bebdad0b35a433111ac989dcdf2010f7b4b41159ecac0e813e011a51b91e",
           "repetitions": [
             {
               "n": 1,
@@ -1329,27 +1462,27 @@
           "case": "dev/ct-copias-semanales",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "9830d680257457c6dd7d5edca0506d00c2ffa974f426100a22c5971bd4574711",
-          "payload_sha256": "494cf2e9903188ca443b5df3bace97b39d74ddff90ce85988a812e542d043652",
+          "case_sha256": "9cb30b4cf3b50228257d80107bb4cdee11d5e5f9174ca99db7b6ce52e1706b51",
+          "payload_sha256": "90244ccecb0b546b5e4f11c73e816ff445ddb544269490c64fe3bb1c68ef6421",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
@@ -1359,11 +1492,11 @@
               "defect": "dev/ct-copias-semanales#copias-contradicen-procedimiento",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -1371,27 +1504,27 @@
           "case": "dev/ct-cuenta-compartida",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "60a261952eb395c8644dae3726966d1ccf999ad3a839b10115af38de6c477dcb",
-          "payload_sha256": "9e1f30fd782e9841e88d10b11276df64c19c0d50ec39e84d4a5203040fe5cd7a",
+          "case_sha256": "00582300a5964b14fa766c19e46f5d3d1f56baab9f07b311bbfb7b49081b8fbd",
+          "payload_sha256": "53878126c1d69da9ddbaa28b6772826d1b97018389ce1a55e41f2d334f432430",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
@@ -1399,6 +1532,16 @@
           "defects": [
             {
               "defect": "dev/ct-cuenta-compartida#administracion-compartida",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/ct-cuenta-compartida#credenciales-compartidas",
               "layer": "judgment",
               "detected_by_repetition": [
                 false,
@@ -1414,7 +1557,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "bf1559125a56ef34e35989a2eca842cc9a276dc0848f103588a2b740c87eddef",
-          "payload_sha256": "bc9e14c029e58e4d3ab2f459bb6653d3c8851540207be1459f7216c315c5cd49",
+          "payload_sha256": "1a7226ca5ef689d1cd7d04f2a4bd6b85210262fc282f07e2403c8999dbb3368f",
           "repetitions": [
             {
               "n": 1,
@@ -1456,7 +1599,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "33f86670bf6a99a01ec613502196aaf210405fc575f2a2027c6cd30d5676c26e",
-          "payload_sha256": "75d4462c4f62b1a846717174c6d74b5bd5faa63933958ac1c9e6fcf81d6a73cd",
+          "payload_sha256": "6a3601a1010fa110d88b628f161a1f8f51136cc386b84c0b7b8eb5c3a4e3e480",
           "repetitions": [
             {
               "n": 1,
@@ -1498,7 +1641,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "e568fcd9fb096d973898849ffe8290d72da3936f73e33cfd364d581bc2b4cb4b",
-          "payload_sha256": "5917fa78d2d2e79ba357948e0f9b3b1fdb67cb0f4725c036e7a3d044e5ee7be5",
+          "payload_sha256": "5b0af47be3f22beabc61932a469e5f917f6d2b18812d912db4d71948a65f479f",
           "repetitions": [
             {
               "n": 1,
@@ -1540,26 +1683,26 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "a149e5dab511197ece5833c2ee26d3f639a518524c7be7c64a0337e53d2380b3",
-          "payload_sha256": "b371b57dbccaa9d6c11cf91e6ba9e0537977882f425d01ebeaf233f1e0845c75",
+          "payload_sha256": "7136d8626d76ba0b73e30e163b4b7d9c4436ac16284079d4b56417fec31b9676",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
@@ -1569,11 +1712,11 @@
               "defect": "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -1582,7 +1725,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "624e3369f1b2ebee5d0b5b3094100562309e8e307db62e887cd22e862e7938bc",
-          "payload_sha256": "a3d8f3e94696bd4a6ec4eed1309cd1a2c7bf40c45df2bf78a1cf780dc6e60bed",
+          "payload_sha256": "4b86bdf2675bb7da919b7bf28f8466af6c2b66d62e3989864390e95a0c3b7b00",
           "repetitions": [
             {
               "n": 1,
@@ -1624,7 +1767,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "a5f03876ced63a9a3e505f940ffa30ae6d2d1214d6f02f5bfc15fb853d8740a2",
-          "payload_sha256": "a337de59eefea9e2b577056f19e93bd5ffde23e71d5883a7a76dab7eb4457c34",
+          "payload_sha256": "5088c81c32eb81fa894edb4ba1688ee6c4ec038d28dd9f28a510ada155dbd1be",
           "repetitions": [
             {
               "n": 1,
@@ -1666,7 +1809,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "25e40a4e825ed7db11102901dcb40d4d4dc4c01bb32243b41cea02f0aab94345",
-          "payload_sha256": "3cfd11907d9f7f76db73d3c722151eeefbd46df136957579159334823e4b7bc8",
+          "payload_sha256": "d26deb977c396cff4d383750b775ecea6b74c1927093e87e00adcb1bb5e2ca51",
           "repetitions": [
             {
               "n": 1,
@@ -1708,7 +1851,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "4965cdbebcdafd2e5ef588f35c90149f194dc4d3b0708066a2a17a9af619584a",
-          "payload_sha256": "83e86b0f6a9ef27fa11a107070c5815572e3117b11c6274c115dd45b399d4b0b",
+          "payload_sha256": "0ff8f859f5544ca02734a8b8ad471bb785d25db8ceee0538a1ebd43de14bc89d",
           "repetitions": [
             {
               "n": 1,
@@ -1750,7 +1893,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "ab37b342f89620420b792f8cd86c9e4187c20ad58a88008720bb557bb4d09d32",
-          "payload_sha256": "f17e207d7cb56c9e88bb54604c64a5bb84be503c549e9708e34d2fc6c0f7f495",
+          "payload_sha256": "773ca7241991b2423bb9a57af0dca2469103d0496922a531ca5a128f72acb5c9",
           "repetitions": [
             {
               "n": 1,
@@ -1843,8 +1986,8 @@
           "case": "dev/ge-copias-sin-procedimiento",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "97b6990d6b9425fcee44a9432af6d7e4b9ce9c10fb11bfc3668672f95dbeafa0",
-          "payload_sha256": "ba3d1058f674ed0050a86b1a20bf10a69f7e1c7a6b88b41668f3e7e2ee13213f",
+          "case_sha256": "0f676e219d0b1e1e8b86b2e0e37ed473525338af81ee3af7dcfb3eeda81b65a1",
+          "payload_sha256": "03a09ffacb35178f6705d9c7a2662c532c8d5d903f2b6264ea2a95080c051e09",
           "repetitions": [
             {
               "n": 1,
@@ -1873,6 +2016,16 @@
               "defect": "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
               "layer": "judgment",
               "detected_by_repetition": [
+                false,
+                false,
+                false
+              ],
+              "detected": false
+            },
+            {
+              "defect": "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
+              "layer": "judgment",
+              "detected_by_repetition": [
                 true,
                 true,
                 true
@@ -1886,7 +2039,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "ef34946b64445be10a9e660c0597cc31488acdba9d0c12d5cf82ae3a049fed6c",
-          "payload_sha256": "29d44fd051991b316a70bda695035ab55115f6d78abb699ad5ec222adf08b6ac",
+          "payload_sha256": "278d443f4f8dae335fc92212d0e1ff503f2cbd8fcbc9b8b14df115bdf9eed097",
           "repetitions": [
             {
               "n": 1,
@@ -1927,34 +2080,34 @@
           "case": "dev/ge-formacion-caducada",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "ba8a2189cf79e75aac9005e8d3effc0deaaf5e8e422f3553e59fe593ae97ce6d",
-          "payload_sha256": "59927496abfcc44e506014a9b5579f6c9abf71b0ed0b6065ca4c13905a9342ed",
+          "case_sha256": "756ecdc1c38b0efe18dd60987070e17afe97ff99d2b70c1ef2e232c285a2cdb0",
+          "payload_sha256": "254d441cb02dde60edc97b5e6e0bab12721d6b40ebf05c38da89b6c6969abe0a",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
           ],
           "defects": [
             {
-              "defect": "dev/ge-formacion-caducada#formacion-no-anual",
+              "defect": "dev/ge-formacion-caducada#concienciacion-sin-sesion",
               "layer": "judgment",
               "detected_by_repetition": [
                 false,
@@ -1962,6 +2115,16 @@
                 false
               ],
               "detected": false
+            },
+            {
+              "defect": "dev/ge-formacion-caducada#formacion-no-anual",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
             }
           ]
         },
@@ -1969,8 +2132,8 @@
           "case": "dev/ge-incidentes-sin-procedimiento",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "00604d6160a2f3dbf3436329672235515f72b876804fda8568c43e7c6b196853",
-          "payload_sha256": "74eb659716feca6f679d6553b05f9f46cf9773b68e52afd75f634f6da30266ff",
+          "case_sha256": "5ad40fbe47e610d5f2ddb9a3f45405bb936d42ae8833411cad710176e7cb9121",
+          "payload_sha256": "573bcc80b09a599b11f1fad4617add98637edd64df58110e795d0d38c2d5765c",
           "repetitions": [
             {
               "n": 1,
@@ -2012,26 +2175,26 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "14e04ff467b4a5fdec7427a6317d9f7c91a0d183bf31519e897a9525e62d772c",
-          "payload_sha256": "b976aaef41cf6554d28c3ee9ac857892821e1665eaa731bfffb9b94c450208c7",
+          "payload_sha256": "85b0164e7c69c6a99c26500a9d6ac81b1b640d5f7592e81320478b03da838f3e",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 0,
+              "judgment_emitted": 1,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
@@ -2041,11 +2204,11 @@
               "defect": "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -2054,7 +2217,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "b65a8601c141d10fed93a752dc82af3f332f67b60a3886a4ca3e413ada20a045",
-          "payload_sha256": "ad412d02d7190aec761d70641ae7603da91be3ea5365dde26127a8f355607a74",
+          "payload_sha256": "f845947fa718616c56dd2fddf2e7b9fce98b0bb64d876477e4db709f01d7152e",
           "repetitions": [
             {
               "n": 1,
@@ -2096,7 +2259,7 @@
           "kind": "correct",
           "judgment": true,
           "case_sha256": "6794d6b90de6d6bfcb6be86a0026f92219adebe2c84ef809c3de4aaebec65b5e",
-          "payload_sha256": "68465042070913ba3797954cbc407a5f87469b9ef3271b2d18fa2020f545c220",
+          "payload_sha256": "094a2b087f764670fb1a309f3d90a4174292738f161307de22e15cafa3c9866e",
           "repetitions": [
             {
               "n": 1,
@@ -2125,5 +2288,121 @@
       ]
     }
   ],
-  "retired": []
+  "retired": [
+    {
+      "id": "dev/consultora-tic-correcto",
+      "sha256": "f5e3ad4facd9f9bd5a77a00cc97c23cf56c31a2daac494511d9c5eb69bdf5e81",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-claves-alteradas",
+      "sha256": "e6cd5c313a131e5e4f4741706c865c1a4cdf2721eebdd7e0ff8722b613f22c8b",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-copias-compensadas",
+      "sha256": "8674849608d2051fc3a19fcf635bbb1287b2ea733cd51dc744fb8946b8d85117",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-copias-desenlazadas",
+      "sha256": "b5b54be3bcefdc039607fddec08af599431af800347efe1a89ada68013d65b86",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-copias-semanales",
+      "sha256": "c8a15868555e68cc8222863dcb01f0dfcaa56bb0e8493db5af5580a1852c4a32",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-cuenta-compartida",
+      "sha256": "9166ef038d2b7ae19fd9eccb4e1d4cb12d8e35f1b5624413efc1407a7a13fba2",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-dependencias-sin-estado",
+      "sha256": "59fc8c650d6ab5e71bf2330b63a72420c16077d7054e665c25cd77f3d3e42f8b",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-doble-factor-desactivado",
+      "sha256": "44326a30f9f230b95d85051b8aa28f22e727b51cb601441c5981fc4c1516b969",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-inventario-caducado",
+      "sha256": "6d3661e05719c1fc0cf7ef18601a3d830115a9df36626e0966068abd9758bc74",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-parches-atrasados",
+      "sha256": "8b6f4468a1aedd926610c6c736741dfa1ee5b78b97b15e999ac6b3e25a893f40",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-registros-compensados",
+      "sha256": "042a1ed9b0a2bbbeae16f2de339b17e45a8d5fc807eb79bcb291608f8dc9d60c",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-renovacion-sin-procedimiento",
+      "sha256": "40d5aa5f607f3b62ac5195d66b330b679935d658fee34a570e10ccdd86a3de10",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ct-sanciones-indefinidas",
+      "sha256": "8fac32cda63622bcec380b3f91c4a9da9ac9a1189cfa8f9499195ae83057ed38",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-certificado-caducado",
+      "sha256": "fa8dc57aef06ce3ee3cd42a3ec94bc06d319f8b8c6cc525585e3b91017048ada",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-comite-indeterminado",
+      "sha256": "51f256cf0e91156597240100c96c2254901178dd7245bccca12d4291c05adaae",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-copias-alteradas",
+      "sha256": "c5e8d44e49e679a7c64b56d3544bdf0d66b537e31b60950d1d4361df1a7be451",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-copias-sin-procedimiento",
+      "sha256": "7445674af5fc6e6c46461b2d605d051e62519a8fa031b76ec726f3c8d4f9a3be",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-correo-compensado",
+      "sha256": "06c0070e55fee585842e071e7ddc158f0a273b77399c2a338cdd8ee3b16fd151",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-formacion-caducada",
+      "sha256": "25e4fbae41819ac5262abd5c2f86e84ae47844024db24fbccbb56b57154ba1bd",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-incidentes-sin-procedimiento",
+      "sha256": "bdf1ad2a06638fea278e604fe9d11e1e4cb2b65bd24d320c0e702ecf81a25a69",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-niveles-sin-criterio",
+      "sha256": "70f89ab8606059c751d3550e30128e77361a5202f46cce3eb0764c81e1e49dc1",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/ge-portatiles-compensados",
+      "sha256": "9c757bbdf7f89cbb12d9273f8b1992b28f48300b3996995f8396e880779b82fa",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "dev/gestoria-correcta",
+      "sha256": "1ff86efbccc5f1adcb663b40e57499c91ca856546421c9f197787ef973ee80dc",
+      "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    }
+  ]
 }
