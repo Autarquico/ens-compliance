@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: "Reservada nueva y dev ampliado para el umbral de v0.1"
 type: task
-status: active
+status: draft
 priority: P0
 size: M
 issue: null
