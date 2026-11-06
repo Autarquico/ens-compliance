@@ -19,7 +19,7 @@ from ens_evidence.models.contracts import Strict
 from ens_evidence.models.preaudit import Classification
 from ens_evidence.yaml_unique import safe_load_unique
 
-CURRENT_PACK = resources.files("ens_evidence.audit_pack") / "v2"
+CURRENT_PACK = resources.files("ens_evidence.audit_pack") / "v3"
 MANIFEST = "manifest.json"
 PACK_FILES = ("criteria.yaml", "system.md", "response.schema.json")
 
