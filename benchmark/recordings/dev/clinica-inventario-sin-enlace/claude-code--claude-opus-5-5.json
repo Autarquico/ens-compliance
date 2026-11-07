@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/clinica-inventario-sin-enlace",
+  "case_sha256": "7b8093030721bc8170702f14b993fbee03ab14048df5a7a8466a8c773d2f0123",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "d8f5c6b013d91186b9bd34918013e9d8648924d8d23813852d91b9b0cdc67d2c",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T22:36:30.464064Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T22:34:39.915348Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T22:35:10.989897Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.3\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.acc.3\", \"quote\": \"la clínica no tiene personal dedicado a la administración que pudiera actuar sin la supervisión de la directora\"}], \"reason\": \"La justificación dice que nadie administra el sistema sin la supervisión de la directora. Otros documentos del expediente, no enlazados a esta medida, dicen otra cosa. Según el documento designacion-responsables, el responsable del sistema «Administra el servidor, los equipos y las copias». Según el documento procedimientos-seguridad, «Solo el responsable de sistemas puede acceder a las copias y a su clave». Por tanto, una sola persona administra en exclusiva las copias y su clave, y el expediente no declara ninguna supervisión sobre esa tarea.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T22:35:50.029146Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    }
+  ]
+}

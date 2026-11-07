@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/comercio-escaneo-secretos-apagado",
+  "case_sha256": "ca54bf28c30c795bba8d877219dc4097231b8e3d38f5cb4690adda8c28ae2c1b",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "ed1600e366dacb0b4e8a7cdd91b4b319583be435aca3557cf71a295b87ece88b",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-07T01:29:10.554527Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-07T01:28:13.063904Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"proceso-autorizacion\",\"quote\":\"### Medios de comunicación alternativos\\n\\nNo aplica: No hay medios alternativos; si falla el correo se atiende a los clientes por teléfono.\"}],\"evidence\":[{\"ref\":\"EV-20261006-a88be403\",\"quote\":\"1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\\n   versión y la fecha de aprobación vigentes de cada uno.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR porque el documento declara el teléfono como alternativa al correo, pero lo excluye del proceso formal de autorización al afirmar que no hay medios alternativos. El proceso no cubre así ese medio alternativo declarado, extremo exigido por org.4.5.\"},{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.if.6\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:not_selected:mp.if.6\",\"quote\":\"El servidor está en el centro de datos del alojamiento, que acredita sus controles físicos; en el taller no hay equipos con datos: los portátiles llevan el disco cifrado y se guardan en el armario de la oficina. El análisis de riesgos no cuenta la inundación; no exigida en BÁSICA.\"}],\"reason\":\"Se propone NC_MENOR porque la justificación descarta equipos con datos en el taller apoyándose en el cifrado y su almacenamiento en un armario, salvaguardas que no cubren el daño por inundación a esos equipos. La omisión de esa amenaza en el análisis de riesgos y la categoría BÁSICA no aportan una razón suficiente propia de la medida.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-07T01:28:32.205625Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"proceso-autorizacion\",\"quote\":\"### Medios de comunicación alternativos\\n\\nNo aplica: No hay medios alternativos; si falla el correo se atiende a los clientes por teléfono.\"}],\"evidence\":[{\"ref\":\"EV-20261006-a88be403\",\"quote\":\"1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\\n   versión y la fecha de aprobación vigentes de cada uno.\"}],\"justifications\":[],\"reason\":\"El documento declara el teléfono como alternativa cuando falla el correo, pero excluye los medios alternativos del proceso de autorización y no precisa cómo se autoriza su uso. Se propone NC_MENOR por cobertura parcial del proceso formal que org.4.5 exige para los medios de comunicación habituales y alternativos.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-07T01:28:53.436652Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"proceso-autorizacion\",\"quote\":\"### Medios de comunicación alternativos\\n\\nNo aplica: No hay medios alternativos; si falla el correo se atiende a los clientes por teléfono.\"}],\"evidence\":[{\"ref\":\"EV-20261006-a88be403\",\"quote\":\"1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\\n   versión y la fecha de aprobación vigentes de cada uno.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR porque el proceso excluye los medios alternativos mientras declara el teléfono como alternativa al correo, sin incluir su autorización. Esto deja parcialmente sin cubrir los medios de comunicación alternativos que exige org.4.5.\"}]}",
+      "kind": null
+    }
+  ]
+}

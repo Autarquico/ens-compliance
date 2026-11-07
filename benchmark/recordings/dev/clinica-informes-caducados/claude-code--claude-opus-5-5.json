@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/clinica-informes-caducados",
+  "case_sha256": "d63bc4a251b95e0c4b6331c509e248f3cab6cbc771ea9cbf98274d05a53e500e",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "6a094a7e09ed6d270e517759d6bc26ac2b3f54bb68867ad5d64d1f758e6f0ae7",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T22:34:39.913245Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T22:32:34.828112Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.3\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.acc.3\", \"quote\": \"la clínica no tiene personal dedicado a la administración que pudiera actuar sin la supervisión de la directora\"}], \"reason\": \"La justificación dice que nadie administra sin supervisión de la directora. Otros documentos del expediente lo contradicen: el documento procedimientos-seguridad indica «Solo el responsable de sistemas puede acceder a las copias y a su clave», y el de designación de responsables le encarga administrar «el servidor, los equipos y las copias». Así, una sola persona hace tareas críticas sin un control que se declare.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T22:33:08.265863Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.3\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.acc.3\", \"quote\": \"la clínica no tiene personal dedicado a la administración que pudiera actuar sin la supervisión de la directora\"}], \"reason\": \"Otros documentos del expediente contradicen esta justificación. El documento designacion-responsables atribuye al responsable de sistemas que «Administra el servidor, los equipos y las copias». El documento procedimientos-seguridad dice que «Solo el responsable de sistemas puede acceder a las copias y a su clave». Por tanto, sí hay una persona que administra el sistema y accede sola a las copias, sin que el expediente muestre que la directora la supervise en esas tareas.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T22:33:48.876595Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    }
+  ]
+}

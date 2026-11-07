@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/comercio-exclusiones-de-tienda-web",
+  "case_sha256": "5208c2f0e5e5eeeb2803e69a45952e7b04ae159bc7b61394ad2053f68ed74f6f",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "20384e4cdacd169d27052767e72514241b460e23795212665e29b7ae8d14cc8e",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T22:53:47.316747Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T22:52:11.593610Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.s.2\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.s.2:base\", \"quote\": \"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}], \"reason\": \"La compensación no muestra que la protección del proveedor proteja igual o mejor que mp.s.2: solo traslada la responsabilidad al proveedor. Además, la justificación de mp.sw.1 dice que «El código de la tienda es propio», así que la seguridad de la aplicación web no la cubre el plan del alojamiento.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}], \"reason\": \"La justificación no da una razón propia de la medida. La contradice el análisis de riesgos (EV-20261006-4a88eab8, no enlazado a op.ext.1), que dice «Para la amenaza 5 hay que fijar con cada proveedor un servicio mínimo y las consecuencias de incumplirlo». También la contradicen los procedimientos de seguridad, que exigen fijar «el servicio mínimo que hay que pactar con cada proveedor».\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T22:52:43.771639Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.s.2\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.s.2:base\", \"quote\": \"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}], \"reason\": \"La compensación solo traslada la responsabilidad al proveedor y no justifica que su protección cubra, igual o mejor, el riesgo sobre la aplicación web. La justificación de mp.sw.1 dice que el código de la tienda es propio, y el análisis de riesgos (EV-20261006-4a88eab8, no enlazado a esta medida) recoge como amenaza un cambio publicado que abre un fallo de inyección. El plan del proveedor no cubre ese riesgo.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}], \"reason\": \"La justificación no da una razón propia de la medida. El expediente la contradice: el análisis de riesgos (EV-20261006-4a88eab8) dice que «hay que fijar con cada proveedor un servicio mínimo y las consecuencias de incumplirlo», y los procedimientos de seguridad incluyen «el servicio mínimo que hay que pactar con cada proveedor». Ninguno de los dos está enlazado a esta medida.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T22:53:18.600759Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.s.2\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.s.2:base\", \"quote\": \"La tienda está en un alojamiento contratado; la seguridad de la web es cosa del proveedor y no nuestra.\"}], \"reason\": \"La compensación no explica cómo la protección del proveedor protege igual o mejor que mp.s.2. Solo traslada la responsabilidad al proveedor. Además, la contradice el análisis de riesgos (EV-20261006-4a88eab8, no enlazado a esta medida): ese análisis recoge como amenaza un cambio en el código propio de la tienda «que abre un fallo de inyección o permite tocar precios». Ese riesgo nace de la aplicación propia y el plan del alojamiento no lo cubre.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"Nuestros proveedores son empresas grandes y saben lo que hacen; no hace falta pactar con ellos ningún nivel de servicio.\"}], \"reason\": \"La justificación no da una razón propia de la medida, y la contradice el propio expediente. El análisis de riesgos (EV-20261006-4a88eab8, no enlazado a esta medida) dice: «Para la amenaza 5 hay que fijar con cada proveedor un servicio mínimo y las consecuencias de incumplirlo». El documento procedimientos-seguridad (análisis de riesgos) también incluye «el servicio mínimo que hay que pactar con cada proveedor».\"}]}",
+      "kind": null
+    }
+  ]
+}

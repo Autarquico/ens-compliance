@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/clinica-correcta",
+  "case_sha256": "e4bccb626748cd5b46473cbe8ac94a14677b6847a8d962f1edf65e487f6d0603",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "210639d2be30e9bc8bbf0af2f99567943305785ff758c1d4834565d5ea99f255",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T22:31:06.900675Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T22:29:14.771002Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T22:29:44.906079Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.3\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.acc.3\", \"quote\": \"la clínica no tiene personal dedicado a la administración que pudiera actuar sin la supervisión de la directora\"}], \"reason\": \"La justificación dice que nadie administra sin la supervisión de la directora. Otros documentos, no enlazados a op.acc.3, dicen otra cosa. En «designacion-responsables», el responsable de sistemas «Administra el servidor, los equipos y las copias». En «procedimientos-seguridad» consta que «Solo el responsable de sistemas puede acceder a las copias y a su clave», sin que intervenga la directora. Así, una persona dedicada a la administración hace sola tareas críticas, que es justo el riesgo del que protege la segregación de funciones.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T22:30:26.982631Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    }
+  ]
+}

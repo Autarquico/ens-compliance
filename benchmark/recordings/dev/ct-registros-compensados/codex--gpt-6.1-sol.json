@@ -7,34 +7,34 @@
   "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "2.0.0",
-  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
-  "payload_sha256": "4b86bdf2675bb7da919b7bf28f8466af6c2b66d62e3989864390e95a0c3b7b00",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "c8181c39f108b37fb7384109509df2bd7f78afc482346cf85600de64266743fa",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T12:02:51.128647Z",
+  "recorded_at": "2026-11-07T01:37:32.771818Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T12:02:00.876331Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"op.exp.8\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"Se generará un registro de auditoría, que incluirá, al menos, el identificador del usuario o entidad asociado al evento, fecha y hora, sobre qué información se realiza el evento, tipo de evento y el resultado del evento (fallo o éxito), según la política de seguridad y los procedimientos asociados a la misma.\"}],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:op.exp.8:base\",\"quote\":\"Somos tres personas y nos conocemos; cualquier cambio en el servidor se comenta en el chat del equipo, que hace las veces de registro de actividad.\"}],\"reason\":\"La compensación se limita a comentar cambios del servidor en el chat, sin justificar una protección igual o mejor que el registro sustituido: deja sin cubrir en su explicación los eventos distintos de cambios y el registro de usuario, fecha y hora, información afectada, tipo y resultado del evento. Se propone NC_MENOR por insuficiencia parcial de la justificación de equivalencia exigida para la compensación.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:37:11.168830Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     },
     {
       "n": 2,
-      "at": "2026-11-06T12:02:17.723678Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"op.exp.8\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"Se generará un registro de auditoría, que incluirá, al menos, el identificador del usuario o entidad asociado al evento, fecha y hora, sobre qué información se realiza el evento, tipo de evento y el resultado del evento (fallo o éxito), según la política de seguridad y los procedimientos asociados a la misma.\"}],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:op.exp.8:base\",\"quote\":\"Somos tres personas y nos conocemos; cualquier cambio en el servidor se comenta en el chat del equipo, que hace las veces de registro de actividad.\"}],\"reason\":\"La compensación se limita a comentar cambios del servidor en el chat, sin justificar una protección igual o mejor que el registro de auditoría sustituido: deja sin acreditar la cobertura de los eventos y sus datos mínimos (identificador, fecha y hora, información afectada, tipo y resultado). Se propone NC_MENOR por insuficiencia parcial de la justificación de equivalencia exigida para la compensación.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:37:18.787375Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     },
     {
       "n": 3,
-      "at": "2026-11-06T12:02:33.711191Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"op.exp.8\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimientos-seguridad\",\"quote\":\"Se generará un registro de auditoría, que incluirá, al menos, el identificador del usuario o entidad asociado al evento, fecha y hora, sobre qué información se realiza el evento, tipo de evento y el resultado del evento (fallo o éxito), según la política de seguridad y los procedimientos asociados a la misma.\"}],\"evidence\":[],\"justifications\":[{\"ref\":\"justification:compensation:op.exp.8:base\",\"quote\":\"Somos tres personas y nos conocemos; cualquier cambio en el servidor se comenta en el chat del equipo, que hace las veces de registro de actividad.\"}],\"reason\":\"La compensación se limita a comentar cambios del servidor en el chat, sin justificar una cobertura equivalente de los eventos de actividad ni de los datos exigidos por op.exp.8.1: usuario, fecha y hora, información afectada, tipo y resultado del evento. Se propone NC_MENOR por insuficiencia parcial de la justificación de protección igual o mejor de la medida sustituida.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:37:25.847449Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     }
   ]
 }

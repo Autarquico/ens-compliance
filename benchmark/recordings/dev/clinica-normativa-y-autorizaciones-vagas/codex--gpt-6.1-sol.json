@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/clinica-normativa-y-autorizaciones-vagas",
+  "case_sha256": "6b2171b90424a30cc93778948faab48924abcd30c2c8e6d8517547cdbd3746d3",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "e6d0027077051d05236cee5e41c377058a7fc8141976d934baf634feaeb71e47",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-07T01:20:00.948655Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-07T01:19:11.606621Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.2\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"normativa-seguridad\",\"quote\":\"### Medidas disciplinarias\\n\\nSe tomarán las medidas oportunas en cada caso.\"}],\"evidence\":[{\"ref\":\"EV-20261005-d40b9abe\",\"quote\":\"1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\\n   versión y la fecha de aprobación vigentes de cada uno.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR porque la normativa no describe las medidas disciplinarias de acuerdo con la legislación vigente que exige org.2.2: únicamente anuncia medidas oportunas sin precisar cuáles son ni remitir al régimen aplicable.\"},{\"criterion\":\"calidad-documental\",\"measure\":\"org.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"proceso-autorizacion\",\"quote\":\"## Equipos móviles\\n\\n- Portátil de dirección: autoriza No hace falta autorización. Se pide así: Cada uno usa el portátil o el móvil que prefiera. Queda registrado: No se registra\"}],\"evidence\":[{\"ref\":\"EV-20261005-d40b9abe\",\"quote\":\"1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\\n   versión y la fecha de aprobación vigentes de cada uno.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR porque el proceso excluye expresamente la autorización y el registro de los equipos móviles, mientras que org.4 exige un proceso formal de autorizaciones que cubra su utilización, incluida en org.4.7.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-07T01:19:28.585195Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.2\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"normativa-seguridad\",\"quote\":\"### Medidas disciplinarias\\n\\nSe tomarán las medidas oportunas en cada caso.\"}],\"evidence\":[{\"ref\":\"EV-20261005-d40b9abe\",\"quote\":\"1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\\n   versión y la fecha de aprobación vigentes de cada uno.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR porque la normativa remite a «medidas oportunas» sin describir las medidas disciplinarias de acuerdo con la legislación vigente que exige recoger org.2.2. La fórmula deja parcialmente sin precisar ese contenido obligatorio.\"},{\"criterion\":\"calidad-documental\",\"measure\":\"org.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"proceso-autorizacion\",\"quote\":\"## Equipos móviles\\n\\n- Portátil de dirección: autoriza No hace falta autorización. Se pide así: Cada uno usa el portátil o el móvil que prefiera. Queda registrado: No se registra\"}],\"evidence\":[{\"ref\":\"EV-20261005-d40b9abe\",\"quote\":\"2. El acceso remoto de la directora exige doble factor y las contraseñas se cambian cada año o\\n   ante sospecha.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR porque el proceso excluye expresamente la autorización de los equipos móviles, mientras que org.4 exige un proceso formal que cubra su utilización en org.4.7. Esto supone una cobertura parcial del contenido exigido al proceso.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-07T01:19:44.970972Z",
+      "outcome": "response",
+      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"org.2\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"normativa-seguridad\",\"quote\":\"### Medidas disciplinarias\\n\\nSe tomarán las medidas oportunas en cada caso.\"}],\"evidence\":[{\"ref\":\"EV-20261005-d40b9abe\",\"quote\":\"1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\\n   versión y la fecha de aprobación vigentes de cada uno.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR porque la normativa no describe las medidas disciplinarias de acuerdo con la legislación vigente que exige org.2.2: la expresión «medidas oportunas» deja ese extremo sin precisar.\"},{\"criterion\":\"calidad-documental\",\"measure\":\"org.4\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"proceso-autorizacion\",\"quote\":\"- Portátil de dirección: autoriza No hace falta autorización. Se pide así: Cada uno usa el portátil o el móvil que prefiera. Queda registrado: No se registra\"}],\"evidence\":[{\"ref\":\"EV-20261005-d40b9abe\",\"quote\":\"1. Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\\n   versión y la fecha de aprobación vigentes de cada uno.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR porque el proceso excluye expresamente la autorización de los equipos móviles, cuando org.4 exige un proceso formal que cubra su utilización conforme a org.4.7.\"}]}",
+      "kind": null
+    }
+  ]
+}

@@ -7,34 +7,34 @@
   "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "2.0.0",
-  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
-  "payload_sha256": "f845947fa718616c56dd2fddf2e7b9fce98b0bb64d876477e4db709f01d7152e",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "e6a59bfc4111dc9d7c89d866e53f169a9a9be6ba21207d2c9cb0821fe25ae652",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T12:11:03.473501Z",
+  "recorded_at": "2026-11-07T01:40:59.782071Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T12:10:15.167519Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.eq.3\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[{\"ref\":\"EV-20261001-751fd139\",\"quote\":\"Equipos: los cuatro portátiles tienen disco cifrado y bloqueo automático; se comprobó que cada\\nuno está en poder de su responsable; en teletrabajo se conectan por VPN.\"}],\"justifications\":[{\"ref\":\"justification:compensation:mp.eq.3:base\",\"quote\":\"Los portátiles casi nunca salen de la oficina y, cuando están en ella, el puesto despejado y el armario con llave ya los protegen.\"}],\"reason\":\"La compensación justifica protección únicamente dentro de la oficina y deja sin cubrir la protección de los portátiles durante sus salidas y el teletrabajo, cuyo uso acredita la evidencia. Se propone NC_MENOR porque no se justifica una protección igual o mejor frente al riesgo de pérdida o robo en teletrabajo identificado en el análisis de riesgos del expediente.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:40:38.715081Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     },
     {
       "n": 2,
-      "at": "2026-11-06T12:10:31.194273Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.eq.3\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[{\"ref\":\"EV-20261001-751fd139\",\"quote\":\"Equipos: los cuatro portátiles tienen disco cifrado y bloqueo automático; se comprobó que cada\\nuno está en poder de su responsable; en teletrabajo se conectan por VPN.\"}],\"justifications\":[{\"ref\":\"justification:compensation:mp.eq.3:base\",\"quote\":\"Los portátiles casi nunca salen de la oficina y, cuando están en ella, el puesto despejado y el armario con llave ya los protegen.\"}],\"reason\":\"La compensación justifica únicamente la protección dentro de la oficina y deja sin cubrir la protección de los portátiles cuando salen de ella, uso que la evidencia confirma para el teletrabajo. Se propone NC_MENOR porque la justificación no demuestra una protección igual o mejor del riesgo sobre los activos para ese uso de los dispositivos portátiles.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:40:45.758952Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     },
     {
       "n": 3,
-      "at": "2026-11-06T12:10:46.177624Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"solidez-justificacion-aplicabilidad\",\"measure\":\"mp.eq.3\",\"proposal\":\"NC_MENOR\",\"documents\":[],\"evidence\":[{\"ref\":\"EV-20261001-751fd139\",\"quote\":\"Equipos: los cuatro portátiles tienen disco cifrado y bloqueo automático; se comprobó que cada\\nuno está en poder de su responsable; en teletrabajo se conectan por VPN.\"}],\"justifications\":[{\"ref\":\"justification:compensation:mp.eq.3:base\",\"quote\":\"Los portátiles casi nunca salen de la oficina y, cuando están en ella, el puesto despejado y el armario con llave ya los protegen.\"}],\"reason\":\"La compensación justifica protección dentro de la oficina, pero deja sin cubrir en su razonamiento la protección de los portátiles cuando salen, uso confirmado por la evidencia de teletrabajo. Se propone NC_MENOR porque la justificación no demuestra una protección igual o mejor del riesgo sobre los activos que la medida sustituida.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:40:52.676334Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     }
   ]
 }

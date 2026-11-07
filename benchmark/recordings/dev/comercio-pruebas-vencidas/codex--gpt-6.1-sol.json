@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/comercio-pruebas-vencidas",
+  "case_sha256": "78ca1c050740de623325017df6b6340bbee04442f19a7cf5c5f383072a04da34",
+  "provider": "codex",
+  "model": "gpt-6.1-sol",
+  "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "2f3f0ceffe9a20111154ad913af4039b38e06bbdae460ffc3c800b27d0cba5a0",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-07T01:32:47.052282Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-07T01:32:27.227241Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
+    },
+    {
+      "n": 2,
+      "at": "2026-11-07T01:32:33.932112Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
+    },
+    {
+      "n": 3,
+      "at": "2026-11-07T01:32:40.376168Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
+    }
+  ]
+}

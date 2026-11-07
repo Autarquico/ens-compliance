@@ -7,34 +7,34 @@
   "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "2.0.0",
-  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
-  "payload_sha256": "7f713dc7e410a7877d75097cacee83b7a25b2b1e90606ffe6d11ceddf651dba8",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "fa2944be45cb44f6f8d1a8733c21aec78f8b30ff0bfc144fa6ad2fbf2bab1080",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T11:55:01.939951Z",
+  "recorded_at": "2026-11-07T01:33:48.920836Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T11:54:24.068361Z",
-      "outcome": "response",
-      "response": "{\"findings\": []}",
-      "kind": null
+      "at": "2026-11-07T01:33:27.973856Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     },
     {
       "n": 2,
-      "at": "2026-11-06T11:54:35.499646Z",
-      "outcome": "response",
-      "response": "{\"findings\":[]}",
-      "kind": null
+      "at": "2026-11-07T01:33:35.112753Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     },
     {
       "n": 3,
-      "at": "2026-11-06T11:54:50.428101Z",
-      "outcome": "response",
-      "response": "{\"findings\":[]}",
-      "kind": null
+      "at": "2026-11-07T01:33:41.978419Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     }
   ]
 }

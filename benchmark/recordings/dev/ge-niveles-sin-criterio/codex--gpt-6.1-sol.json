@@ -7,34 +7,34 @@
   "destination": "codex 0.160.1, sesión del usuario (plan contratado); ejecutable codex (sha256 09fa44fdc37a5fc70dc1ace31235f90468a2e193d0e85f7552eab068ea2582be); sin config.toml ni reglas del usuario; la configuración gestionada por la organización y el AGENTS.md de CODEX_HOME pueden aplicar",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "2.0.0",
-  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
-  "payload_sha256": "85b0164e7c69c6a99c26500a9d6ac81b1b640d5f7592e81320478b03da838f3e",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "5eeee51a8ef9d3e7f2a33dfa5dded6f6f49ca90178a5d346f6c0039727bbca22",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T12:10:15.164792Z",
+  "recorded_at": "2026-11-07T01:40:38.713969Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T12:09:23.490880Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"op.exp.7\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimiento-incidentes\",\"quote\":\"### Bajo\\n\\n- Criterio: Los que parezcan leves.\\n- Escalado: Se avisa a quien corresponda.\\n\\n### Alto\\n\\n- Criterio: Los que parezcan graves.\\n- Escalado: Se avisa a quien corresponda.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"   y no abierto; registrado como evento sin impacto. No hay incidentes cerrados que revisar.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR por incumplimiento parcial del contenido exigido por op.exp.7.1: «parezcan leves» y «parezcan graves» no detallan criterios para distinguir los niveles, y «a quien corresponda» no precisa el escalado de la notificación. La sección de notificación al INCIBE-CERT concreta ese destinatario y sus momentos de aviso, pero no resuelve la indeterminación de los criterios ni del escalado general.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:40:17.806326Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     },
     {
       "n": 2,
-      "at": "2026-11-06T12:09:46.138895Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"op.exp.7\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimiento-incidentes\",\"quote\":\"### Bajo\\n\\n- Criterio: Los que parezcan leves.\\n- Escalado: Se avisa a quien corresponda.\\n\\n### Alto\\n\\n- Criterio: Los que parezcan graves.\\n- Escalado: Se avisa a quien corresponda.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"No hay incidentes cerrados que revisar.\"}],\"justifications\":[],\"reason\":\"El apartado op.exp.7.1 exige detallar los criterios de clasificación y el escalado de la notificación; «parezcan leves» y «parezcan graves» no precisan criterios para distinguir los niveles, y «a quien corresponda» no identifica los destinatarios del escalado. Se propone NC_MENOR por incumplimiento parcial del contenido exigido al procedimiento.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:40:24.930123Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     },
     {
       "n": 3,
-      "at": "2026-11-06T12:09:59.983673Z",
-      "outcome": "response",
-      "response": "{\"findings\":[{\"criterion\":\"calidad-documental\",\"measure\":\"op.exp.7\",\"proposal\":\"NC_MENOR\",\"documents\":[{\"ref\":\"procedimiento-incidentes\",\"quote\":\"### Bajo\\n\\n- Criterio: Los que parezcan leves.\\n- Escalado: Se avisa a quien corresponda.\\n\\n### Alto\\n\\n- Criterio: Los que parezcan graves.\\n- Escalado: Se avisa a quien corresponda.\"}],\"evidence\":[{\"ref\":\"EV-20261001-dfdddbed\",\"quote\":\"No hay incidentes cerrados que revisar.\"}],\"justifications\":[],\"reason\":\"Se propone NC_MENOR por un incumplimiento parcial de op.exp.7.1, que exige detallar los criterios de clasificación y el escalado de la notificación: «parezcan leves» y «parezcan graves» no precisan cómo distinguir los niveles, y «a quien corresponda» no identifica los destinatarios del escalado. La sección de notificación al INCIBE-CERT concreta esa comunicación externa, pero no precisa el escalado genérico declarado para ambos niveles.\"}]}",
-      "kind": null
+      "at": "2026-11-07T01:40:31.816423Z",
+      "outcome": "provider_error",
+      "response": null,
+      "kind": "RESPONSE"
     }
   ]
 }

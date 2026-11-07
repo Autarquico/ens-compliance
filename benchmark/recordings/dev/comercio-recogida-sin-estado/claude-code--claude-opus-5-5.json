@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "dev/comercio-recogida-sin-estado",
+  "case_sha256": "1bbfc8ae5c510892ebb49deaa1ffb26f7788042c0426549b131e64e20e9277c6",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "f419d47ac2abb4249d8c9c441d001506a4939c303ea594a9f2b61fe664a93a7b",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-06T23:07:05.321680Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-06T23:05:09.022926Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-06T23:05:40.170451Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"mp.com.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"solo está autorizado el tráfico web de la tienda y la administración entra por la red privada del alojamiento.\"}], \"evidence\": [{\"ref\": \"EV-20261006-eccfef47\", \"quote\": \"El panel de administración exige sesión y doble factor y no se publica en el menú de la tienda.\"}], \"justifications\": [], \"reason\": \"El procedimiento dice que la administración entra por la red privada del alojamiento. Sin embargo, la revisión del cortafuegos restringe a esa red solo el SSH: el panel de administración sigue accesible por el tráfico web público, protegido con sesión y doble factor, y su única otra protección es que no aparece en el menú. Es una debilidad del perímetro que conviene que revise una persona.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-06T23:06:18.511620Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    }
+  ]
+}
