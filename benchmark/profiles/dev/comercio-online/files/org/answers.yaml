@@ -124,6 +124,11 @@ info_transmision:
     pasos: Solo se envían nombre, dirección y teléfono de entrega por la integración cifrada de la empresa de transporte.
     herramienta: Integración cifrada con la empresa de transporte
     evidencia: Registro de envíos de la tienda
+  - informacion: Facturas enviadas a los clientes por correo
+    quien: Atención al cliente y calidad
+    pasos: Las facturas se envían por correo firmadas y con los metadatos del documento eliminados; los datos de pago los trata la pasarela de pago mediante su integración, sin pasar por la tienda.
+    herramienta: Correo de la empresa y firma de documentos
+    evidencia: Copia de las facturas enviadas
 info_otras:
   not_applicable: true
   reason: No hay otras actividades de tratamiento; los albaranes en papel se destruyen en la trituradora de la oficina.

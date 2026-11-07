@@ -161,12 +161,10 @@ def _measurement_problems(root: Path) -> list[str]:
         f"{HOLDOUT_MINIMUM.correct})"
     )
     problems = sample_problems(sample, HOLDOUT_MINIMUM)
-    basic = {
-        profile_id: all(level is SecurityLevel.BAJO for level in profile.categorization.values())
-        for profile_id in sorted({c.profile for c in cases if c.profile})
-        for profile in [load_profile(root, Partition.HOLDOUT, profile_id)]
-    }
-    problems += [f"perfil {p}: no es de categoría BÁSICA" for p, ok in basic.items() if not ok]
+    for profile_id in sorted({c.profile for c in cases if c.profile}):
+        profile = load_profile(root, Partition.HOLDOUT, profile_id)
+        if any(level is not SecurityLevel.BAJO for level in profile.categorization.values()):
+            problems.append(f"perfil {profile_id}: no es de categoría BÁSICA")
     return problems
 
 
@@ -263,9 +261,11 @@ def prepare(
     """Construye y prepara cada caso de juicio de la partición, sin red. Imprime la huella del
     payload de cada caso y la huella combinada que `record --consent` debe repetir. Con
     `--pending`, solo los casos que necesitan grabarse."""
-    settings, judged = _recordable(cases, partition, provider, model, "prepare", measurement)
+    settings, judged, pack_sha256 = _recordable(
+        cases, partition, provider, model, "prepare", measurement
+    )
     with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
-        prepared = _prepare(cases, judged, settings, Path(scratch), None, pending)
+        prepared = _prepare(cases, judged, settings, pack_sha256, Path(scratch), None, pending)
     if pending and not prepared.cases:
         typer.echo("nada pendiente: todas las grabaciones están ligadas y sin provider_error")
         return
@@ -311,22 +311,24 @@ def record(
     envía los casos que necesitan grabarse y la huella cubre solo ese subconjunto."""
     if errors := check_declared_name(by):
         raise _fail("\n".join(f"Error: {e}" for e in errors))
-    settings, judged = _recordable(cases, partition, provider, model, "record", measurement)
+    settings, judged, pack_sha256 = _recordable(
+        cases, partition, provider, model, "record", measurement
+    )
     replace = replace or pending
     if not replace and (existing := _existing(cases, judged, settings)):
         raise _fail(f"Error: ya grabado: {', '.join(existing)}; usa --replace", REFUSED)
     recorder = Recorder()
     with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
-        prepared = _prepare(cases, judged, settings, Path(scratch), recorder, pending)
+        prepared = _prepare(cases, judged, settings, pack_sha256, Path(scratch), recorder, pending)
+        if pending and not prepared.cases:
+            typer.echo("nada pendiente: no se ha enviado nada")
+            return
         if prepared.fingerprint != consent:
             raise _fail(
                 "Error: la huella no coincide con lo que se enviaría; ejecuta `benchmark "
                 "prepare` y revisa. No se ha enviado nada",
                 REFUSED,
             )
-        if pending and not prepared.cases:
-            typer.echo("nada pendiente: no se ha enviado nada")
-            return
         if prepared.requires_shell_warning and not accept_shell_risk:
             raise _fail(f"Error: {service.SHELL_RISK}. No se ha enviado nada", REFUSED)
         refused = _record_all(
@@ -343,7 +345,7 @@ def _recordable(
     model: str,
     action: str,
     measurement: bool,
-) -> tuple[PreAuditSettings, list[BenchCase]]:
+) -> tuple[PreAuditSettings, list[BenchCase], str]:
     if not root.is_dir():
         raise _fail(f"Error: no existe el banco {root}")
     if not model.strip():
@@ -371,7 +373,7 @@ def _recordable(
         raise _fail("\n".join(exc.problems)) from None
     if skipped:
         typer.echo(f"solo deterministas, sin juicio que grabar: {', '.join(skipped)}")
-    return settings, judged
+    return settings, judged, pack_sha256
 
 
 def _existing(root: Path, judged: list[BenchCase], settings: PreAuditSettings) -> list[str]:
@@ -386,13 +388,16 @@ def _prepare(
     root: Path,
     judged: list[BenchCase],
     settings: PreAuditSettings,
+    pack_sha256: str,
     scratch: Path,
     recorder: Recorder | None,
     pending: bool = False,
 ) -> PreparedPartition:
-    only = needs_recording(root, settings, load_pack().sha256) if pending else None
+    only = needs_recording(root, settings, pack_sha256) if pending else None
     try:
-        return prepare_cases(root, judged, settings, scratch, client_factory=recorder, only=only)
+        return prepare_cases(
+            root, judged, settings, pack_sha256, scratch, client_factory=recorder, only=only
+        )
     except BenchError as exc:
         raise _fail("\n".join(exc.problems)) from None
     except service.PreAuditRejected as exc:

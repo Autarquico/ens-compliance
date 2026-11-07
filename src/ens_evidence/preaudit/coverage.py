@@ -99,23 +99,27 @@ def deterministic_coverage(export: MatrixExport, evidence: set[str]) -> list[dic
         if row.kind is not RowKind.SELECTED:
             continue
         for link in row.technical:
-            if link.kind == "check":
+            if link.kind == "check" and link.target in CHECK_PROPERTIES:
                 entry_id = f"coverage:{row.measure_id}:{link.target}"
                 entries[entry_id] = {
                     "id": entry_id,
                     "measure": row.measure_id,
                     "check": link.target,
                     "evidence": sorted(read_by.get(link.target, set()) & evidence),
-                    "evaluates": CHECK_PROPERTIES.get(link.target, ""),
+                    "evaluates": CHECK_PROPERTIES[link.target],
                     "result": _result(row, link.target, link.counts),
                 }
     return [entries[key] for key in sorted(entries)]
 
 
 def _result(row: ExportedRow, check: str, counts: bool) -> str:
-    details = [b.detail for b in row.blockers]
-    if any(d.startswith(f"check_failed:{check}:") for d in details):
+    named = [
+        kind
+        for kind, _, rest in (b.detail.partition(":") for b in row.blockers)
+        if rest == check or rest.startswith(f"{check}:")
+    ]
+    if "check_failed" in named:
         return FAIL
-    if not counts or any(f":{check}" in d for d in details):
+    if not counts or named:
         return UNVERIFIED
     return PASS

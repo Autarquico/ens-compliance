@@ -178,6 +178,7 @@ def prepare_cases(
     root: Path,
     cases: list[BenchCase],
     settings: PreAuditSettings,
+    pack_sha256: str,
     scratch: Path,
     *,
     builder: CaseBuilder | None = None,
@@ -206,7 +207,6 @@ def prepare_cases(
     first = prepared_cases[0].prepared
     if any(c.prepared.destination != first.destination for c in prepared_cases):
         raise service.PreAuditRejected(["el destino ha cambiado durante la preparación"])
-    pack_sha256 = load_pack().sha256
     if only is not None:
         prepared_cases = [c for c in prepared_cases if only(c.bench, c.prepared.payload.sha256)]
     pairs = [(c.bench.case.key, c.prepared.payload.sha256) for c in prepared_cases]

@@ -23,5 +23,5 @@ defects:
     rationale: >-
       El procedimiento de credenciales declara que todos los repositorios de la organización son
       privados para que los secretos del historial no queden a la vista, y la recogida del 3 de
-      octubre muestra el repositorio de la tienda como público. Ningún check determinista compara
+      octubre muestra el repositorio de la tienda como público. Se ata a op.acc.6 y al procedimiento de credenciales, y no a la normativa, porque solo un documento enlazado a la misma medida que la evidencia de github es citable (validate.py:229-252) y la normativa solo enlaza a org.2; la revelación de credenciales de op.acc.6.5 es la medida más cercana a secretos expuestos en un historial público. Ningún check determinista compara
       la visibilidad: el único check sobre esta evidencia en op.acc.6 es el doble factor.

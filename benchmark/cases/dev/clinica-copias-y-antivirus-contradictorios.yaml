@@ -77,3 +77,18 @@ defects:
       suministro porque el almacenamiento externo solo recibe copias ya cifradas en la clínica,
       pero la hoja muestra un USB sin cifrar junto al servidor y ninguna copia fuera de la
       clínica.
+  - id: impacto-excluido-con-recuperacion-de-tres-dias
+    layer: judgment
+    measure: op.cont.1
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.cont.1
+      clause: op.cont.1.1
+      quote: >-
+        Se realizará un análisis de impacto que permita determinar los requisitos de disponibilidad de cada servicio (impacto de una interrupción durante un periodo de tiempo determinado), así como los elementos que son críticos para la prestación de cada servicio.
+    rationale: >-
+      Consecuencia de la hoja de copias del caso: el perfil descarta el análisis de impacto porque
+      la política ya fija recuperar las historias en menos de un día, pero la hoja cuenta que la
+      última recuperación de la base de pacientes, en marzo de 2026, llevó tres días, así que ese
+      objetivo no está respaldado y los requisitos de disponibilidad no se han determinado.

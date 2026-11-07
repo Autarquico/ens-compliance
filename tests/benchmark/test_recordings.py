@@ -40,6 +40,7 @@ from ens_evidence.models.preaudit import LayerStatus, Provider
 from ens_evidence.preaudit import service
 from ens_evidence.preaudit.adapter import ProviderError, ProviderErrorKind
 from ens_evidence.preaudit.clients.anthropic import TOOL_NAME, AnthropicProvider
+from ens_evidence.preaudit.pack import load_pack
 from ens_evidence.workspace import PreAuditSettings
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -394,7 +395,13 @@ def prepared_case(bench: Path, tmp_path: Path, mini: Build, factory=None):
     settings = PreAuditSettings(provider=Provider.ANTHROPIC, model=MODEL)
     judged, _ = load_judgment_cases(bench, Partition.DEV)
     partition = prepare_cases(
-        bench, judged, settings, tmp_path / "scratch", builder=fork(mini), client_factory=factory
+        bench,
+        judged,
+        settings,
+        load_pack().sha256,
+        tmp_path / "scratch",
+        builder=fork(mini),
+        client_factory=factory,
     )
     return settings, partition.cases[0]
 
@@ -578,6 +585,17 @@ def test_record_pending_envia_solo_lo_pendiente_y_no_toca_lo_bueno(bench, monkey
         "prepare", "--cases", str(bench), "--provider", "anthropic", "--model", MODEL, "--pending"
     )
     assert "nada pendiente" in again.output
+
+
+def test_record_pending_sin_nada_pendiente_lo_dice_y_no_envia(bench, monkeypatch):
+    fake = pending_bench(bench, monkeypatch)
+    consent = prepare(bench, "anthropic", "--pending")
+    assert record(bench, "anthropic", consent, "--pending").exit_code == 0
+    fake.requests.clear()
+    result = record(bench, "anthropic", "0" * 64, "--pending")
+    assert result.exit_code == 0, result.output
+    assert "nada pendiente" in result.output
+    assert fake.requests == []
 
 
 def test_record_pending_rechaza_la_huella_completa(bench, monkeypatch):

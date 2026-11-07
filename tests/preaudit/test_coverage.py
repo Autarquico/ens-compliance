@@ -102,6 +102,9 @@ def test_a_collector_property_without_a_check_is_not_covered():
         (["check_no_results:github.secret_scanning_enabled"], False, UNVERIFIED),
         (["check_failed:HOST-001:equipo"], True, PASS),
         ([], False, UNVERIFIED),
+        (["check_unknown_subject:other.github.secret_scanning_enabled:org/repo"], True, PASS),
+        (["check_unknown_subject:x:github.secret_scanning_enabled"], True, PASS),
+        (["check_failed:github.secret_scanning_enabled_extra:org/repo"], True, PASS),
     ],
 )
 def test_the_result_comes_from_the_matrix_blockers(blockers, counts, expected):
@@ -111,6 +114,12 @@ def test_the_result_comes_from_the_matrix_blockers(blockers, counts, expected):
     )
 
     assert [e["result"] for e in found] == [expected]
+
+
+def test_a_link_to_a_check_without_a_description_is_left_out():
+    found = coverage(export(row("op.exp.8", [("check", "ghost.check", True)]), checks=[]), set())
+
+    assert found == []
 
 
 def test_only_applicable_measures_and_check_links_are_covered():

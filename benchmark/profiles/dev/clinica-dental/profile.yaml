@@ -38,8 +38,7 @@ applicability:
     justification: >-
       Con ocho personas no hay plantilla para repartir las tareas críticas entre varias
       personas: el responsable de sistemas administra el servidor, los equipos y las copias, y
-      lo hace bajo la supervisión de la directora, que firma las altas y los cambios de
-      permisos. Ninguna otra persona tiene perfil de administrador. No exigida en categoría
+      lo hace bajo la supervisión de la directora. Ninguna otra persona tiene perfil de administrador. No exigida en categoría
       BÁSICA.
   - measure: op.exp.5
     applicable: false
@@ -78,7 +77,8 @@ applicability:
     justification: >-
       El único enlace con otro sistema es la plataforma web del servicio de salud, autorizado en
       el proceso de autorización; los informes se suben a mano por conexión cifrada, sin
-      intercambio automático entre sistemas. El anexo II no la exige en categoría BÁSICA.
+      intercambio automático de datos entre sistemas de información; el envío cifrado de copias
+      al almacenamiento contratado es un servicio de terceros autorizado como tal (org.4). El anexo II no la exige en categoría BÁSICA.
   - measure: op.cont.1
     applicable: false
     justification: >-
@@ -112,7 +112,7 @@ applicability:
   - measure: mp.per.1
     applicable: false
     justification: >-
-      Son cuatro puestos fijos (odontólogos, higienista, recepción y administración), y a cada
+      Son puestos fijos (odontólogos, higienista, recepción, administración y sistemas), y a cada
       persona se le informa de los deberes de su puesto al incorporarse (mp.per.2); no se redacta
       una caracterización de puestos aparte, que BÁSICA no exige.
   - measure: mp.eq.2
