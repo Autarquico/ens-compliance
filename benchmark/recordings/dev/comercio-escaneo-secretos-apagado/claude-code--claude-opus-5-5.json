@@ -9,31 +9,31 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "ed1600e366dacb0b4e8a7cdd91b4b319583be435aca3557cf71a295b87ece88b",
+  "payload_sha256": "3d89bbd413d8cd20c5d740133e72fca188e21585d9ad0a7291506c9779cde337",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T22:52:11.592367Z",
+  "recorded_at": "2026-11-07T10:24:10.084426Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T22:50:32.968220Z",
+      "at": "2026-11-07T10:22:43.752276Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T22:51:05.258341Z",
+      "at": "2026-11-07T10:23:15.829566Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T22:51:29.347789Z",
+      "at": "2026-11-07T10:23:43.161726Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"org.4\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"proceso-autorizacion\", \"quote\": \"No aplica: No hay medios alternativos; si falla el correo se atiende a los clientes por teléfono.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a88be403\", \"quote\": \"Se repasan la política, la normativa, los procedimientos y el proceso de autorización, con la\"}], \"justifications\": [], \"reason\": \"org.4.5 exige que el proceso de autorización cubra los medios de comunicación habituales y los alternativos. El documento dice que no hay medios alternativos, pero en la misma frase usa el teléfono como medio de reserva cuando falla el correo, y no indica quién lo autoriza, cómo se pide ni dónde queda registrado.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     }
   ]

@@ -9,31 +9,31 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "f26983aa86a46e133a974dccead30ad1fa2c5e53fef99040337fec04ba6a75a7",
+  "payload_sha256": "ef0ea7d7e4ee7ccc35c65ea34727a858a9add4e545a83dd44b796bb1587bc26f",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T22:46:42.445628Z",
+  "recorded_at": "2026-11-07T10:19:36.669647Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T22:44:22.953662Z",
+      "at": "2026-11-07T10:17:12.104346Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T22:45:14.786500Z",
+      "at": "2026-11-07T10:18:31.956519Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T22:45:44.754898Z",
+      "at": "2026-11-07T10:19:00.045649Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"mp.com.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"solo está autorizado el tráfico web de la tienda y la administración entra por la red privada del alojamiento\"}], \"evidence\": [{\"ref\": \"EV-20261006-eccfef47\", \"quote\": \"Puertos abiertos a internet: solo 443 (tienda, con certificado vigente) y 80 (redirige a 443).\"}, {\"ref\": \"EV-20261006-eccfef47\", \"quote\": \"El panel de administración exige sesión y doble factor y no se publica en el menú de la tienda.\"}], \"justifications\": [], \"reason\": \"El procedimiento dice que la administración entra por la red privada del alojamiento. La revisión del cortafuegos solo limita a esa red el SSH; el panel de administración se protege con sesión, doble factor y con no publicarlo en el menú, lo que deja ver que se llega a él por el puerto 443 abierto a internet y no solo desde la red privada.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     }
   ]

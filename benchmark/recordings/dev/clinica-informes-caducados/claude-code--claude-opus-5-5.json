@@ -9,29 +9,29 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "6a094a7e09ed6d270e517759d6bc26ac2b3f54bb68867ad5d64d1f758e6f0ae7",
+  "payload_sha256": "f422751d2b0d69b38a809d879049384ecbfd1f878c835922cb1963d4c6185031",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T22:34:39.913245Z",
+  "recorded_at": "2026-11-07T10:07:20.307271Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T22:32:34.828112Z",
+      "at": "2026-11-07T10:04:59.019539Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.3\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.acc.3\", \"quote\": \"la clínica no tiene personal dedicado a la administración que pudiera actuar sin la supervisión de la directora\"}], \"reason\": \"La justificación dice que nadie administra sin supervisión de la directora. Otros documentos del expediente lo contradicen: el documento procedimientos-seguridad indica «Solo el responsable de sistemas puede acceder a las copias y a su clave», y el de designación de responsables le encarga administrar «el servidor, los equipos y las copias». Así, una sola persona hace tareas críticas sin un control que se declare.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.4\", \"quote\": \"El único enlace con otro sistema es la plataforma web del servicio de salud, autorizado en el proceso de autorización; los informes se suben a mano por conexión cifrada, sin intercambio automático entre sistemas.\"}], \"reason\": \"La justificación dice que el único enlace con otro sistema es la plataforma del servicio de salud y que no hay intercambio automático entre sistemas. El expediente lo contradice: el documento procedimientos-seguridad indica que «Cada noche el programa de copias copia la base de pacientes [...] y las envía al almacenamiento externo contratado», y el inventario (EV-20261005-d8b27dba) recoge como servicios de terceros el almacenamiento externo de copias y la consola del antivirus gestionado. Ninguno de los dos está enlazado a op.ext.4. La justificación no tiene en cuenta esos enlaces con sistemas externos.\"}]}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T22:33:08.265863Z",
+      "at": "2026-11-07T10:05:52.964267Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.3\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.acc.3\", \"quote\": \"la clínica no tiene personal dedicado a la administración que pudiera actuar sin la supervisión de la directora\"}], \"reason\": \"Otros documentos del expediente contradicen esta justificación. El documento designacion-responsables atribuye al responsable de sistemas que «Administra el servidor, los equipos y las copias». El documento procedimientos-seguridad dice que «Solo el responsable de sistemas puede acceder a las copias y a su clave». Por tanto, sí hay una persona que administra el sistema y accede sola a las copias, sin que el expediente muestre que la directora la supervise en esas tareas.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.1\", \"quote\": \"Si el programa de gestión cae, la clínica cubre la parada con la agenda en papel y el teléfono durante el plazo que admite su disponibilidad BAJA (op.cont.2), sin que ningún proveedor sostenga por sí solo la atención.\"}], \"reason\": \"La justificación dice que la atención no depende de ningún proveedor. Sin embargo, el documento procedimientos-seguridad indica que las copias se guardan solo en el almacenamiento externo contratado y que en la clínica los datos solo están en el servidor. Por su parte, la politica-seguridad fija recuperar las historias en menos de un día y afirma que una pérdida impediría continuar los tratamientos. Por tanto, la recuperación depende de ese proveedor y la justificación no explica por qué no hacen falta acuerdos de nivel de servicio con él.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T22:33:48.876595Z",
+      "at": "2026-11-07T10:06:30.850345Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null

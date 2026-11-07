@@ -9,29 +9,29 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "a0ee86cf132ed6f2ee47d354a2e3e21c4c1f2b4b470478eca620a0e747ffddbe",
+  "payload_sha256": "e46ce3f794c55e15ebe36fa66f7addd6250bcee7902fa68cefcf2fcc87aa9426",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T22:56:14.903059Z",
+  "recorded_at": "2026-11-07T10:27:28.641033Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T22:53:47.319912Z",
+      "at": "2026-11-07T10:25:36.877528Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"op.exp.4\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Servidor Debian, dependencias de la tienda y portátiles Ubuntu\"}, {\"ref\": \"procedimientos-seguridad\", \"quote\": \"Cada lunes revisa los avisos de dependencias del repositorio y los anuncios de seguridad de Debian y decide cuándo aplicar cada uno según el riesgo de dejarlo sin aplicar.\"}], \"evidence\": [{\"ref\": \"EV-20261006-edb2721d\", \"quote\": \"Portátiles Ubuntu: actualizaciones automáticas de seguridad activas en los tres\"}], \"justifications\": [], \"reason\": \"El procedimiento incluye los portátiles Ubuntu en su alcance. Sin embargo, solo explica cómo analizar, priorizar y decidir cuándo aplicar los avisos de Debian y de las dependencias del repositorio (op.exp.4.2) y no lo precisa para los portátiles. La evidencia muestra que en los portátiles las actualizaciones se aplican automáticamente, un tratamiento que el procedimiento no recoge.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T22:54:37.242238Z",
+      "at": "2026-11-07T10:26:08.642312Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.cont.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.cont.4\", \"quote\": \"No se mantiene un servidor de reserva: si cae el alojamiento, la tienda se restaura desde la copia en menos de un día, parada que el análisis de riesgos acepta como residual.\"}], \"reason\": \"La justificación cuenta con restaurar la tienda desde la copia cuando cae el alojamiento, pero no tiene servidor de reserva y no dice dónde se restauraría. Según el inventario de activos (EV-20261006-b2748cb2, no enlazado a esta medida), el servidor de pruebas para restauraciones «se crea en el alojamiento», así que la restauración que se prueba depende del mismo proveedor cuya caída se quiere cubrir.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T22:55:25.972979Z",
+      "at": "2026-11-07T10:26:51.107113Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null

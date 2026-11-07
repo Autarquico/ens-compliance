@@ -9,31 +9,31 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "dcdfd9f752ca27a1a1c3b35d710c64614d47bf34a868a153d3de18f578521332",
+  "payload_sha256": "27d345c8968000d7ff93040adc0f8e8f5aafc45e8ea7162858f8a1401e0a4a22",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T22:26:05.110403Z",
+  "recorded_at": "2026-11-07T09:58:34.725931Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T22:24:10.904401Z",
+      "at": "2026-11-07T09:56:37.361745Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T22:24:46.484468Z",
+      "at": "2026-11-07T09:57:09.868557Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T22:25:21.291132Z",
+      "at": "2026-11-07T09:57:47.573918Z",
       "outcome": "response",
-      "response": "{\"findings\": []}",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.per.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.per.1\", \"quote\": \"Son cuatro puestos fijos (odontólogos, higienista, recepción y administración), y a cada persona se le informa de los deberes de su puesto al incorporarse (mp.per.2)\"}], \"reason\": \"La justificación se apoya en que solo hay cuatro puestos fijos, pero el expediente recoge otro puesto con privilegios: el responsable de sistemas. El documento 'designacion-responsables' lo trata como un puesto distinto del de administración y calidad, y la revisión de accesos (EV-20261005-a3b3b400) le asigna en exclusiva el perfil de administración del programa. La justificación deja fuera justo el puesto con más privilegios, que es al que más afectan los requisitos de seguridad de la caracterización.\"}]}",
       "kind": null
     }
   ]

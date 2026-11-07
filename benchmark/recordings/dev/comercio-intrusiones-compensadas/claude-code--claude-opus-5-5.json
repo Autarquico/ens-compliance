@@ -9,31 +9,31 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "ca3ee1e881671454be21057361f46c94ca4fda369c3551fa17175d53b215470b",
+  "payload_sha256": "8f8c63c0d3c167e195671cbd3cd4f3ad00d8a67713b0fc4330b4fd8a654ebf64",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T22:57:40.503107Z",
+  "recorded_at": "2026-11-07T10:28:55.527744Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T22:56:14.904895Z",
+      "at": "2026-11-07T10:27:28.642290Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261006-0e5827a0\", \"quote\": \"El servidor tiene un detector que bloquea durante una hora las direcciones con cinco intentos\\nde acceso fallidos al panel o a SSH\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación de op.mon.1.1 se apoya solo en que nunca les han atacado y en que el proveedor avisaría. No justifica que esa confianza proteja igual o mejor que la detección de intrusión a la que sustituye, y el análisis de riesgos (EV-20261006-4a88eab8, no enlazado a esta medida) recoge como amenaza probable los intentos de entrar en el panel o por SSH. Además, la medida compensatoria declarada («Confiar en que el alojamiento avise») no coincide con la evidencia enlazada, que describe un detector propio en el servidor.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación de op.mon.1.1 se apoya en el tamaño de la empresa, en que no ha habido ataques y en que el alojamiento quizá avise, y la medida compensatoria es solo «Confiar en que el alojamiento avise si ve algo raro». No explica que esto proteja frente a intrusiones igual o mejor que la medida sustituida (art. 28.3), y el propio análisis de riesgos recoge intentos de entrar en el panel o por SSH como amenaza probable.\"}]}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T22:56:44.973137Z",
+      "at": "2026-11-07T10:27:59.155105Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261006-0e5827a0\", \"quote\": \"En septiembre se bloquearon 312 direcciones; ninguna llegó a iniciar\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación se apoya en que «nunca nos han atacado», y la evidencia enlazada lo contradice: muestra 312 direcciones bloqueadas solo en septiembre. El análisis de riesgos (EV-20261006-4a88eab8, documento no enlazado a op.mon.1) también cuenta entre las amenazas más probables los intentos de entrar en el panel o por SSH. Además, la medida compensatoria («Confiar en que el alojamiento avise si ve algo raro») no justifica que proteja igual o mejor que la detección de intrusión que sustituye: no dice qué se detecta, quién recibe el aviso ni cómo se reacciona.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261006-0e5827a0\", \"quote\": \"En septiembre se bloquearon 312 direcciones; ninguna llegó a iniciar\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación no justifica que confiar en los avisos del alojamiento proteja igual o mejor que la detección de intrusión que sustituye (art. 28.3); no dice qué detectaría el proveedor ni cómo respondería. Además, que «nunca nos han atacado» lo contradice la propia evidencia enlazada, con 312 direcciones bloqueadas en septiembre, y el análisis de riesgos (EV-20261006-4a88eab8, no enlazado a esta medida), que cuenta entre las amenazas más probables los intentos de entrar en el panel o por SSH.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T22:57:14.741809Z",
+      "at": "2026-11-07T10:28:24.405117Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [{\"ref\": \"EV-20261006-0e5827a0\", \"quote\": \"En septiembre se bloquearon 312 direcciones; ninguna llegó a iniciar\"}], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación no muestra que «confiar en que el alojamiento avise» proteja igual o mejor que la detección de intrusión que sustituye. Solo apela al tamaño del taller y a que «nunca nos han atacado». Eso lo contradicen la evidencia enlazada, con 312 direcciones bloqueadas en un mes, y el análisis de riesgos (EV-20261006-4a88eab8), que pone entre las amenazas más probables los intentos de entrar en el panel o por SSH.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.mon.1\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:op.mon.1:base\", \"quote\": \"Somos un taller pequeño y nunca nos han atacado; si alguien lo intentara, ya nos avisaría el proveedor de alojamiento.\"}], \"reason\": \"La compensación (confiar en que avise el alojamiento) no da una razón propia de la medida ni justifica que proteja igual o mejor que la detección de intrusión que sustituye, como exige el art. 28.3. Además, el análisis de riesgos (EV-20261006-4a88eab8, que no está enlazado a op.mon.1) contradice que «nunca nos han atacado», porque recoge como amenaza más probable los «Intentos de entrar en el panel o por SSH con contraseñas probadas a ciegas».\"}]}",
       "kind": null
     }
   ]

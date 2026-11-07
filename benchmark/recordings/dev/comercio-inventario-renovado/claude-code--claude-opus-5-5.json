@@ -9,29 +9,29 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "f8fd2cb6d9ac7e3313bb28b6cfa40bd02791bbb72b4ff9f4c529164015be428a",
+  "payload_sha256": "32f2cddd9e75f8c231ad9637fca9d70f6c19f1fab83fbd4d86e10e9d3545989e",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T22:59:52.984225Z",
+  "recorded_at": "2026-11-07T10:31:20.391777Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T22:57:40.505487Z",
+      "at": "2026-11-07T10:28:55.530576Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T22:58:23.637367Z",
+      "at": "2026-11-07T10:29:48.279773Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"org.4\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"proceso-autorizacion\", \"quote\": \"No aplica: No hay medios alternativos; si falla el correo se atiende a los clientes por teléfono.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a88be403\", \"quote\": \"Se repasan la política, la normativa, los procedimientos y el proceso de autorización\"}], \"justifications\": [], \"reason\": \"La cláusula org.4.5 pide que el proceso de autorización cubra los medios de comunicación habituales y alternativos. El documento dice que no hay medios alternativos, pero en la misma frase explica que, si falla el correo, se atiende a los clientes por teléfono. Ese medio alternativo queda sin quién lo autorice, cómo se pide y dónde se registra.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"- Pasos: Solo se envían nombre, dirección y teléfono de entrega por la integración cifrada de la empresa de transporte.\"}, {\"ref\": \"procedimientos-seguridad\", \"quote\": \"No aplica: No hay otras actividades de tratamiento; los albaranes en papel se destruyen en la trituradora de la oficina.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a88be403\", \"quote\": \"Los envíos a la empresa de transporte usan solo la integración cifrada; los correos con\\n   facturas se firman y se limpian de metadatos.\"}], \"justifications\": [], \"reason\": \"org.3.4 e) exige precisar cómo se hace la transmisión telemática de la información. El procedimiento solo describe el envío a la empresa de transporte y declara que no hay otras actividades. Sin embargo, el acta enlazada muestra que también se envían facturas por correo, y el procedimiento no precisa cómo se tratan.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T22:59:14.691385Z",
+      "at": "2026-11-07T10:30:41.556382Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null

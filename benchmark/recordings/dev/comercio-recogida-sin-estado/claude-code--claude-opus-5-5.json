@@ -9,29 +9,29 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "f419d47ac2abb4249d8c9c441d001506a4939c303ea594a9f2b61fe664a93a7b",
+  "payload_sha256": "a5873e3b98fa126a084e1b2c5e18f872f68b1217bd73302b87189649406f0c38",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T23:07:05.321680Z",
+  "recorded_at": "2026-11-07T10:38:10.400599Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T23:05:09.022926Z",
+      "at": "2026-11-07T10:36:06.356144Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T23:05:40.170451Z",
+      "at": "2026-11-07T10:36:42.140327Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"mp.com.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"solo está autorizado el tráfico web de la tienda y la administración entra por la red privada del alojamiento.\"}], \"evidence\": [{\"ref\": \"EV-20261006-eccfef47\", \"quote\": \"El panel de administración exige sesión y doble factor y no se publica en el menú de la tienda.\"}], \"justifications\": [], \"reason\": \"El procedimiento dice que la administración entra por la red privada del alojamiento. Sin embargo, la revisión del cortafuegos restringe a esa red solo el SSH: el panel de administración sigue accesible por el tráfico web público, protegido con sesión y doble factor, y su única otra protección es que no aparece en el menú. Es una debilidad del perímetro que conviene que revise una persona.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T23:06:18.511620Z",
+      "at": "2026-11-07T10:37:30.924682Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
