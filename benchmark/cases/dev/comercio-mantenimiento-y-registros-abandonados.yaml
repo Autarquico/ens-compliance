@@ -39,3 +39,17 @@ defects:
       La nota reconoce el registro web apagado desde julio y un panel que no guarda acciones ni
       resultados, mientras la documentación da por hecho un registro de accesos revisado cada
       semana.
+  - id: cambios-excluidos-con-servidor-sin-parches
+    layer: judgment
+    measure: op.exp.5
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.exp.5
+      clause: op.exp.5.4
+      quote: Mediante un análisis de riesgos se determinará si los cambios son relevantes para la seguridad del sistema.
+    rationale: >-
+      Consecuencia de la nota de actualizaciones del caso: el perfil excluye la gestión de cambios
+      porque los del servidor se tratan en su mantenimiento y actualización (op.exp.4), y la nota
+      reconoce que no hay calendario, que el servidor no recibe parches desde marzo y que hay avisos
+      críticos sin revisar, así que esa salvaguarda no se aplica.

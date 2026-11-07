@@ -20,6 +20,18 @@ defects:
     rationale: >-
       La revisión de accesos muestra que Nora Vilaplana y Tomás Pradera administran la nube con
       una única cuenta «admin» compartida, mientras la normativa declara uso indebido compartir una
-      cuenta y la política afirma cuentas nominales para todo el equipo. La misma revisión muestra
-      también la contraseña y el segundo factor de «admin» en una bóveda que usan dos personas y
-      la clave de «deploy» copiada en dos portátiles; es el mismo hecho y no se declara aparte.
+      cuenta y la política afirma cuentas nominales para todo el equipo.
+  - id: credenciales-compartidas
+    layer: judgment
+    measure: op.acc.6
+    target: {kind: evidence, alias: control-accesos}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.acc.6
+      clause: op.acc.6.3
+      quote: Las credenciales estarán bajo el control exclusivo del usuario y se activarán una vez estén bajo su control efectivo.
+    rationale: >-
+      Los procedimientos dicen que cada persona inscribe su doble factor y guarda sus contraseñas
+      solo en el gestor; la revisión muestra la contraseña y el segundo factor de «admin» en una
+      bóveda que usan dos personas y la clave de «deploy» copiada en dos portátiles. Sale de la
+      misma mutación que administracion-compartida.

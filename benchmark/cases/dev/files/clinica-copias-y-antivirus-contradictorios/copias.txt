@@ -8,3 +8,5 @@ La base de datos de pacientes no se copia aparte: el programa «ya la guarda».
 El disco USB no está cifrado y se guarda en el cuarto técnico, junto al servidor; no hay
 ninguna copia fuera de la clínica.
 Pruebas de restauración: ninguna desde que se compró el disco en 2024.
+En marzo de 2026 el programa de gestión dejó de abrir y recuperar la base de pacientes llevó tres
+días; la agenda se llevó en papel todo ese tiempo.

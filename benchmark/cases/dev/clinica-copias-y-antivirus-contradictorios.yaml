@@ -58,8 +58,9 @@ defects:
     rationale: >-
       Consecuencia de la hoja de copias del caso: el perfil excluye el plan de continuidad porque la
       agenda en papel y el teléfono cubren una parada de hasta un día, el plazo que la política
-      fija para recuperar las historias, pero la base de datos de pacientes no se copia aparte y no
-      se ha probado ninguna restauración, así que ese plazo de recuperación no está respaldado.
+      fija para recuperar las historias, pero la hoja de copias cuenta que la última recuperación de
+      la base de pacientes, en marzo de 2026, llevó tres días, que esa base no se copia aparte y que
+      no se ha probado ninguna restauración, así que ese plazo de un día no está respaldado.
   - id: terceros-excluidos-sin-copia-externa
     layer: judgment
     measure: op.ext.3

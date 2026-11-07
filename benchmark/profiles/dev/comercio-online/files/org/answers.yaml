@@ -154,7 +154,7 @@ credenciales:
 actualizaciones:
   - ambito: Servidor Debian, dependencias de la tienda y portátiles Ubuntu
     quien: Desarrollador y administrador de la tienda
-    pasos: Cada lunes revisa los avisos de dependencias del repositorio y los anuncios de seguridad de Debian y decide cuándo aplicar cada uno según el riesgo de dejarlo sin aplicar. Un aviso crítico de algo expuesto a internet, como el servidor web o el pago, se aplica el mismo día después de una copia; el resto de los de seguridad, en la semana tras pasar las pruebas automáticas; las mejoras y versiones nuevas, el primer lunes de mes. El mantenimiento del servidor solo lo hace él.
+    pasos: Cada lunes revisa los avisos de dependencias del repositorio y los anuncios de seguridad de Debian y decide cuándo aplicar cada uno según el riesgo de dejarlo sin aplicar. Un aviso crítico de algo expuesto a internet, como el servidor web o el pago, se aplica el mismo día después de una copia; el resto de los de seguridad, en la semana tras pasar las pruebas automáticas; las mejoras y versiones nuevas, el primer lunes de mes. En los portátiles Ubuntu mantiene activas las actualizaciones automáticas de seguridad y cada lunes comprueba que no queda ninguna pendiente. El mantenimiento del servidor y de los portátiles solo lo hace él.
     herramienta: Avisos de dependencias del repositorio y actualizaciones de Debian
     evidencia: Registro semanal de actualizaciones
 codigo_danino:
@@ -172,7 +172,7 @@ registro_actividad:
 perimetro:
   - ambito: Cortafuegos del servidor virtual de la tienda
     quien: Responsable de la seguridad
-    pasos: Abrir un puerto o añadir una regla se pide por escrito con su motivo y el responsable de seguridad lo autoriza antes de que el responsable del sistema lo configure; solo está autorizado el tráfico web de la tienda y la administración entra por la red privada del alojamiento. Las reglas se revisan cada trimestre.
+    pasos: Abrir un puerto o añadir una regla se pide por escrito con su motivo y el responsable de seguridad lo autoriza antes de que el responsable del sistema lo configure; solo está autorizado el tráfico web de la tienda (los puertos 443 y 80); la administración por SSH entra por la red privada del alojamiento y el panel de administración exige sesión y doble factor. Las reglas se revisan cada trimestre.
     herramienta: Cortafuegos del servidor y consola del alojamiento
     evidencia: Petición autorizada por correo y revisión trimestral del cortafuegos
 puesta_en_produccion:
@@ -236,7 +236,7 @@ aut_comunicaciones:
     registro: Registro de servicios autorizados
 aut_comunicaciones_alt:
   not_applicable: true
-  reason: No hay medios alternativos; si falla el correo se atiende a los clientes por teléfono.
+  reason: No hay medios de comunicación alternativos; si falla el correo se espera a que se restablezca.
 aut_soportes:
   - elemento: Memorias USB para fotos del catálogo
     quien: Responsable del sistema

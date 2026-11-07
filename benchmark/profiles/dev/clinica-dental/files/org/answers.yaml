@@ -240,7 +240,7 @@ aut_comunicaciones:
     registro: Registro de servicios autorizados
 aut_comunicaciones_alt:
   not_applicable: true
-  reason: No hay medios alternativos de comunicación; si falla el correo se llama a los pacientes por teléfono.
+  reason: No hay medios de comunicación alternativos aparte de los habituales; si falla el correo se llama a los pacientes por la línea telefónica, ya autorizada entre ellos.
 aut_soportes:
   - elemento: Discos de radiografías para pacientes y profesionales
     quien: Responsable de administración y calidad

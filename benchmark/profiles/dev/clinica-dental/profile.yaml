@@ -36,10 +36,11 @@ applicability:
   - measure: op.acc.3
     applicable: false
     justification: >-
-      Con ocho personas y un único responsable de sistemas no hay plantilla para repartir las
-      tareas críticas entre varias personas, y la clínica no tiene personal dedicado a la
-      administración que pudiera actuar sin la supervisión de la directora. No exigida en
-      categoría BÁSICA.
+      Con ocho personas no hay plantilla para repartir las tareas críticas entre varias
+      personas: el responsable de sistemas administra el servidor, los equipos y las copias, y
+      lo hace bajo la supervisión de la directora, que firma las altas y los cambios de
+      permisos. Ninguna otra persona tiene perfil de administrador. No exigida en categoría
+      BÁSICA.
   - measure: op.exp.5
     applicable: false
     justification: >-
@@ -62,8 +63,8 @@ applicability:
       La relación con los proveedores se reduce a la visita mensual del técnico externo, que
       supervisa el responsable de sistemas, y a los avisos del proveedor del programa que revisa
       el comité. Los servicios de terceros son el almacenamiento externo de copias cifradas y la
-      consola del antivirus gestionado; la copia se comprueba cada día y la consola del antivirus se revisa en el informe mensual, y
-      no requieren una supervisión diaria. BÁSICA no pide más.
+      consola del antivirus gestionado, contratados con el proceso de autorización y sin una
+      supervisión diaria por parte de la clínica. BÁSICA no pide más.
   - measure: op.ext.3
     applicable: false
     justification: >-
