@@ -190,6 +190,31 @@ Qué hace `record`:
 | 1 | Huella que no coincide, shell sin `--accept-shell-risk`, grabaciones que ya existen sin `--replace`, envío rechazado por el producto o alguna grabación no escrita |
 | 2 | Entrada no válida: `--by` vacío o con un dato personal, `--model` vacío, pack no íntegro, caso que no se construye o que el producto no deja preparar |
 
+#### Solo lo pendiente (`--pending`)
+
+Una grabación completa cuesta todos los casos de juicio × 3 repeticiones por
+par. Para iterar, añade `--pending` a `prepare` y a `record`: restringe el
+trabajo a los casos de la partición cuya grabación de ese proveedor y modelo
+está en alguno de estos estados:
+
+- no existe, o no se puede leer;
+- está desligada del pack o del payload actuales (la misma comprobación que
+  `validate --recordings`);
+- alguna repetición es `provider_error`.
+
+```bash
+uv run ens-evidence benchmark prepare --provider codex --model gpt-6.1-sol --pending
+uv run ens-evidence benchmark record --provider codex --model gpt-6.1-sol --pending \
+  --consent <huella combinada> --by "<tu nombre>" --accept-shell-risk
+```
+
+La huella combinada cubre exactamente ese subconjunto, así que difiere de la
+completa: `record --pending` solo acepta la que imprimió `prepare --pending`.
+`prepare` sigue construyendo todos los casos (sin red) para saber qué payload
+corresponde a cada uno. `--replace` está implícito: esos ficheros ya no sirven.
+Una grabación ligada y toda `response` no se toca. Si no hay nada pendiente,
+`prepare` lo dice y `record` no envía nada.
+
 Antes de commitear, lee el diff de `benchmark/recordings/`: las grabaciones
 no van firmadas y la revisión del diff es lo que las protege.
 

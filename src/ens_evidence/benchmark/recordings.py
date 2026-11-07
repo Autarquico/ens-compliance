@@ -25,6 +25,7 @@ from pydantic import ValidationError
 from ens_evidence import __version__
 from ens_evidence.benchmark.build import Build
 from ens_evidence.benchmark.cases import (
+    BenchError,
     case_paths,
     load_case,
     load_recording,
@@ -152,6 +153,27 @@ class PreparedPartition:
     """La huella combinada: lo que `record --consent` debe repetir."""
 
 
+def needs_recording(
+    root: Path, settings: PreAuditSettings, pack_sha256: str
+) -> Callable[[BenchCase, str], bool]:
+    """El criterio de `--pending`: no hay grabación de este par, no se puede leer, está
+    desligada del pack o del payload actuales (como en `validate --recordings`) o alguna
+    repetición es `provider_error`. Una grabación ligada y toda `response` no se toca."""
+
+    def pending(bench: BenchCase, payload_sha256: str) -> bool:
+        try:
+            recording = read_recording(root, bench.case.key, settings.provider, settings.model)
+        except BenchError:
+            return True
+        return (
+            recording.pack_sha256 != pack_sha256
+            or recording.payload_sha256 != payload_sha256
+            or any(r.outcome is RepetitionOutcome.PROVIDER_ERROR for r in recording.repetitions)
+        )
+
+    return pending
+
+
 def prepare_cases(
     root: Path,
     cases: list[BenchCase],
@@ -160,8 +182,11 @@ def prepare_cases(
     *,
     builder: CaseBuilder | None = None,
     client_factory: service.ClientFactory | None = None,
+    only: Callable[[BenchCase, str], bool] | None = None,
 ) -> PreparedPartition:
     """Construye cada caso en `scratch/<caso>` y lo prepara con `service.prepare`. Sin red.
+    Con `only(caso, huella del payload)`, la partición preparada (y su huella combinada) solo
+    cubre los casos para los que devuelve verdadero; puede quedar sin casos.
     `BenchError` si un caso no se construye; `PreAuditRejected` si no se puede preparar."""
     prepared_cases = []
     for bench in cases:
@@ -182,6 +207,8 @@ def prepare_cases(
     if any(c.prepared.destination != first.destination for c in prepared_cases):
         raise service.PreAuditRejected(["el destino ha cambiado durante la preparación"])
     pack_sha256 = load_pack().sha256
+    if only is not None:
+        prepared_cases = [c for c in prepared_cases if only(c.bench, c.prepared.payload.sha256)]
     pairs = [(c.bench.case.key, c.prepared.payload.sha256) for c in prepared_cases]
     return PreparedPartition(
         prepared_cases,

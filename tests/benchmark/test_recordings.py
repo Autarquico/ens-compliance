@@ -511,3 +511,80 @@ def test_la_repeticion_exige_el_proveedor_el_modelo_y_la_repeticion_grabados(ben
 
 def case_settings(model: str = MODEL) -> PreAuditSettings:
     return PreAuditSettings(provider=Provider.ANTHROPIC, model=model)
+
+
+# --- --pending -------------------------------------------------------------------------------
+
+KEYS = ["dev/bueno", "dev/desligado", "dev/con-error", "dev/sin-grabar"]
+
+
+def pending_bench(bench: Path, monkeypatch) -> FakeAnthropic:
+    """Cuatro casos de juicio, todos grabados; después uno se desliga, otro queda con un
+    `provider_error` y otro sin fichero. Devuelve el fake con el contador de envíos a cero."""
+    for key in KEYS:
+        (bench / "cases" / "dev" / f"{key.split('/')[1]}.yaml").write_text(
+            CORRECT.format(partition="dev").replace("id: correcto", f"id: {key.split('/')[1]}")
+        )
+    fake = FakeAnthropic(monkeypatch, EMPTY)
+    assert record(bench, "anthropic", prepare(bench, "anthropic")).exit_code == 0
+    stale = recording_path(bench, "dev/desligado", Provider.ANTHROPIC, MODEL)
+    raw = json.loads(stale.read_text())
+    stale.write_text(json.dumps({**raw, "payload_sha256": "f" * 64}))
+    errored = recording_path(bench, "dev/con-error", Provider.ANTHROPIC, MODEL)
+    recording = load_recording(errored)
+    broken = recording.repetitions[1].model_copy(
+        update={
+            "outcome": RepetitionOutcome.PROVIDER_ERROR,
+            "kind": ProviderErrorKind.TIMEOUT,
+            "response": None,
+        }
+    )
+    reps = [recording.repetitions[0], broken, recording.repetitions[2]]
+    write_recording(bench, recording.model_copy(update={"repetitions": reps}), replace=True)
+    recording_path(bench, "dev/sin-grabar", Provider.ANTHROPIC, MODEL).unlink()
+    fake.requests.clear()
+    return fake
+
+
+def test_pending_selecciona_solo_desligadas_con_error_y_sin_grabar(bench, monkeypatch):
+    pending_bench(bench, monkeypatch)
+    result = invoke(
+        "prepare", "--cases", str(bench), "--provider", "anthropic", "--model", MODEL, "--pending"
+    )
+    assert result.exit_code == 0, result.output
+    listed = re.findall(r"^(dev/[a-z-]+)  [0-9a-f]{64}$", result.output, re.MULTILINE)
+    assert sorted(listed) == ["dev/con-error", "dev/desligado", "dev/sin-grabar"]
+    assert "--pending" in result.output.splitlines()[-1]
+
+
+def test_la_huella_pending_difiere_de_la_completa(bench, monkeypatch):
+    pending_bench(bench, monkeypatch)
+    assert prepare(bench, "anthropic", "--pending") != prepare(bench, "anthropic")
+
+
+def test_record_pending_envia_solo_lo_pendiente_y_no_toca_lo_bueno(bench, monkeypatch):
+    fake = pending_bench(bench, monkeypatch)
+    good = recording_path(bench, "dev/bueno", Provider.ANTHROPIC, MODEL)
+    before = good.read_bytes()
+    consent = prepare(bench, "anthropic", "--pending")
+    result = record(bench, "anthropic", consent, "--pending")
+    assert result.exit_code == 0, result.output
+    assert len(fake.requests) == 3 * 3
+    assert good.read_bytes() == before
+    for key in KEYS:
+        recording = load_recording(recording_path(bench, key, Provider.ANTHROPIC, MODEL))
+        assert {r.outcome for r in recording.repetitions} == {RepetitionOutcome.RESPONSE}
+    again = invoke(
+        "prepare", "--cases", str(bench), "--provider", "anthropic", "--model", MODEL, "--pending"
+    )
+    assert "nada pendiente" in again.output
+
+
+def test_record_pending_rechaza_la_huella_completa(bench, monkeypatch):
+    fake = pending_bench(bench, monkeypatch)
+    good = recording_path(bench, "dev/bueno", Provider.ANTHROPIC, MODEL)
+    before = good.read_bytes()
+    result = record(bench, "anthropic", prepare(bench, "anthropic"), "--pending")
+    assert result.exit_code == 1 and "No se ha enviado nada" in result.output
+    assert fake.requests == [] and good.read_bytes() == before
+    assert not recording_path(bench, "dev/sin-grabar", Provider.ANTHROPIC, MODEL).exists()

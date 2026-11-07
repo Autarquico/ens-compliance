@@ -44,6 +44,7 @@ from ens_evidence.benchmark.recordings import (
     PreparedPartition,
     RecordingRefused,
     load_judgment_cases,
+    needs_recording,
     prepare_cases,
     record_case,
     recording_path,
@@ -97,6 +98,14 @@ MeasurementOption = Annotated[
 ProviderOption = Annotated[Provider, typer.Option("--provider", help="Destino de juicio.")]
 ModelOption = Annotated[
     str, typer.Option("--model", help="Modelo configurado; sin valor por defecto.")
+]
+PendingOption = Annotated[
+    bool,
+    typer.Option(
+        "--pending",
+        help="Solo los casos sin grabación, desligada o con algún provider_error; "
+        "sustituye esos ficheros.",
+    ),
 ]
 
 
@@ -249,12 +258,17 @@ def prepare(
     partition: PartitionOption = Partition.DEV,
     cases: CasesOption = BENCH_DIR,
     measurement: MeasurementOption = False,
+    pending: PendingOption = False,
 ) -> None:
     """Construye y prepara cada caso de juicio de la partición, sin red. Imprime la huella del
-    payload de cada caso y la huella combinada que `record --consent` debe repetir."""
+    payload de cada caso y la huella combinada que `record --consent` debe repetir. Con
+    `--pending`, solo los casos que necesitan grabarse."""
     settings, judged = _recordable(cases, partition, provider, model, "prepare", measurement)
     with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
-        prepared = _prepare(cases, judged, settings, Path(scratch), None)
+        prepared = _prepare(cases, judged, settings, Path(scratch), None, pending)
+    if pending and not prepared.cases:
+        typer.echo("nada pendiente: todas las grabaciones están ligadas y sin provider_error")
+        return
     typer.echo(f"destino: {prepared.destination}")
     if prepared.requires_shell_warning:
         typer.echo(f"aviso: {service.SHELL_RISK}")
@@ -264,7 +278,9 @@ def prepare(
     typer.echo(
         f"Para grabar: ens-evidence benchmark record --partition {partition} "
         f"--provider {provider} --model {settings.model} --consent {prepared.fingerprint} "
-        "--by <nombre>" + (" --accept-shell-risk" if prepared.requires_shell_warning else "")
+        "--by <nombre>"
+        + (" --pending" if pending else "")
+        + (" --accept-shell-risk" if prepared.requires_shell_warning else "")
     )
 
 
@@ -287,24 +303,30 @@ def record(
     ] = False,
     cases: CasesOption = BENCH_DIR,
     measurement: MeasurementOption = False,
+    pending: PendingOption = False,
 ) -> None:
     """Envía de verdad cada caso de juicio por la pre-auditoría (`--repetitions` veces) y graba
     lo que devuelve el proveedor. Sin la huella combinada de `prepare` no envía nada. Sale con 1
-    si se rechaza el envío o una grabación, y con 2 si la entrada no vale."""
+    si se rechaza el envío o una grabación, y con 2 si la entrada no vale. Con `--pending`, solo
+    envía los casos que necesitan grabarse y la huella cubre solo ese subconjunto."""
     if errors := check_declared_name(by):
         raise _fail("\n".join(f"Error: {e}" for e in errors))
     settings, judged = _recordable(cases, partition, provider, model, "record", measurement)
+    replace = replace or pending
     if not replace and (existing := _existing(cases, judged, settings)):
         raise _fail(f"Error: ya grabado: {', '.join(existing)}; usa --replace", REFUSED)
     recorder = Recorder()
     with tempfile.TemporaryDirectory(prefix="ens-benchmark-") as scratch:
-        prepared = _prepare(cases, judged, settings, Path(scratch), recorder)
+        prepared = _prepare(cases, judged, settings, Path(scratch), recorder, pending)
         if prepared.fingerprint != consent:
             raise _fail(
                 "Error: la huella no coincide con lo que se enviaría; ejecuta `benchmark "
                 "prepare` y revisa. No se ha enviado nada",
                 REFUSED,
             )
+        if pending and not prepared.cases:
+            typer.echo("nada pendiente: no se ha enviado nada")
+            return
         if prepared.requires_shell_warning and not accept_shell_risk:
             raise _fail(f"Error: {service.SHELL_RISK}. No se ha enviado nada", REFUSED)
         refused = _record_all(
@@ -366,9 +388,11 @@ def _prepare(
     settings: PreAuditSettings,
     scratch: Path,
     recorder: Recorder | None,
+    pending: bool = False,
 ) -> PreparedPartition:
+    only = needs_recording(root, settings, load_pack().sha256) if pending else None
     try:
-        return prepare_cases(root, judged, settings, scratch, client_factory=recorder)
+        return prepare_cases(root, judged, settings, scratch, client_factory=recorder, only=only)
     except BenchError as exc:
         raise _fail("\n".join(exc.problems)) from None
     except service.PreAuditRejected as exc:
