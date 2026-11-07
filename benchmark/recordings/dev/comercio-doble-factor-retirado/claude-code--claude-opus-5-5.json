@@ -9,29 +9,29 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "7bf2d3c66bf7e3fe2f7425732bfd758777235216bd47f7f94a74e14fa9a5d1ce",
+  "payload_sha256": "11ad56b7aec3f993b64a86db374965836231b79db49a37605f7a99570ac17edb",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-07T10:22:43.751152Z",
+  "recorded_at": "2026-11-07T15:05:49.830458Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-07T10:21:15.559400Z",
+      "at": "2026-11-07T15:04:00.348538Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-07T10:21:49.772195Z",
+      "at": "2026-11-07T15:04:40.161903Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-07T10:22:11.964106Z",
+      "at": "2026-11-07T15:05:07.459735Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null

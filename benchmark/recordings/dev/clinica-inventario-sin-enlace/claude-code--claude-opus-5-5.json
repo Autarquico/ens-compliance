@@ -9,29 +9,29 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "245d985dc2fb3c7f1cabb3dc402710c6c394b35d38e8a6b21f1f7b2f5b464bcd",
+  "payload_sha256": "a140c7dc315af4a57421742e60d5f2b182096b1ba8331c47e8b70c960d9fd4d0",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-07T10:08:57.034353Z",
+  "recorded_at": "2026-11-07T14:51:49.478132Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-07T10:07:20.310117Z",
+      "at": "2026-11-07T14:49:37.573602Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.4\", \"quote\": \"El único enlace con otro sistema es la plataforma web del servicio de salud, autorizado en el proceso de autorización; los informes se suben a mano por conexión cifrada, sin intercambio automático entre sistemas.\"}], \"reason\": \"La justificación dice que el único enlace con otro sistema es la plataforma del servicio de salud y que no hay intercambio automático. El documento procedimientos-seguridad, que no está enlazado a op.ext.4, la contradice: dice que cada noche el programa de copias cifra los datos y los envía de forma automática al almacenamiento externo contratado, y ese envío es otro enlace.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-07T10:07:53.603332Z",
+      "at": "2026-11-07T14:50:38.258097Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.4\", \"quote\": \"El único enlace con otro sistema es la plataforma web del servicio de salud, autorizado en el proceso de autorización; los informes se suben a mano por conexión cifrada, sin intercambio automático entre sistemas.\"}], \"reason\": \"La justificación afirma que el único enlace con otro sistema es la plataforma del servicio de salud y que no hay intercambio automático entre sistemas. Sin embargo, el documento «procedimientos-seguridad» (no enlazado a op.ext.4) dice que cada noche el programa de copias cifra las copias y las envía de forma automática al almacenamiento externo contratado, fuera de la clínica. Esto contradice la premisa en la que se apoya la exclusión de la medida.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-07T10:08:29.889203Z",
+      "at": "2026-11-07T14:51:03.551723Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null

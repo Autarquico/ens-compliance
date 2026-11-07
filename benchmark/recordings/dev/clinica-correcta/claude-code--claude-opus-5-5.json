@@ -9,31 +9,31 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "90dce4bebc74bbd628a083cb2d03c3f0afba1d8826324c1b6351c6c9d6016676",
+  "payload_sha256": "57dbfb3cf99223468a57322712652872a9d5c013548553b3044d1f532ddcbcd1",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-07T10:03:21.741711Z",
+  "recorded_at": "2026-11-07T14:45:42.310822Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-07T10:01:44.322276Z",
+      "at": "2026-11-07T14:43:37.647049Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-07T10:02:12.884281Z",
+      "at": "2026-11-07T14:44:36.270365Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-07T10:02:40.456651Z",
+      "at": "2026-11-07T14:45:08.781589Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.ext.4\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:op.ext.4\", \"quote\": \"El único enlace con otro sistema es la plataforma web del servicio de salud, autorizado en el proceso de autorización; los informes se suben a mano por conexión cifrada, sin intercambio automático entre sistemas.\"}], \"reason\": \"La justificación dice que el único enlace es la plataforma del servicio de salud y que no hay intercambio automático. Sin embargo, el documento procedimientos-seguridad describe un envío automático cada noche: «Cada noche el programa de copias copia la base de pacientes y la carpeta de radiografías, las cifra y las envía al almacenamiento externo contratado». La evidencia EV-20261005-d8b27dba (inventario) recoge además como servicios de terceros conectados el almacenamiento externo y la consola del antivirus gestionado, de modo que la razón dada para no aplicar la medida no coincide con lo que dice el resto del expediente.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     }
   ]

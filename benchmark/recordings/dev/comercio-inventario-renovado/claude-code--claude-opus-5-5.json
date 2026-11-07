@@ -9,29 +9,29 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "32f2cddd9e75f8c231ad9637fca9d70f6c19f1fab83fbd4d86e10e9d3545989e",
+  "payload_sha256": "4204c1f736531aa4e1e17d2a6de89f8a74d3d1819535d9fbd142b647c08828f1",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-07T10:31:20.391777Z",
+  "recorded_at": "2026-11-07T15:14:40.037203Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-07T10:28:55.530576Z",
+      "at": "2026-11-07T15:12:40.753654Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-07T10:29:48.279773Z",
+      "at": "2026-11-07T15:13:28.099476Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"- Pasos: Solo se envían nombre, dirección y teléfono de entrega por la integración cifrada de la empresa de transporte.\"}, {\"ref\": \"procedimientos-seguridad\", \"quote\": \"No aplica: No hay otras actividades de tratamiento; los albaranes en papel se destruyen en la trituradora de la oficina.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a88be403\", \"quote\": \"Los envíos a la empresa de transporte usan solo la integración cifrada; los correos con\\n   facturas se firman y se limpian de metadatos.\"}], \"justifications\": [], \"reason\": \"org.3.4 e) exige precisar cómo se hace la transmisión telemática de la información. El procedimiento solo describe el envío a la empresa de transporte y declara que no hay otras actividades. Sin embargo, el acta enlazada muestra que también se envían facturas por correo, y el procedimiento no precisa cómo se tratan.\"}]}",
+      "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-07T10:30:41.556382Z",
+      "at": "2026-11-07T15:14:02.796540Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null

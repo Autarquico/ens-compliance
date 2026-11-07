@@ -1,7 +1,7 @@
 {
   "format": "ens-benchmark-recording/1",
   "case": "dev/comercio-repositorio-publico",
-  "case_sha256": "8b348c90863cb9297df6839bd54f84edb524eb86c4ad85fa5d737f38b88cbb01",
+  "case_sha256": "52d0098247e6afc67ec69559f5db72eee3f178c601fc60d2c426d5076598fe7c",
   "provider": "claude-code",
   "model": "claude-opus-5-5",
   "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
@@ -9,31 +9,31 @@
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
   "pack_version": "3.0.0",
   "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
-  "payload_sha256": "a9980883c56304817dd7e867b1fc93be96e98f4cfd2e1163f09853fa68124585",
+  "payload_sha256": "f9ce892347356d2deee76473001768bbd7479d11a9ae1f35d9c6080db8ce2529",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-07T10:39:09.891351Z",
+  "recorded_at": "2026-11-07T15:22:10.081274Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-07T10:38:10.401815Z",
+      "at": "2026-11-07T15:21:11.107075Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Las claves y los secretos de la tienda no se guardan en el código, y todos los repositorios de la organización son privados: ninguno se publica, para que lo que hubiera por error en el historial no quede a la vista de nadie.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a6f572e6\", \"quote\": \"\\\"archived\\\":false,\\\"default_branch\\\":\\\"main\\\",\\\"name\\\":\\\"tienda\\\",\\\"visibility\\\":\\\"public\\\"\"}], \"justifications\": [], \"reason\": \"El procedimiento de credenciales dice que todos los repositorios de la organización son privados y que ninguno se publica, pero la evidencia del conector de GitHub muestra el repositorio «tienda» con visibilidad pública. Ningún check determinista evalúa la visibilidad de los repositorios, así que esta contradicción queda dentro de la revisión de juicio.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Las claves y los secretos de la tienda no se guardan en el código, y todos los repositorios de la organización son privados: ninguno se publica, para que lo que hubiera por error en el historial no quede a la vista de nadie.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a6f572e6\", \"quote\": \"\\\"archived\\\":false,\\\"default_branch\\\":\\\"main\\\",\\\"name\\\":\\\"tienda\\\",\\\"visibility\\\":\\\"public\\\"\"}], \"justifications\": [], \"reason\": \"El procedimiento de credenciales dice que todos los repositorios de la organización son privados y que ninguno se publica. La evidencia del conector de GitHub muestra que el repositorio activo «tienda» es público, así que lo que hubiera por error en su historial queda a la vista. El check determinista de esta medida solo evalúa la exigencia de 2FA, no la visibilidad de los repositorios.\"}]}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-07T10:38:31.927657Z",
+      "at": "2026-11-07T15:21:33.154487Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Las claves y los secretos de la tienda no se guardan en el código, y todos los repositorios de la organización son privados: ninguno se publica, para que lo que hubiera por error en el historial no quede a la vista de nadie.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a6f572e6\", \"quote\": \"{\\\"admin\\\":true,\\\"archived\\\":false,\\\"default_branch\\\":\\\"main\\\",\\\"name\\\":\\\"tienda\\\",\\\"visibility\\\":\\\"public\\\"}\"}], \"justifications\": [], \"reason\": \"El procedimiento de credenciales dice que todos los repositorios de la organización son privados y que ninguno se publica, pero la evidencia del conector muestra que el repositorio «tienda» es público. Así, lo que hubiera por error en el historial queda a la vista de cualquiera. La visibilidad del repositorio no la evalúa ningún check determinista: el único check de op.acc.6 sobre esta evidencia comprueba el 2FA.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Las claves y los secretos de la tienda no se guardan en el código, y todos los repositorios de la organización son privados: ninguno se publica, para que lo que hubiera por error en el historial no quede a la vista de nadie.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a6f572e6\", \"quote\": \"\\\"archived\\\":false,\\\"default_branch\\\":\\\"main\\\",\\\"name\\\":\\\"tienda\\\",\\\"visibility\\\":\\\"public\\\"\"}], \"justifications\": [], \"reason\": \"El procedimiento de credenciales afirma que todos los repositorios de la organización son privados para que no quede a la vista ningún secreto subido por error al historial. Sin embargo, el conector de GitHub muestra que el repositorio 'tienda', que no está archivado, es público. El único check determinista de op.acc.6 evalúa el 2FA, no la visibilidad.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-07T10:38:51.366869Z",
+      "at": "2026-11-07T15:21:51.237415Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Las claves y los secretos de la tienda no se guardan en el código, y todos los repositorios de la organización son privados: ninguno se publica, para que lo que hubiera por error en el historial no quede a la vista de nadie.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a6f572e6\", \"quote\": \"\\\"default_branch\\\":\\\"main\\\",\\\"name\\\":\\\"tienda\\\",\\\"visibility\\\":\\\"public\\\"\"}], \"justifications\": [], \"reason\": \"El procedimiento de credenciales dice que todos los repositorios son privados y que esa es la salvaguarda frente a secretos que queden por error en el historial. Sin embargo, el conector de GitHub muestra el repositorio «tienda» como público. Ningún check determinista evalúa la visibilidad: los checks sobre esta evidencia solo comprueban el 2FA, el secret scanning y Dependabot.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Las claves y los secretos de la tienda no se guardan en el código, y todos los repositorios de la organización son privados: ninguno se publica, para que lo que hubiera por error en el historial no quede a la vista de nadie.\"}], \"evidence\": [{\"ref\": \"EV-20261006-a6f572e6\", \"quote\": \"\\\"default_branch\\\":\\\"main\\\",\\\"name\\\":\\\"tienda\\\",\\\"visibility\\\":\\\"public\\\"\"}], \"justifications\": [], \"reason\": \"El procedimiento de credenciales dice que todos los repositorios de la organización son privados y que ninguno se publica. La evidencia del conector de GitHub muestra que el repositorio «tienda» es público. Ningún check determinista evalúa la visibilidad de los repositorios: los de esta evidencia solo cubren el 2FA, el secret scanning y Dependabot.\"}]}",
       "kind": null
     }
   ]
