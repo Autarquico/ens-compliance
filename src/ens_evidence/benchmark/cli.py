@@ -393,7 +393,7 @@ def _prepare(
     pack_sha256: str,
     scratch: Path,
     recorder: Recorder | None,
-    pending: bool = False,
+    pending: bool,
 ) -> PreparedPartition:
     only = needs_recording(root, settings, pack_sha256) if pending else None
     try:

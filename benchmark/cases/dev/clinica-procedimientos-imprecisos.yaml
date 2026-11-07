@@ -76,3 +76,20 @@ defects:
       anular el acceso no queda reservado a personal con competencia, y contradice el apartado
       de control de acceso del mismo documento, que lo reserva al responsable de sistemas a
       petición de la directora.
+  - id: cuentas-sin-inhabilitacion-ni-retencion
+    layer: judgment
+    measure: op.acc.1
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.acc.1
+      clause: op.acc.1.4
+      quote: >-
+        Las cuentas deben ser inhabilitadas en los siguientes casos: cuando el usuario deja la
+        organización; cuando el usuario cesa en la función para la cual se requería la cuenta de
+        usuario; o, cuando la persona que la autorizó da orden en sentido contrario.
+    rationale: >-
+      El apartado de gestión de cuentas de los procedimientos deja crear y quitar cuentas a
+      «cualquiera de la clínica que tenga un rato» «cuando alguien se acuerda»: no recoge la
+      inhabilitación de la cuenta al dejar la organización o cesar en su función, ni fija el
+      periodo de retención de las cuentas.
