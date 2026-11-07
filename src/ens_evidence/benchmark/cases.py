@@ -189,6 +189,13 @@ def validate_bench(root: Path, partition: Partition) -> list[str]:
     """Problemas del banco para una partición: esquema, citas, ids, datos ficticios. De la otra
     partición solo se miran los nombres de fichero de los casos (ids), nunca su contenido; sus
     perfiles no se tocan."""
+    return check_bench(root, partition)[0]
+
+
+def check_bench(
+    root: Path, partition: Partition
+) -> tuple[list[str], list[Case], dict[str, Profile]]:
+    """Como `validate_bench`, y además los casos y perfiles que cargó, para no leerlos dos veces."""
     problems: list[str] = []
     profiles = _validated_profiles(root, partition, problems)
     cases: list[Case] = []
@@ -203,7 +210,7 @@ def validate_bench(root: Path, partition: Partition) -> list[str]:
         problems += [f"{case.key}: {p}" for p in _case_problems(root, case, profiles, in_repo)]
         problems += _scan_file(cases_dir(root, partition) / f"{case.id}.yaml", root)
         problems += _scan_tree(case_files_dir(root, case), root)
-    return problems
+    return problems, cases, profiles
 
 
 def recording_problems(recording: Recording) -> list[str]:

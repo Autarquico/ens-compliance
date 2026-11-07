@@ -11,6 +11,7 @@ from typer.testing import CliRunner
 from ens_evidence.benchmark.access import MEASUREMENTS_FILE
 from ens_evidence.benchmark.cases import (
     BenchError,
+    check_bench,
     load_case,
     load_recording,
     recording_problems,
@@ -130,6 +131,13 @@ def bench(root: Path, *, case_data: dict[str, Any] | None = None, **texts: str) 
     data = case_data or case()
     write_yaml(root / f"cases/{data['partition']}/{data['id']}.yaml", data)
     return root
+
+
+def test_check_bench_devuelve_los_casos_cargados_junto_a_los_problemas(tmp_path):
+    root = bench(tmp_path)
+    problems, cases, _profiles = check_bench(root, Partition.DEV)
+    assert problems == []
+    assert [c.id for c in cases] == [case()["id"]]
 
 
 def test_un_banco_correcto_no_tiene_problemas_y_validate_sale_con_0(tmp_path):

@@ -27,15 +27,16 @@ from ens_evidence.benchmark.cases import (
     BenchError,
     case_paths,
     cases_dir,
+    check_bench,
     load_case,
-    load_profile,
-    validate_bench,
 )
 from ens_evidence.benchmark.model import (
     Baseline,
     BenchmarkResult,
+    Case,
     Measurement,
     Partition,
+    Profile,
     ProviderResult,
 )
 from ens_evidence.benchmark.mutations import build_case
@@ -138,9 +139,9 @@ def validate(
         open_partition(cases, partition, action="validate", measurement=measurement, now=clock())
     except HoldoutLocked as exc:
         raise _fail(f"Error: {exc}") from None
-    problems = validate_bench(cases, partition)
+    problems, loaded, profiles = check_bench(cases, partition)
     if measurement and partition is Partition.HOLDOUT and not problems:
-        problems += _measurement_problems(cases)
+        problems += _measurement_problems(loaded, profiles)
     for problem in problems:
         typer.echo(problem, err=True)
     if problems:
@@ -150,9 +151,8 @@ def validate(
         _validate_recordings(cases, partition)
 
 
-def _measurement_problems(root: Path) -> list[str]:
+def _measurement_problems(cases: list[Case], profiles: dict[str, Profile]) -> list[str]:
     """D7 de la reservada: imprime los recuentos y devuelve lo que falta para medirla."""
-    cases = [load_case(path, root) for path in case_paths(root, Partition.HOLDOUT)]
     sample = sample_of(cases)
     typer.echo(
         f"reservada: {sample.judgment} defectos de juicio, {sample.deterministic} "
@@ -162,8 +162,10 @@ def _measurement_problems(root: Path) -> list[str]:
     )
     problems = sample_problems(sample, HOLDOUT_MINIMUM)
     for profile_id in sorted({c.profile for c in cases if c.profile}):
-        profile = load_profile(root, Partition.HOLDOUT, profile_id)
-        if any(level is not SecurityLevel.BAJO for level in profile.categorization.values()):
+        if any(
+            level is not SecurityLevel.BAJO
+            for level in profiles[profile_id].categorization.values()
+        ):
             problems.append(f"perfil {profile_id}: no es de categoría BÁSICA")
     return problems
 
