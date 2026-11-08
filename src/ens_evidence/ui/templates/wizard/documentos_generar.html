@@ -1,0 +1,43 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Con tus respuestas se redactan seis documentos: la política, la designación de responsables, la normativa, los procedimientos, la gestión de incidentes y el proceso de autorización. Cada uno indica qué cláusula del RD 311/2022 cubre cada sección. Si vuelves a generarlos con las mismas respuestas, salen idénticos.</p>
+{% include "partials/_paso_cabecera.html" %}
+{% if not scope_ok %}
+<div class="notice notice-warn"><p><strong>Antes de generar:</strong> el alcance no está aprobado. Apruébalo en el paso <a href="/asistente/aprobacion-alcance">«Aprobar el alcance»</a>.</p></div>
+{% endif %}
+{% if not answers_started %}
+<div class="notice notice-warn"><p><strong>Todavía no has respondido el cuestionario.</strong> Empieza por <a href="/asistente/documentos-organizacion">«Tu organización»</a>.</p></div>
+{% endif %}
+{% if issue_groups %}
+<div class="notice notice-warn"><p><strong>Qué falta para poder generar:</strong></p>
+<ul>
+{%- for g in issue_groups %}
+  <li>{% if g.slug %}<a href="/asistente/{{ g.slug }}">{{ g.label }}</a>{% else %}{{ g.label }}{% endif %}
+    <ul>{% for item in g["items"] %}<li>{{ item }}</li>{% endfor %}</ul></li>
+{%- endfor %}
+</ul></div>
+{% endif %}
+{% if warnings %}
+<div class="notice"><p><strong>Revisa estas respuestas:</strong></p><ul>{% for w in warnings %}<li>{{ w }}</li>{% endfor %}</ul></div>
+{% endif %}
+<table>
+  <thead><tr><th scope="col">Documento</th><th scope="col">Estado</th></tr></thead>
+  <tbody>
+  {%- for d in documents %}
+    <tr>
+      <td>{{ d.title }}</td>
+      <td>{{ d.state_label }}{% if d.reasons %}<ul>{% for r in d.reasons %}<li class="muted">{{ r }}</li>{% endfor %}</ul>{% endif %}</td>
+    </tr>
+  {%- endfor %}
+  </tbody>
+</table>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <div class="actions">
+    <button class="btn btn-primary" type="submit" name="accion" value="generar"{% if not can_generate %} disabled{% endif %}>Generar los documentos</button>
+    {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+    {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

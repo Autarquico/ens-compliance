@@ -1,0 +1,47 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Aprobar un documento deja constancia de que una persona con autoridad lo ha leído y lo da por bueno. No da por cumplida ninguna medida: eso lo demuestran las evidencias. Si cambias las respuestas o el alcance, tendrás que generar y aprobar de nuevo.</p>
+{% include "partials/_paso_cabecera.html" %}
+{{ m.revision_humana() }}
+{% for d in documents %}
+<section class="documento" id="doc-{{ d.name }}">
+  <h3>{{ d.title }}</h3>
+  <p>{{ d.state_label }}{% if d.approval %} · {{ d.approval.approved_by }} <span class="muted">· {{ d.approval.approved_at }}</span>{% endif %}</p>
+  {% if d.reasons %}<ul>{% for r in d.reasons %}<li class="muted">{{ r }}</li>{% endfor %}</ul>{% endif %}
+  {% if d.state != "NOT_GENERATED" %}<p><a href="/asistente/documentos-aprobar?ver={{ d.name }}#lectura">Leer el documento</a></p>{% endif %}
+  {% if d.state == "NOT_GENERATED" %}
+  <p class="muted">Aún no está generado. Hazlo en el paso <a href="/asistente/documentos-generar">«Generar los documentos»</a>.</p>
+  {% elif d.state != "APPROVED" %}
+  {% if d.role_label %}
+  <p class="muted">Lo aprueba {{ d.role_label }}.{% if d.signatory %} El nombre debe ser el declarado para ese puesto: <strong>{{ d.signatory }}</strong>.{% else %} Todavía no has declarado quién es.{% endif %}</p>
+  {% else %}
+  <p class="muted">Antes de aprobarlo, di en <a href="/asistente/documentos-responsables">«Responsables y designación»</a> quién aprueba los procedimientos.</p>
+  {% endif %}
+  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+    <input type="hidden" name="documento" value="{{ d.name }}">
+    <div class="field">
+      <label for="f-by-{{ d.name }}">Lo aprueba<span class="hint">Escribe el nombre completo, tal como lo declaraste. Puedes cambiar lo que aparece.</span></label>
+      <input type="text" id="f-by-{{ d.name }}" name="approved_by" value="{{ d.by }}" autocomplete="name"{% if (errors or {}).get(d.error_key) %} aria-invalid="true" aria-describedby="err-{{ d.error_key }}"{% endif %}>
+      {{ m.field_errors(d.error_key) }}
+    </div>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if not d.role_label %} disabled{% endif %}>Aprobar este documento</button>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endfor %}
+{% if viewing %}
+<section id="lectura">
+  <h3>{{ viewing.title }}</h3>
+  <pre>{{ viewing.text }}</pre>
+  <p><a href="/asistente/documentos-aprobar">Cerrar la lectura</a></p>
+</section>
+{% endif %}
+<div class="actions">
+  {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+  {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
+</div>
+{% endblock %}
