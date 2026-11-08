@@ -17,6 +17,10 @@ dependencies = [
 [project.optional-dependencies]
 s3 = ["boto3>=1.34"]
 workspace = ["cryptography>=42"]
+server = [
+    "starlette>=0.40",
+    "uvicorn>=0.30",
+]
 
 [project.scripts]
 ens-evidence = "ens_evidence.cli:app"
@@ -34,6 +38,8 @@ dev = [
     "moto[s3]>=5",
     "pytest>=8",
     "ruff>=0.6",
+    "starlette>=0.40",
+    "uvicorn>=0.30",
 ]
 
 [build-system]
