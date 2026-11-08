@@ -52,6 +52,7 @@ copy:
   forbidden_local:
     - "certificado / certificación ENS aplicado al producto"
     - "garantiza el cumplimiento"
+    - "cumple el ENS"
   vocabulary_local: {}
 
 components_override: {}
