@@ -275,7 +275,7 @@ KIND_FALLBACK: dict[BlockerKind, str] = {
     BlockerKind.EXPIRED_EVIDENCE: "evidencia caducada",
     BlockerKind.MISSING_REVIEW: "falta la revisión",
     BlockerKind.EXPIRED_REVIEW: "revisión caducada",
-    BlockerKind.NOT_COMPLIANT: "medida valorada como no conforme",
+    BlockerKind.NOT_COMPLIANT: "valoración pendiente o desfavorable",
     BlockerKind.OPEN_FINDING: "hallazgo abierto",
 }
 

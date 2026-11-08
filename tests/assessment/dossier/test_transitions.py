@@ -8,6 +8,7 @@ solo las transiciones que se escriben pagan la reconstrucción.
 import hashlib
 import shutil
 from datetime import timedelta
+from types import SimpleNamespace
 
 import pytest
 import yaml
@@ -19,6 +20,7 @@ from ens_evidence.assessment.dossier.package import save_package
 from ens_evidence.assessment.dossier.store import ASSESSMENTS_PREFIX, MARKDOWN_NAME
 from ens_evidence.assessment.dossier.transitions import (
     TransitionRejected,
+    _blocker_labels,
     entries,
     record_key,
     record_transition,
@@ -30,6 +32,7 @@ from ens_evidence.evidence.importer import import_manual
 from ens_evidence.evidence.layout import CHECKS_PREFIX
 from ens_evidence.models.dossier import CorrectiveMeasure, record_sha256
 from ens_evidence.models.enums import DossierState, Readiness, Role
+from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.workspace import AlreadyExists
 
 from . import transition_helpers as helpers
@@ -816,3 +819,15 @@ def test_un_markdown_que_falta_no_bloquea_porque_render_lo_regenera(analyzed):
     declare(store, dossier)
 
     assert scan_transitions(store, dossier).dossier.state is DossierState.DECLARED
+
+
+def test_a_measure_left_for_review_is_not_called_non_compliant():
+    pending = Blocker(
+        kind=BlockerKind.NOT_COMPLIANT, measure_id="op.pl.1", detail="REQUIRES_REVIEW"
+    )
+    evaluation = SimpleNamespace(readiness=SimpleNamespace(blockers=[pending]))
+
+    label = _blocker_labels(evaluation)
+
+    assert "no conforme" not in label
+    assert label == "valoración pendiente o desfavorable (op.pl.1)"
