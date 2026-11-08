@@ -1,13 +1,13 @@
 ---
 codename: ens-compliance
-title: "Par OpenAI como puerta del umbral de v0.1"
+title: Par OpenAI como puerta del umbral de v0.1
 type: task
-status: draft
+status: active
 priority: P1
 size: S
 issue: null
 prs: []
-related_issues: []
+related_issues: [59]
 depends_on: [audit-holdout-rotation]
 supersedes: []
 related_specs: [audit-benchmark, audit-pack-tuning, audit-holdout-rotation]
