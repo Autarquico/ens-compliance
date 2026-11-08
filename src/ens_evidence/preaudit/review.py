@@ -8,7 +8,9 @@ ejecución que lo propuso (y no en el futuro); `findings_view` lo vuelve a compr
 (`correction_problems`). `DISMISSED` lo descarta con un motivo. El nombre y el motivo pasan
 por los detectores de privacidad: no se guarda un secreto ni un dato personal.
 Orden de escritura, como en las ejecuciones: comprobar (un rechazo no escribe nada), reservar la
-secuencia, escribir.
+secuencia, escribir. Si otra disposición reservó antes la secuencia, se vuelve a comprobar todo
+contra la cadena actualizada (la otra puede haber cerrado ya ese hallazgo) y se reintenta con el
+eslabón recalculado, hasta `ATTEMPTS` veces.
 """
 
 from dataclasses import replace
@@ -32,6 +34,7 @@ from ens_evidence.preaudit.records import (
 from ens_evidence.privacy_text import check_declared_name, sensitive_problems
 from ens_evidence.workspace import WorkspaceStore
 
+ATTEMPTS = 5
 NOT_A_CORRECTION = "--evidence: esa evidencia {why}; importa la que muestra la corrección y cítala"
 
 
@@ -54,6 +57,23 @@ def review(
     reason: str | None = None,
 ) -> tuple[chain.Stored[DispositionRecord], FindingState]:
     """Registra la disposición y devuelve el registro y el hallazgo tal como queda."""
+    for _ in range(ATTEMPTS):
+        try:
+            return _review_once(store, finding_id, decision, by, now, evidence_id, reason)
+        except chain.SequenceTaken:
+            continue
+    raise ReviewRejected(["otras órdenes reservan disposiciones sin parar; revisa y reintenta"])
+
+
+def _review_once(
+    store: WorkspaceStore,
+    finding_id: str,
+    decision: DispositionState,
+    by: str,
+    now: datetime,
+    evidence_id: str | None,
+    reason: str | None,
+) -> tuple[chain.Stored[DispositionRecord], FindingState]:
     errors = _field_problems(store, decision, by, evidence_id, reason)
     view = findings_view(store, now)
     if view.problems:
@@ -82,7 +102,11 @@ def review(
         evidence_id=evidence_id,
         reason=reason,
     )
-    stored = _write(store, disposition, now)
+    seq, previous = next_link(scan_dispositions(store, now=now))
+    record = DispositionRecord(
+        seq=seq, previous_sha256=previous, recorded_at=now, disposition=disposition
+    )
+    stored = append(store, DISPOSITIONS_PREFIX, record)
     return stored, replace(current, disposition=disposition)
 
 
@@ -114,18 +138,3 @@ def _field_problems(
 
 def _reason_problems(reason: str) -> list[str]:
     return [f"--reason: {problem}; quítalo" for problem in sensitive_problems(reason)]
-
-
-def _write(
-    store: WorkspaceStore, disposition: Disposition, now: datetime
-) -> chain.Stored[DispositionRecord]:
-    seq, previous = next_link(scan_dispositions(store, now=now))
-    record = DispositionRecord(
-        seq=seq, previous_sha256=previous, recorded_at=now, disposition=disposition
-    )
-    try:
-        return append(store, DISPOSITIONS_PREFIX, record)
-    except chain.SequenceTaken:
-        raise ReviewRejected(
-            [f"otra orden reservó antes la disposición {seq}; revisa y reintenta"]
-        ) from None

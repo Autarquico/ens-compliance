@@ -16,6 +16,7 @@ from ens_evidence.matrix import (
 )
 from ens_evidence.models.enums import Applicability
 from ens_evidence.models.readiness import Compensation
+from ens_evidence.orgdocs.clauses import measure_clause_ids
 from ens_evidence.scope import revoke_approval
 
 from .helpers import SIGNED_AT
@@ -207,6 +208,31 @@ class TestExpandCovers:
 
         assert expansion.units == {"op.cont.2.3"}
         assert expansion.errors == ()
+
+    def test_la_introduccion_se_acepta_y_no_es_una_unidad_a_cubrir(self, rows):
+        row = rows["op.cont.2"]
+
+        expansion = expand_covers(["op.cont.2.intro", "op.cont.2.3"], row)
+
+        assert expansion.errors == ()
+        assert expansion.units == {"op.cont.2.3"}
+
+    def test_la_introduccion_de_una_medida_que_no_la_tiene_se_rechaza(self):
+        row = MatrixRowSpec(
+            "x.1",
+            RowKind.SELECTED,
+            (Obligation("base", (ClauseRef("x.1.1", None, "texto"),)),),
+            "a" * 64,
+        )
+
+        assert expand_covers(["x.1.intro"], row).errors
+
+    def test_las_clausulas_que_listan_los_documentos_se_enlazan_tal_cual(self, rows):
+        for measure_id, row in rows.items():
+            if row.kind is not RowKind.SELECTED:
+                continue
+            covered = measure_clause_ids(measure_id)
+            assert expand_covers(covered, row).errors == (), measure_id
 
     def test_una_obligacion_sin_ids_de_clausula_es_una_sola_unidad(self):
         row = MatrixRowSpec(

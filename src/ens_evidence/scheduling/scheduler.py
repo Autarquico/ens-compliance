@@ -17,10 +17,15 @@ from datetime import date, datetime, timedelta
 from pathlib import Path
 from typing import Literal, Protocol
 
+from ens_evidence.preaudit.requests import execute as execute_request
+from ens_evidence.preaudit.requests import pending_keys
+from ens_evidence.preaudit.service import ClientFactory
 from ens_evidence.reports.model import is_day, is_month
 from ens_evidence.reports.monthly import previous_month
 from ens_evidence.reports.store import REPORTS_PREFIX, Kind, pairs, reports_in_period
 from ens_evidence.scheduling.calendar import (
+    PREAUDIT,
+    AnyJobKind,
     Job,
     JobKind,
     due_jobs,
@@ -54,7 +59,8 @@ LOCK_WAIT_MINUTES = 10.0
 HEARTBEAT_FILE = "scheduler-heartbeat"
 HEARTBEAT_ENV = "ENS_HEARTBEAT_FILE"
 BEAT_EVERY_SECONDS = 60.0
-Key = tuple[JobKind, str]
+Key = tuple[AnyJobKind, str]
+Requests = Callable[[datetime], Collection[str]]
 Status = Literal["completed", "failed", "busy", "interrupted"]
 Heartbeat = Callable[[], None]
 
@@ -141,8 +147,10 @@ class Scheduler:
         *,
         log: Callable[[str], None] = print_log,
         heartbeat: Heartbeat | None = None,
+        requests: Requests | None = None,
     ) -> None:
         self._heartbeat = heartbeat
+        self._requests = requests
         self._clock = clock
         self._executor = executor
         self._load_config = load_config
@@ -216,11 +224,22 @@ class Scheduler:
     def _pending(self, now: datetime, cfg: ScheduleConfig) -> list[Job]:
         """Los vencidos del periodo en curso y los que reintentan de un periodo anterior (que
         conservan el suyo), el diario antes que el mensual."""
-        found = {(job.kind, job.period): job for job in due_jobs(now, cfg, self._finished)}
+        due = due_jobs(now, cfg, self._finished, self._request_keys(now))
+        found = {(job.kind, job.period): job for job in due}
         for key, job in self._retrying.items():
             if key not in self._finished:
                 found.setdefault(key, job)
         return sorted(found.values(), key=lambda job: (job.due_at, job.kind != "daily"))
+
+    def _request_keys(self, now: datetime) -> Collection[str]:
+        """Peticiones de pre-auditoría vivas, leídas en cada tick. Si no se pueden leer, no hay."""
+        if self._requests is None:
+            return ()
+        try:
+            return self._requests(now)
+        except (WorkspaceError, OSError) as error:
+            self._event("requests_unreadable", error=type(error).__name__)
+            return ()
 
     def _reset_exhausted(self, now: datetime, cfg: ScheduleConfig) -> None:
         """Un trabajo agotado recupera sus intentos al día siguiente (local) sin reiniciar el
@@ -342,7 +361,9 @@ class CycleExecutor:
         lock_wait_minutes: float = LOCK_WAIT_MINUTES,
         lock_factory: Callable[[Settings, Mapping[str, str]], CycleLock] = CycleLock.for_settings,
         heartbeat: Heartbeat | None = None,
+        preaudit_client_factory: ClientFactory | None = None,
     ) -> None:
+        self._preaudit_client_factory = preaudit_client_factory
         self._heartbeat = heartbeat
         self._store = store
         self._settings = settings
@@ -351,6 +372,10 @@ class CycleExecutor:
         self._lock_wait_minutes = lock_wait_minutes
         self._lock_factory = lock_factory
         self._plugins = plugins
+
+    def pending_requests(self, now: datetime) -> list[str]:
+        """Las peticiones de pre-auditoría que la UI ha dejado y no se han ejecutado."""
+        return pending_keys(self._store, now)
 
     def run(
         self, job: Job, cfg: ScheduleConfig, trigger: Trigger, *, config_warning: bool = False
@@ -365,6 +390,8 @@ class CycleExecutor:
             return JobResult("interrupted")
         except OSError:
             return JobResult("failed", "lock_unavailable")
+        if job.kind == PREAUDIT:
+            return self._run_request(job, lock)
         try:
             outcome = run_cycle(
                 CycleContext(lock),
@@ -389,6 +416,25 @@ class CycleExecutor:
         if outcome.completed:
             return JobResult("completed")
         return JobResult("failed", outcome.failure)
+
+    def _run_request(self, job: Job, lock: CycleLock) -> JobResult:
+        """Ejecuta una petición de pre-auditoría con el lock ya tomado. Un rechazo del servicio
+        queda como resultado de la petición: no es un fallo del trabajo y no se repite."""
+        try:
+            execute_request(
+                self._store,
+                job.period,
+                self._settings.preaudit,
+                now=self._clock.now,
+                client_factory=self._preaudit_client_factory,
+            )
+        except _Stopped:
+            return JobResult("interrupted")
+        except Exception as error:
+            return JobResult("failed", f"request_crashed:{type(error).__name__}")
+        finally:
+            lock.release()
+        return JobResult("completed")
 
     def _plugins_for(self, job: Job) -> Plugins | None:
         if job.kind != "daily":
