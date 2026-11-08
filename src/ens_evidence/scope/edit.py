@@ -7,9 +7,20 @@ import yaml
 from pydantic import BaseModel, ValidationError
 
 from ens_evidence.scope.approval import revoke_approval
-from ens_evidence.scope.inventory import ASSETS_KEY, SYSTEM_KEY
+from ens_evidence.scope.inventory import (
+    ASSETS_KEY,
+    DEPENDENCIES_KEY,
+    SERVICES_KEY,
+    SYSTEM_KEY,
+)
 from ens_evidence.scope.messages import describe_validation
-from ens_evidence.scope.models import Asset, AssetsFile, SystemScope
+from ens_evidence.scope.models import (
+    Asset,
+    AssetsFile,
+    DependenciesFile,
+    ServicesFile,
+    SystemScope,
+)
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.workspace import NotFound, WorkspaceStore
 from ens_evidence.yaml_unique import safe_load_unique
@@ -80,25 +91,90 @@ def _reject_secrets(key: str, fields: dict[str, Any]) -> None:
         )
 
 
+def _appended(
+    store: WorkspaceStore, key: str, list_name: str, model: type[BaseModel], fields: dict[str, Any]
+) -> dict[str, Any]:
+    """Fichero `key` con `fields` añadido a `list_name`, validado y sin escribir."""
+    _reject_secrets(key, fields)
+    document = _read(store, key)
+    current = document.get(list_name) or []
+    if fields["id"] in {item.get("id") for item in current if isinstance(item, dict)}:
+        raise ScopeEditRejected([f"{key}: el id {fields['id']} ya existe"])
+    document[list_name] = [*current, fields]
+    _checked(key, model, document)
+    return document
+
+
+def _with_included(system: dict[str, Any], list_name: str, ref: str) -> dict[str, Any]:
+    return {**system, list_name: [*(system.get(list_name) or []), ref]}
+
+
 def add_asset(store: WorkspaceStore, fields: dict[str, Any], include: bool, now: datetime) -> bool:
     """Añade un activo (y lo incluye en el alcance si include). True si revocó la aprobación.
 
     Valida el activo con el modelo del inventario; la coherencia global la comprueban
     inventory validate y scope approve.
     """
-    _reject_secrets(ASSETS_KEY, fields)
-    assets = _read(store, ASSETS_KEY)
-    current = assets.get("assets") or []
-    if fields["id"] in {a.get("id") for a in current if isinstance(a, dict)}:
-        raise ScopeEditRejected([f"{ASSETS_KEY}: el id {fields['id']} ya existe"])
-    assets["assets"] = [*current, fields]
-    _checked(ASSETS_KEY, AssetsFile, assets)
+    assets = _appended(store, ASSETS_KEY, "assets", AssetsFile, fields)
     system = _read(store, SYSTEM_KEY)
     if include:
-        system["included_assets"] = [*(system.get("included_assets") or []), fields["id"]]
+        system = _with_included(system, "included_assets", fields["id"])
     _write(store, ASSETS_KEY, assets)
     _write(store, SYSTEM_KEY, system)
     return revoke_approval(store, "scope add-asset", now)
+
+
+def add_service(
+    store: WorkspaceStore,
+    service_id: str,
+    name: str,
+    assets: list[str],
+    include: bool,
+    now: datetime,
+) -> bool:
+    """Añade un servicio (y lo incluye en el alcance si include). True si revocó la aprobación."""
+    fields = {"id": service_id, "name": name, "assets": assets}
+    services = _appended(store, SERVICES_KEY, "services", ServicesFile, fields)
+    system = _read(store, SYSTEM_KEY)
+    if include:
+        system = _with_included(system, "included_services", service_id)
+    _write(store, SERVICES_KEY, services)
+    _write(store, SYSTEM_KEY, system)
+    return revoke_approval(store, "scope add-service", now)
+
+
+def include_service(store: WorkspaceStore, service_id: str, now: datetime) -> bool:
+    """Incluye en el alcance un servicio existente. True si revocó la aprobación.
+
+    Si ya estaba incluido no cambia nada y no revoca.
+    """
+    services = _read(store, SERVICES_KEY).get("services") or []
+    if service_id not in {s.get("id") for s in services if isinstance(s, dict)}:
+        raise ScopeEditRejected([f"{SERVICES_KEY}: el servicio {service_id} no existe"])
+    system = _read(store, SYSTEM_KEY)
+    if service_id in (system.get("included_services") or []):
+        return False
+    system = _with_included(system, "included_services", service_id)
+    _checked(SYSTEM_KEY, SystemScope, system)
+    _write(store, SYSTEM_KEY, system)
+    return revoke_approval(store, "scope include-service", now)
+
+
+def add_dependency(
+    store: WorkspaceStore,
+    dependency_id: str,
+    asset: str,
+    depends_on: str,
+    purpose: str | None,
+    now: datetime,
+) -> bool:
+    """Añade una dependencia entre activos. True si revocó la aprobación."""
+    fields = {"id": dependency_id, "asset": asset, "depends_on": depends_on}
+    if purpose:
+        fields["purpose"] = purpose
+    dependencies = _appended(store, DEPENDENCIES_KEY, "dependencies", DependenciesFile, fields)
+    _write(store, DEPENDENCIES_KEY, dependencies)
+    return revoke_approval(store, "scope add-dependency", now)
 
 
 def set_system(store: WorkspaceStore, name: str, description: str, now: datetime) -> bool:

@@ -106,7 +106,7 @@ from ens_evidence.backup.transfer import export_all, import_all
 from ens_evidence.benchmark.cli import app as benchmark_app
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import MeasuresFileError, init_measures
-from ens_evidence.catalog.model import Catalog, Group, MeasureCard
+from ens_evidence.catalog.model import Catalog, Dimension, Group, MeasureCard
 from ens_evidence.categorization import (
     CategorizationApprovalRejected,
     CategorizationNotCurrent,
@@ -116,6 +116,12 @@ from ens_evidence.categorization import (
     commitment,
     commitment_notice,
     init_categorization,
+)
+from ens_evidence.categorization.edit import (
+    CategorizationEditRejected,
+    add_information,
+    set_rating,
+    set_valuation,
 )
 from ens_evidence.checks.engine import CONFIG_INVALID, ConnectorOutcome, OutcomeKind, run_all
 from ens_evidence.checks.inputs import NO_EVIDENCE
@@ -278,7 +284,15 @@ from ens_evidence.scope import (
     revoke_approval,
     scope_status,
 )
-from ens_evidence.scope.edit import ScopeEditRejected, add_asset, parse_field, set_system
+from ens_evidence.scope.edit import (
+    ScopeEditRejected,
+    add_asset,
+    add_dependency,
+    add_service,
+    include_service,
+    parse_field,
+    set_system,
+)
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.models import AssetType, Deployment
 from ens_evidence.scope.secrets import find_secrets
@@ -792,7 +806,7 @@ def scope_add_asset(
             if not separator or not name.strip():
                 raise ScopeEditRejected([f"--set {item!r}: usa campo=valor"])
             values[name.strip()] = parse_field(name.strip(), value)
-        revoked = add_asset(open_workspace(ctx), values, include, datetime.now(UTC))
+        revoked = add_asset(open_workspace(ctx), values, include, clock())
     except ScopeEditRejected as exc:
         typer.echo("No se añade el activo:", err=True)
         print_errors(exc.errors)
@@ -812,12 +826,77 @@ def scope_set_system(
 ) -> None:
     """Rellena el nombre y la descripción del sistema. No aprueba nada."""
     try:
-        revoked = set_system(open_workspace(ctx), name, description, datetime.now(UTC))
+        revoked = set_system(open_workspace(ctx), name, description, clock())
     except ScopeEditRejected as exc:
         typer.echo("No se cambia el sistema:", err=True)
         print_errors(exc.errors)
         raise typer.Exit(1) from None
     typer.echo("Sistema actualizado.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+
+
+@scope_app.command("add-service")
+@handled
+def scope_add_service(
+    ctx: typer.Context,
+    service_id: Annotated[str, typer.Option("--id", help="Identificador único del servicio.")],
+    name: Annotated[str, typer.Option("--name", help="Nombre del servicio.")],
+    assets: Annotated[
+        list[str],
+        typer.Option("--asset", help="Activo que sustenta el servicio (repetible, al menos uno)."),
+    ],
+    include: Annotated[bool, typer.Option("--include", help="Inclúyelo en el alcance.")] = False,
+) -> None:
+    """Añade un servicio al inventario, sin tocar los demás. No aprueba nada."""
+    try:
+        revoked = add_service(open_workspace(ctx), service_id, name, assets, include, clock())
+    except ScopeEditRejected as exc:
+        typer.echo("No se añade el servicio:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Servicio {service_id} añadido{' e incluido en el alcance' if include else ''}.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+
+
+@scope_app.command("include-service")
+@handled
+def scope_include_service(
+    ctx: typer.Context,
+    service_id: Annotated[str, typer.Option("--id", help="Identificador del servicio.")],
+) -> None:
+    """Incluye en el alcance un servicio existente. No aprueba nada."""
+    try:
+        revoked = include_service(open_workspace(ctx), service_id, clock())
+    except ScopeEditRejected as exc:
+        typer.echo("No se incluye el servicio:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Servicio {service_id} incluido en el alcance.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+
+
+@scope_app.command("add-dependency")
+@handled
+def scope_add_dependency(
+    ctx: typer.Context,
+    dependency_id: Annotated[str, typer.Option("--id", help="Identificador único.")],
+    asset: Annotated[str, typer.Option("--asset", help="Activo que depende.")],
+    depends_on: Annotated[str, typer.Option("--depends-on", help="Activo del que depende.")],
+    purpose: Annotated[str | None, typer.Option("--purpose", help="Para qué la usa.")] = None,
+) -> None:
+    """Añade una dependencia entre activos. No aprueba nada."""
+    try:
+        revoked = add_dependency(
+            open_workspace(ctx), dependency_id, asset, depends_on, purpose, clock()
+        )
+    except ScopeEditRejected as exc:
+        typer.echo("No se añade la dependencia:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Dependencia {dependency_id} añadida.")
     if revoked:
         typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
 
@@ -832,7 +911,7 @@ def scope_approve(
     """Aprueba el alcance vigente. Solo lo aprueba el responsable del sistema."""
     store = open_workspace(ctx)
     try:
-        approval = approve_scope(store, by, role, datetime.now(UTC))
+        approval = approve_scope(store, by, role, clock())
     except ScopeApprovalRejected as exc:
         typer.echo("No se aprueba el alcance:", err=True)
         print_errors(exc.errors)
@@ -877,6 +956,79 @@ def categorization_init(ctx: typer.Context) -> None:
         )
     else:
         typer.echo("Se conserva scope/categorization.yaml.")
+
+
+def edit_categorization(action: Callable[[], None], failure: str) -> None:
+    try:
+        action()
+    except CategorizationEditRejected as exc:
+        typer.echo(failure, err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+
+
+@categorization_app.command("add-information")
+@handled
+def categorization_add_information(
+    ctx: typer.Context,
+    info_id: Annotated[str, typer.Option("--id", help="Identificador único de la información.")],
+    description: Annotated[str, typer.Option("--description", help="Qué información es.")],
+) -> None:
+    """Añade una información sin valorar. No aprueba nada."""
+    store = open_workspace(ctx)
+    edit_categorization(
+        lambda: add_information(store, info_id, description, clock()),
+        "No se añade la información:",
+    )
+    typer.echo(f"Información {info_id} añadida; valora cada dimensión con categorization rate.")
+
+
+@categorization_app.command("rate")
+@handled
+def categorization_rate(
+    ctx: typer.Context,
+    element_id: Annotated[str, typer.Option("--id", help="Información o servicio a valorar.")],
+    dimension: Annotated[Dimension, typer.Option("--dimension", help="C, I, T, A o D.")],
+    level: Annotated[
+        str, typer.Option("--level", help="BAJO, MEDIO, ALTO o not_affected (no afectada).")
+    ],
+    justification: Annotated[
+        str, typer.Option("--justification", help="Criterio del anexo I, 3 que aplica.")
+    ],
+    is_service: Annotated[
+        bool, typer.Option("--service", help="El elemento es un servicio, no una información.")
+    ] = False,
+) -> None:
+    """Fija el nivel de una dimensión de una información o servicio. No aprueba nada."""
+    store = open_workspace(ctx)
+    kind = "service" if is_service else "information"
+    edit_categorization(
+        lambda: set_rating(store, kind, element_id, dimension, level, justification, clock()),
+        "No se guarda la valoración:",
+    )
+    typer.echo(f"{element_id}: dimensión {dimension.value} valorada.")
+
+
+@categorization_app.command("sign-valuation")
+@handled
+def categorization_sign_valuation(
+    ctx: typer.Context,
+    element_id: Annotated[str, typer.Option("--id", help="Información o servicio valorado.")],
+    by: Annotated[str, typer.Option("--by", help="Nombre de su responsable (declarado).")],
+    is_service: Annotated[
+        bool, typer.Option("--service", help="El elemento es un servicio, no una información.")
+    ] = False,
+) -> None:
+    """Registra quién valora una información o servicio. El rol sale del tipo de elemento."""
+    store = open_workspace(ctx)
+    kind = "service" if is_service else "information"
+    edit_categorization(
+        lambda: set_valuation(store, kind, element_id, by, clock()),
+        "No se registra la valoración:",
+    )
+    typer.echo(
+        f"{element_id}: valoración de {by} registrada.\nEl nombre es declarado; no se autentica."
+    )
 
 
 @categorization_app.command("approve")
