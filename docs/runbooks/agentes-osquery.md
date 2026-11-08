@@ -46,7 +46,7 @@ docker compose -p ens-box --profile agents exec -T agent ens-evidence agent host
    docker compose -p ens-box exec caddy wget -q -O - \
      --header 'Content-Type: application/json' --post-data '{}' \
      http://127.0.0.1:8080/agent/enroll
-   # esperado: {"node_invalid": true}
+   # esperado: {"node_invalid":true}
    docker compose -p ens-box exec caddy wget -S -O /dev/null http://127.0.0.1:8080/agent/enroll
    # esperado: error 403 (solo se admite POST)
    ```
@@ -85,6 +85,10 @@ El equipo debe estar inscrito en `connectors/endpoint.yaml` (uuid y hostname).
    --distributed_tls_write_endpoint=/agent/distributed/write
    ```
 
+   `--host_identifier=uuid` es obligatorio: el servidor exige que el
+   identificador sea el uuid de hardware inscrito; con `hostname` el alta
+   responde `node_invalid` sin más pista.
+
    **Prohibidos:** `--logger_tls_compress` (Caddy responde 415) y
    `--tls_secret_always` (el servidor no lo contempla).
 3. Reinicia `osqueryd` y comprueba:
@@ -110,8 +114,15 @@ docker compose -p ens-box --profile agents exec -T agent ens-evidence agent quer
 docker compose -p ens-box --profile agents exec -T agent ens-evidence agent query show <run_id>
 ```
 
+`query list` muestra las vigentes; añade `--all` para ver también las
+caducadas. `--expires` admite hasta 7d (168h), igual que `--hours` del alta.
 El equipo la recoge en su siguiente sondeo distribuido y el resultado queda
 como evidencia, visible con `query show`.
+
+El servidor guarda como máximo un lote de resultados programados por equipo
+cada 6 h (menos 5 min); un lote extra responde 200 y se descarta
+(`outcome=throttled` en el log). Las consultas en vivo no están sujetas a esta
+cota. Las peticiones autenticadas registran `asset=<activo> host=<hash>`.
 
 ## 4. Revocar un equipo
 

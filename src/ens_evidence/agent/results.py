@@ -9,6 +9,7 @@ from datetime import UTC, datetime
 from typing import Any
 
 from ens_evidence import __version__
+from ens_evidence.agent.node_key import host_hash
 from ens_evidence.agent.osquery_config import pack_queries
 from ens_evidence.endpoint.normalize import MAX_STORED_CHARS, STORED_COLUMNS
 from ens_evidence.endpoint.pack import pack_sha256
@@ -16,7 +17,6 @@ from ens_evidence.endpoint.package import CLOCK_SKEW, parse_rows
 from ens_evidence.evidence.importer import canonical_json, import_collected
 from ens_evidence.evidence.layout import manifest_key, new_evidence_id, sha256_hex
 from ens_evidence.evidence.manifests import ManifestError, load_manifest
-from ens_evidence.http.logging import host_hash
 from ens_evidence.models.contracts import CollectionResult
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.workspace import WorkspaceStore

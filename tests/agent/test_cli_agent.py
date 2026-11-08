@@ -64,7 +64,9 @@ def test_serve_runs_uvicorn_with_hardened_limits(settings):
         "timeout_keep_alive": 5,
         "timeout_graceful_shutdown": 10,
         "h11_max_incomplete_event_size": 16384,
+        "log_config": kwargs["log_config"],
     }
+    assert kwargs["log_config"]["filters"]
     from starlette.testclient import TestClient
 
     assert TestClient(application).get("/healthz").json() == {"status": "ok"}
@@ -201,3 +203,48 @@ def test_query_run_all_targets_every_enrolled_host(settings, world):
 
 def test_query_show_unknown_run(settings):
     assert ens(settings, "query", "show", "live-0123456789abcdef").exit_code == 1
+
+
+def test_query_list_hides_expired_runs_unless_all(settings, world):
+    ens(settings, "query", "run", "--asset", LAPTOP, "--query", "os_version", "--by", "a")
+    (run,) = world.state.list_runs()
+    expired = run.expires_at - timedelta(hours=48)
+    world.state.enqueue("os_version", [SERVER], NOW + timedelta(hours=1), "a", now=NOW)
+    old = world.state.enqueue(
+        "os_version", [SERVER], expired + timedelta(hours=1), "a", now=expired
+    )
+
+    assert old.run_id not in ens(settings, "query", "list").stdout
+    assert old.run_id in ens(settings, "query", "list", "--all").stdout
+    assert run.run_id in ens(settings, "query", "list").stdout
+
+
+def test_query_run_caps_expiry_like_admission(settings, world):
+    too_long = ens(
+        settings,
+        "query",
+        "run",
+        "--asset",
+        LAPTOP,
+        "--query",
+        "os_version",
+        "--by",
+        "a",
+        "--expires",
+        "8d",
+    )
+    assert too_long.exit_code == 2 and world.state.list_runs() == []
+    week = ens(
+        settings,
+        "query",
+        "run",
+        "--asset",
+        LAPTOP,
+        "--query",
+        "os_version",
+        "--by",
+        "a",
+        "--expires",
+        "7d",
+    )
+    assert week.exit_code == 0, week.output

@@ -77,6 +77,7 @@ class AgentState:
     def __init__(self, state_dir: Path | None = None) -> None:
         self._root = (state_dir or resolve_state_dir()) / AGENT_DIR
         self._written: dict[str, tuple[datetime, str | None]] = {}
+        self._result_batches: dict[str, datetime] = {}
         self._guard = threading.Lock()
 
     # --- último contacto -------------------------------------------------------------------
@@ -108,6 +109,21 @@ class AgentState:
     def _cached(self, asset_id: str) -> tuple[datetime, str | None] | None:
         stored = self.host(asset_id)
         return (stored.last_contact, stored.platform) if stored else None
+
+    # --- cota de resultados programados ----------------------------------------------------
+
+    def result_slot_free(self, asset_id: str, now: datetime, spacing: timedelta) -> bool:
+        """`True` si el activo no ha entregado un lote de resultados en el último `spacing`.
+
+        Solo en memoria: reiniciar el servicio reabre la ventana, a lo sumo un lote por equipo.
+        """
+        with self._guard:
+            last = self._result_batches.get(asset_id)
+        return last is None or now - last >= spacing
+
+    def record_result_batch(self, asset_id: str, now: datetime) -> None:
+        with self._guard:
+            self._result_batches[asset_id] = now
 
     # --- consultas en vivo -----------------------------------------------------------------
 
@@ -142,9 +158,11 @@ class AgentState:
         self._replace(self._queue(run.run_id) / "query.json", run.model_dump_json())
         return run
 
-    def list_runs(self) -> list[Run]:
+    def list_runs(self, *, active_at: datetime | None = None) -> list[Run]:
+        """Todas las consultas, o solo las que siguen vigentes en `active_at`."""
         runs = (self._load_run(path.name) for path in _dirs(self._root / "queue"))
-        return sorted((r for r in runs if r), key=lambda run: (run.created_at, run.run_id))
+        live = (r for r in runs if r and (active_at is None or r.expires_at > active_at))
+        return sorted(live, key=lambda run: (run.created_at, run.run_id))
 
     def show_run(self, run_id: str) -> RunStatus | None:
         run = self._load_run(run_id) if is_run_id(run_id) else None
@@ -160,8 +178,8 @@ class AgentState:
         """Runs sin entregar y sin caducar para el activo; cada uno se entrega una sola vez."""
         _safe(asset_id)
         delivered: list[Run] = []
-        for run in self.list_runs():
-            if asset_id not in run.targets or run.expires_at <= now:
+        for run in self.list_runs(active_at=now):
+            if asset_id not in run.targets:
                 continue
             marker = Delivery(delivered_at=now).model_dump_json()
             if self._create(self._queue(run.run_id) / f"delivered-{asset_id}", marker):

@@ -32,6 +32,11 @@ def normalize_host_identifier(raw: str) -> str | None:
     return candidate if _UUID.fullmatch(candidate) else None
 
 
+def host_hash(host_identifier: str) -> str:
+    """Huella corta para logs y evidencia: identifica al equipo sin revelar su uuid."""
+    return hashlib.sha256(host_identifier.encode("utf-8")).hexdigest()[:8]
+
+
 def issue_node_key(secrets: AgentSecrets, host_identifier: str, generation: int) -> str:
     hid = _require_host_identifier(host_identifier)
     mac = _mac(secrets.node_key_secret, _NODE_DOMAIN, hid, str(generation))

@@ -2,13 +2,22 @@
 
 import logging
 from collections.abc import Callable
+from typing import Any
 
 from starlette.concurrency import run_in_threadpool
 from starlette.requests import Request
 from starlette.responses import JSONResponse, Response
 from starlette.routing import Route
 
-from ens_evidence.agent.protocol import AgentService, Busy, NodeInvalid, Unavailable
+from ens_evidence.agent.node_key import host_hash
+from ens_evidence.agent.protocol import (
+    AgentService,
+    Busy,
+    MalformedBody,
+    NodeInvalid,
+    Reply,
+    Unavailable,
+)
 from ens_evidence.http.limits import read_json_body
 from ens_evidence.http.logging import log_request
 
@@ -33,22 +42,30 @@ def routes(service: AgentService) -> list[Route]:
     ]
 
 
-def _endpoint(name: str, handle: Callable, limit: int) -> Callable:
+def _endpoint(name: str, handle: Callable[[Any], Reply], limit: int) -> Callable:
     async def view(request: Request) -> Response:
         body = await read_json_body(request, max_bytes=limit)
         try:
-            payload = await run_in_threadpool(handle, body)
+            reply = await run_in_threadpool(handle, body)
         except NodeInvalid:
             log_request(_LOGGER, outcome="node_invalid", endpoint=name)
             return JSONResponse({"node_invalid": True})
+        except MalformedBody:
+            return JSONResponse({"error": "invalid_body"}, status_code=400)
         except Busy:
             log_request(_LOGGER, outcome="busy", endpoint=name)
             return _retry("busy")
         except Unavailable:
             log_request(_LOGGER, outcome="unavailable", endpoint=name)
             return _retry("unavailable")
-        log_request(_LOGGER, outcome="ok", endpoint=name)
-        return JSONResponse(payload)
+        log_request(
+            _LOGGER,
+            outcome=reply.outcome,
+            endpoint=name,
+            asset_id=reply.node.asset_id,
+            host=host_hash(reply.node.host_identifier),
+        )
+        return JSONResponse(reply.payload)
 
     return view
 

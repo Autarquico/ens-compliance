@@ -4,6 +4,15 @@
 {
 	auto_https off
 	admin localhost:2019
+	# Conexiones lentas sin credenciales no deben retener plazas del agente: la cabecera y el
+	# cuerpo (hasta 10 MB) tienen plazo, y Caddy completa el cuerpo antes de abrir el upstream.
+	servers {
+		timeouts {
+			read_header 10s
+			read_body 60s
+			idle 1m
+		}
+	}
 }
 
 :8080 {
@@ -50,6 +59,7 @@
 			max_size 10MB
 		}
 		reverse_proxy agent:8000 {
+			request_buffers 10MB
 			header_up -Cookie
 			header_up -Cf-Access-*
 			transport http {

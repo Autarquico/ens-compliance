@@ -7,6 +7,7 @@ import yaml
 from starlette.testclient import TestClient
 from typer.testing import CliRunner
 
+from ens_evidence.agent.node_key import host_hash
 from ens_evidence.cli import app
 
 from .conftest import SECRETS
@@ -69,6 +70,20 @@ def test_every_endpoint_logs_without_tokens_keys_or_bodies(world, caplog):
     )
     assert leaks(caplog.text, *secrets) == []
     assert all(CANARY not in str(r.args) and CANARY not in r.getMessage() for r in caplog.records)
+
+
+def test_authenticated_requests_log_asset_and_host_hash_but_never_the_uuid(world, caplog):
+    caplog.set_level(logging.INFO, logger="ens_evidence.agent")
+    node_key = world.enroll()
+    caplog.clear()
+
+    world.post("config", {"node_key": node_key})
+    world.post("config", {"node_key": node_key[:-3] + "AAA"})
+
+    ok, invalid = (r.getMessage() for r in caplog.records)
+    assert ok == f"outcome=ok endpoint=config asset={LAPTOP} host={host_hash(LAPTOP_UUID)}"
+    assert invalid == "outcome=node_invalid endpoint=config asset=- host=-"
+    assert LAPTOP_UUID not in caplog.text
 
 
 def test_unexpected_errors_log_only_the_exception_type(world, caplog, monkeypatch):

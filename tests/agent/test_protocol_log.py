@@ -11,6 +11,8 @@ from .protocol_support import (
     LAPTOP_UUID,
     NOW,
     OS_VERSION_ROW,
+    SERVER,
+    SERVER_HOST,
     SERVER_UUID,
     snapshot_event,
 )
@@ -210,3 +212,43 @@ def test_result_log_without_data_list_is_a_bad_request(world):
     response = world.post("log", {"node_key": node_key, "log_type": "result", "data": "x"})
 
     assert response.status_code == 400
+
+
+def distinct_batch(minor: str):
+    return [snapshot_event("os_version", [{**OS_VERSION_ROW, "minor": minor}])]
+
+
+def test_distinct_batches_in_one_interval_store_only_the_first(world, caplog):
+    node_key = world.enroll()
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    responses = [send(world, node_key, distinct_batch(str(n))) for n in range(5)]
+
+    assert all(r.json() == {"node_invalid": False} for r in responses)
+    assert len(manifests(world)) == 1
+    assert caplog.text.count("outcome=throttled") == 4
+
+
+def test_a_new_batch_is_stored_once_the_interval_has_passed(world):
+    node_key = world.enroll()
+    send(world, node_key, distinct_batch("1"))
+
+    world.clock.advance(hours=5, minutes=56)
+    send(world, node_key, distinct_batch("2"))
+    assert len(manifests(world)) == 2
+
+
+def test_a_batch_refused_with_503_does_not_use_the_interval(world):
+    node_key = world.enroll()
+    with world.lock():
+        assert send(world, node_key, distinct_batch("1")).status_code == 503
+    assert send(world, node_key, distinct_batch("1")).status_code == 200
+    assert len(manifests(world)) == 1
+
+
+def test_the_interval_is_per_host(world):
+    first = world.enroll()
+    second = world.enroll(SERVER, uuid=SERVER_UUID, hostname=SERVER_HOST)
+    send(world, first, distinct_batch("1"))
+    send(world, second, [snapshot_event("os_version", [OS_VERSION_ROW], host=SERVER_UUID.upper())])
+    assert len(manifests(world)) == 2

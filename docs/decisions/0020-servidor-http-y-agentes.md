@@ -22,7 +22,8 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   del paquete. Sin FastAPI. La validación Pydantic de los cuerpos se hace a
   mano en el borde.
 - uvicorn sin cabecera `server`, sin access log, con `limit_concurrency` y
-  cabeceras h11 acotadas. Los logs no llevan secretos ni cuerpos.
+  cabeceras h11 acotadas. Los logs no llevan secretos ni cuerpos, y uvicorn no
+  vuelca trazas (filtro en `log_config`).
 
 ### Dos servicios, una imagen
 
@@ -68,6 +69,11 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   ocupado (ciclo o copia) se responde 503 con `Retry-After` y osquery
   reintenta; **no hay spool ni drenador**. Los reintentos se deduplican por sha.
 - `log_type=status` se descarta con 200.
+- Cota de almacenamiento: un lote de resultados programados por equipo por
+  intervalo de schedule (6 h menos el desfase de reloj de 5 min); el resto se
+  descarta con 200. La cota es en memoria. Caddy aplica `read_header`,
+  `read_body` e `idle` y completa el cuerpo (`request_buffers`) antes de
+  abrir el upstream.
 - Solo se aceptan snapshots de consultas del paquete, filtrados por plataforma
   y por la lista blanca de columnas.
 - Config servida desde el paquete del repo, SQL byte a byte, en modo snapshot
