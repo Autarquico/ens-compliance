@@ -147,6 +147,8 @@ se verifica en `validation-selfassessment`.
 
 ## 5. Inscribir la caja como activo del alcance
 
+Para cerrar v0.1 con la caja en el alcance, sigue el [runbook de validación y cierre](validacion-y-cierre.md).
+
 La caja es un activo más del sistema y se declara en el inventario del
 workspace de tu organización. Ese dato es tuyo: no va al repositorio.
 
