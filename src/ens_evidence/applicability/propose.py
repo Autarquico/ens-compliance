@@ -132,6 +132,7 @@ def decide(
         "chosen_reinforcements": list(chosen_reinforcements),
         "compensation": _plain(compensation),
         "absent_assets": _plain(absent_assets),
+        "proposed": False,
     }
     raw = {**current.model_dump(mode="json", exclude_none=True), **fields}
     try:

@@ -476,9 +476,6 @@ def test_ausencia_de_activo_solo_donde_la_lista_cerrada_lo_permite(completed, ex
     assert forced.status_code == 422 and snapshot_of(example_store) == before
 
 
-@pytest.mark.xfail(
-    strict=True, reason="decide() conserva proposed=True al excluir una medida propuesta"
-)
 def test_ausencia_de_activo_se_registra_y_se_lista_antes_de_firmar(completed, example_store):
     prepared(completed)
     measure_id = absent_candidate(example_store)
@@ -520,9 +517,6 @@ def test_compensacion_exige_sus_tres_partes(completed, example_store):
     assert snapshot_of(example_store) == before
 
 
-@pytest.mark.xfail(
-    strict=True, reason="decide() conserva proposed=True al compensar una medida propuesta"
-)
 def test_compensacion_completa_se_registra(completed, example_store):
     prepared(completed)
     measure_id = next(

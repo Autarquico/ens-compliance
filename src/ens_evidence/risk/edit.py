@@ -16,6 +16,7 @@ from ens_evidence.categorization.edit import _split_header
 from ens_evidence.risk.init import init_risk
 from ens_evidence.risk.models import (
     METHODOLOGY_KEY,
+    METHODOLOGY_MD_KEY,
     REGISTER_KEY,
     TREATMENT_PLAN_KEY,
     Methodology,
@@ -24,6 +25,7 @@ from ens_evidence.risk.models import (
     TreatmentAction,
     TreatmentPlanFile,
 )
+from ens_evidence.risk.templates import METHODOLOGY_MD
 from ens_evidence.risk.validate import _check_register
 from ens_evidence.scope.inventory import load_inventory
 from ens_evidence.scope.messages import describe_validation
@@ -105,7 +107,22 @@ def adopt_methodology(
     header, document = _read(store, METHODOLOGY_KEY)
     document.update(adopted=True, **fields)
     _save(store, METHODOLOGY_KEY, header, Methodology, document)
+    _document_methodology(store, fields)
     return created
+
+
+def _document_methodology(store: WorkspaceStore, fields: dict[str, str]) -> None:
+    """Rellena la cabecera de `risk/methodology.md` si sigue siendo la plantilla; nunca la pisa."""
+    if store.read_text(METHODOLOGY_MD_KEY) != METHODOLOGY_MD:
+        return
+    filled = METHODOLOGY_MD
+    for label, value in [
+        ("Nombre y versión", fields["name"]),
+        ("Referencia (norma o guía publicada)", fields["reference"]),
+        ("Adaptaciones respecto a la referencia", fields["adaptation"]),
+    ]:
+        filled = filled.replace(f"- {label}:\n", f"- {label}: {value}\n", 1)
+    store.write_text(METHODOLOGY_MD_KEY, filled)
 
 
 def add_risk(store: WorkspaceStore, fields: dict[str, Any], now: datetime) -> None:

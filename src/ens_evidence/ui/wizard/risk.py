@@ -24,14 +24,13 @@ from ens_evidence.risk.edit import (
 )
 from ens_evidence.risk.models import (
     METHODOLOGY_KEY,
-    METHODOLOGY_MD_KEY,
     REGISTER_KEY,
     TREATMENT_PLAN_KEY,
     ActionStatus,
     Methodology,
     Treatment,
 )
-from ens_evidence.risk.templates import METHODOLOGY_MD, METHODOLOGY_YAML
+from ens_evidence.risk.templates import METHODOLOGY_YAML
 from ens_evidence.risk.validate import validate_risk
 from ens_evidence.scope import ScopeNotApproved
 from ens_evidence.scope.inventory import SERVICES_KEY, SYSTEM_KEY
@@ -155,24 +154,6 @@ def _metodologia_context(step: StepInput) -> Context:
     }
 
 
-def _document_methodology(step: StepInput, values: dict[str, str]) -> None:
-    """Deja `risk/methodology.md` con lo declarado si aún es la plantilla (sin él no se aprueba)."""
-    try:
-        untouched = step.store.read_text(METHODOLOGY_MD_KEY) == METHODOLOGY_MD
-    except Exception:
-        return
-    if untouched:
-        step.store.write_text(
-            METHODOLOGY_MD_KEY,
-            "# Metodología de análisis de riesgos\n\n"
-            "Declarada desde el asistente web. Las escalas y la matriz de riesgo están en "
-            "`risk/methodology.yaml`.\n\n"
-            f"- Nombre y versión: {values['name']}\n"
-            f"- Referencia: {values['reference']}\n"
-            f"- Adaptaciones respecto a la referencia: {values['adaptation']}\n",
-        )
-
-
 def _metodologia_save(step: StepInput) -> None:
     values = required(
         step.form,
@@ -184,7 +165,6 @@ def _metodologia_save(step: StepInput) -> None:
     )
     with plain_rejection(RiskEditRejected):
         adopt_methodology(step.store, values["name"], values["reference"], values["adaptation"])
-    _document_methodology(step, values)
 
 
 def _metodologia_done(store: UiStore, now: datetime) -> bool:

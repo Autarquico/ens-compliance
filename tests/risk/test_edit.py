@@ -11,6 +11,8 @@ from ens_evidence.risk.edit import (
     remove_action,
     remove_risk,
 )
+from ens_evidence.risk.models import METHODOLOGY_MD_KEY
+from ens_evidence.risk.templates import METHODOLOGY_MD
 
 from .helpers import ACCEPTED_AT, METHODOLOGY, NOW, PLAN, REGISTER, action, risk
 
@@ -167,3 +169,24 @@ def test_add_risk_pide_adoptar_antes_la_metodologia(inventory_store):
         add_risk(inventory_store, risk(), NOW)
 
     assert any("risk/methodology.yaml" in e for e in caught.value.errors)
+
+
+def test_adopting_the_methodology_documents_it_so_it_can_be_approved(inventory_store):
+    store = inventory_store
+    adopt_methodology(store, "MAGERIT v3", "Guía del CCN", "Escalas de tres niveles")
+
+    document = store.read_text(METHODOLOGY_MD_KEY)
+
+    assert document != METHODOLOGY_MD
+    assert "- Nombre y versión: MAGERIT v3\n" in document
+    assert "- Adaptaciones respecto a la referencia: Escalas de tres niveles\n" in document
+
+
+def test_adopting_again_never_overwrites_a_documented_methodology(inventory_store):
+    store = inventory_store
+    adopt_methodology(store, "MAGERIT v3", "Guía del CCN", "Escalas de tres niveles")
+    store.write_text(METHODOLOGY_MD_KEY, "# Nuestra metodología\n")
+
+    adopt_methodology(store, "MAGERIT v3", "Guía del CCN", "Otra adaptación")
+
+    assert store.read_text(METHODOLOGY_MD_KEY) == "# Nuestra metodología\n"
