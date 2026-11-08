@@ -2,12 +2,12 @@
 codename: ens-compliance
 title: "UI web: base con Cloudflare Access, alcance y categorización"
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [62]
 depends_on: [osquery-server]
 supersedes: []
 related_specs: [web-ui]
