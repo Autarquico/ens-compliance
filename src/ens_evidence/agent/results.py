@@ -22,6 +22,8 @@ from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.workspace import WorkspaceStore
 
 SOURCE = "osquery-agent"
+# Ningún osquery legítimo reporta antes de esto; un reloj a cero o negativo no es una lectura.
+EARLIEST_EVENT = datetime(2000, 1, 1, tzinfo=UTC)
 
 
 @dataclass(frozen=True)
@@ -137,7 +139,7 @@ def _snapshot(
     if platform is not None and platform not in query.platforms:
         return None
     collected_at = _event_time(event.get("unixTime"))
-    if collected_at is None or collected_at > now + CLOCK_SKEW:
+    if collected_at is None or not EARLIEST_EVENT <= collected_at <= now + CLOCK_SKEW:
         return None
     rows = _clean_rows(event.get("snapshot"))
     return None if rows is None else Snapshot(query.id, rows, collected_at)

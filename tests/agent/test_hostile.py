@@ -246,14 +246,7 @@ def test_events_from_the_future_are_ignored(world, node_key, delta):
 @pytest.mark.parametrize(
     "unix_time",
     [
-        pytest.param(
-            -1,
-            marks=pytest.mark.xfail(
-                strict=True,
-                reason="producto: un unixTime anterior a 1970 se acepta y se guarda como "
-                "EV-19691231-*; debería ignorarse",
-            ),
-        ),
+        -1,
         2**70,
         "1700000000",
         1.5,

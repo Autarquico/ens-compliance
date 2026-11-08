@@ -13,7 +13,7 @@ from ens_evidence.agent.routes import routes
 from ens_evidence.agent.secrets import AgentSecrets
 from ens_evidence.agent.state import AgentState
 from ens_evidence.http.app import create_app
-from ens_evidence.workspace import LocalStore
+from ens_evidence.workspace import LocalStore, load_settings
 from ens_evidence.workspace.cycle_lock import CycleLock
 
 from .protocol_support import (
@@ -48,9 +48,12 @@ class World:
     state: AgentState
     clock: Clock
     client: TestClient
+    settings_path: Path
 
     def lock(self) -> CycleLock:
-        return CycleLock("test-workspace", self.state_dir)
+        """El mismo lock que usan la CLI y `backup run`: derivado de los ajustes del workspace."""
+        settings = load_settings(self.settings_path, allow_inside_product=True)
+        return CycleLock.for_settings(settings, {"ENS_STATE_DIR": str(self.state_dir)})
 
     def admit(self, asset: str = LAPTOP, hours: int = 24) -> None:
         with self.lock() as held:
@@ -95,11 +98,15 @@ def world(tmp_path) -> World:
     workspace_root = tmp_path / "ws"
     workspace = LocalStore(workspace_root)
     workspace.write_text("connectors/endpoint.yaml", yaml.safe_dump(ENDPOINT_CONFIG))
+    settings_path = tmp_path / "world-settings.yaml"
+    settings_path.write_text(
+        yaml.safe_dump({"workspace": {"backend": "local", "local": {"path": str(workspace_root)}}})
+    )
     state_dir = tmp_path / "state"
     state = AgentState(state_dir)
     clock = Clock()
     holder: dict[str, World] = {}
     service = AgentService(workspace, SECRETS, state, lambda: holder["w"].lock(), now=clock)
     client = TestClient(create_app(routes(service)), raise_server_exceptions=True)
-    holder["w"] = World(workspace, workspace_root, state_dir, state, clock, client)
+    holder["w"] = World(workspace, workspace_root, state_dir, state, clock, client, settings_path)
     return holder["w"]

@@ -4,8 +4,10 @@ import re
 
 import pytest
 
+from ens_evidence.cli import exclusive_cycle
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.verify import verify_all
+from ens_evidence.workspace import load_settings
 
 from . import test_cli_agent
 from .conftest import SECRETS
@@ -149,7 +151,7 @@ def test_lock_ocupado_recibe_503_sin_escribir_y_el_reintento_se_importa_una_sola
     }
     before = world.files()
 
-    with world.lock():
+    with exclusive_cycle(load_settings(settings, allow_inside_product=True)):
         busy = world.post("log", results)
         assert busy.status_code == 503 and busy.headers["retry-after"]
         assert without_lock_files(world.files()) == without_lock_files(before)
