@@ -1,6 +1,8 @@
-# Deny-all salvo cinco POST del protocolo TLS de osquery hacia el servidor de agentes (ADR 0016).
-# Todo lo demás responde 403 y queda en el log; no hay UI pública.
-# Escucha en :8080 dentro de las redes internas `edge` y `agent`; ningún puerto se publica en el host.
+# Separa por nombre de host (ADR 0016, ADR 0021). Deny-all salvo:
+#   - ENS_UI_HOST: la interfaz web (ui:8000); detrás de Cloudflare Access, que firma Cf-Access-Jwt-Assertion.
+#   - ENS_AGENT_HOST: cinco POST del protocolo TLS de osquery hacia el servidor de agentes.
+# Un host desconocido o vacío, y todo lo demás, responde 403 y queda en el log.
+# Escucha en :8080 dentro de las redes internas `edge`, `agent` y `ui-net`; ningún puerto se publica en el host.
 {
 	auto_https off
 	admin localhost:2019
@@ -19,6 +21,7 @@
 		}
 	}
 
+	@ui host {$ENS_UI_HOST:ui.invalid}
 	@small_agent {
 		method POST
 		path /agent/enroll /agent/config /agent/distributed/read
@@ -28,14 +31,31 @@
 		path /agent/log /agent/distributed/write
 	}
 	@agent_any {
+		host {$ENS_AGENT_HOST:agent.invalid}
 		method POST
 		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
 	}
 	# El servidor no descomprime: osquery con --logger_tls_compress enviaría cuerpos que no puede leer.
 	@encoded {
+		host {$ENS_AGENT_HOST:agent.invalid}
 		method POST
 		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
 		header Content-Encoding *
+	}
+
+	handle @ui {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy ui:8000 {
+			# Cf-Access-Jwt-Assertion SÍ llega a la interfaz: es su identidad. La cookie de Access no.
+			header_up -Cookie
+			header_up -X-Forwarded-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
 	}
 
 	handle @encoded {

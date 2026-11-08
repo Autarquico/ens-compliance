@@ -96,6 +96,7 @@ def test_las_credenciales_solo_llegan_a_quien_las_necesita(services):
     assert env_files == {
         "app": "${ENS_ENV_FILE:-deploy/.env}",
         "agent": "${ENS_AGENT_ENV_FILE:-deploy/agent.env}",
+        "ui": "${ENS_UI_ENV_FILE:-deploy/ui.env}",
         "cloudflared": "${ENS_TUNNEL_ENV_FILE:-deploy/tunnel.env}",
     }
 
@@ -141,7 +142,7 @@ def test_el_latido_del_scheduler_es_de_cada_contenedor_no_del_volumen(services):
 def test_caddy_no_tiene_salida_a_internet(compose, services):
     networks = services["caddy"]["networks"]
 
-    assert set(networks) == {"edge", "agent"}
+    assert set(networks) == {"edge", "agent", "ui-net"}
     assert all(compose["networks"][n].get("internal") is True for n in networks)
 
 
@@ -178,10 +179,61 @@ def test_agent_se_sondea_en_healthz_sin_curl_ni_wget(services):
     assert "127.0.0.1:8000/healthz" in test[3]
 
 
-def test_la_imagen_instala_el_extra_server(dockerfile):
-    assert all(
-        "--extra server" in line for line in re.findall(r"^RUN uv sync .*$", dockerfile, re.M)
-    )
+def test_la_imagen_instala_los_extras_server_y_ui(dockerfile):
+    lines = re.findall(r"^RUN uv sync .*$", dockerfile, re.M)
+
+    assert lines
+    assert all("--extra server" in line and "--extra ui" in line for line in lines)
+
+
+def test_ui_solo_arranca_con_el_perfil_ui(services):
+    assert services["ui"]["profiles"] == ["ui"]
+
+
+def test_ui_nunca_recibe_las_credenciales_de_los_conectores(services):
+    ui = services["ui"]
+
+    assert ui["env_file"] == "${ENS_UI_ENV_FILE:-deploy/ui.env}"
+    assert "ENS_ENV_FILE" not in str(ui)
+    assert "environment" not in ui
+
+
+def test_ui_corre_endurecido_sin_puertos_y_solo_en_una_red_interna(compose, services):
+    ui = services["ui"]
+
+    assert ui["read_only"] is True
+    assert "/tmp" in ui["tmpfs"]
+    assert ui["init"] is True
+    assert ui["restart"] == "unless-stopped"
+    assert "ports" not in ui
+    assert ui["networks"] == ["ui-net"]
+    assert compose["networks"]["ui-net"]["internal"] is True
+    assert ui["volumes"] == ["data:/data"]
+    assert ui["command"][:3] == ["ens-evidence", "ui", "serve"]
+
+
+def test_ui_se_sondea_en_healthz_sin_curl_ni_wget(services):
+    test = services["ui"]["healthcheck"]["test"]
+
+    assert test[:3] == ["CMD", "python", "-c"]
+    assert "127.0.0.1:8000/healthz" in test[3]
+
+
+def test_todas_las_redes_a_las_que_llega_un_servicio_con_datos_son_internas(compose, services):
+    for name in ("agent", "ui"):
+        assert all(
+            compose["networks"][n].get("internal") is True for n in services[name]["networks"]
+        )
+
+
+def test_solo_app_y_cloudflared_tienen_salida_a_internet(compose, services):
+    outbound = {
+        name
+        for name, service in services.items()
+        if any(not compose["networks"][n].get("internal") for n in service["networks"])
+    }
+
+    assert outbound == {"app", "cloudflared"}
 
 
 AGENT_PATHS = [
@@ -193,6 +245,39 @@ AGENT_PATHS = [
 ]
 
 
+def block(caddyfile, opening):
+    """El cuerpo de `opening { ... }` al nivel de indentación del Caddyfile (una tabulación)."""
+    found = re.search(rf"\t{re.escape(opening)} \{{\n(.*?)\n\t\}}", caddyfile, re.S)
+    assert found, opening
+    return found.group(1)
+
+
+def test_caddy_enruta_la_ui_por_nombre_de_host(caddyfile):
+    assert re.search(r"@ui host \{\$ENS_UI_HOST:ui\.invalid\}", caddyfile)
+    ui = block(caddyfile, "handle @ui")
+    assert "reverse_proxy ui:8000" in ui
+    assert re.search(r"request_body \{\s*max_size 1MB", ui)
+    assert caddyfile.count("reverse_proxy") == 2
+
+
+def test_caddy_enruta_los_agentes_por_nombre_de_host(caddyfile):
+    for matcher in ("@agent_any", "@encoded"):
+        assert "host {$ENS_AGENT_HOST:agent.invalid}" in block(caddyfile, matcher)
+
+
+def test_caddy_pasa_el_jwt_de_access_a_la_ui_y_lo_quita_hacia_el_agente(caddyfile):
+    ui = block(caddyfile, "handle @ui")
+    agent = block(caddyfile, "handle @agent_any")
+
+    assert "header_up -Cf-Access" not in ui
+    assert "header_up -Cf-Access-*" in agent
+    assert "header_up -Cookie" in ui and "header_up -Cookie" in agent
+
+
+def test_caddy_descarta_x_forwarded_del_cliente_hacia_la_ui(caddyfile):
+    assert "header_up -X-Forwarded-*" in block(caddyfile, "handle @ui")
+
+
 def test_caddy_solo_enruta_los_cinco_post_del_protocolo(caddyfile):
     matcher = re.search(r"@agent_any \{(.*?)\n\t\}", caddyfile, re.S)
 
@@ -200,7 +285,6 @@ def test_caddy_solo_enruta_los_cinco_post_del_protocolo(caddyfile):
     assert "method POST" in matcher.group(1)
     paths = re.search(r"path (.+)", matcher.group(1)).group(1).split()
     assert paths == AGENT_PATHS
-    assert caddyfile.count("reverse_proxy") == 1
     assert "reverse_proxy agent:8000" in caddyfile
 
 
@@ -208,6 +292,7 @@ def test_caddy_rechaza_content_encoding_con_415(caddyfile):
     assert re.search(r"@encoded \{.*?header Content-Encoding \*.*?\}", caddyfile, re.S)
     assert re.search(r"handle @encoded \{\s*respond .* 415", caddyfile)
     assert caddyfile.index("handle @encoded") < caddyfile.index("handle @agent_any")
+    assert caddyfile.index("handle @ui") < caddyfile.index("handle {")
 
 
 def test_caddy_limita_el_cuerpo_por_ruta(caddyfile):
@@ -257,7 +342,13 @@ def test_no_hay_credenciales_literales_en_la_caja(services):
 
 
 @pytest.mark.parametrize(
-    "example", ["deploy/.env.example", "deploy/tunnel.env.example", "deploy/agent.env.example"]
+    "example",
+    [
+        "deploy/.env.example",
+        "deploy/tunnel.env.example",
+        "deploy/agent.env.example",
+        "deploy/ui.env.example",
+    ],
 )
 def test_los_ejemplos_de_entorno_no_traen_valores(example):
     lines = (REPO / example).read_text(encoding="utf-8").splitlines()
@@ -273,9 +364,11 @@ def test_los_ficheros_env_reales_no_se_suben_a_git_pero_los_ejemplos_si():
     assert ignored("deploy/.env")
     assert ignored("deploy/tunnel.env")
     assert ignored("deploy/agent.env")
+    assert ignored("deploy/ui.env")
     assert not ignored("deploy/.env.example")
     assert not ignored("deploy/tunnel.env.example")
     assert not ignored("deploy/agent.env.example")
+    assert not ignored("deploy/ui.env.example")
 
 
 def test_restic_se_verifica_por_sha256_antes_de_entrar_en_la_imagen(dockerfile):
@@ -349,7 +442,7 @@ def run_status(root, env):
 
 
 @pytest.mark.parametrize("mode", [0o644, 0o640, 0o604, 0o660, 0o666])
-@pytest.mark.parametrize("name", [".env", "tunnel.env", "agent.env"])
+@pytest.mark.parametrize("name", [".env", "tunnel.env", "agent.env", "ui.env"])
 def test_box_sh_se_niega_a_usar_un_env_con_modo_distinto_de_600(clone_with_docker_stub, name, mode):
     root, env = clone_with_docker_stub
     secrets = root / "deploy" / name
@@ -463,3 +556,37 @@ def test_box_sh_no_activa_la_traza_de_shell():
 def test_box_sh_pasa_shellcheck():
     result = subprocess.run(["shellcheck", "-s", "sh", str(BOX_SH)], capture_output=True, text=True)
     assert result.returncode == 0, result.stdout
+
+
+def test_box_sh_activa_el_perfil_ui_si_existe_ui_env_y_le_pasa_su_fichero():
+    text = BOX_SH.read_text(encoding="utf-8")
+
+    assert re.search(r'\[ ! -e "\$UI_ENV_FILE" \] \|\| profiles=.*ui', text)
+    assert "ENS_UI_ENV_FILE=$UI_ENV_FILE" in text
+    assert "ENS_ENV_FILE=$UI_ENV_FILE" not in text
+
+
+@pytest.mark.parametrize(
+    "value", ["https://ui.example.org", "ui.example.org:443", "a b", ".x", "-x"]
+)
+def test_box_sh_rechaza_un_nombre_de_host_que_no_es_un_host(clone_with_docker_stub, value):
+    root, env = clone_with_docker_stub
+    ui_env = root / "deploy" / "ui.env"
+    ui_env.write_text(f"ENS_UI_HOST={value}\n")
+    ui_env.chmod(0o600)
+
+    result = run_status(root, env)
+
+    assert result.returncode != 0
+    assert "nombre de host" in result.stderr
+
+
+def test_box_sh_acepta_un_nombre_de_host_valido(clone_with_docker_stub):
+    root, env = clone_with_docker_stub
+    ui_env = root / "deploy" / "ui.env"
+    ui_env.write_text("ENS_UI_HOST=ui.example.org\n")
+    ui_env.chmod(0o600)
+
+    result = run_status(root, env)
+
+    assert "nombre de host" not in result.stderr

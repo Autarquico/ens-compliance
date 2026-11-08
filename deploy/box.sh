@@ -4,7 +4,7 @@
 #   deploy/box.sh install <vX.Y.Z>
 #   deploy/box.sh update [--no-backup] <vX.Y.Z>
 #   deploy/box.sh rollback
-#   deploy/box.sh restart [app|caddy|cloudflared|agent]
+#   deploy/box.sh restart [app|caddy|cloudflared|agent|ui]
 #   deploy/box.sh status
 #
 # Lo ejecuta una persona con Docker en la VM, desde un clon del repositorio con la etiqueta
@@ -25,6 +25,9 @@ VOLUME="${PROJECT}_data"
 ENV_FILE="$ROOT/deploy/.env"
 TUNNEL_ENV_FILE="$ROOT/deploy/tunnel.env"
 AGENT_ENV_FILE="$ROOT/deploy/agent.env"
+UI_ENV_FILE="$ROOT/deploy/ui.env"
+UI_HOST=
+AGENT_HOST=
 STATE_FILE=/data/state/box-deploy.json
 APP_UID=10001
 HEALTH_TIMEOUT=${ENS_BOX_HEALTH_TIMEOUT:-180}
@@ -84,7 +87,7 @@ trap 'cleanup; release_lock' EXIT
 trap 'exit 130' INT TERM
 
 usage() {
-  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared|agent] | status"
+  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared|agent|ui] | status"
 }
 
 # --- comprobaciones ------------------------------------------------------------------------
@@ -121,6 +124,26 @@ check_secret_files() {
   check_private "$ENV_FILE"
   check_private "$TUNNEL_ENV_FILE"
   check_private "$AGENT_ENV_FILE"
+  check_private "$UI_ENV_FILE"
+  load_hostnames
+}
+
+# Nombre de host (ENS_*_HOST) de un fichero de entorno, sin ejecutarlo. Vacío si falta.
+# Falla si no es un nombre de host simple: acaba en un matcher de Caddy.
+hostname_from() {
+  [ -e "$1" ] || return 0
+  value=$(sed -n "s/^$2=//p" "$1" | tail -n 1)
+  case $value in
+    *[!A-Za-z0-9.-]* | .* | -*) return 1 ;;
+  esac
+  printf '%s' "$value"
+}
+
+load_hostnames() {
+  UI_HOST=$(hostname_from "$UI_ENV_FILE" ENS_UI_HOST) ||
+    die "ENS_UI_HOST de $UI_ENV_FILE no es un nombre de host (sin esquema ni puerto)."
+  AGENT_HOST=$(hostname_from "$AGENT_ENV_FILE" ENS_AGENT_HOST) ||
+    die "ENS_AGENT_HOST de $AGENT_ENV_FILE no es un nombre de host (sin esquema ni puerto)."
 }
 
 ensure_env_file() {
@@ -147,8 +170,11 @@ dc() {
   profiles=
   [ ! -e "$TUNNEL_ENV_FILE" ] || profiles=tunnel
   [ ! -e "$AGENT_ENV_FILE" ] || profiles="${profiles:+$profiles,}agents"
+  [ ! -e "$UI_ENV_FILE" ] || profiles="${profiles:+$profiles,}ui"
+  # Vacíos, compose.yaml pone `.invalid` y Caddy contesta 403 a todo en ese servicio.
   COMPOSE_PROFILES=$profiles ENS_ENV_FILE=$ENV_FILE ENS_TUNNEL_ENV_FILE=$TUNNEL_ENV_FILE \
-    ENS_AGENT_ENV_FILE=$AGENT_ENV_FILE \
+    ENS_AGENT_ENV_FILE=$AGENT_ENV_FILE ENS_UI_ENV_FILE=$UI_ENV_FILE \
+    ENS_UI_HOST=$UI_HOST ENS_AGENT_HOST=$AGENT_HOST \
     docker compose -p "$PROJECT" -f "$REL/compose.yaml" --project-directory "$REL" "$@"
 }
 
@@ -286,20 +312,27 @@ wait_healthy() {
   return 1
 }
 
-# El servidor de agentes corre si hay deploy/agent.env y la release en uso define el servicio.
-agent_enabled() {
-  [ -e "$AGENT_ENV_FILE" ] && dc config --services | grep -qx agent
+# Un servicio opcional corre si existe su fichero de entorno ($1) y la release en uso lo define ($2).
+service_enabled() {
+  [ -e "$1" ] && dc config --services | grep -qx "$2"
 }
 
-# Una release sin servicio agent (rollback a una versión anterior) deja su contenedor huérfano:
+agent_enabled() { service_enabled "$AGENT_ENV_FILE" agent; }
+ui_enabled() { service_enabled "$UI_ENV_FILE" ui; }
+
+# Una release sin el servicio $1 (rollback a una versión anterior) deja su contenedor huérfano:
 # se para, sin borrarlo ni tocar volúmenes.
-stop_orphan_agent() {
-  agent_enabled && return 0
+stop_orphan() {
   for container in $(docker ps -q --filter "label=com.docker.compose.project=$PROJECT" \
-    --filter "label=com.docker.compose.service=agent"); do
-    warn "La release $target no define agent: se para el contenedor huérfano (los datos no se tocan)."
+    --filter "label=com.docker.compose.service=$1"); do
+    warn "La release $target no define $1: se para el contenedor huérfano (los datos no se tocan)."
     docker stop "$container" >/dev/null
   done
+}
+
+stop_orphan_services() {
+  agent_enabled || stop_orphan agent
+  ui_enabled || stop_orphan ui
 }
 
 verify_running_app() {
@@ -310,6 +343,7 @@ verify_running_app() {
 verify_running() {
   verify_running_app || return 1
   ! agent_enabled || wait_healthy agent || return 1
+  ! ui_enabled || wait_healthy ui || return 1
   wait_healthy caddy || return 1
 }
 
@@ -531,7 +565,7 @@ cmd_rollback() {
   export ENS_VERSION="$target"
   info "Volviendo a $target (los datos no se tocan)..."
   dc up -d --no-build
-  stop_orphan_agent
+  stop_orphan_services
   verify_running || die "$target no está sana tras el rollback; revisa los logs."
   state rolled-back
   info "Rollback hecho: $target"
@@ -547,6 +581,7 @@ cmd_restart() {
     app | caddy) ;;
     cloudflared) [ -e "$TUNNEL_ENV_FILE" ] || die "cloudflared necesita $TUNNEL_ENV_FILE (perfil tunnel)." ;;
     agent) [ -e "$AGENT_ENV_FILE" ] || die "agent necesita $AGENT_ENV_FILE (perfil agents)." ;;
+    ui) [ -e "$UI_ENV_FILE" ] || die "ui necesita $UI_ENV_FILE (perfil ui)." ;;
     *) usage ;;
   esac
   require_tools
