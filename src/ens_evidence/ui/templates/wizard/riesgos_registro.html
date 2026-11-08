@@ -1,0 +1,185 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+{%- set v = values or {} -%}
+{%- set picked_assets = [v.get('risk_assets', [])] if v.get('risk_assets', []) is string else v.get('risk_assets', []) -%}
+{%- set picked_services = [v.get('risk_services', [])] if v.get('risk_services', []) is string else v.get('risk_services', []) -%}
+{%- set picked_dimensions = [v.get('risk_dimensions', [])] if v.get('risk_dimensions', []) is string else v.get('risk_dimensions', []) -%}
+{%- set picked_safeguards = [v.get('safeguards', [])] if v.get('safeguards', []) is string else v.get('safeguards', []) -%}
+<h2>{{ step_title }}</h2>
+<p class="lead">Un riesgo es una amenaza concreta sobre algo de tu sistema, por ejemplo «pérdida o robo de un portátil». Para cada uno dices qué afecta, cuánto, qué medidas lo reducen y qué riesgo queda. La herramienta solo te ofrece valores válidos y calcula el riesgo inherente con la matriz; la valoración es tuya.</p>
+{% include "partials/_paso_cabecera.html" %}
+{% if not adopted %}
+<div class="notice notice-warn"><p>Antes de añadir riesgos, adopta la metodología en el paso <a href="/asistente/riesgos-metodologia">«Metodología»</a>.</p></div>
+{% else %}
+<section aria-labelledby="riesgos-actuales">
+  <h3 id="riesgos-actuales">Riesgos registrados</h3>
+  {%- for r in risks %}
+  <article class="card" aria-labelledby="riesgo-{{ loop.index }}">
+    <h4 id="riesgo-{{ loop.index }}"><span class="mono">{{ r.id }}</span> · {{ r.threat }}</h4>
+    <dl class="facts">
+      <dt>Afecta a</dt><dd>{{ r.targets | join(", ") }}</dd>
+      <dt>Dimensiones</dt><dd>{{ r.dimensions | join(", ") }}</dd>
+      <dt>Probabilidad · impacto</dt><dd>{{ r.likelihood }} · {{ r.impact }}</dd>
+      <dt>Riesgo inherente</dt><dd>{{ r.inherent }}</dd>
+      <dt>Medidas que lo reducen</dt><dd>{% if r.safeguards %}<span class="mono">{{ r.safeguards | join(", ") }}</span>{% else %}<span class="muted">Ninguna</span>{% endif %}</dd>
+      <dt>Riesgo que queda</dt><dd>{{ r.residual }}{% if r.accepted_by %} <span class="muted">· lo acepta {{ r.accepted_by }}</span>{% endif %}</dd>
+      <dt>Tratamiento</dt><dd>{{ r.treatment }}</dd>
+      <dt>Responsable</dt><dd>{{ r.owner }}</dd>
+    </dl>
+    {%- if r.actions %}
+    <p><strong>Acciones</strong></p>
+    <ul class="plain">
+      {%- for a in r.actions %}
+      <li>
+        <span class="mono">{{ a.id }}</span> · {{ a.description }} <span class="muted">· {{ a.owner }} · antes del {{ a.due }} · {{ a.status }}</span>
+        <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML">
+          <input type="hidden" name="item_id" value="{{ a.id }}">
+          <button class="btn btn-ghost" type="submit" name="accion" value="quitar-accion">Quitar la acción {{ a.id }}</button>
+        </form>
+      </li>
+      {%- endfor %}
+    </ul>
+    {%- endif %}
+    <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML">
+      <input type="hidden" name="item_id" value="{{ r.id }}">
+      <button class="btn" type="submit" name="accion" value="quitar-riesgo">Quitar el riesgo {{ r.id }}</button>
+    </form>
+    {%- if r.actions %}<p class="muted">Para quitar un riesgo, quita antes sus acciones.</p>{% endif %}
+  </article>
+  {%- else %}
+  <p class="muted">Aún no has registrado ningún riesgo. Hace falta al menos uno.</p>
+  {%- endfor %}
+</section>
+
+<section class="section" aria-labelledby="nuevo-riesgo">
+  <h3 id="nuevo-riesgo">Añadir un riesgo</h3>
+  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+    {{ m.text_field("risk_id", "Identificador", hint="Corto y único, por ejemplo «R-001».") }}
+    {{ m.text_field("threat", "Amenaza", hint="Qué puede pasar, con tus palabras.", multiline=True) }}
+    {{ m.asset_checks(asset_choices, "risk_assets", picked_assets, "Activos afectados") }}
+    {{ m.asset_checks(service_choices, "risk_services", picked_services, "Servicios afectados") }}
+    {{ m.field_errors("risk_assets") }}
+    <fieldset class="checks">
+      <legend>Dimensiones afectadas y cuánto</legend>
+      {%- for d in m.DIMENSIONES %}
+      <div class="check">
+        <input type="checkbox" id="dim-{{ d.code }}" name="risk_dimensions" value="{{ d.code }}"{% if d.code in picked_dimensions %} checked{% endif %}>
+        <label for="dim-{{ d.code }}"><span class="mono">{{ d.code }}</span> · {{ d.name }}</label>
+        <select id="val-{{ d.code }}" name="valuation~{{ d.code }}" aria-label="Nivel de {{ d.name }}"{% if errors.get("valuation~" ~ d.code) %} aria-invalid="true" aria-describedby="err-valuation~{{ d.code }}"{% endif %}>
+          <option value="">Nivel…</option>
+          {%- for l in levels %}<option value="{{ l }}"{% if v.get("valuation~" ~ d.code) == l %} selected{% endif %}>{{ l }}</option>{% endfor %}
+        </select>
+      </div>
+      {{ m.field_errors("valuation~" ~ d.code) }}
+      {%- endfor %}
+    </fieldset>
+    {{ m.field_errors("risk_dimensions") }}
+    <div class="field">
+      <label for="f-likelihood">Probabilidad</label>
+      <select id="f-likelihood" name="likelihood"{% if errors.get("likelihood") %} aria-invalid="true" aria-describedby="err-likelihood"{% endif %}>
+        <option value="">Elige…</option>
+        {%- for o in likelihood %}<option value="{{ o.id }}"{% if v.get('likelihood') == o.id %} selected{% endif %}>{{ o.id }} · {{ o.description }}</option>{% endfor %}
+      </select>
+      {{ m.field_errors("likelihood") }}
+    </div>
+    <div class="field">
+      <label for="f-impact">Impacto</label>
+      <select id="f-impact" name="impact"{% if errors.get("impact") %} aria-invalid="true" aria-describedby="err-impact"{% endif %}>
+        <option value="">Elige…</option>
+        {%- for o in impact %}<option value="{{ o.id }}"{% if v.get('impact') == o.id %} selected{% endif %}>{{ o.id }} · {{ o.description }}</option>{% endfor %}
+      </select>
+      {{ m.field_errors("impact") }}
+    </div>
+    <details class="card">
+      <summary>Cómo se calcula el riesgo inherente</summary>
+      <p class="muted">No lo eliges tú: sale de la matriz según la probabilidad y el impacto, y lo verás en el riesgo una vez añadido.</p>
+      <div class="table-wrap">
+        <table>
+          <caption>Riesgo inherente</caption>
+          <thead><tr><th scope="col">Probabilidad \ Impacto</th>{% for i in impact_ids %}<th scope="col">{{ i }}</th>{% endfor %}</tr></thead>
+          <tbody>{% for row in matrix_rows %}<tr><th scope="row">{{ row.likelihood }}</th>{% for level in row.levels %}<td>{{ level }}</td>{% endfor %}</tr>{% endfor %}</tbody>
+        </table>
+      </div>
+    </details>
+    <details class="card">
+      <summary>Medidas del catálogo que lo reducen (salvaguardas)</summary>
+      {{ m.asset_checks(safeguard_choices, "safeguards", picked_safeguards, "Medidas") }}
+      <p class="muted">Si tratas el riesgo reduciéndolo, elige al menos una. Las medidas que cites aquí tienen que quedar seleccionadas al decidir la aplicabilidad.</p>
+    </details>
+    {{ m.field_errors("safeguards") }}
+    <div class="field">
+      <label for="f-residual">Riesgo que queda<span class="hint">Después de aplicar las medidas. No puede ser mayor que el inherente. El mínimo de la escala es «{{ minimum_level }}».</span></label>
+      <select id="f-residual" name="residual"{% if errors.get("residual") %} aria-invalid="true" aria-describedby="err-residual"{% endif %}>
+        <option value="">Elige…</option>
+        {%- for o in risk_levels %}<option value="{{ o.id }}"{% if v.get('residual') == o.id %} selected{% endif %}>{{ o.id }} · {{ o.description }}</option>{% endfor %}
+      </select>
+      {{ m.field_errors("residual") }}
+    </div>
+    <div class="field">
+      <label for="f-treatment">Qué haces con él</label>
+      <select id="f-treatment" name="treatment"{% if errors.get("treatment") %} aria-invalid="true" aria-describedby="err-treatment"{% endif %}>
+        <option value="">Elige…</option>
+        {%- for t in treatments %}<option value="{{ t.value }}"{% if v.get('treatment') == t.value %} selected{% endif %}>{{ t.label }}</option>{% endfor %}
+      </select>
+      {{ m.field_errors("treatment") }}
+    </div>
+    {{ m.text_field("owner", "Responsable", hint="La persona que vigila este riesgo.") }}
+    <fieldset class="dimension">
+      <legend>Quién acepta el riesgo que queda</legend>
+      <p class="hint">Solo hace falta si el riesgo que queda no es el mínimo de la escala o si decides aceptarlo. Si no, déjalo como está.</p>
+      <div class="field">
+        <label for="f-accepted_by">Lo acepta</label>
+        <input type="text" id="f-accepted_by" name="accepted_by" value="{{ v.get('accepted_by', approver_default or '') }}" autocomplete="name"{% if errors.get("accepted_by") %} aria-invalid="true" aria-describedby="err-accepted_by"{% endif %}>
+        {{ m.field_errors("accepted_by") }}
+      </div>
+      <div class="field">
+        <label for="f-accepted_role">Con qué rol</label>
+        <select id="f-accepted_role" name="accepted_role"{% if errors.get("accepted_role") %} aria-invalid="true" aria-describedby="err-accepted_role"{% endif %}>
+          <option value="">Elige…</option>
+          {%- for r in roles %}<option value="{{ r.value }}"{% if v.get('accepted_role') == r.value %} selected{% endif %}>{{ r.label }}</option>{% endfor %}
+        </select>
+        {{ m.field_errors("accepted_role") }}
+      </div>
+    </fieldset>
+    <div class="actions"><button class="btn btn-primary" type="submit" name="accion" value="anadir-riesgo">Añadir el riesgo</button></div>
+  </form>
+</section>
+
+{%- if risks %}
+<section class="section" aria-labelledby="nueva-accion">
+  <h3 id="nueva-accion">Añadir una acción de tratamiento</h3>
+  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+    {{ m.text_field("action_id", "Identificador", hint="Corto y único, por ejemplo «A-001».") }}
+    <div class="field">
+      <label for="f-action_risk">Riesgo que trata</label>
+      <select id="f-action_risk" name="action_risk"{% if errors.get("action_risk") %} aria-invalid="true" aria-describedby="err-action_risk"{% endif %}>
+        <option value="">Elige…</option>
+        {%- for r in risks %}<option value="{{ r.id }}"{% if v.get('action_risk') == r.id %} selected{% endif %}>{{ r.id }} · {{ r.threat }}</option>{% endfor %}
+      </select>
+      {{ m.field_errors("action_risk") }}
+    </div>
+    {{ m.text_field("action_description", "Qué se hará", multiline=True) }}
+    {{ m.text_field("action_owner", "Responsable") }}
+    <div class="field">
+      <label for="f-action_due">Fecha límite</label>
+      <input type="date" id="f-action_due" name="action_due" value="{{ v.get('action_due', '') }}"{% if errors.get("action_due") %} aria-invalid="true" aria-describedby="err-action_due"{% endif %}>
+      {{ m.field_errors("action_due") }}
+    </div>
+    <div class="field">
+      <label for="f-action_status">Estado</label>
+      <select id="f-action_status" name="action_status"{% if errors.get("action_status") %} aria-invalid="true" aria-describedby="err-action_status"{% endif %}>
+        {%- for s in action_statuses %}<option value="{{ s.value }}"{% if v.get('action_status') == s.value %} selected{% endif %}>{{ s.label }}</option>{% endfor %}
+      </select>
+      {{ m.field_errors("action_status") }}
+    </div>
+    <div class="actions"><button class="btn btn-primary" type="submit" name="accion" value="anadir-accion">Añadir la acción</button></div>
+  </form>
+</section>
+{%- endif %}
+{% endif %}
+<div class="actions">
+  {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+  {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
+</div>
+{% endblock %}

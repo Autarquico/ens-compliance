@@ -1,0 +1,47 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">La Declaración de Aplicabilidad (art. 28.2 del RD 311/2022) recoge las medidas que has seleccionado y las que no, con sus razones. La firma el responsable de la seguridad y deja de valer si cambian las medidas, el alcance, la categorización o el catálogo.</p>
+{% include "partials/_paso_cabecera.html" %}
+<dl class="facts">
+  <dt>Estado</dt><dd>{{ m.badge(declaration_state) }}</dd>
+  {% if declaration %}<dt>Firmada por</dt><dd>{{ declaration.approved_by }} <span class="muted">· {{ declaration.approved_at }}</span></dd>
+  <dt>Medidas seleccionadas</dt><dd>{{ declaration.selected_count }}</dd>{% endif %}
+</dl>
+{% if stale_reasons %}
+<div class="notice notice-warn"><p><strong>Hay que firmarla de nuevo:</strong></p>
+<ul>{% for r in stale_reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if issues %}
+<div class="notice notice-warn"><p><strong>Antes de firmar:</strong></p>
+<ul>{% for i in issues %}<li>{{ i }}</li>{% endfor %}{% if issues_more %}<li>Y {{ issues_more }} más.</li>{% endif %}</ul>
+<p><a href="/asistente/aplicabilidad">Volver a las medidas</a></p></div>
+{% endif %}
+<section class="card" aria-labelledby="exclusiones">
+  <h3 id="exclusiones">Exclusiones por ausencia de activo</h3>
+  {% if exclusions %}
+  <p>El anexo II exige estas medidas, pero has indicado que no existe el tipo de activo al que se refieren. Revisa cada razón antes de firmar: una persona responde de ellas.</p>
+  <ul class="plain">
+    {%- for e in exclusions %}
+    <li><span class="mono">{{ e.id }}</span> · {{ e.name }}<br>No existe: <strong>{{ e.asset_type }}</strong><br><span class="muted">{{ e.justification }}</span></li>
+    {%- endfor %}
+  </ul>
+  {% else %}
+  <p class="muted">No hay ninguna medida excluida por ausencia de activo.</p>
+  {% endif %}
+</section>
+{{ m.revision_humana() }}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <div class="field">
+    <label for="f-approved_by">La firma<span class="hint">Tu nombre completo, como responsable de la seguridad. Aparece en el expediente como quien firma. Puedes cambiarlo.</span></label>
+    <input type="text" id="f-approved_by" name="approved_by" value="{{ (values or {}).get('approved_by', approver_default or '') }}" autocomplete="name"{% if errors.get('approved_by') %} aria-invalid="true" aria-describedby="err-approved_by"{% endif %}>
+    {{ m.field_errors("approved_by") }}
+  </div>
+  <div class="actions">
+    <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if issues %} disabled{% endif %}>Firmar la Declaración</button>
+    {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+    {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
+  </div>
+</form>
+{% endblock %}
