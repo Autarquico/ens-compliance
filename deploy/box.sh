@@ -4,7 +4,7 @@
 #   deploy/box.sh install <vX.Y.Z>
 #   deploy/box.sh update [--no-backup] <vX.Y.Z>
 #   deploy/box.sh rollback
-#   deploy/box.sh restart [app|caddy|cloudflared]
+#   deploy/box.sh restart [app|caddy|cloudflared|agent]
 #   deploy/box.sh status
 #
 # Lo ejecuta una persona con Docker en la VM, desde un clon del repositorio con la etiqueta
@@ -24,6 +24,7 @@ PROJECT=${ENS_BOX_PROJECT:-ens-box}
 VOLUME="${PROJECT}_data"
 ENV_FILE="$ROOT/deploy/.env"
 TUNNEL_ENV_FILE="$ROOT/deploy/tunnel.env"
+AGENT_ENV_FILE="$ROOT/deploy/agent.env"
 STATE_FILE=/data/state/box-deploy.json
 APP_UID=10001
 HEALTH_TIMEOUT=${ENS_BOX_HEALTH_TIMEOUT:-180}
@@ -83,7 +84,7 @@ trap 'cleanup; release_lock' EXIT
 trap 'exit 130' INT TERM
 
 usage() {
-  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared] | status"
+  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared|agent] | status"
 }
 
 # --- comprobaciones ------------------------------------------------------------------------
@@ -119,6 +120,7 @@ check_private() {
 check_secret_files() {
   check_private "$ENV_FILE"
   check_private "$TUNNEL_ENV_FILE"
+  check_private "$AGENT_ENV_FILE"
 }
 
 ensure_env_file() {
@@ -144,7 +146,9 @@ dc() {
   [ -n "$REL" ] || die "interno: no hay release seleccionada."
   profiles=
   [ ! -e "$TUNNEL_ENV_FILE" ] || profiles=tunnel
+  [ ! -e "$AGENT_ENV_FILE" ] || profiles="${profiles:+$profiles,}agents"
   COMPOSE_PROFILES=$profiles ENS_ENV_FILE=$ENV_FILE ENS_TUNNEL_ENV_FILE=$TUNNEL_ENV_FILE \
+    ENS_AGENT_ENV_FILE=$AGENT_ENV_FILE \
     docker compose -p "$PROJECT" -f "$REL/compose.yaml" --project-directory "$REL" "$@"
 }
 
@@ -282,6 +286,22 @@ wait_healthy() {
   return 1
 }
 
+# El servidor de agentes corre si hay deploy/agent.env y la release en uso define el servicio.
+agent_enabled() {
+  [ -e "$AGENT_ENV_FILE" ] && dc config --services | grep -qx agent
+}
+
+# Una release sin servicio agent (rollback a una versión anterior) deja su contenedor huérfano:
+# se para, sin borrarlo ni tocar volúmenes.
+stop_orphan_agent() {
+  agent_enabled && return 0
+  for container in $(docker ps -q --filter "label=com.docker.compose.project=$PROJECT" \
+    --filter "label=com.docker.compose.service=agent"); do
+    warn "La release $target no define agent: se para el contenedor huérfano (los datos no se tocan)."
+    docker stop "$container" >/dev/null
+  done
+}
+
 verify_running_app() {
   wait_healthy app || return 1
   dc exec -T app ens-evidence scheduler status >/dev/null || return 1
@@ -289,6 +309,7 @@ verify_running_app() {
 
 verify_running() {
   verify_running_app || return 1
+  ! agent_enabled || wait_healthy agent || return 1
   wait_healthy caddy || return 1
 }
 
@@ -510,6 +531,7 @@ cmd_rollback() {
   export ENS_VERSION="$target"
   info "Volviendo a $target (los datos no se tocan)..."
   dc up -d --no-build
+  stop_orphan_agent
   verify_running || die "$target no está sana tras el rollback; revisa los logs."
   state rolled-back
   info "Rollback hecho: $target"
@@ -524,6 +546,7 @@ cmd_restart() {
   case $service in
     app | caddy) ;;
     cloudflared) [ -e "$TUNNEL_ENV_FILE" ] || die "cloudflared necesita $TUNNEL_ENV_FILE (perfil tunnel)." ;;
+    agent) [ -e "$AGENT_ENV_FILE" ] || die "agent necesita $AGENT_ENV_FILE (perfil agents)." ;;
     *) usage ;;
   esac
   require_tools

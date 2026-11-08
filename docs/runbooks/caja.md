@@ -5,8 +5,9 @@ operarla. Contrato: [ADR 0016](../decisions/0016-caja-compose.md). Una vez en
 marcha, el trabajo diario del contenedor está en el
 [runbook de informes y scheduler](informes-y-scheduler.md).
 
-En v0.1 la caja ejecuta el scheduler y nada más. No hay interfaz web (llega en
-v0.2) ni servidor de agentes. La herramienta prepara evidencias; no declara
+La caja ejecuta el scheduler y, opcionalmente, el servidor de agentes
+([sección 4.1](#41-servidor-de-agentes-perfil-agents)). No hay interfaz web
+(llega en v0.2). La herramienta prepara evidencias; no declara
 conformidad. Una caja instalada y sana no significa que el sistema cumpla el
 ENS.
 
@@ -144,6 +145,42 @@ Esta comprobación no se ha ejecutado con una cuenta real de Cloudflare.
 Tampoco están verificados `cloudflared` en marcha ni su healthcheck, ni la
 denegación del acceso desde Internet. Nada de esto se ha comprobado todavía:
 se verifica en `validation-selfassessment`.
+
+## 4.1 Servidor de agentes (perfil `agents`)
+
+Recibe los POST de osquery (`/agent/enroll`, `/agent/config`, `/agent/log`,
+`/agent/distributed/read`, `/agent/distributed/write`). Caddy solo reenvía esos
+cinco POST al servicio `agent`; el resto sigue dando 403 y un `Content-Encoding`
+en cualquiera de ellos da 415.
+
+1. Crea `deploy/agent.env` (modo 600) desde `deploy/agent.env.example`. Cada
+   valor se genera con `openssl rand -base64 32` y deben ser distintos:
+   `ENS_AGENT_ENROLL_KEY` y `ENS_AGENT_NODE_KEY_SECRET`. El servicio no lee
+   `deploy/.env`.
+2. Con `deploy/agent.env` presente, `box.sh` activa el perfil `agents`:
+   `deploy/box.sh restart agent` (o `update`) lo arranca y `restart caddy`
+   aplica la nueva red.
+3. Publica un hostname aparte para los agentes en el mismo túnel, hacia
+   `http://caddy:8080`. **Sin Cloudflare Access en ese hostname**: osquery no
+   puede autenticarse con Access; la autenticación es el token de alta y el
+   `node_key` del propio protocolo. Access sigue en el hostname de la interfaz.
+4. Recomendado (no verificado): una regla de rate-limit del WAF de Cloudflare
+   sobre el hostname de agentes.
+
+Salud: `deploy/box.sh status` muestra `agent` como `healthy` (sonda a
+`/healthz`, que Caddy no publica). `docker compose -p ens-box logs agent`.
+Si el agente está caído, Caddy responde 503 sin detalle y osquery reintenta.
+
+Rollback: `deploy/box.sh rollback` a una versión sin servicio `agent` para el
+contenedor huérfano sin borrarlo ni tocar volúmenes. Para desactivar el
+servidor sin volver atrás, mueve `deploy/agent.env` y ejecuta
+`docker compose -p ens-box stop agent`.
+
+Flags de osquery que **no** deben usarse: `--logger_tls_compress` (envía el
+cuerpo comprimido; Caddy lo rechaza con 415) y `--tls_secret_always` (el
+servidor no lo contempla).
+
+Nada de esto se ha verificado con Docker ni con Cloudflare reales.
 
 ## 5. Inscribir la caja como activo del alcance
 
@@ -340,7 +377,8 @@ docker compose -p ens-box exec app stat -c %y /tmp/scheduler-heartbeat
 | Servicio | Red | Entrada | Salida a Internet |
 |---|---|---|---|
 | `app` | `backend` | Ninguna | Sí: APIs de los conectores (GitHub, Cloudflare, Google) y R2 |
-| `caddy` | `edge` (interna) | Solo desde `cloudflared` | No |
+| `caddy` | `edge` y `agent` (internas) | Solo desde `cloudflared` | No |
+| `agent` (perfil `agents`) | `agent` (interna) | Solo desde `caddy` | No |
 | `cloudflared` (perfil `tunnel`) | `edge` y `tunnel` | Ninguna | Sí: hacia Cloudflare |
 
 Ningún servicio publica puertos en el host. En `docker compose ps`, la columna
