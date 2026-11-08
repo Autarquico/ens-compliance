@@ -10,14 +10,14 @@
   <tbody>
   {%- for r in rows %}
   <tr>
-    <th scope="row" class="id">{{ r.measure_id }}</th>
+    <th scope="row" class="id"><a href="/matriz/{{ r.measure_id }}">{{ r.measure_id }}</a></th>
     <td>{{ r.title }}</td>
     <td>{{ m.badge(r.applicability, show_code=False) }}</td>
     <td>{{ m.badge(r.assessment, show_code=False) }}</td>
     <td class="mono">{{ r.evidence_count }}</td>
   </tr>
   {%- else %}
-  <tr><td colspan="5" class="muted">{% if wizard_pending %}Todavía no hay medidas. Termina antes el alcance y la categorización.{% else %}La matriz se llena cuando se firma la Declaración de Aplicabilidad (el documento que dice qué medidas te tocan). En este tramo se hace desde la línea de órdenes.{% endif %}</td></tr>
+  <tr><td colspan="5" class="muted">{% if wizard_pending %}Todavía no hay medidas. Termina antes el alcance y la categorización.{% else %}La matriz se llena cuando se firma la Declaración de Aplicabilidad (el documento que dice qué medidas te tocan).{% endif %}</td></tr>
   {%- endfor %}
   </tbody>
 </table></div>
