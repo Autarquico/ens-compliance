@@ -11,8 +11,9 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
-from ens_evidence.ui.app import create_ui_app, identity_of
+from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.config import UiConfig
+from ens_evidence.ui.pages import identity_of
 from ens_evidence.workspace import LocalStore
 
 NOW = datetime(2026, 11, 8, 12, 0, tzinfo=UTC)
@@ -187,3 +188,12 @@ def workspaces(tmp_path):
     cli_store = seed_example_scope(LocalStore(tmp_path / "cli-ws"))
     ui_store = seed_example_scope(LocalStore(tmp_path / "ui-ws"))
     return cli_store, ui_store
+
+
+@pytest.fixture
+def completed(session) -> Session:
+    """El guion completo ya aplicado, para que cada vista se pinte en su estado final."""
+    from .test_equivalence import ui_script
+
+    ui_script(session)
+    return session

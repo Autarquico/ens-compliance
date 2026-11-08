@@ -7,19 +7,11 @@ import pytest
 from ens_evidence.ui.wizard import STEPS
 
 from .conftest import Session, auth
-from .test_equivalence import ui_script
 from .test_hostile import VIEWS
 
 FORBIDDEN = re.compile(r"certific|garantiza el cumplimiento|cumple el ENS", re.IGNORECASE)
 STEP_PATHS = [f"/asistente/{s.slug}" for s in STEPS]
 PAGES = [*VIEWS, *STEP_PATHS]
-
-
-@pytest.fixture
-def completed(session, example_store):
-    """El guion completo ya aplicado, para que cada paso se pinte en su estado final."""
-    ui_script(session)
-    return session
 
 
 def rendered(session: Session, path: str):

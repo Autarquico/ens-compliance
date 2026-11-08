@@ -242,3 +242,54 @@ def test_oversized_form_is_rejected(session, example_store):
 
     assert response.status_code == 413
     assert snapshot_of(example_store) == before
+
+
+def test_dependencias_es_opcional_con_el_alcance_aprobado(completed):
+    assert completed.get("/asistente").headers["location"] == "/"
+    page = completed.get("/asistente/sistema").text
+    assert "Dependencias (opcional)" in page
+
+
+def test_dependencias_guardar_con_los_desplegables_por_defecto_no_es_error(session, example_store):
+    before = snapshot_of(example_store)
+
+    response = session.post(
+        "/asistente/dependencias",
+        {"dependency_id": "", "asset": "", "depends_on": "", "purpose": ""},
+    )
+
+    assert response.status_code == 303 and "guardado" not in response.headers["location"]
+    assert snapshot_of(example_store) == before
+    page = session.get("/asistente/dependencias").text
+    assert page.count('<option value="">') == 2
+
+
+def test_guardar_sin_cambios_no_dice_guardado(session):
+    response = session.post("/asistente/aprobacion-alcance", {"accion": "guardar"})
+
+    assert response.status_code == 303
+    assert "guardado" not in response.headers["location"]
+    assert "Guardar" not in session.get("/asistente/aprobacion-alcance").text
+
+
+def test_activo_con_espacios_y_booleano_invalido_dan_error_de_campo(session):
+    response = session.post(
+        "/asistente/activos",
+        {
+            "accion": "anadir", "asset_type": "laptop", "asset_id": "mi portatil",
+            "asset_os": "macOS", "asset_owner": "Ana", "asset_encrypted": "quizá",
+            "asset_usage": "x",
+        },
+    )  # fmt: skip
+
+    assert response.status_code == 422
+    assert 'id="err-asset_id"' in response.text
+    assert 'id="err-asset_encrypted"' in response.text
+    assert "encrypted:" not in response.text
+
+
+def test_lo_ya_incluido_no_se_puede_desmarcar(session):
+    page = session.get("/asistente/activos").text
+
+    assert "checked disabled" in page
+    assert 'type="hidden" name="included_assets"' in page

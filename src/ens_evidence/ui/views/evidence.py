@@ -4,8 +4,8 @@ from starlette.requests import Request
 from starlette.responses import Response
 
 from ens_evidence.evidence import list_manifests
-from ens_evidence.ui.app import render
-from ens_evidence.ui.views import format_instant, page_context
+from ens_evidence.ui.pages import page_context, render
+from ens_evidence.ui.views import format_instant
 
 
 def evidencias(request: Request) -> Response:

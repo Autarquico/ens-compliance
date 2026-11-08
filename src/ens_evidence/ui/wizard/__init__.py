@@ -9,11 +9,10 @@ from starlette.responses import RedirectResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from ens_evidence.scope.secrets import find_secrets
-from ens_evidence.ui.app import identity_of, render
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import FormInvalid, FormTooLarge, first, read_form
+from ens_evidence.ui.pages import error_page, identity_of, page_context, render
 from ens_evidence.ui.store import UiStore
-from ens_evidence.ui.views import error_page, page_context
 from ens_evidence.ui.wizard.base import Step, StepInput, StepRejected
 from ens_evidence.ui.wizard.categorization import CATEGORIZATION_STEPS
 from ens_evidence.ui.wizard.scope import SCOPE_STEPS
@@ -22,19 +21,21 @@ STEPS: tuple[Step, ...] = (*SCOPE_STEPS, *CATEGORIZATION_STEPS)
 BY_SLUG = {step.slug: step for step in STEPS}
 
 
+def _state_of(step: Step, store: UiStore, now: datetime, current: str) -> str:
+    if step.slug == current:
+        return "current"
+    if step.done(store, now):
+        return "done"
+    return "optional" if step.optional else "todo"
+
+
 def _states(store: UiStore, now: datetime, current: str) -> list[dict[str, str]]:
     return [
         {
             "slug": s.slug,
             "label": s.label,
             "group": s.group,
-            "state": "current"
-            if s.slug == current
-            else "done"
-            if s.done(store, now)
-            else "optional"
-            if s.optional
-            else "todo",
+            "state": _state_of(s, store, now, current),
         }
         for s in STEPS
     ]

@@ -4,7 +4,6 @@ import logging
 from collections.abc import Callable, Sequence
 from datetime import datetime
 from pathlib import Path
-from typing import Any
 
 import jinja2
 from starlette.applications import Starlette
@@ -15,8 +14,9 @@ from starlette.routing import BaseRoute, Mount
 from starlette.staticfiles import StaticFiles
 
 from ens_evidence.http.app import create_app
-from ens_evidence.ui.access import AccessMiddleware, AccessVerifier, Identity, JwksLoader
+from ens_evidence.ui.access import AccessMiddleware, AccessVerifier, JwksLoader
 from ens_evidence.ui.config import UiConfig
+from ens_evidence.ui.pages import error_page
 from ens_evidence.ui.security import (
     SECURITY_HEADERS,
     OriginCheckMiddleware,
@@ -60,16 +60,12 @@ def create_ui_app(
 
 
 async def _http_error_page(request: Request, exc: Exception) -> Response:
-    from ens_evidence.ui.views import error_page
-
     assert isinstance(exc, HTTPException)
     return error_page(request, exc.status_code, headers=exc.headers)
 
 
 async def _unexpected_error_page(request: Request, exc: Exception) -> Response:
     """`ServerErrorMiddleware` queda fuera de los middlewares: las cabeceras van en la respuesta."""
-    from ens_evidence.ui.views import error_page
-
     _LOGGER.error("outcome=error type=%s", type(exc).__name__)
     if hasattr(request.state, "identity"):
         response: Response = error_page(request, 500)
@@ -77,14 +73,3 @@ async def _unexpected_error_page(request: Request, exc: Exception) -> Response:
         response = HTMLResponse("Error interno", status_code=500)
     response.headers.update(SECURITY_HEADERS)
     return response
-
-
-def identity_of(request: Request) -> Identity:
-    return request.state.identity
-
-
-def render(request: Request, template: str, status_code: int = 200, **context: Any) -> HTMLResponse:
-    body = request.app.state.templates.get_template(template).render(
-        identity=identity_of(request), **context
-    )
-    return HTMLResponse(body, status_code=status_code)

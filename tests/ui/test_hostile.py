@@ -398,3 +398,17 @@ def test_las_vistas_de_solo_lectura_nunca_llaman_a_escribir(
         client.get(path, headers=auth(token), follow_redirects=True)
 
     assert calls == []
+
+
+def test_404_y_405_responden_con_la_pagina_de_error(raw_client, token):
+    client = raw_client
+    not_found = client.get("/no-existe", headers=auth(token))
+    not_allowed = client.delete("/", headers={**auth(token), **WRITE_HEADERS})
+
+    assert not_found.status_code == 404 and not_found.headers["content-type"].startswith(
+        "text/html"
+    )
+    assert not_allowed.status_code == 405 and not_allowed.headers["content-type"].startswith(
+        "text/html"
+    )
+    assert "GET" in not_allowed.headers["allow"]

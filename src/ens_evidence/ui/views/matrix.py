@@ -10,8 +10,8 @@ from ens_evidence.categorization import CategorizationState, categorization_stat
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.matrix import matrix_status
 from ens_evidence.scope import ScopeState, scope_status
-from ens_evidence.ui.app import render
-from ens_evidence.ui.views import format_instant, page_context
+from ens_evidence.ui.pages import page_context, render
+from ens_evidence.ui.views import format_instant
 
 
 @cache

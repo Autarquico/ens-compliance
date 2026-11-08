@@ -54,7 +54,7 @@ def serve(
         partial(load_jwks_file, config.jwks_file),
         routes=ui_routes(),
     )
-    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(levelname)s %(name)s %(message)s")
     uvicorn.run(
         app,
         host=host,

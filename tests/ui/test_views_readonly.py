@@ -113,3 +113,22 @@ def test_hostile_text_is_escaped(session, example_store):
 
     assert "<script>alert(1)</script>" not in page.text
     assert "&lt;script&gt;" in page.text
+
+
+def test_estado_con_el_asistente_completo_habla_en_claro(completed):
+    page = completed.get("/").text
+
+    assert "applicability status" not in page
+    assert "UNDETERMINED_APPLICABILITY" not in page
+    assert "Aplicabilidad sin decidir" in page
+    assert "Declaración de Aplicabilidad" in page
+
+
+def test_matriz_vacia_explica_la_declaracion_cuando_el_asistente_esta_hecho(completed):
+    assert (
+        "se llena cuando se firma la Declaración de Aplicabilidad" in completed.get("/matriz").text
+    )
+
+
+def test_matriz_vacia_pide_el_asistente_si_falta(session):
+    assert "Termina antes el alcance" in session.get("/matriz").text

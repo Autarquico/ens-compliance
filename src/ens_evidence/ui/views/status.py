@@ -12,8 +12,8 @@ from ens_evidence.matrix.messages import READINESS_LABELS, blocker_text
 from ens_evidence.models.enums import Readiness
 from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.scope import ScopeState, scope_status
-from ens_evidence.ui.app import render
-from ens_evidence.ui.views import format_instant, page_context
+from ens_evidence.ui.pages import page_context, render
+from ens_evidence.ui.views import format_instant
 
 READINESS_NOTICE = (
     "La herramienta no declara conformidad; la valoración es de la persona que revisa."

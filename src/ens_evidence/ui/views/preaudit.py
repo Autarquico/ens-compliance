@@ -7,8 +7,8 @@ from ens_evidence.models.preaudit import Layer
 from ens_evidence.preaudit.deterministic import RULE_LABELS
 from ens_evidence.preaudit.findings import findings_view
 from ens_evidence.preaudit.records import scan_runs
-from ens_evidence.ui.app import render
-from ens_evidence.ui.views import NO_DATE, format_instant, page_context
+from ens_evidence.ui.pages import page_context, render
+from ens_evidence.ui.views import NO_DATE, format_instant
 
 LAYER_LABELS = {Layer.DETERMINISTIC: "Capa determinista", Layer.JUDGMENT: "Capa de juicio"}
 NOT_DISPOSED = "No se dispone"

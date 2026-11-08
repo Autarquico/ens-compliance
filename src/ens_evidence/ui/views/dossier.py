@@ -6,8 +6,8 @@ from starlette.responses import Response
 from ens_evidence.assessment.dossier import scan_transitions
 from ens_evidence.assessment.dossier.store import list_dossiers
 from ens_evidence.models.enums import DossierState
-from ens_evidence.ui.app import render
-from ens_evidence.ui.views import NO_DATE, format_instant, page_context
+from ens_evidence.ui.pages import page_context, render
+from ens_evidence.ui.views import NO_DATE, format_instant
 
 NOT_GENERATED = "Sin generar"
 BROKEN = "ROTO"

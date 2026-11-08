@@ -21,14 +21,14 @@
   <div class="field">
     <label for="f-asset">Activo<span class="hint">El que necesita al otro.</span></label>
     <select id="f-asset" name="asset"{% if (errors or {}).get("asset") %} aria-invalid="true" aria-describedby="err-asset"{% endif %}>
-      {%- for c in asset_choices %}<option value="{{ c.id }}"{% if (values or {}).get("asset") == c.id %} selected{% endif %}>{{ c.id }}</option>{% endfor %}
+      <option value="">Elige un activo</option>{%- for c in asset_choices %}<option value="{{ c.id }}"{% if (values or {}).get("asset") == c.id %} selected{% endif %}>{{ c.id }}</option>{% endfor %}
     </select>
     {{ m.field_errors("asset") }}
   </div>
   <div class="field">
     <label for="f-depends_on">Depende de<span class="hint">El activo que necesita.</span></label>
     <select id="f-depends_on" name="depends_on"{% if (errors or {}).get("depends_on") %} aria-invalid="true" aria-describedby="err-depends_on"{% endif %}>
-      {%- for c in asset_choices %}<option value="{{ c.id }}"{% if (values or {}).get("depends_on") == c.id %} selected{% endif %}>{{ c.id }}</option>{% endfor %}
+      <option value="">Elige un activo</option>{%- for c in asset_choices %}<option value="{{ c.id }}"{% if (values or {}).get("depends_on") == c.id %} selected{% endif %}>{{ c.id }}</option>{% endfor %}
     </select>
     {{ m.field_errors("depends_on") }}
   </div>
