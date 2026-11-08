@@ -1,16 +1,20 @@
 ---
 codename: ens-compliance
-title: "El audit pack generaliza más allá de dev"
+title: El audit pack generaliza más allá de dev
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [61, 57, 59]
 depends_on: [audit-holdout-rotation]
 supersedes: []
-related_specs: [audit-benchmark, audit-pack-tuning, audit-holdout-rotation, audit-openai-pair]
+related_specs:
+  - audit-benchmark
+  - audit-pack-tuning
+  - audit-holdout-rotation
+  - audit-openai-pair
 created: 2026-11-08
 updated: 2026-11-08
 ---
