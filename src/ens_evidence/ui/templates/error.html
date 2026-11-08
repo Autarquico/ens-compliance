@@ -1,0 +1,16 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+{% set copy = {
+  401: ("No hemos podido comprobar quién eres", "Tu acceso no está validado o ha caducado. Vuelve a entrar desde tu acceso corporativo. No se ha guardado nada."),
+  403: ("No puedes hacer esto desde aquí", "Esta acción queda fuera de lo que la interfaz permite editar. No se ha guardado nada."),
+  409: ("Hay un cambio en curso", "El expediente se está actualizando en este momento. Espera un minuto y vuelve a intentarlo. No se ha guardado nada."),
+} %}
+{% set text = copy.get(status_code, ("Algo no ha ido bien", "No hemos podido completar la petición. No se ha guardado nada.")) %}
+<section class="card" role="alert">
+  <p class="muted mono">Código {{ status_code }}</p>
+  <h1>{{ text[0] }}</h1>
+  <p>{{ message or text[1] }}</p>
+  <div class="actions"><a class="btn" href="/">Volver al estado</a></div>
+</section>
+{% endblock %}

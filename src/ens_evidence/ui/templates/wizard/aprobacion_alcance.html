@@ -1,0 +1,26 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Aprobar el alcance es dejar constancia de que una persona responsable ha revisado qué entra en el sistema. La aprueba el responsable del sistema.</p>
+{% include "partials/_paso_cabecera.html" %}
+<dl class="facts">
+  <dt>Estado</dt><dd>{{ m.badge(scope_state) }}</dd>
+  <dt>Sistema</dt><dd>{{ scope_summary.name }}</dd>
+  <dt>Activos incluidos</dt><dd>{{ scope_summary.assets_count }}</dd>
+  <dt>Servicios incluidos</dt><dd>{{ scope_summary.services_count }}</dd>
+  {% if approval %}<dt>Aprobado por</dt><dd>{{ approval.approved_by }} <span class="muted">· {{ approval.approved_at }}</span></dd>{% endif %}
+</dl>
+{% if scope_errors %}
+<div class="notice notice-warn"><p><strong>Antes de aprobar, corrige esto:</strong></p><ul>{% for e in scope_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  {{ m.approver_field(approver_default) }}
+  <div class="actions">
+    <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if scope_errors %} disabled{% endif %}>Aprobar alcance</button>
+    <button class="btn" type="submit" name="accion" value="guardar">Guardar</button>
+    {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+    {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

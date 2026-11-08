@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Expediente</h1>
+<p class="lead">El expediente reúne los documentos de la autoevaluación. Cada uno indica de dónde salen sus datos y cuándo se generó.</p>
+{{ m.revision_humana() }}
+<dl class="facts">
+  <dt>Estado</dt><dd>{{ m.badge(dossier_state) }}</dd>
+  <dt>Generado</dt><dd class="mono">{{ generated_at }}</dd>
+  {% if declared %}<dt>Declarado por</dt><dd>{{ declared.by }} <span class="muted">· {{ declared.at }}</span></dd>{% endif %}
+</dl>
+<div class="table-wrap"><table>
+  <caption>{{ sections | length }} documentos</caption>
+  <thead><tr><th scope="col">Documento</th><th scope="col">Fichero</th><th scope="col">Estado</th><th scope="col">Generado</th><th scope="col">Huella</th></tr></thead>
+  <tbody>
+  {%- for s in sections %}
+  <tr><th scope="row">{{ s.title }}</th><td class="id">{{ s.file }}</td><td>{{ m.badge(s.state) }}</td><td class="mono">{{ s.generated_at }}</td><td class="mono">{{ s.fingerprint[:12] if s.fingerprint else "—" }}</td></tr>
+  {%- else %}
+  <tr><td colspan="5" class="muted">Todavía no se ha generado el expediente.</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

@@ -1,0 +1,91 @@
+{# Macros compartidas. Se importan con contexto: {% import "_macros.html" as m with context %} #}
+{% set ESTADOS = {
+  "PASS": ("ok", "Correcto"), "FAIL": ("bad", "Falla"), "ERROR": ("bad", "Error al comprobar"), "UNKNOWN": ("neutral", "Sin datos"),
+  "APPLICABLE": ("neutral", "Aplica"), "NOT_APPLICABLE": ("neutral", "No aplica"), "UNDETERMINED": ("warn", "Sin decidir"),
+  "COMPLIANT": ("ok", "Favorable"), "NON_COMPLIANT": ("bad", "Desfavorable"), "REQUIRES_REVIEW": ("warn", "Pide revisión"), "NOT_ASSESSED": ("neutral", "Sin evaluar"),
+  "READY": ("ok", "Preparado para revisión"), "NOT_READY": ("bad", "Aún no preparado"),
+  "GENERATED": ("neutral", "Generado"), "SELF_ASSESSED": ("neutral", "Autoevaluado"), "ANALYZED": ("neutral", "Analizado"), "DECLARED": ("ok", "Declarado por una persona"),
+  "NOT_APPROVED": ("warn", "Sin aprobar"), "APPROVED": ("ok", "Aprobado"), "STALE": ("warn", "Desactualizado"), "INVALID": ("bad", "Con errores"),
+  "PENDING": ("warn", "Pendiente"), "EXPIRED": ("warn", "Caducado"), "CURRENT": ("ok", "Vigente"),
+  "NC_MAYOR": ("bad", "No conformidad mayor (propuesta)"), "NC_MENOR": ("warn", "No conformidad menor (propuesta)"),
+  "OBSERVACION": ("info", "Observación (propuesta)"), "SIN_CLASIFICAR": ("neutral", "Sin clasificar"),
+  "SUCCESS": ("ok", "Recogida"), "PERMISSION_DENIED": ("bad", "Sin permiso"), "NOT_SUPPORTED": ("neutral", "No soportada"),
+  "NOT_RUN": ("neutral", "No ejecutada"), "DONE": ("ok", "Hecha"), "DELIVERED": ("ok", "Entregado"),
+  "OPEN": ("warn", "Abierto"), "ACCEPTED": ("neutral", "Aceptado"), "RESOLVED": ("ok", "Resuelto"), "DISMISSED": ("neutral", "Descartado"),
+} %}
+{% set DIMENSIONES = [
+  {"code": "C", "name": "Confidencialidad", "explain": "Que solo vea la información quien debe verla. Pregúntate qué pasaría si se filtrara."},
+  {"code": "I", "name": "Integridad", "explain": "Que la información sea exacta y no se altere sin permiso. Qué pasaría si alguien la modificara sin que te enteres."},
+  {"code": "T", "name": "Trazabilidad", "explain": "Poder saber quién hizo qué y cuándo. Qué pasaría si no pudieras demostrarlo."},
+  {"code": "A", "name": "Autenticidad", "explain": "Que quien dice ser alguien lo sea, y que la información sea de quien dice. Qué pasaría si alguien se hiciera pasar por otro."},
+  {"code": "D", "name": "Disponibilidad", "explain": "Que puedas usar el servicio cuando lo necesitas. Qué pasaría si estuviera parado un día entero."},
+] %}
+{% set NIVELES = [
+  {"value": "BAJO", "label": "BAJO · perjuicio limitado"},
+  {"value": "MEDIO", "label": "MEDIO · perjuicio grave"},
+  {"value": "ALTO", "label": "ALTO · perjuicio muy grave"},
+  {"value": "not_affected", "label": "No afecta"},
+] %}
+{% set TONE_ICON = {"ok": "check", "bad": "x", "warn": "alert", "info": "info", "neutral": "help"} %}
+
+{% macro icon(name) -%}
+<svg class="icon" xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">
+{%- if name == "check" %}<path d="M5 12l5 5l10 -10" />
+{%- elif name == "x" %}<path d="M12 12m-9 0a9 9 0 1 0 18 0a9 9 0 1 0 -18 0" /><path d="M10 10l4 4m0 -4l-4 4" />
+{%- elif name == "alert" %}<path d="M12 9v4" /><path d="M10.363 3.591l-8.106 13.534a1.914 1.914 0 0 0 1.636 2.871h16.214a1.914 1.914 0 0 0 1.636 -2.87l-8.106 -13.536a1.914 1.914 0 0 0 -3.274 0z" /><path d="M12 16h.01" />
+{%- elif name == "clock" %}<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 7v5l3 3" />
+{%- elif name == "info" %}<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 9h.01" /><path d="M11 12h1v4h1" />
+{%- else %}<path d="M3 12a9 9 0 1 0 18 0a9 9 0 0 0 -18 0" /><path d="M12 16v.01" /><path d="M12 13a2 2 0 0 0 .914 -3.782a1.98 1.98 0 0 0 -2.414 .483" />
+{%- endif -%}
+</svg>
+{%- endmacro %}
+
+{# Estado = icono + texto + código en mono; nunca solo color. #}
+{% macro badge(value, show_code=True) -%}
+{%- set known = ESTADOS.get(value) -%}
+{%- set tone = known[0] if known else "neutral" -%}
+<span class="badge tone-{{ tone }}">{{ icon(TONE_ICON[tone]) }}<span>{{ known[1] if known else value }}</span>{% if show_code and known %} <span class="badge-code">{{ value }}</span>{% endif %}</span>
+{%- endmacro %}
+
+{% macro field_errors(name) -%}
+{%- for message in (errors or {}).get(name, []) %}
+<p class="field-error" id="err-{{ name }}">{{ icon("alert") }}<span>{{ message }}</span></p>
+{%- endfor %}
+{%- endmacro %}
+
+{% macro text_field(name, label, hint=None, multiline=False) -%}
+{%- set invalid = (errors or {}).get(name) -%}
+<div class="field">
+  <label for="f-{{ name }}">{{ label }}{% if hint %}<span class="hint">{{ hint }}</span>{% endif %}</label>
+  {% if multiline -%}
+  <textarea id="f-{{ name }}" name="{{ name }}"{% if invalid %} aria-invalid="true" aria-describedby="err-{{ name }}"{% endif %}>{{ (values or {}).get(name, "") }}</textarea>
+  {%- else -%}
+  <input type="text" id="f-{{ name }}" name="{{ name }}" value="{{ (values or {}).get(name, "") }}"{% if invalid %} aria-invalid="true" aria-describedby="err-{{ name }}"{% endif %}>
+  {%- endif %}
+  {{ field_errors(name) }}
+</div>
+{%- endmacro %}
+
+{# Campo "Lo aprueba": prellenado con la identidad; se puede editar. #}
+{% macro approver_field(default) -%}
+<div class="field">
+  <label for="f-approved_by">Lo aprueba<span class="hint">Tu nombre completo. Aparece en el expediente como quien aprueba. Puedes cambiarlo.</span></label>
+  <input type="text" id="f-approved_by" name="approved_by" value="{{ (values or {}).get('approved_by', default or '') }}" autocomplete="name"{% if (errors or {}).get('approved_by') %} aria-invalid="true" aria-describedby="err-approved_by"{% endif %}>
+  {{ field_errors("approved_by") }}
+</div>
+{%- endmacro %}
+
+{% macro asset_checks(choices, name, selected=[], legend="") -%}
+<fieldset class="checks">
+  <legend>{{ legend }}</legend>
+  {%- for c in choices %}
+  <div class="check"><input type="checkbox" id="{{ name }}-{{ loop.index }}" name="{{ name }}" value="{{ c.id }}"{% if c.id in selected %} checked{% endif %}><label for="{{ name }}-{{ loop.index }}"><span class="mono">{{ c.id }}</span>{% if c.label %} · {{ c.label }}{% endif %}</label></div>
+  {%- else %}
+  <p class="muted">No hay elementos todavía.</p>
+  {%- endfor %}
+</fieldset>
+{%- endmacro %}
+
+{% macro revision_humana() -%}
+<aside class="notice" role="note"><p><strong>Revisión humana obligatoria.</strong> Esta herramienta prepara la información. No declara conformidad: la declara una persona (nivel BÁSICA) o un auditor (nivel MEDIA).</p></aside>
+{%- endmacro %}

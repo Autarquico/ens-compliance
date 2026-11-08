@@ -1,0 +1,53 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Para cada información y cada servicio, elige el nivel de perjuicio en cada dimensión de seguridad: BAJO, MEDIO o ALTO. Si una dimensión no afecta, márcala «No afecta». Cada nivel lleva una justificación.</p>
+<details class="card">
+  <summary>Qué significa cada dimensión</summary>
+  <dl class="facts">
+    {%- for d in m.DIMENSIONES %}
+    <dt><span class="mono">{{ d.code }}</span> · {{ d.name }}</dt><dd>{{ d.explain }}</dd>
+    {%- endfor %}
+  </dl>
+  <p class="muted">Nivel BAJO: perjuicio limitado. MEDIO: grave. ALTO: muy grave. Si dudas entre dos, elige el más alto y justifícalo.</p>
+</details>
+{% include "partials/_paso_cabecera.html" %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  {%- for el in elements %}
+  <section class="card" aria-labelledby="el-{{ el.kind }}-{{ loop.index }}">
+    <h3 id="el-{{ el.kind }}-{{ loop.index }}">{{ el.label }} <span class="mono muted">{{ el.id }}</span></h3>
+    <p class="muted">{{ "Información" if el.kind == "information" else "Servicio" }} · la valora {{ el.role_label }}</p>
+    {%- for d in m.DIMENSIONES %}
+    {%- set base = "rating~" ~ el.kind ~ "~" ~ el.id ~ "~" ~ d.code %}
+    {%- set current = el.ratings.get(d.code) %}
+    <fieldset class="dimension">
+      <legend><span class="mono">{{ d.code }}</span> · {{ d.name }}</legend>
+      <div class="field">
+        <label for="{{ base }}~level">Nivel</label>
+        <select id="{{ base }}~level" name="{{ base }}~level"{% if (errors or {}).get(base ~ "~level") %} aria-invalid="true" aria-describedby="err-{{ base }}~level"{% endif %}>
+          <option value=""{% if not current %} selected{% endif %}>Pendiente</option>
+          {%- for l in m.NIVELES %}<option value="{{ l.value }}"{% if current and current.level == l.value %} selected{% endif %}>{{ l.label }}</option>{% endfor %}
+        </select>
+        {{ m.field_errors(base ~ "~level") }}
+      </div>
+      <div class="field">
+        <label for="{{ base }}~justification">Justificación<span class="hint">Por qué ese nivel, con el criterio del anexo I, 3 del ENS.</span></label>
+        <textarea id="{{ base }}~justification" name="{{ base }}~justification"{% if (errors or {}).get(base ~ "~justification") %} aria-invalid="true" aria-describedby="err-{{ base }}~justification"{% endif %}>{{ current.justification if current else "" }}</textarea>
+        {{ m.field_errors(base ~ "~justification") }}
+      </div>
+    </fieldset>
+    {%- endfor %}
+    {%- set vname = "valued_by~" ~ el.kind ~ "~" ~ el.id %}
+    <div class="field">
+      <label for="{{ vname }}">Lo valora<span class="hint">Nombre de {{ el.role_label }}.{% if el.valuation %} Última valoración: {{ el.valuation.valued_at }}.{% endif %}</span></label>
+      <input type="text" id="{{ vname }}" name="{{ vname }}" value="{{ el.valuation.valued_by if el.valuation else (approver_default or '') }}"{% if (errors or {}).get(vname) %} aria-invalid="true" aria-describedby="err-{{ vname }}"{% endif %}>
+      {{ m.field_errors(vname) }}
+    </div>
+  </section>
+  {%- else %}
+  <p class="muted">Aún no hay información ni servicios que valorar. Vuelve a los pasos anteriores.</p>
+  {%- endfor %}
+  {% include "partials/_paso_acciones.html" %}
+</form>
+{% endblock %}

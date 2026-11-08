@@ -1,0 +1,28 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Pre-auditoría</h1>
+<p class="lead">Un ensayo antes de la auditoría. Los hallazgos son propuestas para que una persona los revise. Ninguno es una conclusión.</p>
+<aside class="notice notice-warn" role="note"><p><strong>Revisión humana obligatoria.</strong> Los hallazgos son propuestas. Nada de esto declara conformidad ni sustituye a un auditor.</p></aside>
+<dl class="facts">
+  <dt>Generada</dt><dd class="mono">{{ generated_at }}</dd>
+  {%- for name, status in layer_status.items() %}<dt>{{ name }}</dt><dd>{{ m.badge(status, show_code=False) }}</dd>{% endfor %}
+</dl>
+<div class="table-wrap"><table>
+  <caption>{{ findings | length }} hallazgos propuestos</caption>
+  <thead><tr><th scope="col" class="id">Medida</th><th scope="col">Propuesta</th><th scope="col">Hallazgo</th><th scope="col">Decisión</th><th scope="col">Fuente</th></tr></thead>
+  <tbody>
+  {%- for f in findings %}
+  <tr>
+    <th scope="row" class="id">{{ f.measure_id }}</th>
+    <td>{{ m.badge(f.classification, show_code=False) }}</td>
+    <td>{{ f.text }}{% if f.criterion %}<br><span class="muted">Criterio: <span class="mono">{{ f.criterion }}</span></span>{% endif %}</td>
+    <td>{{ m.badge(f.disposition, show_code=False) }}</td>
+    <td class="muted">{{ f.layer_label }}</td>
+  </tr>
+  {%- else %}
+  <tr><td colspan="5" class="muted">No hay hallazgos. Si no se ha ejecutado la pre-auditoría, aún no hay nada que revisar.</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+{% endblock %}
