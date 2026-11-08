@@ -28,6 +28,7 @@ from ens_evidence.applicability import (
     propose_applicability,
     validate_applicability,
 )
+from ens_evidence.applicability.propose import decide
 from ens_evidence.assessment import (
     assessment_status,
     count_statuses,
@@ -198,7 +199,14 @@ from ens_evidence.matrix.messages import (
     role_label,
 )
 from ens_evidence.models.dossier import CorrectiveMeasure
-from ens_evidence.models.enums import Category, CheckStatus, CollectionStatus, DossierState, Role
+from ens_evidence.models.enums import (
+    Applicability,
+    Category,
+    CheckStatus,
+    CollectionStatus,
+    DossierState,
+    Role,
+)
 from ens_evidence.models.preaudit import (
     PROPOSAL_NOTICE,
     DeterministicRule,
@@ -212,6 +220,7 @@ from ens_evidence.models.preaudit import (
     Ref,
     RefKind,
 )
+from ens_evidence.models.readiness import AbsentAssets
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
     AnswersInvalid,
@@ -228,6 +237,8 @@ from ens_evidence.orgdocs import (
     requirement_label,
     skeleton,
 )
+from ens_evidence.orgdocs.answers import set_answer
+from ens_evidence.orgdocs.template import AnswerType
 from ens_evidence.preaudit import service as preaudit
 from ens_evidence.preaudit.deterministic import RULE_LABELS
 from ens_evidence.preaudit.findings import FindingState, FindingsView, findings_view
@@ -246,6 +257,15 @@ from ens_evidence.risk import (
     risk_status,
     validate_risk,
 )
+from ens_evidence.risk.edit import (
+    RiskEditRejected,
+    add_action,
+    add_risk,
+    adopt_methodology,
+    remove_action,
+    remove_risk,
+)
+from ens_evidence.risk.models import ActionStatus, Treatment
 from ens_evidence.scheduling.calendar import JobKind
 from ens_evidence.scheduling.clock import SystemClock
 from ens_evidence.scheduling.collect import (
@@ -1183,6 +1203,57 @@ def print_exclusions(exclusions: list[Exclusion]) -> None:
         typer.echo(f"  - {item.id} {item.name} [{item.asset_type}]: {item.justification}")
 
 
+@applicability_app.command("decide")
+@handled
+def applicability_decide(
+    ctx: typer.Context,
+    measure: Annotated[str, typer.Argument(help="Medida (p. ej. op.acc.1).")],
+    applicability: Annotated[
+        Applicability,
+        typer.Option("--applicability", help="APPLICABLE o NOT_APPLICABLE."),
+    ],
+    justification: Annotated[str, typer.Option("--justification", help="Fundamento.")],
+    reinforcements: Annotated[
+        list[str] | None,
+        typer.Option("--reinforcement", help="Refuerzo elegido, p. ej. R1 (repetible)."),
+    ] = None,
+    absent_type: Annotated[
+        str | None,
+        typer.Option("--absent-asset-type", help="Tipo de activo que no existe en el sistema."),
+    ] = None,
+    absent_justification: Annotated[
+        str | None, typer.Option("--absent-justification", help="Por qué no existe.")
+    ] = None,
+) -> None:
+    """Registra la decisión humana sobre una medida. No aprueba nada."""
+    try:
+        absent = (
+            AbsentAssets(asset_type=absent_type or "", justification=absent_justification or "")
+            if absent_type or absent_justification
+            else None
+        )
+        decide(
+            open_workspace(ctx),
+            clock(),
+            measure,
+            applicability,
+            justification,
+            chosen_reinforcements=tuple(reinforcements or ()),
+            absent_assets=absent,
+        )
+    except ValidationError as exc:
+        typer.echo("No se registra la decisión:", err=True)
+        print_errors(describe_validation("applicability decide", exc))
+        raise typer.Exit(1) from None
+    except (ScopeNotApproved, CategorizationNotCurrent) as exc:
+        raise report_missing_context(exc) from None
+    except ApplicabilityRejected as exc:
+        typer.echo("No se registra la decisión:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Decisión sobre {measure} registrada. Valida con applicability validate.")
+
+
 @applicability_app.command("validate")
 @handled
 def applicability_validate(ctx: typer.Context) -> None:
@@ -1709,6 +1780,46 @@ def docs_init(ctx: typer.Context) -> None:
         typer.echo(f"{ANSWERS_KEY} ya existe y se conserva.")
 
 
+@docs_app.command("answer")
+@handled
+def docs_answer(
+    ctx: typer.Context,
+    key: Annotated[str, typer.Argument(help="Clave de la pregunta (ver `docs questions`).")],
+    values: Annotated[
+        list[str] | None,
+        typer.Option("--value", help="Valor (repetible para listas de textos)."),
+    ] = None,
+    as_json: Annotated[
+        str | None,
+        typer.Option("--json", help="Valor como JSON, para listas de objetos."),
+    ] = None,
+) -> None:
+    """Responde una pregunta de las plantillas en org/answers.yaml."""
+    if (as_json is None) == (not values):
+        raise fail("Indica --value (una o varias veces) o --json, no ambos.")
+    if as_json is not None:
+        try:
+            value = json.loads(as_json)
+        except json.JSONDecodeError:
+            raise fail("--json no es JSON válido.") from None
+    else:
+        value = values if _is_list_question(key) else values[0]
+        if len(values) > 1 and not _is_list_question(key):
+            raise fail("--value solo se repite en preguntas de tipo lista.")
+    try:
+        set_answer(open_workspace(ctx), key, value)
+    except ValueError as exc:
+        typer.echo("No se guarda la respuesta:", err=True)
+        print_errors(str(exc).split("; "))
+        raise typer.Exit(1) from None
+    typer.echo(f"Respuesta {key} guardada. Genera los documentos con docs build.")
+
+
+def _is_list_question(key: str) -> bool:
+    question = next((q for q in all_questions(load_templates()) if q.id == key), None)
+    return question is not None and question.type is AnswerType.LIST
+
+
 @docs_app.command("build")
 @handled
 def docs_build(ctx: typer.Context) -> None:
@@ -1804,6 +1915,164 @@ def risk_init(ctx: typer.Context) -> None:
     for key in kept:
         typer.echo(f"Se conserva {key}.")
     typer.echo("Siguiente paso: declara tu metodología en risk/methodology.yaml.")
+
+
+def _fail_risk_edit(title: str, exc: RiskEditRejected) -> typer.Exit:
+    typer.echo(title, err=True)
+    print_errors(exc.errors)
+    return typer.Exit(1)
+
+
+@risk_app.command("adopt-methodology")
+@handled
+def risk_adopt_methodology(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Option("--name", help="Nombre y versión de la metodología.")],
+    reference: Annotated[str, typer.Option("--reference", help="Norma o guía que la respalda.")],
+    adaptation: Annotated[str, typer.Option("--adaptation", help="Qué se adapta de ella.")],
+) -> None:
+    """Declara la metodología de la organización y la marca adoptada. No toca las escalas."""
+    try:
+        created = adopt_methodology(open_workspace(ctx), name, reference, adaptation)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se adopta la metodología:", exc) from None
+    for key in created:
+        typer.echo(f"Creado {key} (propuesta editable).")
+    typer.echo("Metodología declarada y adoptada. Revisa las escalas en risk/methodology.yaml.")
+
+
+def _valuation(items: list[str]) -> dict[str, str]:
+    valuation: dict[str, str] = {}
+    for item in items:
+        dimension, separator, level = item.partition("=")
+        if not separator:
+            raise RiskEditRejected([f"--valuation {item!r}: usa dimensión=nivel, p. ej. C=ALTO"])
+        valuation[dimension.strip()] = level.strip()
+    return valuation
+
+
+@risk_app.command("add")
+@handled
+def risk_add(
+    ctx: typer.Context,
+    risk_id: Annotated[str, typer.Option("--id", help="Identificador único del riesgo.")],
+    threat: Annotated[str, typer.Option("--threat", help="Descripción de la amenaza.")],
+    dimensions: Annotated[
+        list[Dimension], typer.Option("--dimension", help="Dimensión afectada (repetible).")
+    ],
+    valuation: Annotated[
+        list[str],
+        typer.Option("--valuation", help="Valoración dimensión=nivel (repetible, una por dim.)."),
+    ],
+    likelihood: Annotated[str, typer.Option("--likelihood", help="Valor de la escala.")],
+    impact: Annotated[str, typer.Option("--impact", help="Valor de la escala.")],
+    inherent: Annotated[str, typer.Option("--inherent", help="Debe coincidir con la matriz.")],
+    residual: Annotated[str, typer.Option("--residual", help="Valor de risk_levels.")],
+    treatment: Annotated[
+        Treatment, typer.Option("--treatment", help="mitigate, accept, transfer o avoid.")
+    ],
+    owner: Annotated[str, typer.Option("--owner", help="Persona responsable.")],
+    assets: Annotated[
+        list[str] | None, typer.Option("--asset", help="Activo afectado (repetible).")
+    ] = None,
+    services: Annotated[
+        list[str] | None, typer.Option("--service", help="Servicio afectado (repetible).")
+    ] = None,
+    safeguards: Annotated[
+        list[str] | None, typer.Option("--safeguard", help="Medida del catálogo (repetible).")
+    ] = None,
+    accepted_by: Annotated[
+        str | None, typer.Option("--accepted-by", help="Quién acepta el riesgo residual.")
+    ] = None,
+    accepted_role: Annotated[
+        Role | None, typer.Option("--accepted-role", help="Rol de quien lo acepta.")
+    ] = None,
+) -> None:
+    """Añade un riesgo al registro. Los valores los decide la persona; aquí solo se validan."""
+    now = clock()
+    fields: dict[str, Any] = {
+        "id": risk_id,
+        "assets": assets or [],
+        "services": services or [],
+        "threat": threat,
+        "dimensions": [d.value for d in dimensions],
+        "likelihood": likelihood,
+        "impact": impact,
+        "inherent": inherent,
+        "safeguards": safeguards or [],
+        "residual": residual,
+        "treatment": treatment.value,
+        "owner": owner,
+    }
+    if accepted_by or accepted_role:
+        fields["acceptance"] = {
+            "accepted_by": accepted_by,
+            "role": accepted_role.value if accepted_role else None,
+            "accepted_at": now.isoformat(),
+        }
+    try:
+        fields["valuation"] = _valuation(valuation)
+        add_risk(open_workspace(ctx), fields, now)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se añade el riesgo:", exc) from None
+    typer.echo(f"Riesgo {risk_id} añadido. Valida con risk validate.")
+
+
+@risk_app.command("remove")
+@handled
+def risk_remove(
+    ctx: typer.Context,
+    risk_id: Annotated[str, typer.Option("--id", help="Identificador del riesgo.")],
+) -> None:
+    """Quita un riesgo del registro (no si el plan tiene acciones que lo citan)."""
+    try:
+        remove_risk(open_workspace(ctx), risk_id)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se quita el riesgo:", exc) from None
+    typer.echo(f"Riesgo {risk_id} quitado.")
+
+
+@risk_app.command("add-action")
+@handled
+def risk_add_action(
+    ctx: typer.Context,
+    action_id: Annotated[str, typer.Option("--id", help="Identificador único de la acción.")],
+    risk_id: Annotated[str, typer.Option("--risk", help="Riesgo que trata.")],
+    description: Annotated[str, typer.Option("--description", help="Qué se hará.")],
+    owner: Annotated[str, typer.Option("--owner", help="Persona responsable.")],
+    due: Annotated[str, typer.Option("--due", help="Fecha límite AAAA-MM-DD.")],
+    action_status: Annotated[
+        ActionStatus, typer.Option("--status", help="Estado de la acción.")
+    ] = ActionStatus.PENDING,
+) -> None:
+    """Añade una acción al plan de tratamiento."""
+    fields = {
+        "id": action_id,
+        "risk": risk_id,
+        "description": description,
+        "owner": owner,
+        "due": due,
+        "status": action_status.value,
+    }
+    try:
+        add_action(open_workspace(ctx), fields)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se añade la acción:", exc) from None
+    typer.echo(f"Acción {action_id} añadida. Valida con risk validate.")
+
+
+@risk_app.command("remove-action")
+@handled
+def risk_remove_action(
+    ctx: typer.Context,
+    action_id: Annotated[str, typer.Option("--id", help="Identificador de la acción.")],
+) -> None:
+    """Quita una acción del plan de tratamiento."""
+    try:
+        remove_action(open_workspace(ctx), action_id)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se quita la acción:", exc) from None
+    typer.echo(f"Acción {action_id} quitada.")
 
 
 @risk_app.command("validate")
@@ -3024,7 +3293,7 @@ def evidence_import(
             data,
             asset_id=asset,
             submitted_by=by,
-            now=datetime.now(UTC),
+            now=clock(),
             collected_at=collected,
             valid_until=expires,
         )
@@ -3058,7 +3327,7 @@ def import_endpoint_package(
     except OSError:
         raise fail("No se puede leer el fichero indicado.") from None
     package, result = import_endpoint(
-        open_workspace(ctx), data, asset_id=asset, submitted_by=by, now=datetime.now(UTC)
+        open_workspace(ctx), data, asset_id=asset, submitted_by=by, now=clock()
     )
     typer.echo(
         f"Evidencia registrada: {result.id} (paquete original: {package.id})\n"
