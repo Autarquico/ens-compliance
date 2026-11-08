@@ -47,3 +47,14 @@ def test_a_valid_ip_is_a_warning_not_an_error():
 )
 def test_ip_with_port_ip_list_and_iso_instants_are_not_phones(text):
     assert text_problems(text)[0] == []
+
+
+@pytest.mark.parametrize(
+    "text", ["2026-11-08T21:00:14.136395Z", "aprobado el 2026-11-08 21:00:14.136395Z por Ana"]
+)
+def test_an_instant_with_microseconds_and_z_is_not_a_dni(text):
+    assert text_problems(text)[0] == []
+
+
+def test_a_dni_next_to_an_instant_is_still_found():
+    assert "contiene un DNI/NIE" in text_problems("2026-11-08T21:00:14Z 12345678Z")[0]
