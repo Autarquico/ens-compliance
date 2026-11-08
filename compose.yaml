@@ -90,7 +90,7 @@ services:
     networks: [ui-net]
     logging: *logging
     healthcheck:
-      # La imagen no trae curl ni wget; /healthz no pasa por Access y Caddy no lo publica.
+      # La imagen no trae curl ni wget; /healthz solo se sondea en 127.0.0.1; Caddy responde 403 en el host de la UI.
       test:
         - CMD
         - python

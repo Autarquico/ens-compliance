@@ -1000,7 +1000,7 @@ def categorization_add_information(
     """Añade una información sin valorar. No aprueba nada."""
     store = open_workspace(ctx)
     edit_categorization(
-        lambda: add_information(store, info_id, description, clock()),
+        lambda: add_information(store, info_id, description),
         "No se añade la información:",
     )
     typer.echo(f"Información {info_id} añadida; valora cada dimensión con categorization rate.")
@@ -1026,7 +1026,7 @@ def categorization_rate(
     store = open_workspace(ctx)
     kind = "service" if is_service else "information"
     edit_categorization(
-        lambda: set_rating(store, kind, element_id, dimension, level, justification, clock()),
+        lambda: set_rating(store, kind, element_id, dimension, level, justification),
         "No se guarda la valoración:",
     )
     typer.echo(f"{element_id}: dimensión {dimension.value} valorada.")

@@ -260,6 +260,22 @@ def test_caddy_enruta_la_ui_por_nombre_de_host(caddyfile):
     assert caddyfile.count("reverse_proxy") == 2
 
 
+def test_caddy_no_publica_healthz_en_ningun_host(caddyfile):
+    healthz = block(caddyfile, "@ui_healthz")
+    assert "host {$ENS_UI_HOST:ui.invalid}" in healthz
+    assert "path /healthz" in healthz
+    assert 'respond "Forbidden" 403' in block(caddyfile, "handle @ui_healthz")
+    assert caddyfile.index("handle @ui_healthz") < caddyfile.index("handle @ui {")
+    assert not any(
+        "healthz" in b
+        for b in (
+            block(caddyfile, "@agent_any"),
+            block(caddyfile, "@small_agent"),
+            block(caddyfile, "@large_agent"),
+        )
+    )
+
+
 def test_caddy_enruta_los_agentes_por_nombre_de_host(caddyfile):
     for matcher in ("@agent_any", "@encoded"):
         assert "host {$ENS_AGENT_HOST:agent.invalid}" in block(caddyfile, matcher)

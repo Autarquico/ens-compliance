@@ -106,7 +106,7 @@ def _informacion_save(step: StepInput) -> None:
         except ScopeNotApproved:
             raise StepRejected(form_errors=[SCOPE_NOT_APPROVED]) from None
     with rejected_to_step(CategorizationEditRejected):
-        add_information(step.store, values["info_id"], values["description"], step.now)
+        add_information(step.store, values["info_id"], values["description"])
 
 
 def _informacion_done(store: UiStore, now: datetime) -> bool:
@@ -174,7 +174,7 @@ def _valoraciones_save(step: StepInput) -> None:
     due = _valuations_due(step, elements, changes)
     for kind, element_id, dimension, level, justification in changes:
         with rejected_to_step(CategorizationEditRejected):
-            set_rating(step.store, kind, element_id, dimension, level, justification, step.now)
+            set_rating(step.store, kind, element_id, dimension, level, justification)
     for kind, element_id, signer in due:
         with rejected_to_step(CategorizationEditRejected):
             set_valuation(step.store, kind, element_id, signer, step.now)

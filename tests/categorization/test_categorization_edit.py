@@ -45,11 +45,11 @@ def load(store: LocalStore) -> CategorizationFile:
 
 def rate_all(store: LocalStore, kind: str, element_id: str, level: str) -> None:
     for dimension in Dimension:
-        set_rating(store, kind, element_id, dimension, level, JUSTIFICATION, NOW)
+        set_rating(store, kind, element_id, dimension, level, JUSTIFICATION)
 
 
 def test_flujo_completo_deja_el_fichero_aprobable(template):
-    add_information(template, "datos-clientes", "Datos de los clientes", NOW)
+    add_information(template, "datos-clientes", "Datos de los clientes")
     for kind, element_id in (("information", "datos-clientes"), ("service", "svc-facturacion")):
         rate_all(template, kind, element_id, "MEDIO")
         set_valuation(template, kind, element_id, "Ana Ruiz", NOW)
@@ -66,7 +66,7 @@ def test_flujo_completo_deja_el_fichero_aprobable(template):
 def test_conserva_la_cabecera_de_la_plantilla(template):
     header = template.read_text(CATEGORIZATION_KEY).split("\ninformation:")[0]
 
-    add_information(template, "datos-clientes", "Datos de los clientes", NOW)
+    add_information(template, "datos-clientes", "Datos de los clientes")
 
     assert template.read_text(CATEGORIZATION_KEY).startswith(header)
     assert "BAJO: perjuicio limitado" in template.read_text(CATEGORIZATION_KEY)
@@ -78,8 +78,8 @@ def test_la_misma_edicion_da_el_mismo_fichero(store, tmp_path):
         other.write_text(f"scope/{name}.yaml", store.read_text(f"scope/{name}.yaml"))
     for target in (store, other):
         target.write_text(CATEGORIZATION_KEY, "information: []\nservices: []\n")
-        add_information(target, "a", "A", NOW)
-        set_rating(target, "information", "a", Dimension.C, "ALTO", JUSTIFICATION, NOW)
+        add_information(target, "a", "A")
+        set_rating(target, "information", "a", Dimension.C, "ALTO", JUSTIFICATION)
 
     assert store.read_text(CATEGORIZATION_KEY) == other.read_text(CATEGORIZATION_KEY)
     first, second = (load_inventory(s).inventory for s in (store, other))
@@ -90,9 +90,7 @@ def test_nivel_invalido_se_rechaza_sin_escribir(template):
     before = template.read_text(CATEGORIZATION_KEY)
 
     with pytest.raises(CategorizationEditRejected) as raised:
-        set_rating(
-            template, "service", "svc-facturacion", Dimension.C, "ENORME", JUSTIFICATION, NOW
-        )
+        set_rating(template, "service", "svc-facturacion", Dimension.C, "ENORME", JUSTIFICATION)
 
     assert "svc-facturacion" in raised.value.errors[0]
     assert template.read_text(CATEGORIZATION_KEY) == before
@@ -100,42 +98,40 @@ def test_nivel_invalido_se_rechaza_sin_escribir(template):
 
 def test_justificacion_vacia_se_rechaza(template):
     with pytest.raises(CategorizationEditRejected, match="justificación"):
-        set_rating(template, "service", "svc-facturacion", Dimension.C, "BAJO", "  ", NOW)
+        set_rating(template, "service", "svc-facturacion", Dimension.C, "BAJO", "  ")
 
 
 def test_not_affected_se_acepta_con_justificacion(template):
-    set_rating(
-        template, "service", "svc-facturacion", Dimension.T, "not_affected", "No aplica", NOW
-    )
+    set_rating(template, "service", "svc-facturacion", Dimension.T, "not_affected", "No aplica")
 
     assert load(template).services[0].ratings[Dimension.T].level == "not_affected"
 
 
 def test_elemento_desconocido_y_id_repetido(template):
     with pytest.raises(CategorizationEditRejected, match="no hay service con id svc-nada"):
-        set_rating(template, "service", "svc-nada", Dimension.C, "BAJO", JUSTIFICATION, NOW)
-    add_information(template, "datos", "Datos", NOW)
+        set_rating(template, "service", "svc-nada", Dimension.C, "BAJO", JUSTIFICATION)
+    add_information(template, "datos", "Datos")
     with pytest.raises(CategorizationEditRejected, match="repetido"):
-        add_information(template, "datos", "Otra vez", NOW)
+        add_information(template, "datos", "Otra vez")
 
 
 def test_fichero_inexistente_indica_init(store):
     with pytest.raises(CategorizationEditRejected, match="categorization init"):
-        add_information(store, "datos", "Datos", NOW)
+        add_information(store, "datos", "Datos")
 
 
 def test_secreto_se_rechaza_sin_eco_ni_escritura(template):
     before = template.read_text(CATEGORIZATION_KEY)
 
     with pytest.raises(CategorizationEditRejected, match="secreto") as raised:
-        set_rating(template, "service", "svc-facturacion", Dimension.C, "BAJO", TOKEN, NOW)
+        set_rating(template, "service", "svc-facturacion", Dimension.C, "BAJO", TOKEN)
 
     assert TOKEN not in str(raised.value)
     assert template.read_text(CATEGORIZATION_KEY) == before
 
 
 def test_editar_deja_la_aprobacion_obsoleta(template):
-    add_information(template, "datos", "Datos", NOW)
+    add_information(template, "datos", "Datos")
     for kind, element_id in (("information", "datos"), ("service", "svc-facturacion")):
         rate_all(template, kind, element_id, "BAJO")
         set_valuation(template, kind, element_id, "Ana Ruiz", NOW)
@@ -144,7 +140,7 @@ def test_editar_deja_la_aprobacion_obsoleta(template):
     approve_categorization(template, "Marta Gil", NOW)
     assert categorization_status(template, NOW).state is CategorizationState.CURRENT
 
-    set_rating(template, "information", "datos", Dimension.C, "ALTO", JUSTIFICATION, NOW)
+    set_rating(template, "information", "datos", Dimension.C, "ALTO", JUSTIFICATION)
 
     assert categorization_status(template, NOW).state is CategorizationState.STALE
 

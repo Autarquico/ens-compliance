@@ -22,6 +22,11 @@
 	}
 
 	@ui host {$ENS_UI_HOST:ui.invalid}
+	# /healthz es solo para el healthcheck del contenedor (127.0.0.1); no se publica.
+	@ui_healthz {
+		host {$ENS_UI_HOST:ui.invalid}
+		path /healthz /healthz/*
+	}
 	@small_agent {
 		method POST
 		path /agent/enroll /agent/config /agent/distributed/read
@@ -41,6 +46,10 @@
 		method POST
 		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
 		header Content-Encoding *
+	}
+
+	handle @ui_healthz {
+		respond "Forbidden" 403
 	}
 
 	handle @ui {

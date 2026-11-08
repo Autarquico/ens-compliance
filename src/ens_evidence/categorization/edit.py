@@ -86,7 +86,7 @@ def _element(document: dict[str, Any], kind: Kind, element_id: str) -> dict[str,
     )  # fmt: skip
 
 
-def add_information(store: WorkspaceStore, info_id: str, description: str, now: datetime) -> None:
+def add_information(store: WorkspaceStore, info_id: str, description: str) -> None:
     """Añade una información sin valorar."""
     fields = {"id": info_id, "description": description, "ratings": {}}
     _reject_secrets(fields)
@@ -102,7 +102,6 @@ def set_rating(
     dimension: Dimension,
     level: str,
     justification: str,
-    now: datetime,
 ) -> None:
     """Fija el nivel (BAJO, MEDIO, ALTO o not_affected) de una dimensión, con su justificación."""
     fields = {"level": level, "justification": justification}
