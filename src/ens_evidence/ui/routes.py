@@ -2,20 +2,20 @@
 
 from starlette.routing import BaseRoute, Route
 
-from ens_evidence.ui.views.dossier import expediente
+from ens_evidence.ui.views.dossier import DOSSIER_ROUTES
 from ens_evidence.ui.views.evidence import EVIDENCE_ROUTES
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
 from ens_evidence.ui.views.preaudit import preauditoria
-from ens_evidence.ui.views.status import estado
+from ens_evidence.ui.views.status import STATUS_ROUTES
 from ens_evidence.ui.wizard import wizard_routes
 
 
 def ui_routes() -> list[BaseRoute]:
     return [
-        Route("/", estado, methods=["GET"]),
+        *STATUS_ROUTES,
         *MATRIX_ROUTES,
         *EVIDENCE_ROUTES,
-        Route("/expediente", expediente, methods=["GET"]),
+        *DOSSIER_ROUTES,
         Route("/preauditoria", preauditoria, methods=["GET"]),
         *wizard_routes(),
     ]
