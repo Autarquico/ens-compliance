@@ -20,6 +20,6 @@ BLOCKER_LABELS = {
     BlockerKind.EXPIRED_EVIDENCE: "Evidencia caducada",
     BlockerKind.MISSING_REVIEW: "Falta revisión",
     BlockerKind.EXPIRED_REVIEW: "Revisión caducada",
-    BlockerKind.NOT_COMPLIANT: "Medida desfavorable",
+    BlockerKind.NOT_COMPLIANT: "Valoración pendiente o desfavorable",
     BlockerKind.OPEN_FINDING: "Hallazgo abierto",
 }

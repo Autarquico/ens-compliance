@@ -120,7 +120,8 @@ def test_estado_con_el_asistente_completo_habla_en_claro(completed):
 
     assert "applicability status" not in page
     assert "UNDETERMINED_APPLICABILITY" not in page
-    assert "Aplicabilidad sin decidir" in page
+    assert "Falta firmar la Declaración de Aplicabilidad" in page
+    assert "Siguiente paso" in page
     assert "Declaración de Aplicabilidad" in page
 
 

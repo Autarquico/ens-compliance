@@ -2,8 +2,29 @@
 {% import "_macros.html" as m with context %}
 {% block content %}
 <h1>Estado</h1>
-<p class="lead">Dónde estás en la preparación del ENS. Esta página solo lee: no cambia nada.</p>
+<p class="lead">Dónde estás en la preparación del ENS y qué toca ahora. Esta página solo lee: no cambia nada.</p>
 {{ m.revision_humana() }}
+<section class="card" aria-labelledby="h-sig">
+  <h2 id="h-sig">Siguiente paso</h2>
+  {% if next_step_url %}
+  <p><a class="btn btn-primary" href="{{ next_step_url }}">{{ next_step_label }}</a></p>
+  {% else %}
+  <p>{{ next_step_label }}</p>
+  {% endif %}
+</section>
+<section class="section" aria-labelledby="h-fases">
+  <h2 id="h-fases">Tu recorrido</h2>
+  <ol class="phases">
+    {%- for p in phases %}
+    <li>
+      {%- if p.state == "done" %}{{ m.icon("check") }}<span>{{ p.label }}</span> <span class="muted">· Hecho</span>
+      {%- elif p.state == "next" %}{{ m.icon("clock") }}<strong>{{ p.label }}</strong> <span class="muted">· Ahora</span>
+      {%- else %}{{ m.icon("help") }}<span>{{ p.label }}</span> <span class="muted">· Pendiente</span>
+      {%- endif %}
+    </li>
+    {%- endfor %}
+  </ol>
+</section>
 <div class="grid">
   <section class="card" aria-labelledby="h-prep">
     <h2 id="h-prep">Preparación</h2>
@@ -21,19 +42,19 @@
     <p>Categoría: {% if category %}<span class="mono">{{ category }}</span>{% else %}<span class="muted">sin calcular</span>{% endif %}</p>
   </section>
 </div>
-{% if next_step_url %}
-<div class="actions"><a class="btn btn-primary" href="{{ next_step_url }}">{{ next_step_label }}</a></div>
-{% endif %}
 <section class="section" aria-labelledby="h-bloq">
   <h2 id="h-bloq">Lo que falta</h2>
   <p class="muted">La Declaración de Aplicabilidad es el documento que dice qué medidas del ENS te tocan; la firma una persona responsable.</p>
+  {% if errors %}
+  <div class="notice notice-warn"><p><strong>No se ha podido leer algo del workspace:</strong></p><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+  {% endif %}
   {% if blockers %}
   <div class="table-wrap"><table>
-    <caption>Bloqueos para estar preparado. Cada uno necesita una acción de una persona.</caption>
-    <thead><tr><th scope="col">Medida</th><th scope="col">Tipo</th><th scope="col">Qué pasa</th></tr></thead>
+    <caption>Cada punto necesita una acción de una persona.</caption>
+    <thead><tr><th scope="col">Medida</th><th scope="col">Qué pasa</th></tr></thead>
     <tbody>
     {%- for b in blockers %}
-    <tr><td class="id">{{ b.measure_id or "—" }}</td><td>{{ b.kind }}</td><td>{{ b.text }}</td></tr>
+    <tr><td class="id">{% if b.measure_id %}<a href="/matriz/{{ b.measure_id }}">{{ b.measure_id }}</a>{% else %}General{% endif %}</td><td>{% if b.texts | length > 1 %}<ul>{% for t in b.texts %}<li>{{ t }}</li>{% endfor %}</ul>{% else %}{{ b.texts[0] }}{% endif %}</td></tr>
     {%- endfor %}
     </tbody>
   </table></div>

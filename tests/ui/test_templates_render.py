@@ -170,9 +170,15 @@ VIEW_CONTEXT = {
         "category": "BASICA",
         "next_step_url": "/asistente/sistema",
         "next_step_label": "Seguir con el asistente",
+        "phases": [
+            {"label": "Alcance", "state": "done"},
+            {"label": "Riesgos", "state": "next"},
+            {"label": "Matriz", "state": "todo"},
+        ],
+        "errors": [HOSTILE],
         "blockers": [
-            {"kind": "MISSING_EVIDENCE", "measure_id": "op.pl.1", "text": "Sin evidencia"},
-            {"kind": "MISSING_REVIEW", "measure_id": None, "text": HOSTILE},
+            {"measure_id": "op.pl.1", "texts": ["Sin evidencia.", "Sin revisar."]},
+            {"measure_id": None, "texts": [HOSTILE]},
         ],
         "generated_at": "2026-11-08 10:00",
     },
@@ -199,14 +205,34 @@ VIEW_CONTEXT = {
         ],
     },
     "views/expediente.html": {
+        "dossier_id": "20261108T100000000000Z-abcdef012345",
+        "category": "BÁSICA",
         "dossier_state": "GENERATED",
         "generated_at": "2026-11-08 10:00",
         "declared": None,
+        "transitions": [
+            {"state": "SELF_ASSESSED", "actor": HOSTILE, "role": "Rol", "at": "2026-11-08 10:00"}
+        ],
+        "stale": True,
+        "drift_lines": [HOSTILE],
+        "integrity": [HOSTILE],
+        "blocked": [HOSTILE],
+        "incomplete": ["4. Riesgos"],
+        "readiness_notice": HOSTILE,
+        "action": "analyze",
+        "next_text": "Toca el análisis.",
+        "can_download": True,
+        "self_assess_roles": {"system_administrator": "Administrador del sistema"},
+        "form_errors": [HOSTILE],
+        "errors": {"by": [HOSTILE]},
+        "values": {"by": HOSTILE},
+        "saved": "Hecho.",
         "sections": [
             {
                 "title": "Alcance",
                 "file": "alcance.md",
                 "state": "GENERATED",
+                "state_label": "Registrada",
                 "generated_at": "2026-11-08 10:00",
                 "fingerprint": "abcdef0123456789",
             }
