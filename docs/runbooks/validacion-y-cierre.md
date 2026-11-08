@@ -59,7 +59,7 @@ Cada prueba deja rastro en el workspace, no en el repositorio:
   `--asset` es un activo del inventario (`inventory validate` lo comprueba).
   `--by` es un nombre declarado: la herramienta no lo autentica. El hash prueba
   que la nota no cambió, no que sea auténtica.
-- **Solo para la restauración**: `backup restore-test record` (paso 4).
+- **Solo para la restauración**: `backup restore-test record` (prueba 2.5).
 
 Una nota manual **no sustituye** al resultado de la herramienta: cítalo en la
 nota (comando, código de salida, id de la evidencia que generó).
@@ -92,7 +92,7 @@ runbook las hace por ti.
 5. Qué miras: `collect` sale con 1 (error global, token inválido o revocado),
    la evidencia del intento queda guardada y ningún check que dependa de ese
    conector da `PASS` (el sistema queda `NOT READY`).
-6. Registra: nota manual (paso 1) con el id de la evidencia en `ERROR`.
+6. Registra: nota manual (sección 1) con el id de la evidencia en `ERROR`.
 7. Vuelta atrás: el token revocado no se recupera. Borra el token de prueba del
    entorno (`unset`) y restablece el de producción en tu gestor de
    contraseñas. Recoge de nuevo (`collect --all`) para que el estado vigente
@@ -110,10 +110,12 @@ caducidad del paquete.
 
    ```bash
    ens-evidence endpoint check --at 2026-12-31T10:00:00+01:00
+   ens-evidence assessment status --at 2026-12-31T10:00:00+01:00
    ```
 
-3. Qué miras: salida 4 e indicación de evidencia caducada; la caducidad
-   bloquea la preparación (`EXPIRED_EVIDENCE`) y HOST-001 no da `PASS`.
+3. Qué miras: `endpoint check` sale con 4 e indica evidencia caducada;
+   `assessment status` (con la misma fecha) muestra el bloqueo
+   `EXPIRED_EVIDENCE` y HOST-001 no da `PASS`.
 4. Registra: nota manual con la fecha usada en `--at` y la salida.
 5. Vuelta atrás: ninguna; `--at` no escribe. Si dejaste caducar un paquete real,
    vuelve a ejecutar el script del equipo e impórtalo.
@@ -124,9 +126,19 @@ caducidad del paquete.
    protección de la rama por defecto; `collect github` con `PASS` en
    `github.default_branch_protected`. Anota los ajustes de la protección antes de tocarla.
 2. Quítala tú en GitHub (*Settings > Branches*).
-3. Ejecuta `ens-evidence collect github` y `ens-evidence check --all`.
-4. Qué miras: `github.default_branch_protected` pasa a `FAIL` (o a un estado que
-   no es `PASS`) y el cambio sale respecto de la ejecución anterior.
+3. Ejecuta:
+
+   ```bash
+   ens-evidence collect github
+   ens-evidence check --all
+   ens-evidence report daily
+   ens-evidence assessment status
+   ```
+
+4. Qué miras: `check --all` muestra `github.default_branch_protected` en `FAIL`
+   (o en un estado que no es `PASS`); el informe diario recoge el cambio
+   respecto de la ejecución anterior; `assessment status` queda `NOT READY` por
+   ese check.
 5. Registra: nota manual con el id de ambas evidencias.
 6. Vuelta atrás: restaura la protección con los ajustes que anotaste y recoge
    de nuevo.
@@ -198,7 +210,7 @@ evidencia del workspace real rompe su cadena y no hay deshacer.
 
 ### 2.7 LLM caído: los checks siguen
 
-1. Ejecuta la pre-auditoría sin consentir la capa de juicio (paso 5.2): es
+1. Ejecuta la pre-auditoría sin consentir la capa de juicio (sección 5, punto 3): es
    exactamente el caso de LLM no disponible.
 2. Qué miras: la capa determinista se completa y el estado dice «capa de
    juicio no ejecutada; revisión humana pendiente». `check --all` y
@@ -228,8 +240,8 @@ anótalo y abre una incidencia. No toques el workspace real ni sus credenciales.
    nada.
 2. Qué miras: mismos estados; una ejecución nueva que da lo mismo no cambia el
    estado del expediente (`assessment dossier status <id>` no señala cambios).
-3. Con `ens-evidence evidence import` del mismo paquete de endpoint dos veces:
-   la segunda se rechaza y señala la evidencia existente.
+3. Con `ens-evidence evidence import <paquete> --source endpoint --asset <id> --by …`
+   del mismo paquete de endpoint dos veces: la segunda se rechaza y señala la evidencia existente.
 
 ### 2.10 Recuperación de `ens-evidence`
 
@@ -252,14 +264,42 @@ ens-evidence assessment status
 ```
 
 `assessment status` sale con 0 solo si el sistema está preparado. Resuelve los
-bloqueos que indica (`matrix show`, [matriz](matriz-de-cumplimiento.md)).
+bloqueos que indica (`ens-evidence matrix status`, [matriz](matriz-de-cumplimiento.md)).
 
-## 4. La caja como activo del alcance
+## 4. La caja: su propio workspace y su expediente
 
-La caja se declara como activo en el inventario de su organización y se
-incluye en el alcance con `scope add-asset` y `scope approve`: el comando exacto
-está en [caja, sección 5](caja.md). Aprobar lo decide el responsable del
-sistema. Después, en la caja:
+La caja tiene su propio workspace, en el volumen `ens-box_data`, con sus
+propios ajustes (`/data/settings.yaml`). Es el workspace donde
+[caja, sección 5](caja.md) declara la caja (`srv-caja`) como activo y aprueba
+su alcance. Por tanto, **la caja tiene su propio expediente**, distinto del de
+Autarqui, y hace falta llevarlo a `READY` también. (La visión pide ese segundo
+expediente: «los de Autarqui y el de la propia caja».)
+
+Todos los comandos de esta sección y de la 5 para la caja van con el alias
+`ens` (sección 0), no con `ens-evidence`. Prerrequisitos del workspace de la
+caja, los mismos que en el de Autarqui (`assessment dossier generate` exige
+categorización vigente y Declaración de Aplicabilidad; `assessment status`
+exige revisiones de la matriz):
+
+1. Alcance aprobado: `ens scope status` en `APPROVED` ([caja, sección 5](caja.md)).
+2. Categorización aprobada: `ens categorization init` / `approve` / `status`.
+3. Declaración de Aplicabilidad aprobada: `ens applicability propose` /
+   `validate` / `approve`.
+4. Documentación organizativa generada y aprobada: `ens docs build` / `approve`
+   ([documentación](documentacion-organizativa.md)).
+5. Matriz con responsable, periodicidad y revisión por medida:
+   `ens matrix init` / `set` / `link` / `review`
+   ([matriz](matriz-de-cumplimiento.md)).
+6. Para la pre-auditoría (sección 5): una sección `preaudit:` en
+   `/data/settings.yaml` con `provider` y `model` ([pre-auditoría, §1](pre-auditoria.md)).
+   En la caja solo sirven `anthropic` y `openai`, y la clave
+   (`ANTHROPIC_API_KEY` u `OPENAI_API_KEY`) tiene que llegar al contenedor
+   `app`. **No documentado en [caja](caja.md):** `deploy/.env.example` no la
+   lista. Sin ella la capa de juicio no puede ejecutarse y el expediente de la
+   caja no llega a `READY`; no está verificado cómo inyectarla en la caja
+   desplegada, resuélvelo antes de la sección 5.
+
+Después, recoge y comprueba:
 
 ```bash
 ens collect --all
@@ -269,7 +309,8 @@ ens assessment status
 
 ## 5. Pre-auditoría y regla de preparación
 
-Para cada expediente (el de Autarqui y el de la caja):
+Para cada expediente (el de Autarqui con `ens-evidence`; el de la caja, con
+el alias `ens`):
 
 1. Genera el expediente y apunta el id:
 
@@ -367,9 +408,20 @@ Los nombres son declarados: la herramienta no autentica a nadie.
 v0.1 se cierra solo si se cumple todo:
 
 - las pruebas de la sección 2 hechas y registradas en el workspace;
-- `assessment status` en `READY` para Autarqui y para la caja;
+- `assessment status` en `READY` en el workspace de Autarqui y en el de la caja;
 - expediente en `ANALYZED` y, si es BÁSICA, `DECLARED` con persona y fecha; si
   es MEDIA, «preparado para certificación»;
+- el banco de defectos sembrados de la versión actual del audit pack supera el
+  umbral de la [visión](../vision.md) («Validación del auditor»): 100 % de los
+  defectos deterministas y ≥ 80 % de los de juicio con ≤ 20 % de falsas
+  alarmas, por proveedor, medido en la partición reservada
+  ([banco de defectos](banco-defectos.md));
 - el workspace real sigue fuera del repositorio y con copia.
+
+**Estado del umbral a 2026-11-08: no alcanzado.** Lo atienden las specs
+`audit-pack-generalization` y `audit-openai-pair` (ambas `active`). Hasta que
+se cumpla, v0.1 no puede cerrarse, aunque todo lo demás de este runbook salga
+bien. Que el banco supere el umbral valida la herramienta; no aprueba ningún
+expediente real.
 
 Si algo falla: no se cierra. Anota el motivo y qué decide cada persona.

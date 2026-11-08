@@ -5,7 +5,8 @@ ya tienen sus tests: ver docs/validation/matriz-de-pruebas.md.
 """
 
 import json
-from datetime import timedelta
+import re
+from datetime import date, timedelta
 
 import httpx
 import pytest
@@ -17,7 +18,7 @@ from connectors.github.fake_api import TOKEN, FakeApi
 from matrix.acceptance_helpers import review
 from preaudit.helpers import FakeAnthropic, configure, prepared_sha, world_at
 from reports.acceptance_fakes import COLLECTED_AT_ENV
-from reports.acceptance_helpers import START, Tick, connector, cycle_world, daily_json
+from reports.acceptance_helpers import PERIOD, START, Tick, connector, cycle_world, daily_json
 
 from ens_evidence.cli import app
 from ens_evidence.connectors import ConnectorRegistry
@@ -30,6 +31,7 @@ from guide_table.fakes import UNPROTECTED_ENV, GitHubBranchSwitch
 
 BRANCH_CHECK = "github.default_branch_protected"
 STORAGE_DOWN = StorageUnavailable("almacenamiento no disponible")
+PERIOD_DAY2 = (date.fromisoformat(PERIOD) + timedelta(days=1)).isoformat()  # START + 1 día
 
 
 # --- Storage caído: «Collection no OK» -----------------------------------------------------------
@@ -94,7 +96,7 @@ def test_tras_una_recogida_con_el_storage_caido_check_no_da_pass(github_workspac
     checked = ens(settings, "check", "--all")
 
     assert checked.exit_code != 0, checked.output
-    assert "PASS" not in checked.output.replace("Un check en PASS no da por implantada", "")
+    assert set(re.findall(r"\bPASS (\d+)", checked.output)) <= {"0"}
 
 
 # --- LLM caído: «Checks siguen» ------------------------------------------------------------------
@@ -192,7 +194,7 @@ def removed_protection(tmp_path, monkeypatch):
 
     monkeypatch.setenv(UNPROTECTED_ENV, "1")
     day2 = START + timedelta(days=1)
-    world.cycle = cycle_at(world, monkeypatch, day2)
+    assert cycle_at(world, monkeypatch, day2).exit_code in (0, 3)
     world.day2 = day2
     return world
 
@@ -211,8 +213,8 @@ def test_antes_de_quitarla_la_preparacion_es_ready(protected_then_removed):
 def test_la_proteccion_quitada_da_fail_en_check(protected_then_removed):
     world = protected_then_removed
 
-    before = connector(daily_json(world.store, "2026-10-30"), "github")["checks"]["value"]
-    after = connector(daily_json(world.store, "2026-10-31"), "github")["checks"]["value"]
+    before = connector(daily_json(world.store, PERIOD), "github")["checks"]["value"]
+    after = connector(daily_json(world.store, PERIOD_DAY2), "github")["checks"]["value"]
     assert before["counts"]["FAIL"] == 0 and before["counts"]["PASS"] > 0
     assert after["counts"]["FAIL"] == 1
 
@@ -220,7 +222,7 @@ def test_la_proteccion_quitada_da_fail_en_check(protected_then_removed):
 def test_el_cambio_de_pass_a_fail_aparece_en_el_informe_diario(protected_then_removed):
     world = protected_then_removed
 
-    document = daily_json(world.store, "2026-10-31")
+    document = daily_json(world.store, PERIOD_DAY2)
 
     changes = document["changes"]["value"]["items"]
     assert changes[0]["change"] == "added"
