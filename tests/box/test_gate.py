@@ -95,6 +95,7 @@ def test_las_credenciales_solo_llegan_a_quien_las_necesita(services):
 
     assert env_files == {
         "app": "${ENS_ENV_FILE:-deploy/.env}",
+        "agent": "${ENS_AGENT_ENV_FILE:-deploy/agent.env}",
         "cloudflared": "${ENS_TUNNEL_ENV_FILE:-deploy/tunnel.env}",
     }
 
@@ -138,8 +139,100 @@ def test_el_latido_del_scheduler_es_de_cada_contenedor_no_del_volumen(services):
 
 
 def test_caddy_no_tiene_salida_a_internet(compose, services):
-    assert services["caddy"]["networks"] == ["edge"]
-    assert compose["networks"]["edge"]["internal"] is True
+    networks = services["caddy"]["networks"]
+
+    assert set(networks) == {"edge", "agent"}
+    assert all(compose["networks"][n].get("internal") is True for n in networks)
+
+
+def test_agent_solo_arranca_con_el_perfil_agents(services):
+    assert services["agent"]["profiles"] == ["agents"]
+
+
+def test_agent_nunca_recibe_las_credenciales_de_los_conectores(services):
+    agent = services["agent"]
+
+    assert agent["env_file"] == "${ENS_AGENT_ENV_FILE:-deploy/agent.env}"
+    assert "ENS_ENV_FILE" not in str(agent)
+    assert "environment" not in agent
+
+
+def test_agent_corre_endurecido_y_solo_en_redes_internas(compose, services):
+    agent = services["agent"]
+
+    assert agent["read_only"] is True
+    assert "/tmp" in agent["tmpfs"]
+    assert agent["init"] is True
+    assert agent["restart"] == "unless-stopped"
+    assert "ports" not in agent
+    assert agent["networks"] == ["agent"]
+    assert compose["networks"]["agent"]["internal"] is True
+    assert agent["volumes"] == ["data:/data"]
+    assert agent["command"][:3] == ["ens-evidence", "agent", "serve"]
+
+
+def test_agent_se_sondea_en_healthz_sin_curl_ni_wget(services):
+    test = services["agent"]["healthcheck"]["test"]
+
+    assert test[:3] == ["CMD", "python", "-c"]
+    assert "127.0.0.1:8000/healthz" in test[3]
+
+
+def test_la_imagen_instala_el_extra_server(dockerfile):
+    assert all(
+        "--extra server" in line for line in re.findall(r"^RUN uv sync .*$", dockerfile, re.M)
+    )
+
+
+AGENT_PATHS = [
+    "/agent/enroll",
+    "/agent/config",
+    "/agent/log",
+    "/agent/distributed/read",
+    "/agent/distributed/write",
+]
+
+
+def test_caddy_solo_enruta_los_cinco_post_del_protocolo(caddyfile):
+    matcher = re.search(r"@agent_any \{(.*?)\n\t\}", caddyfile, re.S)
+
+    assert matcher
+    assert "method POST" in matcher.group(1)
+    paths = re.search(r"path (.+)", matcher.group(1)).group(1).split()
+    assert paths == AGENT_PATHS
+    assert caddyfile.count("reverse_proxy") == 1
+    assert "reverse_proxy agent:8000" in caddyfile
+
+
+def test_caddy_rechaza_content_encoding_con_415(caddyfile):
+    assert re.search(r"@encoded \{.*?header Content-Encoding \*.*?\}", caddyfile, re.S)
+    assert re.search(r"handle @encoded \{\s*respond .* 415", caddyfile)
+    assert caddyfile.index("handle @encoded") < caddyfile.index("handle @agent_any")
+
+
+def test_caddy_limita_el_cuerpo_por_ruta(caddyfile):
+    small = re.search(r"@small_agent \{.*?path (.+?)\n", caddyfile, re.S).group(1).split()
+    large = re.search(r"@large_agent \{.*?path (.+?)\n", caddyfile, re.S).group(1).split()
+
+    assert small == ["/agent/enroll", "/agent/config", "/agent/distributed/read"]
+    assert large == ["/agent/log", "/agent/distributed/write"]
+    assert re.search(r"request_body @small_agent \{\s*max_size 64KB", caddyfile)
+    assert re.search(r"request_body @large_agent \{\s*max_size 10MB", caddyfile)
+
+
+def test_caddy_no_reenvia_cookies_ni_cabeceras_de_access(caddyfile):
+    assert "header_up -Cookie" in caddyfile
+    assert "header_up -Cf-Access-*" in caddyfile
+
+
+def test_caddy_mantiene_403_por_defecto_y_503_si_el_agente_cae(caddyfile):
+    assert re.search(r"handle \{\s*respond \"Forbidden\" 403\s*\}", caddyfile)
+    assert re.search(r"handle_errors \{.*?502, 503, 504.*?503", caddyfile, re.S)
+
+
+def test_caddy_sigue_recortando_query_y_cabeceras_en_el_log(caddyfile):
+    assert 'request>uri regexp \\?.*$ ""' in caddyfile
+    assert "request>headers delete" in caddyfile
 
 
 SECRET_NAME = re.compile(r"token|secret|password|passwd|api_?key|credential", re.IGNORECASE)
@@ -163,7 +256,9 @@ def test_no_hay_credenciales_literales_en_la_caja(services):
         assert not TOKEN_SHAPES.search((REPO / path).read_text(encoding="utf-8")), path
 
 
-@pytest.mark.parametrize("example", ["deploy/.env.example", "deploy/tunnel.env.example"])
+@pytest.mark.parametrize(
+    "example", ["deploy/.env.example", "deploy/tunnel.env.example", "deploy/agent.env.example"]
+)
 def test_los_ejemplos_de_entorno_no_traen_valores(example):
     lines = (REPO / example).read_text(encoding="utf-8").splitlines()
     assignments = [line for line in lines if line.strip() and not line.lstrip().startswith("#")]
@@ -177,8 +272,10 @@ def test_los_ficheros_env_reales_no_se_suben_a_git_pero_los_ejemplos_si():
 
     assert ignored("deploy/.env")
     assert ignored("deploy/tunnel.env")
+    assert ignored("deploy/agent.env")
     assert not ignored("deploy/.env.example")
     assert not ignored("deploy/tunnel.env.example")
+    assert not ignored("deploy/agent.env.example")
 
 
 def test_restic_se_verifica_por_sha256_antes_de_entrar_en_la_imagen(dockerfile):
@@ -252,7 +349,7 @@ def run_status(root, env):
 
 
 @pytest.mark.parametrize("mode", [0o644, 0o640, 0o604, 0o660, 0o666])
-@pytest.mark.parametrize("name", [".env", "tunnel.env"])
+@pytest.mark.parametrize("name", [".env", "tunnel.env", "agent.env"])
 def test_box_sh_se_niega_a_usar_un_env_con_modo_distinto_de_600(clone_with_docker_stub, name, mode):
     root, env = clone_with_docker_stub
     secrets = root / "deploy" / name

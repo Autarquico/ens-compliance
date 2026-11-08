@@ -1,6 +1,6 @@
-# Deny-all: toda ruta responde 403 y queda en el log (ADR 0016).
-# /agent/* no se publica hasta osquery-server; no hay UI pública.
-# Escucha en :8080 dentro de la red interna `edge`; ningún puerto se publica en el host.
+# Deny-all salvo cinco POST del protocolo TLS de osquery hacia el servidor de agentes (ADR 0016).
+# Todo lo demás responde 403 y queda en el log; no hay UI pública.
+# Escucha en :8080 dentro de las redes internas `edge` y `agent`; ningún puerto se publica en el host.
 {
 	auto_https off
 	admin localhost:2019
@@ -18,5 +18,54 @@
 			resp_headers delete
 		}
 	}
-	respond "Forbidden" 403
+
+	@small_agent {
+		method POST
+		path /agent/enroll /agent/config /agent/distributed/read
+	}
+	@large_agent {
+		method POST
+		path /agent/log /agent/distributed/write
+	}
+	@agent_any {
+		method POST
+		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
+	}
+	# El servidor no descomprime: osquery con --logger_tls_compress enviaría cuerpos que no puede leer.
+	@encoded {
+		method POST
+		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
+		header Content-Encoding *
+	}
+
+	handle @encoded {
+		respond "Unsupported Media Type" 415
+	}
+
+	handle @agent_any {
+		request_body @small_agent {
+			max_size 64KB
+		}
+		request_body @large_agent {
+			max_size 10MB
+		}
+		reverse_proxy agent:8000 {
+			header_up -Cookie
+			header_up -Cf-Access-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle {
+		respond "Forbidden" 403
+	}
+
+	# Agente caído o lento: 503 sin detalle. Los demás errores (p. ej. 413 por tamaño) conservan su código.
+	handle_errors {
+		@upstream_down expression {http.error.status_code} in [502, 503, 504]
+		respond @upstream_down "Service Unavailable" 503
+	}
 }
