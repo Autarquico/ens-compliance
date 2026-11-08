@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: "El audit pack generaliza más allá de dev"
 type: task
-status: active
+status: draft
 priority: P1
 size: L
 issue: null
