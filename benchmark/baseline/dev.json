@@ -1,9 +1,92 @@
 {
   "format": "ens-benchmark-baseline/1",
   "partition": "dev",
-  "written_at": "2026-11-06T13:25:44.669386Z",
-  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
+  "written_at": "2026-11-08T12:45:46.162583Z",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
   "inventory": {
+    "dev/clinica-analisis-y-accesos-incoherentes": "9c2211f647c9695dbb3e7b4dac9f7348192e3705d4f6ad2c2cd347e8373a3f70",
+    "dev/clinica-analisis-y-accesos-incoherentes#analisis-de-otra-actividad": "d4c823ac112173c563413401f3980584c56b4643018ab26169d840ead1621617",
+    "dev/clinica-analisis-y-accesos-incoherentes#perfiles-de-administrador-para-todos": "20e4171ccdb6e60a368429b387c88988aa6221db4bae2a41feeadb932f9ce864",
+    "dev/clinica-analisis-y-accesos-incoherentes#segregacion-excluida-con-administradores-sin-control": "95f22b578e464e10c13f5ce745c8494375359c94c69e0c4762b4c6a662de6726",
+    "dev/clinica-coordinacion-quincenal": "0049d84e3ba6f4277b9812051fd448222c85cf89f37c00ae4854d40597c08860",
+    "dev/clinica-copias-compensadas-por-proveedor": "8ee449a2c58220bbb1066206fc97e3de51cff3885264614c457937347972920f",
+    "dev/clinica-copias-compensadas-por-proveedor#compensacion-de-palabra": "6df4ae322f91a5bcbf6c11d90c14559fb301c95e5779d4bbb2223b2a3126b5f8",
+    "dev/clinica-copias-compensadas-por-proveedor#copias-compensadas-sin-evidencia": "1e17117424543ede70716ff615be0e5615559e6f9c7d1f4fb2792df0b821447e",
+    "dev/clinica-copias-manipuladas": "098155880b12ef6e6a5906dec05b16193752e3efbf57e4397121a639119a7401",
+    "dev/clinica-copias-manipuladas#copias-retocadas": "abad4137b07e9a95e95da587960c735b3cdc9409ba181453bb21f57744c71970",
+    "dev/clinica-copias-manipuladas#respaldo-sin-evidencia-integra": "cd87109980f2cb60c3d0fa7344713a5a9ef19e7c7fddfecf5d651b74a5f1fcfd",
+    "dev/clinica-copias-y-antivirus-contradictorios": "a7658a5498717c625d9f28a55f1de21a32606a3e71e1234ca353d8b14d6c8570",
+    "dev/clinica-copias-y-antivirus-contradictorios#continuidad-excluida-sin-copia-de-pacientes": "a2182716d52e4ee8a8bf2ee246e7832e4706287b8104179b11d5c1e27b21021b",
+    "dev/clinica-copias-y-antivirus-contradictorios#copias-usb-sin-cifrar": "2ffe1198ca4555123d22dee513a092a91db0dc6638ea5568f401be027a1b6c91",
+    "dev/clinica-copias-y-antivirus-contradictorios#impacto-excluido-con-recuperacion-de-tres-dias": "a73aece1ae26d41789687f07bfeec29cd4db59af358440dccc67505d4e04ff13",
+    "dev/clinica-copias-y-antivirus-contradictorios#servidor-sin-antivirus": "0c222ea17c25e0d17ceb750ca2a6e6850858587726ff8abdf7aeb12312f5928c",
+    "dev/clinica-copias-y-antivirus-contradictorios#terceros-excluidos-sin-copia-externa": "f3fed7756f20ed3f9aa6d8478531cdcc5cdf841116b0a255c62ecf6121111ef9",
+    "dev/clinica-correcta": "61db92b033e5bd4c7d95441d695e41253eec56b84ce99547a900d7b2f2db4fe6",
+    "dev/clinica-exclusiones-sin-fundamento": "2345c7b685858d0713190156126f8bf57c2d072876c14086113a26be7e6ce3a5",
+    "dev/clinica-exclusiones-sin-fundamento#formacion-compensada-sin-evidencia": "33b23231df3eec1949782d7faafe84ff9432fa353e545e99dd37513fc554de95",
+    "dev/clinica-exclusiones-sin-fundamento#manual-del-programa-por-formacion": "951abba73757294bda0ebfdb73b4ed9a99a2e4f93141e6511926b2c10b8dadeb",
+    "dev/clinica-exclusiones-sin-fundamento#soportes-cifrados-excluidos": "0721e79616df043407e07413c8dd6fdb98b94caacc46b275a39d991a31aa4dab",
+    "dev/clinica-informes-caducados": "d27b840e91934345ed08891bfee8a3a7b7d6716d7b9c8b9de8bdf37dde7b41d8",
+    "dev/clinica-informes-caducados#antivirus-sin-cobertura": "753b7d458ab879768c0cd5af2f33f80f0f3b6b38af79332a6734566cc3bf1d40",
+    "dev/clinica-informes-caducados#antivirus-vencido": "7bf958bd3a0b468783e10c7a0a496a3aec46ca9f93810c611b6fdb328ca3776b",
+    "dev/clinica-informes-caducados#copias-sin-cobertura": "585b26536665a58faa5f39c8407a5c3f679b93ec5e4044419bd4bdf1e6fd0be9",
+    "dev/clinica-informes-caducados#copias-vencidas": "782d8d1edd5686c81a54a93cc8a6ef685b59b1e5b969aab6ddce9b20c0d5d03c",
+    "dev/clinica-inventario-sin-enlace": "abbf222208a71080f4c265f984e61b0778ad7c86dc24a7104890809eadf9b5cb",
+    "dev/clinica-inventario-sin-enlace#op-exp-1-sin-respaldo": "05f830f94e37e2669aa59984235f4bb30baec8b2fef11b2c185d9884bc8cfc50",
+    "dev/clinica-normativa-y-autorizaciones-vagas": "0b85bbb0c135f52f9f05cc9152b628cbec0035de634337849b10273e202742c1",
+    "dev/clinica-normativa-y-autorizaciones-vagas#moviles-sin-proceso-formal": "58c23f8e5dce7620bc3b7d887eaf356d3923df443ee7826bf925d531c48b5be7",
+    "dev/clinica-normativa-y-autorizaciones-vagas#sanciones-sin-referencia": "0bf2e749cf8c345c0a01ddc2a4784a0003467d2a778ccd9a701bb8ab3f3f402a",
+    "dev/clinica-procedimientos-imprecisos": "4331dcd3afd9e194110c46dacb44af7de1a9cdf881ad57b9265ff2400b2aa6cb",
+    "dev/clinica-procedimientos-imprecisos#altas-de-usuarios-sin-competencia": "c8318ccc65a0c6b54d748af138ca715b9606bff1698a785f99d622fc2bd8c3e9",
+    "dev/clinica-procedimientos-imprecisos#cuentas-sin-inhabilitacion-ni-retencion": "b7a0fcfca5da3f3df8cbeda9e6845267d5f0a8860c7dfaa58f60e2289f9ab143",
+    "dev/clinica-procedimientos-imprecisos#eventos-sin-canal-de-informe": "93749483c68bb9283d75425552dc769d031dcef8f76c128896d584f2826500a7",
+    "dev/clinica-procedimientos-imprecisos#tareas-sin-responsable-definido": "e662579bf6013b0b9eddbd1096350e280370a4a405a2ee0b5c1dc88432a05388",
+    "dev/comercio-antimalware-compensado-con-linux": "3aac71d47e659f2d63d7344769cb2d34a2961fdf4114c13323a3fcab83f34882",
+    "dev/comercio-antimalware-compensado-con-linux#antimalware-compensado-sin-evidencia": "8908ef90813a0f9c799ec81f5efd7cedd7d3a7c2165cd678d42a5dcfc2f3daf7",
+    "dev/comercio-antimalware-compensado-con-linux#sistema-operativo-como-antivirus": "a275c0f1522a901eaea68fcc2215d9aa79ff90dfbddbd8b40f1cb24fb8c45336",
+    "dev/comercio-autorizaciones-y-normas-vacias": "bc51619df6f0319f89033b85fc6a47fee517aac382733f043770d81fb215f79b",
+    "dev/comercio-autorizaciones-y-normas-vacias#terceros-sin-autorizacion": "511d2a64677b436149fae0db04900820ab842e54b648e45a47a1d0cc327aea0e",
+    "dev/comercio-autorizaciones-y-normas-vacias#uso-indebido-sin-concretar": "ef732be0efdc9fe81002f50d2451f5ae6447d79968786523667d50fccd362912",
+    "dev/comercio-avisos-dependencias": "b5bd2792403eeda0ed6bcf6cae70f0ebb73b7bd82270e4156b9521a287107a5f",
+    "dev/comercio-avisos-dependencias#avisos-dependencias-apagados": "ac52bc822484841a15b31de4e5082352243fb2077b7b6d49418b11525a2d9780",
+    "dev/comercio-avisos-dependencias#escaneo-secretos-indeterminado": "44dfe72b13dcc6ac5ee1fe78b171883306a21866b937f5d76c6870f839e824e2",
+    "dev/comercio-correcto": "57b7ba3411a3c67da6493844c0083341ea724087d08c9e97eba130d403ee26b1",
+    "dev/comercio-despliegue-y-perimetro-expuestos": "6483af8484c1da499f37237c0a3d088b5c31b3299c79cbf5d7138896917ff772",
+    "dev/comercio-despliegue-y-perimetro-expuestos#base-de-datos-abierta-a-internet": "d4a749f305db4d690d99598783befcaa01dedfc98b11631e349c2ae8f1fc443e",
+    "dev/comercio-despliegue-y-perimetro-expuestos#cambios-excluidos-con-subida-directa": "53f7e7dc1851f20e62133d4ca75a4c2feffb23a0817dfa71b4394d46546ce27e",
+    "dev/comercio-despliegue-y-perimetro-expuestos#desarrollo-excluido-con-subida-directa": "c9ed71eae967512bb832c55eebe405af34951001645387cd83609cf6e51dc0ee",
+    "dev/comercio-despliegue-y-perimetro-expuestos#subida-por-ftp-sin-pruebas": "a7870d88ce87d38fc0bd59f6d435b329c64851fcf3386f18007b750908fb70b6",
+    "dev/comercio-doble-factor-retirado": "d402749b3ed41053aa9eefde62572d4f89b77492e44eba8679bbd8aa60f67080",
+    "dev/comercio-doble-factor-retirado#organizacion-sin-doble-factor": "f6f67ff4f62a9924ee858a92d0f10dba32a501bd7667f07e163076d9bfeb8205",
+    "dev/comercio-escaneo-secretos-apagado": "9fd70fdc1787f096f44c6de79e4ddf4170b65f1abe387a32c87ee00cf2488654",
+    "dev/comercio-escaneo-secretos-apagado#escaneo-secretos-desactivado": "b9577ec12c219cf01adfca0e332e4b9c5b2f7d00a64cfee6d3dc5293ccc95a00",
+    "dev/comercio-exclusiones-de-tienda-web": "61487ea9719ed53f4f34d278051369913d4c6ad9b6b31c968fb4a09bd30c9904",
+    "dev/comercio-exclusiones-de-tienda-web#acuerdos-de-servicio-excluidos": "4777c8aa467b6f83f6b9ff76535d75b6cb5866f49f63d9fb5a483f011c918382",
+    "dev/comercio-exclusiones-de-tienda-web#aplicacion-propia-delegada-al-alojamiento": "3f6235b6192fa15c0021d6977e8a6405c2bb3ac5468c4f42cbf687ba9d36711f",
+    "dev/comercio-exclusiones-de-tienda-web#web-compensada-sin-evidencia": "04d20796338da3c08f91678bef9ef2273ae57a2c903e9f2b4f8fe8eab4cafeba",
+    "dev/comercio-formacion-sin-enlace": "af8718c0da00911f1c38bc7d9278f518fac20ec06f01d7bc6b8cd0eccdae603b",
+    "dev/comercio-formacion-sin-enlace#mp-per-4-sin-registro": "0cc5ae6f0d55ce9abd880d9e9124840de6195e06dcea4ce5c5de9a9c968eac60",
+    "dev/comercio-intrusiones-compensadas": "a7e96f21c8ba07d558c57fa0b64446c0f32c91d9ebcfddb0520220074430f135",
+    "dev/comercio-intrusiones-compensadas#deteccion-sustituida-por-confianza": "30624fd13fbd11b6a8d0757eb281bc129d4dc0f08369eae4090e151e068c233d",
+    "dev/comercio-intrusiones-compensadas#vigilancia-compensada-sin-evidencia": "b12de8d587f8ce580ae07a57a8ce0e487581776994bdcc709439f1e0154f51b2",
+    "dev/comercio-inventario-renovado": "38429775dba0c744792a49fe27a1437e5ac3e700ace64ed43cf72d5fd738e0fe",
+    "dev/comercio-mantenimiento-y-registros-abandonados": "f482dedc569bc8e1fafa294fe124755106c61a89ea549badc893ea29d5478834",
+    "dev/comercio-mantenimiento-y-registros-abandonados#cambios-excluidos-con-servidor-sin-parches": "356dca308782d134fd9e608c994f1613c3dc69ad86096664bf6bb67261f2dcda",
+    "dev/comercio-mantenimiento-y-registros-abandonados#parches-sin-calendario": "459dca3189820e72fbfad8ddef37f0b9d2c9cd02e30a3cc18dfe5a4fd8cedd63",
+    "dev/comercio-mantenimiento-y-registros-abandonados#registro-web-desactivado": "aaeafd9be1d55bf2960365c36a26b762e43347b31561228778c5cf2635646282",
+    "dev/comercio-politica-e-incidentes-difusos": "c38dc00c1e522dda069a3c75189855e8ba9667fa89d72504e53a2b0a7e720037",
+    "dev/comercio-politica-e-incidentes-difusos#brechas-de-datos-sin-pauta": "4ef31fbfff9f4095e926875fe561b4d7fb87ae402415b9b2755243b6e622ced6",
+    "dev/comercio-politica-e-incidentes-difusos#documentacion-sin-gestion": "984100168aff5c6d61ebd145441ad56dbadd2d2f906184e1cacc84e3559ca1c4",
+    "dev/comercio-pruebas-vencidas": "d11de58edff9fcea19cab8d63217aff23e471119716a0f07154af319aa288bbe",
+    "dev/comercio-pruebas-vencidas#historial-despliegues-vencido": "5990662a7ef7203e29cc826cdd1b4386a5181dcb0461cf011f1d7d7b500d49e9",
+    "dev/comercio-pruebas-vencidas#paso-a-produccion-sin-cobertura": "e43f13748860e1168c4928dd42a1b3f3b4f65c6ba46862b41b9147da1de9979e",
+    "dev/comercio-recogida-sin-estado": "dd061718c3cdc6b5a4c5eddb88c3f9cf1fe926533b54b7045da17b9e86f476b5",
+    "dev/comercio-recogida-sin-estado#dependencias-sin-dato": "6ec8f3108ef19303da8ae1b4587d12ed619cd8d87b21beb2170de7778d9c9017",
+    "dev/comercio-registros-manipulados": "922bfb938398134c7869a9721fb6416d4527c77f2fa84e4f38ec1fc51c8bd81f",
+    "dev/comercio-registros-manipulados#auditoria-sin-evidencia-integra": "0120f896085790ef566a780488180c65ac5fce875c677ada2c3634a36de30696",
+    "dev/comercio-registros-manipulados#configuracion-registros-retocada": "d4027630210814aad23edb0a80527fcb6c3f94ec82bc3b17e13972300c5c0e27",
+    "dev/comercio-repositorio-publico": "24028614cdfba169c5cfee6aa17bf0fb5493e6e7595da6b93e26435d70f41884",
+    "dev/comercio-repositorio-publico#repositorio-publico-contra-procedimiento": "7a8b3eab3e0cbbebc9114ba014734affa7d3379f11229ded8850bfcb8848fcc1",
     "dev/consultora-tic-correcto": "88777456e27cfd388f41847d34a97e75cbd172833d3b694d88a82148a5f4f437",
     "dev/ct-cambios-excluidos": "145addc8d75619a3b680a5fc0b6dfe45235ffd6cfa0cd78aa2ecb1855400b567",
     "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos": "53ac305463813a96e0de3c4c3dfa8e25262fb71d1d932c6586bb8de0b710caeb",
@@ -30,6 +113,7 @@
     "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat": "fd8eac069d6799aba9f68b42ad8e91ba4b9204def75a9de2f3143a963ed9d222",
     "dev/ct-renovacion-sin-procedimiento": "0f683f77f440f1e88c84a546d1c415f238e11ff8e8e1b5307ff20dce75b13fcc",
     "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida": "63c68646968c77a5612671b8d5af8668264f2fcdafeda5275ee586c152f88212",
+    "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida-en-designacion": "eace38e5dbc6ea07a37d04a8aead35d52e76aedd4482f52795d197948debe666",
     "dev/ct-sanciones-indefinidas": "f3f066be57805b6b2824c92159ff1ec9ee5620de72a2448a4445a11797637544",
     "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias": "64147ec826106676c7679ddcc5f2330b87b27b8608bd9b722bb1d9c1dfaff352",
     "dev/ge-certificado-caducado": "87c84493779aac053abd6af5021509fa2b5af26f41d1e142783562b3ac061977",
@@ -60,23 +144,79 @@
       "provider": "claude-code",
       "model": "claude-opus-5-5",
       "detected": [
+        "dev/clinica-analisis-y-accesos-incoherentes#analisis-de-otra-actividad",
+        "dev/clinica-analisis-y-accesos-incoherentes#perfiles-de-administrador-para-todos",
+        "dev/clinica-analisis-y-accesos-incoherentes#segregacion-excluida-con-administradores-sin-control",
+        "dev/clinica-copias-compensadas-por-proveedor#compensacion-de-palabra",
+        "dev/clinica-copias-compensadas-por-proveedor#copias-compensadas-sin-evidencia",
+        "dev/clinica-copias-manipuladas#copias-retocadas",
+        "dev/clinica-copias-manipuladas#respaldo-sin-evidencia-integra",
+        "dev/clinica-copias-y-antivirus-contradictorios#continuidad-excluida-sin-copia-de-pacientes",
+        "dev/clinica-copias-y-antivirus-contradictorios#copias-usb-sin-cifrar",
+        "dev/clinica-copias-y-antivirus-contradictorios#servidor-sin-antivirus",
+        "dev/clinica-exclusiones-sin-fundamento#formacion-compensada-sin-evidencia",
+        "dev/clinica-exclusiones-sin-fundamento#manual-del-programa-por-formacion",
+        "dev/clinica-exclusiones-sin-fundamento#soportes-cifrados-excluidos",
+        "dev/clinica-informes-caducados#antivirus-sin-cobertura",
+        "dev/clinica-informes-caducados#antivirus-vencido",
+        "dev/clinica-informes-caducados#copias-sin-cobertura",
+        "dev/clinica-informes-caducados#copias-vencidas",
+        "dev/clinica-inventario-sin-enlace#op-exp-1-sin-respaldo",
+        "dev/clinica-normativa-y-autorizaciones-vagas#moviles-sin-proceso-formal",
+        "dev/clinica-normativa-y-autorizaciones-vagas#sanciones-sin-referencia",
+        "dev/clinica-procedimientos-imprecisos#altas-de-usuarios-sin-competencia",
+        "dev/clinica-procedimientos-imprecisos#cuentas-sin-inhabilitacion-ni-retencion",
+        "dev/clinica-procedimientos-imprecisos#eventos-sin-canal-de-informe",
+        "dev/clinica-procedimientos-imprecisos#tareas-sin-responsable-definido",
+        "dev/comercio-antimalware-compensado-con-linux#antimalware-compensado-sin-evidencia",
+        "dev/comercio-antimalware-compensado-con-linux#sistema-operativo-como-antivirus",
+        "dev/comercio-autorizaciones-y-normas-vacias#terceros-sin-autorizacion",
+        "dev/comercio-autorizaciones-y-normas-vacias#uso-indebido-sin-concretar",
+        "dev/comercio-avisos-dependencias#avisos-dependencias-apagados",
+        "dev/comercio-avisos-dependencias#escaneo-secretos-indeterminado",
+        "dev/comercio-despliegue-y-perimetro-expuestos#base-de-datos-abierta-a-internet",
+        "dev/comercio-despliegue-y-perimetro-expuestos#cambios-excluidos-con-subida-directa",
+        "dev/comercio-despliegue-y-perimetro-expuestos#desarrollo-excluido-con-subida-directa",
+        "dev/comercio-despliegue-y-perimetro-expuestos#subida-por-ftp-sin-pruebas",
+        "dev/comercio-doble-factor-retirado#organizacion-sin-doble-factor",
+        "dev/comercio-escaneo-secretos-apagado#escaneo-secretos-desactivado",
+        "dev/comercio-exclusiones-de-tienda-web#acuerdos-de-servicio-excluidos",
+        "dev/comercio-exclusiones-de-tienda-web#aplicacion-propia-delegada-al-alojamiento",
+        "dev/comercio-exclusiones-de-tienda-web#web-compensada-sin-evidencia",
+        "dev/comercio-formacion-sin-enlace#mp-per-4-sin-registro",
+        "dev/comercio-intrusiones-compensadas#deteccion-sustituida-por-confianza",
+        "dev/comercio-intrusiones-compensadas#vigilancia-compensada-sin-evidencia",
+        "dev/comercio-mantenimiento-y-registros-abandonados#cambios-excluidos-con-servidor-sin-parches",
+        "dev/comercio-mantenimiento-y-registros-abandonados#parches-sin-calendario",
+        "dev/comercio-mantenimiento-y-registros-abandonados#registro-web-desactivado",
+        "dev/comercio-politica-e-incidentes-difusos#brechas-de-datos-sin-pauta",
+        "dev/comercio-politica-e-incidentes-difusos#documentacion-sin-gestion",
+        "dev/comercio-pruebas-vencidas#historial-despliegues-vencido",
+        "dev/comercio-pruebas-vencidas#paso-a-produccion-sin-cobertura",
+        "dev/comercio-recogida-sin-estado#dependencias-sin-dato",
+        "dev/comercio-registros-manipulados#auditoria-sin-evidencia-integra",
+        "dev/comercio-registros-manipulados#configuracion-registros-retocada",
+        "dev/comercio-repositorio-publico#repositorio-publico-contra-procedimiento",
         "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos",
         "dev/ct-claves-alteradas#registro-claves-alterado",
         "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
         "dev/ct-copias-desenlazadas#copias-sin-evidencia",
         "dev/ct-copias-semanales#copias-contradicen-procedimiento",
         "dev/ct-cuenta-compartida#administracion-compartida",
+        "dev/ct-cuenta-compartida#credenciales-compartidas",
         "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
         "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
         "dev/ct-inventario-caducado#inventario-caducado",
         "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
         "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
         "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
+        "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida-en-designacion",
         "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
         "dev/ge-certificado-caducado#certificado-proveedor-caducado",
         "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
         "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
         "dev/ge-copias-alteradas#informe-copias-alterado",
+        "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
         "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
         "dev/ge-correo-compensado#correo-compensado-por-antivirus",
         "dev/ge-formacion-caducada#concienciacion-sin-sesion",
@@ -87,56 +227,56 @@
       ],
       "totals": {
         "deterministic": {
-          "numerator": 9,
-          "denominator": 9,
+          "numerator": 31,
+          "denominator": 31,
           "value": 1.0
         },
         "judgment": {
-          "numerator": 15,
-          "denominator": 17,
-          "value": 0.8823529411764706
+          "numerator": 49,
+          "denominator": 51,
+          "value": 0.9607843137254902
         },
         "false_alarms": {
           "numerator": 0,
-          "denominator": 15,
+          "denominator": 49,
           "value": 0.0
         },
         "correct_with_false_alarms": {
           "numerator": 0,
-          "denominator": 2,
+          "denominator": 6,
           "value": 0.0
         },
         "false_alarms_by_repetition": [
           {
             "numerator": 0,
-            "denominator": 15,
+            "denominator": 48,
             "value": 0.0
           },
           {
             "numerator": 0,
-            "denominator": 15,
+            "denominator": 49,
             "value": 0.0
           },
           {
             "numerator": 0,
-            "denominator": 15,
+            "denominator": 49,
             "value": 0.0
           }
         ],
         "correct_with_false_alarms_by_repetition": [
           {
             "numerator": 0,
-            "denominator": 2,
+            "denominator": 6,
             "value": 0.0
           },
           {
             "numerator": 0,
-            "denominator": 2,
+            "denominator": 6,
             "value": 0.0
           },
           {
             "numerator": 0,
-            "denominator": 2,
+            "denominator": 6,
             "value": 0.0
           }
         ],
@@ -145,11 +285,1453 @@
       },
       "cases": [
         {
+          "case": "dev/clinica-analisis-y-accesos-incoherentes",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "2b5aa6c2085aa7a9fa4e68e1c688092bc38fa40398d002a55487be1cf52d06ab",
+          "payload_sha256": "8746a281c4441ce625e700508fbed425cc3ddcfb50df8186a61fcd7f1bb0b578",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-analisis-y-accesos-incoherentes#analisis-de-otra-actividad",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-analisis-y-accesos-incoherentes#perfiles-de-administrador-para-todos",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-analisis-y-accesos-incoherentes#segregacion-excluida-con-administradores-sin-control",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/clinica-coordinacion-quincenal",
+          "kind": "correct",
+          "judgment": true,
+          "case_sha256": "9c78348db7d80e052d0bf01f953f7ba4bce9c081f9d0367de545fe137ae37a12",
+          "payload_sha256": "063e8bc2ad027b5d49190dbbb60ff6393580705121123bc81a8a624699907381",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": []
+        },
+        {
+          "case": "dev/clinica-copias-compensadas-por-proveedor",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "d15b7f606f8e052435c0a47d9d37f460e487fa953895df6a79efb9f11b93244b",
+          "payload_sha256": "260bd5ec644b8408aaf0abaeb49a85d05da47806a683d258bc78c9d9f5a4b981",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-copias-compensadas-por-proveedor#compensacion-de-palabra",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-copias-compensadas-por-proveedor#copias-compensadas-sin-evidencia",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/clinica-copias-manipuladas",
+          "kind": "defective",
+          "judgment": false,
+          "case_sha256": "ea8e446a7838ff48766f931992f64e827668c8dad4e523cbc8709ed810637847",
+          "payload_sha256": null,
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-copias-manipuladas#copias-retocadas",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-copias-manipuladas#respaldo-sin-evidencia-integra",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/clinica-copias-y-antivirus-contradictorios",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "5ea6d26d4f7ecd6663833d85483d48a67a7efbaca72f48944c2f991f94c18d37",
+          "payload_sha256": "5820350cdd647b75c9d95c47cb1f4d379d7f203683e7c2844b3288b2a1afa4f4",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 4,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 4,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-copias-y-antivirus-contradictorios#continuidad-excluida-sin-copia-de-pacientes",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-copias-y-antivirus-contradictorios#copias-usb-sin-cifrar",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-copias-y-antivirus-contradictorios#impacto-excluido-con-recuperacion-de-tres-dias",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                true,
+                false
+              ],
+              "detected": false
+            },
+            {
+              "defect": "dev/clinica-copias-y-antivirus-contradictorios#servidor-sin-antivirus",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-copias-y-antivirus-contradictorios#terceros-excluidos-sin-copia-externa",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                false,
+                true
+              ],
+              "detected": false
+            }
+          ]
+        },
+        {
+          "case": "dev/clinica-correcta",
+          "kind": "correct",
+          "judgment": true,
+          "case_sha256": "e4bccb626748cd5b46473cbe8ac94a14677b6847a8d962f1edf65e487f6d0603",
+          "payload_sha256": "57dbfb3cf99223468a57322712652872a9d5c013548553b3044d1f532ddcbcd1",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": []
+        },
+        {
+          "case": "dev/clinica-exclusiones-sin-fundamento",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "a1e77e198783af87e3890f0e7ec19e33a7647f88fc1505ffbb8e468301c859e5",
+          "payload_sha256": "3078ec00a93679d78ab995b89e8aa1d4e1345b53246b8e97956946ddd8950b4b",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-exclusiones-sin-fundamento#formacion-compensada-sin-evidencia",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-exclusiones-sin-fundamento#manual-del-programa-por-formacion",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-exclusiones-sin-fundamento#soportes-cifrados-excluidos",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/clinica-informes-caducados",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "d63bc4a251b95e0c4b6331c509e248f3cab6cbc771ea9cbf98274d05a53e500e",
+          "payload_sha256": "c61d8b60c91818102dce136055b3a6dab5a097b56a751cc3f7a0e1f5cd924a74",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-informes-caducados#antivirus-sin-cobertura",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-informes-caducados#antivirus-vencido",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-informes-caducados#copias-sin-cobertura",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-informes-caducados#copias-vencidas",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/clinica-inventario-sin-enlace",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "7b8093030721bc8170702f14b993fbee03ab14048df5a7a8466a8c773d2f0123",
+          "payload_sha256": "a140c7dc315af4a57421742e60d5f2b182096b1ba8331c47e8b70c960d9fd4d0",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-inventario-sin-enlace#op-exp-1-sin-respaldo",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/clinica-normativa-y-autorizaciones-vagas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "6b2171b90424a30cc93778948faab48924abcd30c2c8e6d8517547cdbd3746d3",
+          "payload_sha256": "7259afc4d5737bed6cdc8dfe735ce1bf54740e99b68d6f621c146d18ea91f71a",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-normativa-y-autorizaciones-vagas#moviles-sin-proceso-formal",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-normativa-y-autorizaciones-vagas#sanciones-sin-referencia",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/clinica-procedimientos-imprecisos",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "235f7a91a094c36052b27a1627caafc50dcc1375014f2c318901a8d19e1763c2",
+          "payload_sha256": "8864c9260983ac7fe273c80442e05d94ae83635010ad03edf87f3505bad9f1c7",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 4,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/clinica-procedimientos-imprecisos#altas-de-usuarios-sin-competencia",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                false
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-procedimientos-imprecisos#cuentas-sin-inhabilitacion-ni-retencion",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                false,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-procedimientos-imprecisos#eventos-sin-canal-de-informe",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/clinica-procedimientos-imprecisos#tareas-sin-responsable-definido",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-antimalware-compensado-con-linux",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "beda8bd2b81b2b4ff170f45617f92c39128ff819795eca55eb15ab4dd3167cca",
+          "payload_sha256": "5faa018f6b951612a09a0b65fba12010074dc8a004dfedce75245b7fd55b5170",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-antimalware-compensado-con-linux#antimalware-compensado-sin-evidencia",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-antimalware-compensado-con-linux#sistema-operativo-como-antivirus",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-autorizaciones-y-normas-vacias",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "d446d7151798083c9b32ca8ae59a75df9e816bd6a33b4414b5e67d6867950d69",
+          "payload_sha256": "757044b8a7759885be116b03b8723779d03cfa4b2ba1d6b58afd59ea94cea183",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-autorizaciones-y-normas-vacias#terceros-sin-autorizacion",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-autorizaciones-y-normas-vacias#uso-indebido-sin-concretar",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-avisos-dependencias",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "f42d41f2bb0353b0fec1bc630c80ff2790543272510b5abd23cad17824869abf",
+          "payload_sha256": "0ca43dce8b8603bb0c125eb611b243bfc74b250c4950b3026110131f8ae06837",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-avisos-dependencias#avisos-dependencias-apagados",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-avisos-dependencias#escaneo-secretos-indeterminado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-correcto",
+          "kind": "correct",
+          "judgment": true,
+          "case_sha256": "42991b47fad7902cc7d95799e405be3c944da22511440cbc5488293d095082f1",
+          "payload_sha256": "1d05bdc9416bcf63a928c88156ba4e4bc68be8beeaf83608c866159bc39df323",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": []
+        },
+        {
+          "case": "dev/comercio-despliegue-y-perimetro-expuestos",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "841942cedff9febd7dff985b6915331845ccf5015059321153e62cca95b7cfb4",
+          "payload_sha256": "cd8d95e5277446aae8f4e7346f8268dc95817e52b897558713e80cdb32855b4c",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 4,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 4,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 4,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-despliegue-y-perimetro-expuestos#base-de-datos-abierta-a-internet",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-despliegue-y-perimetro-expuestos#cambios-excluidos-con-subida-directa",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-despliegue-y-perimetro-expuestos#desarrollo-excluido-con-subida-directa",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-despliegue-y-perimetro-expuestos#subida-por-ftp-sin-pruebas",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-doble-factor-retirado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "5fe5bf6cc1533a727e57f38dc5b099e4e606068d48d8d8daad15721315ba7cdc",
+          "payload_sha256": "11ad56b7aec3f993b64a86db374965836231b79db49a37605f7a99570ac17edb",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-doble-factor-retirado#organizacion-sin-doble-factor",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-escaneo-secretos-apagado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "ca54bf28c30c795bba8d877219dc4097231b8e3d38f5cb4690adda8c28ae2c1b",
+          "payload_sha256": "6ee0a2fb2455fe5962968c71fb7d462d766943b938ade8c9eb41412fca85a8b0",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-escaneo-secretos-apagado#escaneo-secretos-desactivado",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-exclusiones-de-tienda-web",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "5208c2f0e5e5eeeb2803e69a45952e7b04ae159bc7b61394ad2053f68ed74f6f",
+          "payload_sha256": "6609ee1987d8a5fe6e3e6e0e355c5ddbcb647d96ea566f37b147b611afda0743",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-exclusiones-de-tienda-web#acuerdos-de-servicio-excluidos",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-exclusiones-de-tienda-web#aplicacion-propia-delegada-al-alojamiento",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-exclusiones-de-tienda-web#web-compensada-sin-evidencia",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-formacion-sin-enlace",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "c071457316855c75daa82d1a346672f1465fb6eba91381c6eae3bef8c0a9c864",
+          "payload_sha256": "1537f6edccdd5575bd9840e5f21aa2cf3c8de5259b21cc0c2bc388a48f93f445",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-formacion-sin-enlace#mp-per-4-sin-registro",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-intrusiones-compensadas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "27d62020f3e6d2ddff580af98f5030a90846ebe3c3f9dbdcd21e67938c0044ad",
+          "payload_sha256": "51571e81594c84b1d6fed161fa7a62fbaa0098fd531d41557e9f059a7fdecffa",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-intrusiones-compensadas#deteccion-sustituida-por-confianza",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-intrusiones-compensadas#vigilancia-compensada-sin-evidencia",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-inventario-renovado",
+          "kind": "correct",
+          "judgment": true,
+          "case_sha256": "9011adc1103df789ad6dc571d77739a49d6268760dca81ec01565d345e9cebe8",
+          "payload_sha256": "4204c1f736531aa4e1e17d2a6de89f8a74d3d1819535d9fbd142b647c08828f1",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": []
+        },
+        {
+          "case": "dev/comercio-mantenimiento-y-registros-abandonados",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "22dda294032329b50cef131eec669aff5d548ea706061b54c1d9d661ba026547",
+          "payload_sha256": "b0facf50c5e9025ff75c977826cd441df40a61917de651bc773614d74cbffaed",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 3,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-mantenimiento-y-registros-abandonados#cambios-excluidos-con-servidor-sin-parches",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                false,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-mantenimiento-y-registros-abandonados#parches-sin-calendario",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-mantenimiento-y-registros-abandonados#registro-web-desactivado",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-politica-e-incidentes-difusos",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "26f723c57bd9cce9f9775506ef8a3cd54182197f127c80bda0eea974c2b863f0",
+          "payload_sha256": "6b6b55cc6c91c6ffabda92be3e393f4ab603514ba303520988510745a0cbf7f8",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 2,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-politica-e-incidentes-difusos#brechas-de-datos-sin-pauta",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-politica-e-incidentes-difusos#documentacion-sin-gestion",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-pruebas-vencidas",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "78ca1c050740de623325017df6b6340bbee04442f19a7cf5c5f383072a04da34",
+          "payload_sha256": "b0e4086375a6af9ce421122beec79485671ef9c1876af37fdeb53c0785621b89",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-pruebas-vencidas#historial-despliegues-vencido",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-pruebas-vencidas#paso-a-produccion-sin-cobertura",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-recogida-sin-estado",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "1bbfc8ae5c510892ebb49deaa1ffb26f7788042c0426549b131e64e20e9277c6",
+          "payload_sha256": "f6814d04da1a5dbd427745636a8f58d694e4292e9329653f6759f8fd34e2000c",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-recogida-sin-estado#dependencias-sin-dato",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-registros-manipulados",
+          "kind": "defective",
+          "judgment": false,
+          "case_sha256": "c05d61e451c3997e40056823bae86a2638dda06830f236f429c0bb3328bf0016",
+          "payload_sha256": null,
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": null,
+              "judgment_emitted": 0,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-registros-manipulados#auditoria-sin-evidencia-integra",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/comercio-registros-manipulados#configuracion-registros-retocada",
+              "layer": "deterministic",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
+          "case": "dev/comercio-repositorio-publico",
+          "kind": "defective",
+          "judgment": true,
+          "case_sha256": "52d0098247e6afc67ec69559f5db72eee3f178c601fc60d2c426d5076598fe7c",
+          "payload_sha256": "f9ce892347356d2deee76473001768bbd7479d11a9ae1f35d9c6080db8ce2529",
+          "repetitions": [
+            {
+              "n": 1,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 2,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            },
+            {
+              "n": 3,
+              "outcome": "response",
+              "judgment_emitted": 1,
+              "judgment_false_alarms": 0,
+              "deterministic_unmatched": 0
+            }
+          ],
+          "defects": [
+            {
+              "defect": "dev/comercio-repositorio-publico#repositorio-publico-contra-procedimiento",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            }
+          ]
+        },
+        {
           "case": "dev/consultora-tic-correcto",
           "kind": "correct",
           "judgment": true,
           "case_sha256": "e00122e09e5567f34e6a46308eb786c41b0d90ee899f52881cd696ef036aebb1",
-          "payload_sha256": "7f713dc7e410a7877d75097cacee83b7a25b2b1e90606ffe6d11ceddf651dba8",
+          "payload_sha256": "fa2944be45cb44f6f8d1a8733c21aec78f8b30ff0bfc144fa6ad2fbf2bab1080",
           "repetitions": [
             {
               "n": 1,
@@ -180,7 +1762,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "654521d54aead449adf90eca2e8492c67431dda926a87f1eb14fab3f15424671",
-          "payload_sha256": "4c63439a7fd6edf932594fe2ee5f8ef94d5124c25eb135b77cd8f44ecf22d9d8",
+          "payload_sha256": "a48af4027da5f5b810dc5e628d72a21aa914dad4c1099d507e7b452bc8df99a8",
           "repetitions": [
             {
               "n": 1,
@@ -264,7 +1846,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "cd124b7dc9b4bc20f902b94ebf4779a152ba0f294b445761481ba7754faddb48",
-          "payload_sha256": "217daa1cad797714324ca1112d335a8a905334e81d32598d02398c65e4fc392d",
+          "payload_sha256": "9e198d2b01e73a654d11c3d8b8bd78d85dedd9783eab2e28b9200a4d8122c123",
           "repetitions": [
             {
               "n": 1,
@@ -306,7 +1888,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "486d0ed0575d2191367019582f9100ab3946312cc5563dca4ce23a722c5ed819",
-          "payload_sha256": "3722bebdad0b35a433111ac989dcdf2010f7b4b41159ecac0e813e011a51b91e",
+          "payload_sha256": "715adec2cbeb409c371ee5fa68ca247e1d778991fc5983af32aa002e2dd5e069",
           "repetitions": [
             {
               "n": 1,
@@ -348,7 +1930,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "9cb30b4cf3b50228257d80107bb4cdee11d5e5f9174ca99db7b6ce52e1706b51",
-          "payload_sha256": "90244ccecb0b546b5e4f11c73e816ff445ddb544269490c64fe3bb1c68ef6421",
+          "payload_sha256": "71fe55024afe6ee5de5ac8f653ff40ae099afbefccb164abf188ffd9ac6fc571",
           "repetitions": [
             {
               "n": 1,
@@ -390,26 +1972,26 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "00582300a5964b14fa766c19e46f5d3d1f56baab9f07b311bbfb7b49081b8fbd",
-          "payload_sha256": "53878126c1d69da9ddbaa28b6772826d1b97018389ce1a55e41f2d334f432430",
+          "payload_sha256": "760e6acd1107aec19ddbab9f769067a5d6b730de556ef83cc4ff141a347550a9",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
@@ -429,11 +2011,11 @@
               "defect": "dev/ct-cuenta-compartida#credenciales-compartidas",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             }
           ]
         },
@@ -442,7 +2024,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "bf1559125a56ef34e35989a2eca842cc9a276dc0848f103588a2b740c87eddef",
-          "payload_sha256": "1a7226ca5ef689d1cd7d04f2a4bd6b85210262fc282f07e2403c8999dbb3368f",
+          "payload_sha256": "3ae227f728f1cfeaed38be993c48c775956dfa789bb0a2eba9f8942a52f2a4bc",
           "repetitions": [
             {
               "n": 1,
@@ -484,7 +2066,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "33f86670bf6a99a01ec613502196aaf210405fc575f2a2027c6cd30d5676c26e",
-          "payload_sha256": "6a3601a1010fa110d88b628f161a1f8f51136cc386b84c0b7b8eb5c3a4e3e480",
+          "payload_sha256": "102607e8bad77346f9a251a24ffdfd7118d2c2c835dc81294697a3583ca5f644",
           "repetitions": [
             {
               "n": 1,
@@ -526,7 +2108,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "e568fcd9fb096d973898849ffe8290d72da3936f73e33cfd364d581bc2b4cb4b",
-          "payload_sha256": "5b0af47be3f22beabc61932a469e5f917f6d2b18812d912db4d71948a65f479f",
+          "payload_sha256": "af617f300bb2aabd782dc02e7ad17d96232730fa6cea14f73d8a6ed078d252dc",
           "repetitions": [
             {
               "n": 1,
@@ -568,7 +2150,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "a149e5dab511197ece5833c2ee26d3f639a518524c7be7c64a0337e53d2380b3",
-          "payload_sha256": "7136d8626d76ba0b73e30e163b4b7d9c4436ac16284079d4b56417fec31b9676",
+          "payload_sha256": "3527100c97cabf5c078392e6a85909cac7777205368fed6928c63e1b9a711644",
           "repetitions": [
             {
               "n": 1,
@@ -610,7 +2192,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "624e3369f1b2ebee5d0b5b3094100562309e8e307db62e887cd22e862e7938bc",
-          "payload_sha256": "4b86bdf2675bb7da919b7bf28f8466af6c2b66d62e3989864390e95a0c3b7b00",
+          "payload_sha256": "c8181c39f108b37fb7384109509df2bd7f78afc482346cf85600de64266743fa",
           "repetitions": [
             {
               "n": 1,
@@ -651,27 +2233,27 @@
           "case": "dev/ct-renovacion-sin-procedimiento",
           "kind": "defective",
           "judgment": true,
-          "case_sha256": "a5f03876ced63a9a3e505f940ffa30ae6d2d1214d6f02f5bfc15fb853d8740a2",
-          "payload_sha256": "5088c81c32eb81fa894edb4ba1688ee6c4ec038d28dd9f28a510ada155dbd1be",
+          "case_sha256": "8d745a315698505d15316149949bcfe067ccd60aca1d3c127880ad315c72be39",
+          "payload_sha256": "aec94d836b46e43ba1d03cb46491d22627508a0a9da9f62faf69937b0b53b238",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
@@ -679,6 +2261,16 @@
           "defects": [
             {
               "defect": "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
+              "layer": "judgment",
+              "detected_by_repetition": [
+                true,
+                true,
+                true
+              ],
+              "detected": true
+            },
+            {
+              "defect": "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida-en-designacion",
               "layer": "judgment",
               "detected_by_repetition": [
                 true,
@@ -694,7 +2286,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "25e40a4e825ed7db11102901dcb40d4d4dc4c01bb32243b41cea02f0aab94345",
-          "payload_sha256": "d26deb977c396cff4d383750b775ecea6b74c1927093e87e00adcb1bb5e2ca51",
+          "payload_sha256": "c0c420d52df22a1329b653a950a4b10f390f92c871b3e2770907c8d2071f7a00",
           "repetitions": [
             {
               "n": 1,
@@ -736,7 +2328,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "4965cdbebcdafd2e5ef588f35c90149f194dc4d3b0708066a2a17a9af619584a",
-          "payload_sha256": "0ff8f859f5544ca02734a8b8ad471bb785d25db8ceee0538a1ebd43de14bc89d",
+          "payload_sha256": "7b63a2071225812f8b8dec93730765c885bf14499b2914db4b759d8513a2080c",
           "repetitions": [
             {
               "n": 1,
@@ -778,7 +2370,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "ab37b342f89620420b792f8cd86c9e4187c20ad58a88008720bb557bb4d09d32",
-          "payload_sha256": "773ca7241991b2423bb9a57af0dca2469103d0496922a531ca5a128f72acb5c9",
+          "payload_sha256": "babcd6d3256b36c02c19f34f37f73fc13fc3d525cd9b385763b169bc02da56f7",
           "repetitions": [
             {
               "n": 1,
@@ -872,26 +2464,26 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "0f676e219d0b1e1e8b86b2e0e37ed473525338af81ee3af7dcfb3eeda81b65a1",
-          "payload_sha256": "03a09ffacb35178f6705d9c7a2662c532c8d5d903f2b6264ea2a95080c051e09",
+          "payload_sha256": "e5cb454878a6eb8b641c24b6633e64a37abb6681bacd87c38d5579df697125ee",
           "repetitions": [
             {
               "n": 1,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 2,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             },
             {
               "n": 3,
               "outcome": "response",
-              "judgment_emitted": 1,
+              "judgment_emitted": 2,
               "judgment_false_alarms": 0,
               "deterministic_unmatched": 0
             }
@@ -901,11 +2493,11 @@
               "defect": "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
               "layer": "judgment",
               "detected_by_repetition": [
-                false,
-                false,
-                false
+                true,
+                true,
+                true
               ],
-              "detected": false
+              "detected": true
             },
             {
               "defect": "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
@@ -924,7 +2516,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "ef34946b64445be10a9e660c0597cc31488acdba9d0c12d5cf82ae3a049fed6c",
-          "payload_sha256": "278d443f4f8dae335fc92212d0e1ff503f2cbd8fcbc9b8b14df115bdf9eed097",
+          "payload_sha256": "951a06f7be3b39edc3a51d872809f537db22d2e07ba612cfb5353028e0b2513f",
           "repetitions": [
             {
               "n": 1,
@@ -966,7 +2558,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "756ecdc1c38b0efe18dd60987070e17afe97ff99d2b70c1ef2e232c285a2cdb0",
-          "payload_sha256": "254d441cb02dde60edc97b5e6e0bab12721d6b40ebf05c38da89b6c6969abe0a",
+          "payload_sha256": "52300db33b1850dc6fe5ef20d4968f227695de43f8b4ce3bc0619a02d44795ea",
           "repetitions": [
             {
               "n": 1,
@@ -1018,7 +2610,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "5ad40fbe47e610d5f2ddb9a3f45405bb936d42ae8833411cad710176e7cb9121",
-          "payload_sha256": "573bcc80b09a599b11f1fad4617add98637edd64df58110e795d0d38c2d5765c",
+          "payload_sha256": "7016f0daabec9b2b892b851b87f23de951e8afe26b043fcff9e3bd0c5f5a0270",
           "repetitions": [
             {
               "n": 1,
@@ -1060,7 +2652,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "14e04ff467b4a5fdec7427a6317d9f7c91a0d183bf31519e897a9525e62d772c",
-          "payload_sha256": "85b0164e7c69c6a99c26500a9d6ac81b1b640d5f7592e81320478b03da838f3e",
+          "payload_sha256": "5eeee51a8ef9d3e7f2a33dfa5dded6f6f49ca90178a5d346f6c0039727bbca22",
           "repetitions": [
             {
               "n": 1,
@@ -1102,7 +2694,7 @@
           "kind": "defective",
           "judgment": true,
           "case_sha256": "b65a8601c141d10fed93a752dc82af3f332f67b60a3886a4ca3e413ada20a045",
-          "payload_sha256": "f845947fa718616c56dd2fddf2e7b9fce98b0bb64d876477e4db709f01d7152e",
+          "payload_sha256": "e6a59bfc4111dc9d7c89d866e53f169a9a9be6ba21207d2c9cb0821fe25ae652",
           "repetitions": [
             {
               "n": 1,
@@ -1144,1122 +2736,7 @@
           "kind": "correct",
           "judgment": true,
           "case_sha256": "6794d6b90de6d6bfcb6be86a0026f92219adebe2c84ef809c3de4aaebec65b5e",
-          "payload_sha256": "094a2b087f764670fb1a309f3d90a4174292738f161307de22e15cafa3c9866e",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": []
-        }
-      ]
-    },
-    {
-      "provider": "codex",
-      "model": "gpt-6.1-sol",
-      "detected": [
-        "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos",
-        "dev/ct-claves-alteradas#registro-claves-alterado",
-        "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
-        "dev/ct-copias-desenlazadas#copias-sin-evidencia",
-        "dev/ct-copias-semanales#copias-contradicen-procedimiento",
-        "dev/ct-cuenta-compartida#administracion-compartida",
-        "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
-        "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
-        "dev/ct-inventario-caducado#inventario-caducado",
-        "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
-        "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
-        "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
-        "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
-        "dev/ge-certificado-caducado#certificado-proveedor-caducado",
-        "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
-        "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
-        "dev/ge-copias-alteradas#informe-copias-alterado",
-        "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
-        "dev/ge-correo-compensado#correo-compensado-por-antivirus",
-        "dev/ge-formacion-caducada#formacion-no-anual",
-        "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo",
-        "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia",
-        "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado"
-      ],
-      "totals": {
-        "deterministic": {
-          "numerator": 9,
-          "denominator": 9,
-          "value": 1.0
-        },
-        "judgment": {
-          "numerator": 14,
-          "denominator": 17,
-          "value": 0.8235294117647058
-        },
-        "false_alarms": {
-          "numerator": 0,
-          "denominator": 13,
-          "value": 0.0
-        },
-        "correct_with_false_alarms": {
-          "numerator": 0,
-          "denominator": 2,
-          "value": 0.0
-        },
-        "false_alarms_by_repetition": [
-          {
-            "numerator": 0,
-            "denominator": 14,
-            "value": 0.0
-          },
-          {
-            "numerator": 0,
-            "denominator": 13,
-            "value": 0.0
-          },
-          {
-            "numerator": 0,
-            "denominator": 14,
-            "value": 0.0
-          }
-        ],
-        "correct_with_false_alarms_by_repetition": [
-          {
-            "numerator": 0,
-            "denominator": 2,
-            "value": 0.0
-          },
-          {
-            "numerator": 0,
-            "denominator": 2,
-            "value": 0.0
-          },
-          {
-            "numerator": 0,
-            "denominator": 2,
-            "value": 0.0
-          }
-        ],
-        "zero_emitted_repetitions": [],
-        "deterministic_unmatched": 0
-      },
-      "cases": [
-        {
-          "case": "dev/consultora-tic-correcto",
-          "kind": "correct",
-          "judgment": true,
-          "case_sha256": "e00122e09e5567f34e6a46308eb786c41b0d90ee899f52881cd696ef036aebb1",
-          "payload_sha256": "7f713dc7e410a7877d75097cacee83b7a25b2b1e90606ffe6d11ceddf651dba8",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": []
-        },
-        {
-          "case": "dev/ct-cambios-excluidos",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "654521d54aead449adf90eca2e8492c67431dda926a87f1eb14fab3f15424671",
-          "payload_sha256": "4c63439a7fd6edf932594fe2ee5f8ef94d5124c25eb135b77cd8f44ecf22d9d8",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-cambios-excluidos#exclusion-de-cambios-contradice-riesgos",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-claves-alteradas",
-          "kind": "defective",
-          "judgment": false,
-          "case_sha256": "9e17c6836fc00cb6675ae1c57cb647d186d448dcc602c50b029f646fa1f2154a",
-          "payload_sha256": null,
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": null,
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": null,
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": null,
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-claves-alteradas#registro-claves-alterado",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-copias-compensadas",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "cd124b7dc9b4bc20f902b94ebf4779a152ba0f294b445761481ba7754faddb48",
-          "payload_sha256": "217daa1cad797714324ca1112d335a8a905334e81d32598d02398c65e4fc392d",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-copias-compensadas#compensacion-de-copias-insuficiente",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-copias-desenlazadas",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "486d0ed0575d2191367019582f9100ab3946312cc5563dca4ce23a722c5ed819",
-          "payload_sha256": "3722bebdad0b35a433111ac989dcdf2010f7b4b41159ecac0e813e011a51b91e",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-copias-desenlazadas#copias-sin-evidencia",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-copias-semanales",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "9cb30b4cf3b50228257d80107bb4cdee11d5e5f9174ca99db7b6ce52e1706b51",
-          "payload_sha256": "90244ccecb0b546b5e4f11c73e816ff445ddb544269490c64fe3bb1c68ef6421",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-copias-semanales#copias-contradicen-procedimiento",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-cuenta-compartida",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "00582300a5964b14fa766c19e46f5d3d1f56baab9f07b311bbfb7b49081b8fbd",
-          "payload_sha256": "53878126c1d69da9ddbaa28b6772826d1b97018389ce1a55e41f2d334f432430",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-cuenta-compartida#administracion-compartida",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            },
-            {
-              "defect": "dev/ct-cuenta-compartida#credenciales-compartidas",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                false,
-                false,
-                false
-              ],
-              "detected": false
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-dependencias-sin-estado",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "bf1559125a56ef34e35989a2eca842cc9a276dc0848f103588a2b740c87eddef",
-          "payload_sha256": "1a7226ca5ef689d1cd7d04f2a4bd6b85210262fc282f07e2403c8999dbb3368f",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-dependencias-sin-estado#alertas-dependencias-sin-valorar",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-doble-factor-desactivado",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "33f86670bf6a99a01ec613502196aaf210405fc575f2a2027c6cd30d5676c26e",
-          "payload_sha256": "6a3601a1010fa110d88b628f161a1f8f51136cc386b84c0b7b8eb5c3a4e3e480",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-doble-factor-desactivado#organizacion-sin-doble-factor",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-inventario-caducado",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "e568fcd9fb096d973898849ffe8290d72da3936f73e33cfd364d581bc2b4cb4b",
-          "payload_sha256": "5b0af47be3f22beabc61932a469e5f917f6d2b18812d912db4d71948a65f479f",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-inventario-caducado#inventario-caducado",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-parches-atrasados",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "a149e5dab511197ece5833c2ee26d3f639a518524c7be7c64a0337e53d2380b3",
-          "payload_sha256": "7136d8626d76ba0b73e30e163b4b7d9c4436ac16284079d4b56417fec31b9676",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-parches-atrasados#actualizaciones-sin-aplicar",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-registros-compensados",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "624e3369f1b2ebee5d0b5b3094100562309e8e307db62e887cd22e862e7938bc",
-          "payload_sha256": "4b86bdf2675bb7da919b7bf28f8466af6c2b66d62e3989864390e95a0c3b7b00",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-registros-compensados#registro-actividad-sustituido-por-chat",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-renovacion-sin-procedimiento",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "a5f03876ced63a9a3e505f940ffa30ae6d2d1214d6f02f5bfc15fb853d8740a2",
-          "payload_sha256": "5088c81c32eb81fa894edb4ba1688ee6c4ec038d28dd9f28a510ada155dbd1be",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-renovacion-sin-procedimiento#renovacion-indefinida",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                false,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ct-sanciones-indefinidas",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "25e40a4e825ed7db11102901dcb40d4d4dc4c01bb32243b41cea02f0aab94345",
-          "payload_sha256": "d26deb977c396cff4d383750b775ecea6b74c1927093e87e00adcb1bb5e2ca51",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ct-sanciones-indefinidas#medidas-disciplinarias-vacias",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-certificado-caducado",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "4965cdbebcdafd2e5ef588f35c90149f194dc4d3b0708066a2a17a9af619584a",
-          "payload_sha256": "0ff8f859f5544ca02734a8b8ad471bb785d25db8ceee0538a1ebd43de14bc89d",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-certificado-caducado#certificado-proveedor-caducado",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-comite-indeterminado",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "ab37b342f89620420b792f8cd86c9e4187c20ad58a88008720bb557bb4d09d32",
-          "payload_sha256": "773ca7241991b2423bb9a57af0dca2469103d0496922a531ca5a128f72acb5c9",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-comite-indeterminado#comite-sin-integrantes-ni-ambito",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-copias-alteradas",
-          "kind": "defective",
-          "judgment": false,
-          "case_sha256": "5108a67e7386ca36be16e07b74208064eeda938648549b9816978aa2de9028e1",
-          "payload_sha256": null,
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": null,
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": null,
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": null,
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-copias-alteradas#copias-sin-evidencia-valida",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            },
-            {
-              "defect": "dev/ge-copias-alteradas#informe-copias-alterado",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-copias-sin-procedimiento",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "0f676e219d0b1e1e8b86b2e0e37ed473525338af81ee3af7dcfb3eeda81b65a1",
-          "payload_sha256": "03a09ffacb35178f6705d9c7a2662c532c8d5d903f2b6264ea2a95080c051e09",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-copias-sin-procedimiento#procedimiento-copias-vago",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                false,
-                false,
-                false
-              ],
-              "detected": false
-            },
-            {
-              "defect": "dev/ge-copias-sin-procedimiento#respaldo-sin-frecuencia",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-correo-compensado",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "ef34946b64445be10a9e660c0597cc31488acdba9d0c12d5cf82ae3a049fed6c",
-          "payload_sha256": "278d443f4f8dae335fc92212d0e1ff503f2cbd8fcbc9b8b14df115bdf9eed097",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-correo-compensado#correo-compensado-por-antivirus",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-formacion-caducada",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "756ecdc1c38b0efe18dd60987070e17afe97ff99d2b70c1ef2e232c285a2cdb0",
-          "payload_sha256": "254d441cb02dde60edc97b5e6e0bab12721d6b40ebf05c38da89b6c6969abe0a",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-formacion-caducada#concienciacion-sin-sesion",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                false,
-                false,
-                false
-              ],
-              "detected": false
-            },
-            {
-              "defect": "dev/ge-formacion-caducada#formacion-no-anual",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-incidentes-sin-procedimiento",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "5ad40fbe47e610d5f2ddb9a3f45405bb936d42ae8833411cad710176e7cb9121",
-          "payload_sha256": "573bcc80b09a599b11f1fad4617add98637edd64df58110e795d0d38c2d5765c",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 0,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-incidentes-sin-procedimiento#gestion-incidentes-sin-respaldo",
-              "layer": "deterministic",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-niveles-sin-criterio",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "14e04ff467b4a5fdec7427a6317d9f7c91a0d183bf31519e897a9525e62d772c",
-          "payload_sha256": "85b0164e7c69c6a99c26500a9d6ac81b1b640d5f7592e81320478b03da838f3e",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-niveles-sin-criterio#clasificacion-incidentes-vacia",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/ge-portatiles-compensados",
-          "kind": "defective",
-          "judgment": true,
-          "case_sha256": "b65a8601c141d10fed93a752dc82af3f332f67b60a3886a4ca3e413ada20a045",
-          "payload_sha256": "f845947fa718616c56dd2fddf2e7b9fce98b0bb64d876477e4db709f01d7152e",
-          "repetitions": [
-            {
-              "n": 1,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 2,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            },
-            {
-              "n": 3,
-              "outcome": "response",
-              "judgment_emitted": 1,
-              "judgment_false_alarms": 0,
-              "deterministic_unmatched": 0
-            }
-          ],
-          "defects": [
-            {
-              "defect": "dev/ge-portatiles-compensados#portatiles-compensados-por-puesto-despejado",
-              "layer": "judgment",
-              "detected_by_repetition": [
-                true,
-                true,
-                true
-              ],
-              "detected": true
-            }
-          ]
-        },
-        {
-          "case": "dev/gestoria-correcta",
-          "kind": "correct",
-          "judgment": true,
-          "case_sha256": "6794d6b90de6d6bfcb6be86a0026f92219adebe2c84ef809c3de4aaebec65b5e",
-          "payload_sha256": "094a2b087f764670fb1a309f3d90a4174292738f161307de22e15cafa3c9866e",
+          "payload_sha256": "ccf124d7361124b5ca1e54bf2ce4e07dd2623146755a4576f7bf40abbb1be188",
           "repetitions": [
             {
               "n": 1,
