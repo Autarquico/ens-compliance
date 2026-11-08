@@ -1,28 +1,161 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m with context %}
+{% macro by_field(id, hint) -%}
+<div class="field">
+  <label for="{{ id }}">Quién lo hace<span class="hint">{{ hint }}</span></label>
+  <input type="text" id="{{ id }}" name="by" value="{{ values.by }}" autocomplete="name">
+</div>
+{%- endmacro %}
+{% macro finding_item(f) -%}
+<article class="finding" id="h-{{ f.id }}">
+  <h4><span class="id mono">{{ f.measure_id }}</span> {{ m.badge(f.classification, show_code=False) }}{% if f.decidable %} {{ m.badge(f.disposition, show_code=False) }}{% endif %}</h4>
+  <p>{{ f.text }}</p>
+  <p class="muted">Criterio: <span class="mono">{{ f.criterion }}</span> · Fuente: {{ f.source }}{% if f.classification_source %} · Clase propuesta según: {{ f.classification_source }}{% endif %} · {{ f.layer_label }}</p>
+  {% if f.decidable and f.closed %}
+  <p class="muted">Ya está decidido y no bloquea.</p>
+  {% elif f.decidable %}
+  <form method="post" action="/preauditoria/hallazgos/{{ f.id }}" novalidate>
+    <input type="hidden" name="dossier" value="{{ dossier_id }}">
+    {% set own = error_finding == f.id %}
+    <div class="field">
+      <label for="d-{{ f.id }}">Qué decides</label>
+      <select id="d-{{ f.id }}" name="decision">
+        {%- for value, label in f.decisions %}
+        <option value="{{ value }}"{% if own and values.get("decision") == value %} selected{% endif %}>{{ label }}</option>
+        {%- endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="e-{{ f.id }}">Evidencia que lo corrige<span class="hint">Solo si lo resuelves. Elige una evidencia ya subida, recogida después de esta pre-auditoría.</span></label>
+      <select id="e-{{ f.id }}" name="evidence">
+        <option value="">— ninguna —</option>
+        {%- for o in f.evidence_options %}
+        <option value="{{ o.id }}"{% if own and values.get("evidence") == o.id %} selected{% endif %}>{{ o.label }}</option>
+        {%- endfor %}
+      </select>
+    </div>
+    <div class="field">
+      <label for="r-{{ f.id }}">Motivo<span class="hint">Obligatorio si lo descartas. No incluyas claves ni datos personales.</span></label>
+      <textarea id="r-{{ f.id }}" name="reason">{% if own %}{{ values.get("reason", "") }}{% endif %}</textarea>
+    </div>
+    {{ by_field("b-" ~ f.id, "Tu nombre completo. Queda en el registro; no se comprueba. Puedes cambiarlo.") }}
+    <div class="actions"><button class="btn" type="submit">Registrar la decisión</button></div>
+  </form>
+  {% endif %}
+</article>
+{%- endmacro %}
 {% block content %}
 <h1>Pre-auditoría</h1>
 <p class="lead">Un ensayo antes de la auditoría. Los hallazgos son propuestas para que una persona los revise. Ninguno es una conclusión.</p>
 <aside class="notice notice-warn" role="note"><p><strong>Revisión humana obligatoria.</strong> Los hallazgos son propuestas. Nada de esto declara conformidad ni sustituye a un auditor.</p></aside>
-<dl class="facts">
-  <dt>Generada</dt><dd class="mono">{{ generated_at }}</dd>
-  {%- for name, status in layer_status.items() %}<dt>{{ name }}</dt><dd>{{ m.badge(status, show_code=False) }}</dd>{% endfor %}
-</dl>
-<div class="table-wrap"><table>
-  <caption>{{ findings | length }} hallazgos propuestos</caption>
-  <thead><tr><th scope="col" class="id">Medida</th><th scope="col">Propuesta</th><th scope="col">Hallazgo</th><th scope="col">Decisión</th><th scope="col">Fuente</th></tr></thead>
-  <tbody>
-  {%- for f in findings %}
-  <tr>
-    <th scope="row" class="id">{{ f.measure_id }}</th>
-    <td>{{ m.badge(f.classification, show_code=False) }}</td>
-    <td>{{ f.text }}{% if f.criterion %}<br><span class="muted">Criterio: <span class="mono">{{ f.criterion }}</span></span>{% endif %}</td>
-    <td>{{ m.badge(f.disposition, show_code=False) }}</td>
-    <td class="muted">{{ f.layer_label }}</td>
-  </tr>
-  {%- else %}
-  <tr><td colspan="5" class="muted">No hay hallazgos. Si no se ha ejecutado la pre-auditoría, aún no hay nada que revisar.</td></tr>
-  {%- endfor %}
-  </tbody>
-</table></div>
+{% if saved and not form_errors %}<div class="notice notice-ok" role="status"><p>{{ saved }}</p></div>{% endif %}
+{% if form_errors %}
+<div class="notice notice-warn" role="alert"><p><strong>No se ha guardado.</strong></p><ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+
+{% if not dossier_id %}
+<p class="muted">Todavía no hay ningún expediente. Genera uno en la sección Expediente para poder preparar la pre-auditoría.</p>
+{% else %}
+<form method="get" action="/preauditoria" class="actions">
+  <div class="field">
+    <label for="f-expediente">Expediente</label>
+    <select id="f-expediente" name="expediente">
+      {%- for d in dossiers %}
+      <option value="{{ d }}"{% if d == dossier_id %} selected{% endif %}>{{ d }}</option>
+      {%- endfor %}
+    </select>
+  </div>
+  <button class="btn" type="submit">Ver este expediente</button>
+</form>
+
+<section class="section" aria-labelledby="h-preparar">
+  <h2 id="h-preparar">1. Preparar lo que se enviaría</h2>
+  <p>Preparar no envía nada: deja listo el resumen de lo que saldría del equipo. Lo hace el servicio de la herramienta, no esta página.</p>
+  {% if requests %}
+  <h3>Peticiones de este expediente</h3>
+  <ul class="requests">
+    {%- for r in requests %}
+    <li><strong>{{ r.kind_label }}</strong> · <span class="mono">{{ r.at }}</span>{% if r.by %} · {{ r.by }}{% endif %}<br>{{ r.state_label }}{% if r.message %}<br><span class="muted">{{ r.message }}</span>{% endif %}</li>
+    {%- endfor %}
+  </ul>
+  {% endif %}
+  {% if has_live_request %}
+  <p class="muted">Hay una petición sin terminar. Espera a que acabe para pedir otra; recarga la página para ver cómo va.</p>
+  {% else %}
+  <form method="post" action="/preauditoria/preparar" novalidate>
+    <input type="hidden" name="dossier" value="{{ dossier_id }}">
+    {{ by_field("b-preparar", "Tu nombre completo. Queda en la petición; no se comprueba. Puedes cambiarlo.") }}
+    <div class="actions"><button class="btn {{ 'btn-primary' if not prepared else '' }}" type="submit">{{ "Preparar de nuevo" if prepared else "Preparar" }}</button></div>
+  </form>
+  {% endif %}
+</section>
+
+{% if prepared %}
+<section class="section" aria-labelledby="h-resumen">
+  <h2 id="h-resumen">2. Lo que se enviaría</h2>
+  <dl class="facts">
+    <dt>Preparado</dt><dd class="mono">{{ prepared.prepared_at }}</dd>
+    <dt>Proveedor</dt><dd>{{ prepared.provider }} · modelo {{ prepared.model }}</dd>
+    <dt>Destino</dt><dd class="mono">{{ prepared.destination }}</dd>
+    {% if prepared.recipient %}<dt>Quién recibe los datos</dt><dd>{{ prepared.recipient }}, con tu plan.</dd>{% endif %}
+    <dt>Medidas</dt><dd>{{ prepared.measures }}</dd>
+    <dt>Documentos</dt><dd>{{ prepared.documents }}</dd>
+    <dt>Evidencias</dt><dd>{{ prepared.evidence }}</dd>
+    <dt>Criterios</dt><dd class="mono">{{ prepared.pack_version }}</dd>
+    <dt>Huella</dt><dd class="mono">{{ prepared.sha256 }}</dd>
+  </dl>
+  <div class="notice notice-warn" role="note"><p>{{ redaction_limit }}</p></div>
+  {% if not prepared.intact %}
+  <div class="notice notice-warn" role="alert"><p><strong>Lo preparado no se puede verificar.</strong> Prepáralo de nuevo antes de enviar nada.</p></div>
+  {% endif %}
+</section>
+
+{% if can_consent %}
+<section class="section" aria-labelledby="h-enviar">
+  <h2 id="h-enviar">3. Enviar a la revisión automática</h2>
+  <p>Al enviar, el contenido de arriba sale del equipo hacia el destino indicado. Solo se envía si la huella coincide con la que has revisado.</p>
+  <form method="post" action="/preauditoria/enviar" novalidate>
+    <input type="hidden" name="dossier" value="{{ dossier_id }}">
+    <div class="field"><label><input type="checkbox" name="reviewed" value="1"> He revisado lo que se envía.</label></div>
+    <div class="field">
+      <label for="f-confirm">Repite la huella<span class="hint">Copia la huella de arriba, tal como aparece. Así confirmas que es exactamente lo que has revisado.</span></label>
+      <input type="text" id="f-confirm" name="confirm_sha256" class="mono" autocomplete="off" spellcheck="false">
+    </div>
+    {% if prepared.shell %}
+    <div class="notice notice-warn" role="note"><p><strong>Aviso del destino.</strong> {{ shell_risk }}</p></div>
+    <div class="field"><label><input type="checkbox" name="accept_shell_risk" value="1"> Acepto este riesgo.</label></div>
+    {% endif %}
+    {{ by_field("b-enviar", "Tu nombre completo. Queda como quien consiente el envío; no se comprueba. Puedes cambiarlo.") }}
+    <div class="actions"><button class="btn btn-primary" type="submit">Enviar</button></div>
+  </form>
+</section>
+{% endif %}
+{% endif %}
+{% endif %}
+
+<section class="section" aria-labelledby="h-hallazgos">
+  <h2 id="h-hallazgos">Hallazgos de la última ejecución</h2>
+  <dl class="facts">
+    <dt>Generada</dt><dd class="mono">{{ generated_at }}</dd>
+    {%- for name, status in layers.items() %}<dt>{{ name }}</dt><dd>{{ m.badge(status, show_code=False) }}</dd>{% endfor %}
+  </dl>
+  {% if not judgment and not deterministic %}
+  <p class="muted">No hay hallazgos. Si no se ha ejecutado la pre-auditoría, aún no hay nada que revisar.</p>
+  {% endif %}
+  {% if judgment %}
+  <h3>Propuestas de la revisión automática ({{ judgment | length }})</h3>
+  <p class="muted">Son las que necesitan tu decisión. Una persona tiene que aceptarlas, resolverlas con una evidencia o descartarlas con un motivo.</p>
+  {% for f in judgment %}{{ finding_item(f) }}{% endfor %}
+  {% endif %}
+  {% if deterministic %}
+  <h3>Comprobaciones automáticas</h3>
+  <p class="muted">Salen de reglas fijas sobre los datos del expediente. No admiten decisión: se corrigen en el origen.</p>
+  {% for group in deterministic %}
+  <details>
+    <summary><span class="id mono">{{ group.measure_id }}</span> · {{ group.findings | length }} hallazgos</summary>
+    {% for f in group.findings %}{{ finding_item(f) }}{% endfor %}
+  </details>
+  {% endfor %}
+  {% endif %}
+</section>
 {% endblock %}
