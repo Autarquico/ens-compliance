@@ -15,7 +15,7 @@ Los textos de usuario se pasan **sin escapar**: la plantilla escapa. No pases `M
 | `nav_active` | `"estado" \| "asistente" \| "matriz" \| "evidencias" \| "expediente" \| "preauditoria"` | Marca la sección actual. |
 | `page_title` | `str` | Título de la pestaña. |
 
-Enlaces fijos del menú (las rutas deben existir): `/`, `/asistente`, `/matriz`, `/evidencias`, `/expediente`, `/preauditoria`.
+Enlaces fijos del menú (las rutas deben existir): `/`, `/asistente`, `/matriz`, `/evidencias`, `/expediente`, `/preauditoria`. Rutas con parámetro: `/matriz/{medida}`, `/evidencias/nueva`, `/expediente/{id}` y `/expediente/{id}/dossier.md`.
 
 ## Estados (`m.badge`)
 
@@ -25,7 +25,7 @@ Los valores se pasan como la cadena del enum. La plantilla pone icono, texto y c
 
 | Variable | Tipo | Notas |
 |---|---|---|
-| `status_code` | `int` | Copy propio para 401, 403 y 409; cualquier otro, mensaje genérico. |
+| `status` | `int` | Copy propio para 401, 403 y 409; cualquier otro, mensaje genérico. |
 | `message` | `str \| None` | Si viene, sustituye el texto por defecto. |
 
 Más el contexto común. En 401 el backend no debe dar enlace de «entrar»: la autenticación es de Access.
@@ -38,7 +38,7 @@ Cada paso es una plantilla `wizard/<paso>.html` que extiende `partials/paso_solo
 
 | Variable | Tipo | Notas |
 |---|---|---|
-| `steps` | `list[{slug:str, label:str, group:"alcance"\|"categorizacion", state:"done"\|"current"\|"todo"}]` | En orden, los 8 pasos de abajo. |
+| `steps` | `list[{slug:str, label:str, group:"alcance"\|"categorizacion"\|"riesgos"\|"aplicabilidad"\|"documentos", state:"done"\|"current"\|"todo"\|"optional"}]` | En orden, los pasos de abajo. |
 | `step` | `str` | `slug` actual. |
 | `step_number`, `step_total` | `int` | Progreso, empieza en 1. |
 | `step_title` | `str` | Título del paso. |
@@ -51,7 +51,7 @@ Cada paso es una plantilla `wizard/<paso>.html` que extiende `partials/paso_solo
 | `values` | `dict[str, str \| list[str]]` | Eco de lo enviado (o de lo guardado) por nombre de campo. |
 | `approver_default` | `str` | Prelleno de «Lo aprueba»: el email del JWT. Editable. |
 
-Todo botón de envío lleva `name="accion"`: `guardar` (por defecto), `anadir` (activos), `aprobar`.
+Todo botón de envío lleva `name="accion"`: `guardar` (por defecto), `anadir` (activos), `aprobar`, y los de cada paso de abajo (`preparar`, `decidir`, `anadir-riesgo`, `generar`…).
 
 ### Pasos (slug → plantilla → campos del formulario y variables extra)
 
@@ -87,24 +87,65 @@ Todo botón de envío lleva `name="accion"`: `guardar` (por defecto), `anadir` (
    - `pending: list[str]` (elementos sin valorar, como `kind:id`) e `issues: list[str]`; si cualquiera no está vacío, el botón va deshabilitado.
    - `approval: None \| {approved_by:str, approved_at:str}`
 
+9. `riesgos-metodologia` → `wizard/riesgos_metodologia.html`. Campos: `name`, `reference`, `adaptation`.
+   - `adopted: bool`
+   - `likelihood`, `impact`, `risk_levels: list[{id:str, description:str}]` (las escalas de la plantilla, solo lectura)
+   - `impact_ids: list[str]`, `matrix_rows: list[{likelihood:str, levels:list[str]}]` (la matriz de riesgo inherente; `levels` va en el orden de `impact_ids`)
+10. `riesgos` → `wizard/riesgos_registro.html`. `accion=anadir-riesgo`: `risk_id`, `threat`, `risk_assets` (multi), `risk_services` (multi), `risk_dimensions` (multi), `valuation~<D>`, `likelihood`, `impact`, `safeguards` (multi), `residual`, `treatment`, `owner`, y si hace falta aceptación `accepted_by`, `accepted_role`. `accion=anadir-accion`: `action_id`, `action_risk`, `action_description`, `action_owner`, `action_due`, `action_status`. `accion=quitar-riesgo` y `quitar-accion`: `item_id`.
+    - `adopted`, `likelihood`, `impact`, `risk_levels`, `impact_ids`, `matrix_rows` como en la metodología; `minimum_level: str`
+    - `risks: list[{id, threat, targets:list[str], dimensions:list[str], likelihood, impact, inherent, residual, treatment:str, owner, safeguards:list[str], accepted_by:str\|None, actions:list[Action]}]`
+    - `actions: list[Action]` con `Action = {id, description, owner, due:str\|None, status:str}`
+    - `asset_choices`, `service_choices`, `safeguard_choices: list[{id:str, label:str\|None}]` (solo lo incluido en el alcance y el catálogo)
+    - `levels: list[str]`, `treatments`, `roles`, `action_statuses: list[{value:str, label:str}]`
+11. `aprobacion-riesgos` → `wizard/riesgos_aprobacion.html`. Campo: `approved_by`; `accion=aprobar`.
+    - `risk_state: str` (`RiskState`), `stale_reasons: list[str]`, `issues: list[str]`, `issues_more: int` (los que no caben), `risks_count`, `actions_count: int`
+    - `approval: None \| {approved_by:str, approved_at:str, valid_until:str}`
+12. `aplicabilidad` → `wizard/aplicabilidad_medidas.html`. `accion=preparar` (sin campos) y `accion=decidir`: `measure_id`, `decision` (`applies`\|`not_applicable`\|`absent`), `justification`, `reinforcement~<n>` (uno por grupo de alternativas), `absent_asset_type`, `comp_measures`, `comp_replaces` (multi), `comp_justification`.
+    - `blocked: str \| None` (por qué no se puede decidir todavía), `needs_preparing: bool`, `category: str \| None`
+    - `pending`, `required`, `own: list[Measure]` (por decidir; exigidas por el anexo II ya decididas; decididas por la persona) con `Measure = {id, name, state:"undecided"\|"reinforcement"\|"unregistered"\|"review"\|"decided", reason:str\|None, required:bool, required_by:str\|None, required_reinforcements:list[{id,title}], groups:list[{options:list[{id,title}], chosen:str}], choice:""\|"applies"\|"not_applicable"\|"absent", justification:str, absent_types:list[str], absent_type:str, obligations:list[{id,title}], compensation:{measures:str, replaces:list[str], justification:str}}`
+13. `aprobacion-aplicabilidad` → `wizard/aplicabilidad_aprobacion.html`. Campo: `approved_by`; `accion=aprobar`.
+    - `declaration_state: str` (`DeclarationState`), `stale_reasons`, `issues: list[str]`, `issues_more: int`
+    - `exclusions: list[{id, name, asset_type, justification}]` (exigidas sin aplicar por ausencia de activo; se listan antes de firmar)
+    - `declaration: None \| {approved_by:str, approved_at:str, selected_count:int}`
+14. `documentos-<bloque>` (siete: `organizacion`, `responsables`, `normativa`, `procedimientos`, `informacion`, `incidentes`, `autorizaciones`) → `wizard/documentos_bloque.html`. Por pregunta: `q~<id>` (marca de que se envió), `a~<id>` (texto o lista), `r~<id>~<campo>` (registros, una columna por fila), `na~<id>` + `reason~<id>` (no aplica), `del~<id>` (filas a quitar).
+    - `block_intro: str`, `people: list[str]` (personas declaradas, para el desplegable)
+    - `questions: list[Question]` con `Question = {id, name, text, help, type:"text"\|"list"\|"records", choices:list[str], multiline, people_list, optional:bool, clause:{reference:str, text:str}, condition_note:str\|None, allow_na:bool, na_label:str, na:bool, reason:str, value:str, rows:list[Row]}`. `Row` en listas: `{n:int, value:str, filled:bool, removed:bool}`; en registros: `{n, filled, removed, cells:list[{id,label,name,value,long:bool}]}`.
+15. `documentos-generar` → `wizard/documentos_generar.html`. `accion=generar` (sin campos).
+    - `scope_ok`, `answers_started`, `can_generate: bool`
+    - `issue_groups: list[{slug:str, label:str, items:list[str]}]` (lo que falta, con enlace al bloque `/asistente/<slug>`), `warnings: list[str]`
+    - `documents: list[Document]` con `Document = {name, title, state:str, state_label:str, tone:"ok"\|"warn"\|"neutral", reasons:list[str]}`
+16. `documentos-aprobar` → `wizard/documentos_aprobar.html`. `accion=aprobar`: `documento` y `approved_by`; el rol sale del servidor, nunca del formulario. `?ver=<documento>` lee el texto.
+    - `documents: list[Document + {role_label:str, signatory:str\|None, by:str, can_approve:bool, approval:None\|{approved_by,approved_at}, error_key:str}]`; el error de cada documento va en `errors[error_key]` (`approved_by~<documento>`).
+    - `viewing: None \| {title:str, text:str}` (el texto va en `<pre>`, escapado)
+
 Nombres de campo con error: las claves de `errors` son exactamente los nombres de arriba (incluida la forma `rating~...`).
 
-## Vistas de solo lectura (contexto común + lo siguiente)
+## Vistas (contexto común + lo siguiente)
+
+Las vistas con formulario (`matriz_medida`, `evidencias_nueva`, `expediente`, `preauditoria`) reciben además `form_errors: list[str]`, `errors: dict[str, list[str]]`, `values: dict[str, str]` y `saved` (`str \| bool`): como en el asistente, pero los POST redirigen (PRG) y los errores devuelven 422 con la misma página.
 
 ### `views/estado.html`
-`readiness: {state:str, summary:str}` (`Readiness`) · `scope_state: str` · `categorization_state: str` · `category: str \| None` · `next_step_url: str \| None` y `next_step_label: str` (botón principal; ambos o ninguno) · `blockers: list[{kind:str, measure_id:str\|None, text:str}]` (`BlockerKind`) · `generated_at: str`.
+`readiness: {state:str, summary:str}` (`Readiness`) · `scope_state: str` · `categorization_state: str` · `category: str \| None` · `phases: list[{label:str, state:"done"\|"next"\|"todo"}]` (el recorrido de alcance a pre-auditoría) · `next_step_url: str \| None` y `next_step_label: str` (botón principal; la etiqueta va siempre) · `blockers: list[{measure_id:str\|None, texts:list[str]}]` (agrupados por medida, como `assessment status`) · `generated_at: str`.
 
 ### `views/matriz.html`
-`rows: list[{measure_id:str, title:str, applicability:str, assessment:str, check_status:str\|None, evidence_count:int}]` · `generated_at: str`. `measure_id` va en mono (ids oficiales, ej. `op.pl.1`).
+`rows: list[{measure_id:str, title:str, applicability:str, assessment:str, evidence_count:int}]` · `wizard_pending: bool` (alcance o categorización sin cerrar) · `generated_at: str`. `measure_id` va en mono (ids oficiales, ej. `op.pl.1`) y enlaza a `/matriz/<medida>`.
+
+### `views/matriz_medida.html`
+Formularios: `POST /matriz/<medida>/responsable` (`owner_name`, `owner_role`, `every`), `/enlazar` (`kind`=`document`\|`evidence`, `target`, `covers` multi), `/desenlazar` (`kind`, `target`), `/revisar` (`by`, `role`, `assessment`, `conclusion`).
+`measure_id`, `title: str` · `applicability`, `assessment: str` · `selected: bool` (false: no aplica, se revisa sin valoración) · `owner: None \| {name:str, role:str}` · `every_days: int \| None`, `max_days: int` · `obligations: list[{id, title, compensating:list[str], clauses:list[{unit, label, text, sources:list[str]}]}]` · `links: list[{kind, target, label, covers:list[str], counts:bool}]` · `document_offers: list[{name, covers:list[str]}]` (con las cláusulas que su ficha dice cubrir) · `evidence_offers: list[{id, asset_id, collected_at:str, expired:bool}]` · `units: list[str]` · `blockers: list[str]` · `last_review: None \| {by, role, at, valid_until, conclusion}` · `owner_roles`, `review_roles`, `assessments: list[{value, label}]` · `by_default: str` (el email, editable) · `uncovered: list[str]` (cláusulas sin cubrir de una revisión rechazada) · `generated_at: str`.
 
 ### `views/evidencias.html`
-`manifests: list[{id:str, source:str, collected_at:str, status:str, items_count:int}]` (`status` = `CollectionStatus`). Solo manifiestos: nunca el cuerpo de las evidencias.
+`manifests: list[{id:str, source:str, collected_at:str, status:str}]` · `uploaded: str` (id de la evidencia recién subida; cadena vacía si no hay). Solo manifiestos: nunca el cuerpo de las evidencias.
+
+### `views/evidencias_nueva.html`
+Formulario `multipart/form-data` a `POST /evidencias/nueva`: `asset_id`, `by`, `collected_on` (AAAA-MM-DD, opcional) y `file`. El nombre del fichero no se lee. `assets: list[str]` (solo activos del alcance) · `max_megabytes: int` (el tope de la subida) · `by_default: str`.
 
 ### `views/expediente.html`
-`dossier_state: str` (`DossierState`) · `generated_at: str` · `declared: None \| {by:str, at:str}` · `sections: list[{title:str, file:str, state:str, generated_at:str, fingerprint:str\|None}]`.
+`dossier_id: str \| None` · `category: str \| None` · `dossier_state: str` (`DossierState`, `Sin generar` o `ROTO`) · `generated_at: str` · `declared: None \| {by:str, at:str}` · `sections: list[{title, file, state, state_label, generated_at, fingerprint:str\|None}]` · `transitions: list[{state, actor, role, at}]` · `stale: bool` y `drift_lines: list[str]` · `integrity`, `blocked`, `incomplete: list[str]` · `readiness_notice: str \| None` · `action: "self-assess"\|"analyze"\|"declare"\|None` y `next_text: str` · `can_download: bool` (`GET /expediente/<id>/dossier.md`) · `self_assess_roles: dict[str, str]`. Formularios: `POST /expediente/generar` (sin campos) y `POST /expediente/<id>/<accion>` (`by` más `role` / `conclusion`, `elevated_to`, `elevated`, `manual_judgment_review`, `corrective_measures` / `evidence`, `acknowledge_incomplete`).
 
 ### `views/preauditoria.html`
-`generated_at: str` · `layer_status: dict[str, str]` (nombre visible de capa → `LayerStatus`) · `findings: list[{id:str, measure_id:str, classification:str, disposition:str, text:str, criterion:str\|None, layer_label:str}]`. La vista siempre muestra «Revisión humana obligatoria» y presenta los hallazgos como propuestas.
+Formularios: `POST /preauditoria/preparar` (`dossier`, `by`), `/enviar` (`dossier`, `reviewed`, `confirm_sha256`, `by`, `accept_shell_risk` si el destino lo pide) y `/hallazgos/<id>` (`dossier`, `decision`, `evidence`, `reason`, `by`). La UI solo deja peticiones; las ejecuta el servicio `app`.
+`dossiers: list[str]` y `dossier_id: str \| None` · `requests: list[{kind_label, state, state_label, tone, at, by:str\|None, message:str\|None}]` · `has_live_request`, `can_consent: bool` · `prepared: None \| {key, provider, model, destination, recipient:str\|None, shell:bool, pack_version, prepared_at, sha256, intact:bool, measures, documents, evidence:int}` · `redaction_limit`, `shell_risk: str` · `generated_at: str` · `layers: dict[str, str]` (nombre visible de capa → `LayerStatus`) · `judgment: list[Finding]` (primero) · `deterministic: list[{measure_id, findings:list[Finding]}]` · `error_finding: str \| None` (hallazgo cuyo formulario falló). `Finding = {id, measure_id, classification, disposition, text, criterion, source, classification_source:str\|None, layer_label, decidable:bool, closed:bool, decisions:list[(value,label)], evidence_options:list[{id,label}]}`. La vista siempre muestra «Revisión humana obligatoria» y presenta los hallazgos como propuestas.
 
 Las fechas llegan ya formateadas como `str`.
 

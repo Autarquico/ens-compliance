@@ -21,6 +21,14 @@ STEPS = [
     ("informacion", "Información", "categorizacion"),
     ("valoraciones", "Valoraciones", "categorizacion"),
     ("aprobacion-categorizacion", "Aprobar categorización", "categorizacion"),
+    ("riesgos-metodologia", "Metodología", "riesgos"),
+    ("riesgos", "Riesgos", "riesgos"),
+    ("aprobacion-riesgos", "Aprobar riesgos", "riesgos"),
+    ("aplicabilidad", "Medidas", "aplicabilidad"),
+    ("aprobacion-aplicabilidad", "Firmar la Declaración", "aplicabilidad"),
+    ("documentos-organizacion", "Tu organización", "documentos"),
+    ("documentos-generar", "Generar", "documentos"),
+    ("documentos-aprobar", "Aprobar", "documentos"),
 ]
 WIZARD_TEMPLATES = {
     "sistema": "wizard/sistema.html",
@@ -31,11 +39,21 @@ WIZARD_TEMPLATES = {
     "informacion": "wizard/informacion.html",
     "valoraciones": "wizard/valoraciones.html",
     "aprobacion-categorizacion": "wizard/aprobacion_categorizacion.html",
+    "riesgos-metodologia": "wizard/riesgos_metodologia.html",
+    "riesgos": "wizard/riesgos_registro.html",
+    "aprobacion-riesgos": "wizard/riesgos_aprobacion.html",
+    "aplicabilidad": "wizard/aplicabilidad_medidas.html",
+    "aprobacion-aplicabilidad": "wizard/aplicabilidad_aprobacion.html",
+    "documentos-organizacion": "wizard/documentos_bloque.html",
+    "documentos-generar": "wizard/documentos_generar.html",
+    "documentos-aprobar": "wizard/documentos_aprobar.html",
 }
 VIEW_TEMPLATES = [
     "views/estado.html",
     "views/matriz.html",
+    "views/matriz_medida.html",
     "views/evidencias.html",
+    "views/evidencias_nueva.html",
     "views/expediente.html",
     "views/preauditoria.html",
 ]
@@ -156,11 +174,240 @@ WIZARD_EXTRA = {
     },
 }
 
+SCALE = [{"id": "baja", "description": HOSTILE}, {"id": "media", "description": "Posible"}]
+IMPACT = [{"id": "bajo", "description": "Limitado"}, {"id": "alto", "description": HOSTILE}]
+MATRIX_ROWS = [
+    {"likelihood": "baja", "levels": ["bajo", "bajo"]},
+    {"likelihood": "media", "levels": ["bajo", "alto"]},
+]
+LEVELS = [{"id": "bajo", "description": "Asumible"}, {"id": "alto", "description": "Seguimiento"}]
+ACTION = {
+    "id": "A-001",
+    "description": HOSTILE,
+    "owner": HOSTILE,
+    "due": "2026-12-31",
+    "status": "Pendiente",
+}
+RISK = {
+    "id": "R-001",
+    "threat": HOSTILE,
+    "targets": ["app", "facturacion"],
+    "dimensions": ["C"],
+    "likelihood": "media",
+    "impact": "alto",
+    "inherent": "alto",
+    "residual": "bajo",
+    "treatment": "Reducirlo con medidas",
+    "owner": HOSTILE,
+    "safeguards": ["op.acc.1"],
+    "accepted_by": HOSTILE,
+    "actions": [ACTION],
+}
+MEASURE = {
+    "id": "op.pl.5",
+    "name": HOSTILE,
+    "state": "undecided",
+    "reason": HOSTILE,
+    "required": False,
+    "required_by": None,
+    "required_reinforcements": [{"id": "R1", "title": HOSTILE}],
+    "groups": [
+        {"options": [{"id": "R1", "title": HOSTILE}, {"id": "R2", "title": "Otro"}], "chosen": "R1"}
+    ],
+    "choice": "",
+    "justification": HOSTILE,
+    "absent_types": ["laptop"],
+    "absent_type": "",
+    "obligations": [{"id": "base", "title": "Parte general"}],
+    "compensation": {"measures": HOSTILE, "replaces": ["base"], "justification": HOSTILE},
+}
+QUESTION = {
+    "id": "organizacion",
+    "name": "a~organizacion",
+    "text": HOSTILE,
+    "help": HOSTILE,
+    "type": "text",
+    "choices": [],
+    "multiline": False,
+    "people_list": False,
+    "optional": False,
+    "clause": {"reference": "RD 311/2022, anexo II, org.1.1", "text": HOSTILE},
+    "condition_note": HOSTILE,
+    "allow_na": True,
+    "na_label": "No aplica",
+    "na": False,
+    "reason": HOSTILE,
+    "value": HOSTILE,
+    "rows": [],
+}
+LIST_ROWS = [
+    {"n": 1, "value": HOSTILE, "filled": True, "removed": True},
+    {"n": 2, "value": "", "filled": False, "removed": False},
+]
+RECORD_ROWS = [
+    {
+        "n": 1,
+        "filled": True,
+        "removed": False,
+        "cells": [
+            {"id": "tarea", "label": "Tarea", "name": "r~x~tarea", "value": HOSTILE, "long": False},
+            {
+                "id": "detalle",
+                "label": "Detalle",
+                "name": "r~x~detalle",
+                "value": HOSTILE,
+                "long": True,
+            },
+        ],
+    }
+]
+DOCUMENT = {
+    "name": "politica-seguridad",
+    "title": HOSTILE,
+    "state": "GENERATED",
+    "state_label": "Generado, pendiente de aprobar",
+    "tone": "warn",
+    "reasons": [HOSTILE],
+}
+SIGNED = {"approved_by": HOSTILE, "approved_at": "2026-11-08 10:00"}
+WIZARD_FLOW_EXTRA = {
+    "riesgos-metodologia": {
+        "adopted": False,
+        "likelihood": SCALE,
+        "impact": IMPACT,
+        "risk_levels": LEVELS,
+        "impact_ids": ["bajo", "alto"],
+        "matrix_rows": MATRIX_ROWS,
+        "values": {"name": HOSTILE, "reference": HOSTILE, "adaptation": HOSTILE},
+    },
+    "riesgos": {
+        "adopted": True,
+        "likelihood": SCALE,
+        "impact": IMPACT,
+        "risk_levels": LEVELS,
+        "minimum_level": "bajo",
+        "matrix_rows": MATRIX_ROWS,
+        "impact_ids": ["bajo", "alto"],
+        "risks": [RISK],
+        "actions": [ACTION],
+        "asset_choices": ASSET_CHOICES,
+        "service_choices": [{"id": "facturacion", "label": HOSTILE}],
+        "safeguard_choices": [{"id": "op.acc.1", "label": HOSTILE}],
+        "levels": ["BAJO", "ALTO"],
+        "treatments": [{"value": "mitigate", "label": "Reducirlo"}],
+        "roles": [{"value": "system_owner", "label": "Responsable del sistema"}],
+        "action_statuses": [{"value": "pending", "label": "Pendiente"}],
+        "values": {"threat": HOSTILE},
+    },
+    "aprobacion-riesgos": {
+        "risk_state": "NOT_APPROVED",
+        "stale_reasons": [HOSTILE],
+        "issues": [HOSTILE],
+        "issues_more": 2,
+        "risks_count": 1,
+        "actions_count": 1,
+        "approval": {**SIGNED, "valid_until": "2027-11-08"},
+    },
+    "aplicabilidad": {
+        "blocked": None,
+        "needs_preparing": False,
+        "category": "BASICA",
+        "pending": [
+            MEASURE,
+            {**MEASURE, "id": "op.acc.5", "state": "reinforcement", "choice": "applies"},
+        ],
+        "required": [
+            {
+                **MEASURE,
+                "id": "org.1",
+                "state": "decided",
+                "required": True,
+                "required_by": "la categoría",
+                "choice": "applies",
+            }
+        ],
+        "own": [{**MEASURE, "id": "op.acc.3", "state": "decided", "choice": "not_applicable"}],
+        "values": {},
+    },
+    "aprobacion-aplicabilidad": {
+        "declaration_state": "NOT_APPROVED",
+        "stale_reasons": [HOSTILE],
+        "issues": [HOSTILE],
+        "issues_more": 3,
+        "exclusions": [
+            {"id": "op.acc.3", "name": HOSTILE, "asset_type": HOSTILE, "justification": HOSTILE}
+        ],
+        "declaration": {**SIGNED, "selected_count": 12},
+    },
+    "documentos-organizacion": {
+        "block_intro": HOSTILE,
+        "questions": [
+            QUESTION,
+            {**QUESTION, "id": "listado", "type": "list", "rows": LIST_ROWS, "na": True},
+            {**QUESTION, "id": "tabla", "type": "records", "rows": RECORD_ROWS},
+            {**QUESTION, "id": "eleccion", "choices": [HOSTILE, "sí"], "people_list": True},
+        ],
+        "people": [HOSTILE],
+        "values": {"a~organizacion": HOSTILE},
+    },
+    "documentos-generar": {
+        "scope_ok": True,
+        "answers_started": True,
+        "issue_groups": [{"slug": "documentos-organizacion", "label": HOSTILE, "items": [HOSTILE]}],
+        "warnings": [HOSTILE],
+        "documents": [DOCUMENT],
+        "can_generate": True,
+        "values": {},
+    },
+    "documentos-aprobar": {
+        "documents": [
+            {
+                **DOCUMENT,
+                "role_label": "la dirección",
+                "signatory": HOSTILE,
+                "by": HOSTILE,
+                "can_approve": True,
+                "approval": None,
+                "error_key": "approved_by~politica-seguridad",
+            },
+            {
+                **DOCUMENT,
+                "role_label": "la dirección",
+                "signatory": "Ana",
+                "by": "ana",
+                "can_approve": False,
+                "approval": SIGNED,
+                "error_key": "approved_by~normativa",
+                "state": "APPROVED",
+            },
+        ],
+        "viewing": {"name": "politica-seguridad", "title": "Política", "text": HOSTILE},
+        "values": {},
+    },
+}
+
+WIZARD_EXTRA |= WIZARD_FLOW_EXTRA
+
 CHROME = {
     "product_name": "Producto",
     "identity_email": "ana@example.org",
     "nav_active": "estado",
     "page_title": "Página",
+}
+FINDING = {
+    "id": "a" * 64,
+    "measure_id": "op.pl.1",
+    "classification": "NC_MENOR",
+    "disposition": "OPEN",
+    "text": HOSTILE,
+    "criterion": HOSTILE,
+    "source": HOSTILE,
+    "classification_source": HOSTILE,
+    "layer_label": "Juicio",
+    "decidable": True,
+    "closed": False,
+    "decisions": [("dismissed", "Descartarlo"), ("resolved", "Resuelto")],
+    "evidence_options": [{"id": "EV-20261108-abcd1234", "label": HOSTILE}],
 }
 VIEW_CONTEXT = {
     "views/estado.html": {
@@ -192,6 +439,7 @@ VIEW_CONTEXT = {
                 "evidence_count": 0,
             }
         ],
+        "wizard_pending": True,
         "generated_at": "2026-11-08 10:00",
     },
     "views/evidencias.html": {
@@ -203,6 +451,7 @@ VIEW_CONTEXT = {
                 "status": "SUCCESS",
             }
         ],
+        "uploaded": "EV-20261108-abcd1234",
     },
     "views/expediente.html": {
         "dossier_id": "20261108T100000000000Z-abcdef012345",
@@ -239,19 +488,114 @@ VIEW_CONTEXT = {
         ],
     },
     "views/preauditoria.html": {
-        "generated_at": "2026-11-08 10:00",
-        "layer_status": {"Determinista": "DONE", "Juicio": "NOT_RUN"},
-        "findings": [
+        "dossiers": ["20261108T100000000000Z-abcdef012345"],
+        "dossier_id": "20261108T100000000000Z-abcdef012345",
+        "requests": [
             {
-                "id": "f1",
-                "measure_id": "op.pl.1",
-                "classification": "NC_MENOR",
-                "disposition": "OPEN",
-                "text": "Falta el análisis",
-                "criterion": "C1",
-                "layer_label": "Determinista",
+                "kind_label": "Preparación",
+                "state": "DONE",
+                "state_label": "Hecha",
+                "tone": "ok",
+                "at": "2026-11-08 10:00",
+                "by": HOSTILE,
+                "message": HOSTILE,
             }
         ],
+        "has_live_request": False,
+        "can_consent": True,
+        "prepared": {
+            "key": "evidence/preaudits/x.json",
+            "provider": "anthropic",
+            "model": HOSTILE,
+            "destination": HOSTILE,
+            "recipient": HOSTILE,
+            "shell": True,
+            "pack_version": "v1",
+            "prepared_at": "2026-11-08 10:00",
+            "sha256": "ab" * 32,
+            "intact": True,
+            "measures": 3,
+            "documents": 2,
+            "evidence": 1,
+        },
+        "redaction_limit": HOSTILE,
+        "shell_risk": HOSTILE,
+        "generated_at": "2026-11-08 10:00",
+        "layers": {"Determinista": "DONE", "Juicio": "NOT_RUN"},
+        "judgment": [FINDING],
+        "deterministic": [{"measure_id": "op.pl.1", "findings": [{**FINDING, "decidable": False}]}],
+        "form_errors": [HOSTILE],
+        "error_finding": FINDING["id"],
+        "values": {"by": HOSTILE, "reason": HOSTILE},
+        "saved": HOSTILE,
+    },
+    "views/matriz_medida.html": {
+        "measure_id": "op.pl.1",
+        "title": HOSTILE,
+        "applicability": "APPLICABLE",
+        "assessment": "NOT_ASSESSED",
+        "selected": True,
+        "owner": {"name": HOSTILE, "role": "Dirección"},
+        "every_days": 90,
+        "obligations": [
+            {
+                "id": "op.pl.1.1",
+                "title": "op.pl.1.1",
+                "compensating": [HOSTILE],
+                "clauses": [
+                    {
+                        "unit": "op.pl.1.1",
+                        "label": "a)",
+                        "text": HOSTILE,
+                        "sources": [HOSTILE],
+                    }
+                ],
+            }
+        ],
+        "links": [
+            {
+                "kind": "org_document",
+                "target": "politica-seguridad",
+                "label": HOSTILE,
+                "covers": ["op.pl.1.1"],
+                "counts": True,
+            }
+        ],
+        "document_offers": [{"name": HOSTILE, "covers": ["op.pl.1.1"]}],
+        "evidence_offers": [
+            {
+                "id": "EV-20261108-abcd1234",
+                "asset_id": HOSTILE,
+                "collected_at": "2026-11-08",
+                "expired": True,
+            }
+        ],
+        "units": ["op.pl.1.1"],
+        "blockers": [HOSTILE],
+        "last_review": {
+            "by": HOSTILE,
+            "role": "Dirección",
+            "at": "2026-11-08 10:00",
+            "valid_until": "2027-02-06 10:00",
+            "conclusion": HOSTILE,
+        },
+        "owner_roles": [{"value": "management", "label": "Dirección"}],
+        "review_roles": [{"value": "system_administrator", "label": "Administrador del sistema"}],
+        "assessments": [{"value": "COMPLIANT", "label": "Favorable"}],
+        "max_days": 365,
+        "generated_at": "2026-11-08 10:00",
+        "by_default": HOSTILE,
+        "values": {"conclusion": HOSTILE},
+        "form_errors": [HOSTILE],
+        "uncovered": [HOSTILE],
+        "saved": True,
+    },
+    "views/evidencias_nueva.html": {
+        "assets": [HOSTILE, "lap-ana"],
+        "max_megabytes": 5,
+        "by_default": HOSTILE,
+        "values": {"asset_id": HOSTILE, "by": HOSTILE, "collected_on": HOSTILE},
+        "form_errors": [HOSTILE],
     },
 }
 
@@ -331,7 +675,7 @@ def test_wizard_exposes_progress_and_editable_approver():
     env = _environment()
     context = {**CHROME, **_wizard("aprobacion-alcance", **WIZARD_EXTRA["aprobacion-alcance"])}
     html = env.get_template(WIZARD_TEMPLATES["aprobacion-alcance"]).render(**context)
-    assert "Paso 5 de 8" in html
+    assert f"Paso 5 de {len(STEPS)}" in html
     assert 'name="approved_by"' in html and 'value="ana@example.org"' in html
     assert "Guardar" not in html
     assert "Aprobar alcance" in html

@@ -4,14 +4,18 @@ import re
 
 import pytest
 
+from ens_evidence.catalog import load_catalog
 from ens_evidence.ui.wizard import STEPS
 
-from .conftest import Session, auth
+from . import test_equivalence as flows
+from .conftest import Session, auth, ui_client
 from .test_hostile import VIEWS
+
+web_flow = flows.web_flow  # el flujo terminado, una vez por sesión de pruebas
 
 FORBIDDEN = re.compile(r"certific|garantiza el cumplimiento|cumple el ENS", re.IGNORECASE)
 STEP_PATHS = [f"/asistente/{s.slug}" for s in STEPS]
-PAGES = [*VIEWS, *STEP_PATHS]
+PAGES = [*VIEWS, "/evidencias/nueva", *STEP_PATHS]
 
 
 def rendered(session: Session, path: str):
@@ -56,3 +60,28 @@ def test_preauditoria_y_expediente_recuerdan_la_revision_humana(session, complet
 def test_preauditoria_y_expediente_recuerdan_la_revision_humana_sin_datos(raw_client, token, path):
     response = raw_client.get(path, headers=auth(token))
     assert "revisión humana" in response.text.lower()
+
+
+def without_official_names(html: str) -> str:
+    """Los nombres oficiales del catálogo («Certificados», …) no son una afirmación."""
+    for card in load_catalog().measures:
+        for name in (card.name, *(r.title for r in card.reinforcements)):
+            if FORBIDDEN.search(name):
+                html = html.replace(name, "")
+    return html
+
+
+def test_ninguna_pagina_del_flujo_terminado_dice_certifica(web_flow, config, key, token):
+    session = Session(ui_client(config, web_flow.store, key), token)
+    pages = [
+        *PAGES,
+        "/matriz/org.1",
+        "/matriz/op.exp.9",
+        f"/expediente/{web_flow.dossier}",
+    ]
+
+    for path in pages:
+        response = session.get(path)
+        assert response.status_code == 200, path
+        found = FORBIDDEN.search(without_official_names(response.text))
+        assert not found, (path, found)

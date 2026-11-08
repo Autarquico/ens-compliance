@@ -5,9 +5,12 @@ import yaml
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
+from ens_evidence.preaudit.records import scan_runs
+from ens_evidence.preaudit.requests import list_requests
 from ens_evidence.ui.app import create_ui_app
+from ens_evidence.ui.forms import MAX_UPLOAD_BYTES
 from ens_evidence.ui.routes import ui_routes
-from ens_evidence.ui.store import UiStore
+from ens_evidence.ui.store import UiStore, WriteNotAllowed
 from ens_evidence.ui.wizard import STEPS
 
 from .conftest import (
@@ -20,6 +23,10 @@ from .conftest import (
     snapshot_of,
     ui_client,
 )
+from .test_preaudit_actions import PREPARED_AT, consent
+from .test_preaudit_actions import audited as audited  # noqa: PLC0414
+from .test_preaudit_actions import prepared as prepared  # noqa: PLC0414
+from .test_preaudit_actions import stages as stages  # noqa: PLC0414
 
 VIEWS = ["/", "/matriz", "/evidencias", "/expediente", "/preauditoria"]
 STEP_PATHS = [f"/asistente/{s.slug}" for s in STEPS]
@@ -412,3 +419,153 @@ def test_404_y_405_responden_con_la_pagina_de_error(raw_client, token):
         "text/html"
     )
     assert "GET" in not_allowed.headers["allow"]
+
+
+# --- el flujo completo: subida, consentimiento, lista blanca y origen en las rutas nuevas -------
+
+ASSET = "lap-ana"
+DOSSIER = "20261108T120000000000Z-0123456789ab"
+FINDING = "a" * 64
+
+
+def upload(client, token, content=b"acta", name="acta.txt", headers=None, **form):
+    return client.post(
+        "/evidencias/nueva",
+        data={"asset_id": ASSET, "by": "Ana Ruiz", **form},
+        files={"file": (name, content, "text/plain")},
+        headers={**auth(token), **WRITE_HEADERS, **(headers or {})},
+        follow_redirects=False,
+    )
+
+
+def test_una_subida_mayor_que_el_limite_se_rechaza_y_no_escribe_nada(client, example_store, token):
+    before = snapshot_of(example_store)
+
+    response = upload(client, token, b"x" * (MAX_UPLOAD_BYTES + 1))
+
+    assert response.status_code == 413
+    assert snapshot_of(example_store) == before
+
+
+@pytest.mark.parametrize(
+    "name",
+    [
+        "../../etc/passwd-secreto.txt",
+        "..\\..\\windows\\secreto.txt",
+        "/abs/secreto.txt",
+        "carpeta/sub/secreto.txt",
+        "%2e%2e/secreto.txt",
+        "secreto" + "a" * 300 + ".txt",
+    ],
+)
+def test_el_nombre_con_rutas_se_descarta_y_no_llega_al_workspace(
+    client, example_store, token, name
+):
+    before = set(snapshot_of(example_store))
+
+    response = upload(client, token, name=name)
+
+    assert response.status_code == 303
+    created = set(snapshot_of(example_store)) - before
+    assert len(created) == 2
+    assert all(k.startswith(("evidence/raw/", "evidence/manifests/")) for k in created)
+    assert not any("secreto" in k for k in created)
+    assert all(b"secreto" not in example_store.read_bytes(k) for k in created)
+
+
+def test_una_subida_sin_origen_correcto_no_escribe(client, example_store, token):
+    before = snapshot_of(example_store)
+
+    for headers in ({"Origin": "https://evil.example"}, {"Sec-Fetch-Site": "cross-site"}):
+        assert upload(client, token, headers=headers).status_code == 403
+
+    assert snapshot_of(example_store) == before
+
+
+@pytest.mark.parametrize(
+    "change",
+    [{"confirm_sha256": "0" * 64}, {"confirm_sha256": "A" * 64}, {"reviewed": None}],
+)
+def test_un_consentimiento_con_otra_huella_o_sin_marcar_no_crea_la_peticion(prepared, change):
+    ui, store, _, done = prepared
+    before = snapshot_of(store)
+    data = {k: v for k, v in consent(done, **change).items() if v is not None}
+
+    response = ui.post("/preauditoria/enviar", data)
+
+    assert response.status_code == 422
+    assert list_requests(store, PREPARED_AT) == []
+    assert not scan_runs(store).records
+    assert snapshot_of(store) == before
+
+
+FORBIDDEN_KEYS = [
+    "incidents/INC-2026-001/000001-x.yaml",
+    "evidence/preaudits/runs/x.json",
+    "evidence/preaudits/payloads/x.json",
+    "evidence/preaudits/requests",
+    "evidence/history/x.yaml",
+    "evidence/x.yaml",
+    "evidence",
+    "org",
+    "controls/../connectors/x.yaml",
+    "evidence/manifests/../../settings.yaml",
+    "evidence/preaudits/requests/../runs/x.json",
+    "evidence/preaudits/dispositions/../../runs/x.json",
+    "reports/schedule.yaml",
+    "backups/x",
+]
+
+
+@pytest.mark.parametrize("key", FORBIDDEN_KEYS)
+def test_la_lista_blanca_no_deja_escribir_fuera_de_lo_que_pide_el_flujo(client, example_store, key):
+    before = snapshot_of(example_store)
+    store = client.app.state.store
+
+    for view in (store, store.recording()):
+        for write in (view.write_text, view.write_bytes, view.create_bytes):
+            with pytest.raises(Exception) as caught:
+                write(key, "x" if write is view.write_text else b"x")
+            assert caught.type is WriteNotAllowed or caught.type.__name__ == "InvalidKey"
+
+    assert snapshot_of(example_store) == before
+
+
+NEW_POSTS = [
+    ("/matriz/org.1/responsable", {"owner_name": "Ana", "owner_role": "management"}),
+    ("/matriz/org.1/enlazar", {"kind": "document", "target": "x", "covers": ["org.1.1"]}),
+    ("/matriz/org.1/desenlazar", {"kind": "document", "target": "x"}),
+    ("/matriz/org.1/revisar", {"by": "Ana", "role": "system_administrator"}),
+    ("/expediente/generar", {}),
+    (f"/expediente/{DOSSIER}/self-assess", {"by": "Ana", "role": "system_administrator"}),
+    (f"/expediente/{DOSSIER}/analyze", {"by": "Ana", "conclusion": "x", "elevated_to": "Y"}),
+    (f"/expediente/{DOSSIER}/declare", {"by": "Ana"}),
+    ("/preauditoria/preparar", {"dossier": DOSSIER, "by": "Ana"}),
+    ("/preauditoria/enviar", {"dossier": DOSSIER, "reviewed": "1", "by": "Ana"}),
+    (f"/preauditoria/hallazgos/{FINDING}", {"decision": "dismissed", "reason": "x", "by": "Ana"}),
+]
+BAD_ORIGINS = [
+    {"Origin": "https://evil.example"},
+    {"Origin": ORIGIN + ".evil.example"},
+    {"Origin": "null"},
+    {"Sec-Fetch-Site": "cross-site"},
+    {"Sec-Fetch-Site": "same-site"},
+    {"Origin": None},
+    {"Sec-Fetch-Site": None},
+]
+
+
+@pytest.mark.parametrize("path, data", NEW_POSTS, ids=[p for p, _ in NEW_POSTS])
+def test_post_sin_origen_correcto_en_las_rutas_nuevas_es_403_y_no_escribe(
+    client, example_store, token, path, data
+):
+    before = snapshot_of(example_store)
+    headers_ok = {**auth(token), **WRITE_HEADERS}
+
+    for change in BAD_ORIGINS:
+        headers = {**headers_ok, **change}
+        headers = {k: v for k, v in headers.items() if v is not None}
+        assert client.post(path, data=data, headers=headers).status_code == 403, change
+
+    assert snapshot_of(example_store) == before
+    assert client.post(path, data=data, headers=headers_ok).status_code != 403

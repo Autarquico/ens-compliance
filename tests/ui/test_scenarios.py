@@ -1,13 +1,29 @@
-"""Un test por escenario de docs/specs/web-ui-base.md."""
+"""Un test por escenario de docs/specs/web-ui-base.md y de docs/specs/web-ui-flujo.md."""
 
 from pathlib import Path
 
 import pytest
+import yaml
+from typer.testing import CliRunner
 
+import ens_evidence.cli as cli
+from ens_evidence.applicability import DeclarationState, declaration_status
+from ens_evidence.assessment.dossier import scan_transitions
+from ens_evidence.categorization import categorization_status
+from ens_evidence.checks.source import StoredCheckResults
+from ens_evidence.matrix import matrix_status
+from ens_evidence.models.enums import Category, DossierState
+from ens_evidence.orgdocs import DocumentState, all_statuses
+from ens_evidence.preaudit.requests import request_prepare
+from ens_evidence.risk import RiskState, risk_status
+from ens_evidence.scheduling.scheduler import CycleExecutor
 from ens_evidence.ui.store import WRITABLE_PREFIXES, UiStore, WriteNotAllowed
 from ens_evidence.ui.wizard import STEPS
+from ens_evidence.workspace import LocalStore
 
+from . import test_equivalence as flows
 from .conftest import (
+    NOW,
     ORIGIN,
     WRITE_HEADERS,
     Session,
@@ -17,6 +33,8 @@ from .conftest import (
     ui_client,
 )
 from .test_equivalence import fingerprints, run_cli, ui_script
+
+web_flow = flows.web_flow  # la fixture de sesión: el flujo se recorre una vez para todos
 
 RUNBOOK = Path(__file__).resolve().parents[2] / "docs" / "runbooks" / "interfaz-web.md"
 GET_ROUTES = [
@@ -154,3 +172,96 @@ def test_la_ui_no_toca_la_configuracion_por_ningun_handler(client, example_store
     assert {k: after.get(k) for k in outside} == {k: before.get(k) for k in outside}
     assert not any(".." in k for k in after)
     assert isinstance(client.app.state.store, UiStore)
+
+
+# --- docs/specs/web-ui-flujo.md ------------------------------------------------------------------
+
+
+def flow_session(config, store, key, token) -> Session:
+    return Session(ui_client(config, store, key), token)
+
+
+def test_el_flujo_completo_por_la_web_termina_con_el_expediente_declarado(
+    web_flow, config, key, token
+):
+    store = web_flow.store
+
+    assert fingerprints(store)  # alcance aprobado y categorización vigente
+    assert categorization_status(store, NOW).computation.category is Category.BASICA
+    assert risk_status(store, NOW).state is RiskState.APPROVED
+    assert declaration_status(store, NOW).state is DeclarationState.CURRENT
+    assert {s.state for s in all_statuses(store)} == {DocumentState.APPROVED}
+    rows = matrix_status(store, NOW, checks=StoredCheckResults(reference_now=NOW))[1]
+    assert rows and all(r.row.review is not None for r in rows)
+    assert scan_transitions(store, web_flow.dossier).dossier.state is DossierState.DECLARED
+    page = flow_session(config, store, key, token).get("/expediente").text
+    assert "La declaración ya está registrada" in page
+
+
+def test_en_cada_estado_intermedio_la_pagina_de_estado_enlaza_a_un_paso_que_responde(web_flow):
+    *intermediate, last = web_flow.milestones
+
+    assert len(intermediate) >= 12
+    for milestone in intermediate:
+        assert milestone.url, milestone
+        assert milestone.status == 200, milestone
+    assert intermediate[0].url == "/asistente/sistema"
+    assert {m.url.split("/")[1] for m in intermediate} == {"asistente", "matriz", "expediente"}
+    assert last.name == "expediente: declare" and last.label
+
+
+def test_la_web_no_da_por_buena_una_medida_sin_pruebas(web_flow, tmp_path, config, key, token):
+    store = LocalStore(tmp_path / "copia")
+    for name, data in snapshot_of(web_flow.store).items():
+        store.write_bytes(name, data)
+    ui = flow_session(config, store, key, token)
+    ui.post("/matriz/org.1/desenlazar", {"kind": "org_document", "target": "politica-seguridad"})
+    before = snapshot_of(store)
+
+    response = ui.post(
+        "/matriz/org.1/revisar",
+        {
+            "by": "Ana Ruiz",
+            "role": "system_administrator",
+            "assessment": "COMPLIANT",
+            "conclusion": "Revisada.",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "Cláusulas sin cubrir" in response.text
+    for clause in ("org.1.1", "org.1.2", "org.1.3", "org.1.4", "org.1.5"):
+        assert clause in response.text
+    assert snapshot_of(store) == before
+
+
+def test_scheduler_run_ejecuta_las_peticiones_de_la_ui_sin_proveedores_reales(
+    tmp_path, monkeypatch
+):
+    store = LocalStore(tmp_path / "ws")
+    settings = tmp_path / "settings.yaml"
+    settings.write_text(
+        yaml.safe_dump({"workspace": {"backend": "local", "local": {"path": str(tmp_path / "ws")}}})
+    )
+    built = {}
+
+    class Recording:
+        def __init__(self, clock, executor, *args, **kwargs):
+            built.update(executor=executor, **kwargs)
+
+        def run(self):
+            built["ran"] = True
+
+    monkeypatch.setattr(cli, "Scheduler", Recording)
+    request = request_prepare(
+        store, "20261108T120000000000Z-0123456789ab", by="Ana", email="ana@example.com", now=NOW
+    )
+
+    result = CliRunner().invoke(cli.app, ["--settings", str(settings), "scheduler", "run"])
+
+    assert result.exit_code == 0, result.output
+    requests = built["requests"]
+    assert built["ran"] and isinstance(built["executor"], CycleExecutor)
+    assert requests.__self__ is built["executor"]
+    assert requests.__func__ is CycleExecutor.pending_requests
+    assert requests(NOW) == [request.key]
