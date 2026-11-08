@@ -294,10 +294,12 @@ exige revisiones de la matriz):
    `/data/settings.yaml` con `provider` y `model` ([pre-auditoría, §1](pre-auditoria.md)).
    En la caja solo sirven `anthropic` y `openai`, y la clave
    (`ANTHROPIC_API_KEY` u `OPENAI_API_KEY`) tiene que llegar al contenedor
-   `app`. **No documentado en [caja](caja.md):** `deploy/.env.example` no la
-   lista. Sin ella la capa de juicio no puede ejecutarse y el expediente de la
-   caja no llega a `READY`; no está verificado cómo inyectarla en la caja
-   desplegada, resuélvelo antes de la sección 5.
+   `app`: añádela a `deploy/.env` (`ANTHROPIC_API_KEY=` u `OPENAI_API_KEY=`;
+   `.env.example` aún no las lista) y ejecuta `deploy/box.sh restart app`
+   ([caja, sección 3](caja.md)). Sin clave la pre-auditoría ejecuta solo la capa
+   determinista: `READY` sigue siendo alcanzable, pero el expediente queda con
+   «revisión humana pendiente» y el análisis (sección 6, punto 2) tiene que
+   llevar `--manual-judgment-review`.
 
 Después, recoge y comprueba:
 
@@ -342,8 +344,10 @@ el alias `ens`):
    ens-evidence assessment status
    ```
 
-   Tiene que decir `READY` (salida 0). Si queda un hallazgo abierto o falta la
-   revisión de la capa de juicio, es `NOT READY` («revisión humana pendiente»).
+   Tiene que decir `READY` (salida 0). Si queda un hallazgo abierto es `NOT READY`.
+   Si la capa de juicio no se ejecutó, el estado añade «revisión humana
+   pendiente»: no bloquea `READY`, pero obliga a `--manual-judgment-review` en
+   la sección 6.
    `READY` no es «cumple»: solo dice que la herramienta no encuentra bloqueos.
 
 **Si el expediente de Autarqui o el de la caja no llegan a `READY`, v0.1 no se

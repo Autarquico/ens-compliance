@@ -311,7 +311,7 @@ Cada escenario indica la versión en la que debe cumplirse.
 - **Then** la capa determinista se completa y el estado indica "revisión humana pendiente" para lo que cubría la capa de juicio
 
 ### Scenario: la caja pasa su propia pre-auditoría (v0.1)
-- **Given** la caja instalada como sistema dentro del alcance de Autarqui
+- **Given** la caja instalada en el entorno de Autarqui, con su propio workspace y expediente
 - **When** se ejecuta la pre-auditoría sobre su expediente
 - **Then** su expediente cumple la regla de preparación (`READY`); si no, v0.1 no se cierra
 
