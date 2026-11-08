@@ -12,7 +12,7 @@ from ens_evidence.categorization import CategorizationState, categorization_stat
 from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.workspace import LocalStore
 
-from .conftest import NOW, Session, seed_example_scope, snapshot_of, ui_client
+from .conftest import NOW, Session, snapshot_of, ui_client
 
 JUSTIFICATION = "Criterio 1.º del anexo I, 3"
 LEVELS = {"datos": "ALTO", "svc-facturacion": "MEDIO", "svc-soporte": "BAJO"}
@@ -99,14 +99,7 @@ def fingerprints(store: LocalStore) -> tuple:
     )
 
 
-@pytest.fixture
-def workspaces(tmp_path):
-    cli_store = seed_example_scope(LocalStore(tmp_path / "cli-ws"))
-    ui_store = seed_example_scope(LocalStore(tmp_path / "ui-ws"))
-    return cli_store, ui_store
-
-
-def run_cli(tmp_path: Path, store: LocalStore, monkeypatch) -> None:
+def run_cli(tmp_path: Path, store: LocalStore, monkeypatch, script=None) -> None:
     settings = tmp_path / "settings.yaml"
     settings.write_text(
         yaml.safe_dump(
@@ -119,10 +112,13 @@ def run_cli(tmp_path: Path, store: LocalStore, monkeypatch) -> None:
         result = runner.invoke(cli.app, ["--settings", str(settings), *args])
         assert result.exit_code == 0, (args, result.output)
 
-    cli_script(ens)
+    if script is None:
+        cli_script(ens)
+    else:
+        ens(*script)
 
 
-def test_ui_and_cli_produce_the_same_workspace(
+def assert_ui_and_cli_produce_the_same_workspace(
     tmp_path, workspaces, config, key, token, monkeypatch
 ):
     cli_store, ui_store = workspaces
@@ -135,6 +131,36 @@ def test_ui_and_cli_produce_the_same_workspace(
     assert keys == set(snapshot_of(ui_store))
     assert comparable(cli_store) == comparable(ui_store)
     assert fingerprints(cli_store) == fingerprints(ui_store)
+
+
+def test_ui_and_cli_produce_the_same_workspace(
+    tmp_path, workspaces, config, key, token, monkeypatch
+):
+    assert_ui_and_cli_produce_the_same_workspace(
+        tmp_path, workspaces, config, key, token, monkeypatch
+    )
+
+
+def test_including_an_existing_asset_is_the_same_in_ui_and_cli(
+    tmp_path, workspaces, config, key, token, monkeypatch
+):
+    cli_store, ui_store = workspaces
+    for store in workspaces:
+        system = yaml.safe_load(store.read_text("scope/system.yaml"))
+        system["included_assets"].remove("bk-externo")
+        store.write_text("scope/system.yaml", yaml.safe_dump(system, sort_keys=False))
+    included = yaml.safe_load(ui_store.read_text("scope/system.yaml"))["included_assets"]
+    run_cli(tmp_path, cli_store, monkeypatch, ("scope", "include-asset", "--id", "bk-externo"))
+    session = Session(ui_client(config, ui_store, key), token)
+
+    response = session.post("/asistente/activos", {"included_assets": [*included, "bk-externo"]})
+
+    assert response.status_code == 303, response.text
+    assert (
+        "bk-externo" in yaml.safe_load(cli_store.read_text("scope/system.yaml"))["included_assets"]
+    )
+    assert comparable(cli_store) == comparable(ui_store)
+    assert snapshot_of(cli_store) == snapshot_of(ui_store)
 
 
 def test_unauthenticated_requests_write_nothing(config, workspaces, key):

@@ -180,3 +180,10 @@ def session(raw_client, token) -> Session:
 
 def snapshot_of(store: LocalStore) -> dict[str, bytes]:
     return {k: store.read_bytes(k) for k in store.list("")}
+
+
+@pytest.fixture
+def workspaces(tmp_path):
+    cli_store = seed_example_scope(LocalStore(tmp_path / "cli-ws"))
+    ui_store = seed_example_scope(LocalStore(tmp_path / "ui-ws"))
+    return cli_store, ui_store

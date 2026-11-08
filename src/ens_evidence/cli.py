@@ -290,6 +290,7 @@ from ens_evidence.scope.edit import (
     add_asset,
     add_dependency,
     add_service,
+    include_asset,
     include_service,
     parse_field,
     set_system,
@@ -860,6 +861,24 @@ def scope_add_service(
         print_errors(exc.errors)
         raise typer.Exit(1) from None
     typer.echo(f"Servicio {service_id} añadido{' e incluido en el alcance' if include else ''}.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+
+
+@scope_app.command("include-asset")
+@handled
+def scope_include_asset(
+    ctx: typer.Context,
+    asset_id: Annotated[str, typer.Option("--id", help="Identificador del activo.")],
+) -> None:
+    """Incluye en el alcance un activo existente. No aprueba nada."""
+    try:
+        revoked = include_asset(open_workspace(ctx), asset_id, clock())
+    except ScopeEditRejected as exc:
+        typer.echo("No se incluye el activo:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Activo {asset_id} incluido en el alcance.")
     if revoked:
         typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
 

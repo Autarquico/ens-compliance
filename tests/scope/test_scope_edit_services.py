@@ -169,3 +169,27 @@ def test_cli_rechaza_con_mensaje_claro(tmp_path, store):
     assert result.exit_code == 1
     assert "No se incluye el servicio" in result.output
     assert "svc-nada no existe" in result.output
+
+
+def test_cli_include_asset_incluye_un_activo_existente_y_rechaza_el_desconocido(tmp_path, store):
+    settings = tmp_path / "settings.yaml"
+    settings.write_text(
+        yaml.safe_dump({"workspace": {"backend": "local", "local": {"path": str(tmp_path / "ws")}}})
+    )
+
+    def ens(*args):
+        return runner.invoke(app, ["--settings", str(settings), *args])
+
+    added = ens(
+        "scope", "add-asset", "--id", "lap-nuevo", "--type", "laptop", "--set", "os=macOS",
+        "--set", "owner=Ana Ruiz", "--set", "encrypted=true", "--set", "usage=Trabajo",
+    )  # fmt: skip
+    included = ens("scope", "include-asset", "--id", "lap-nuevo")
+    unknown = ens("scope", "include-asset", "--id", "lap-nada")
+
+    assert added.exit_code == 0, added.output
+    assert included.exit_code == 0, included.output
+    assert "lap-nuevo" in store.read_text("scope/system.yaml")
+    assert unknown.exit_code == 1
+    assert "No se incluye el activo" in unknown.output
+    assert "lap-nada no existe" in unknown.output
