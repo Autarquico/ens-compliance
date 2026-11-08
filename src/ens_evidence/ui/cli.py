@@ -1,19 +1,9 @@
-"""`ens-evidence ui serve`: el servicio web, detrás de Cloudflare Access."""
+"""`ens-evidence ui serve`: el servicio web, detrás de Cloudflare Access.
 
-from datetime import UTC, datetime
-from functools import partial
+Los imports pesados (extra `ui`) están dentro del comando para que la CLI base funcione sin él.
+"""
 
 import typer
-
-from ens_evidence.ui.access import load_jwks_file
-from ens_evidence.ui.app import create_ui_app
-from ens_evidence.ui.config import UiConfigError, load_ui_config
-from ens_evidence.workspace import (
-    SettingsError,
-    load_settings,
-    open_store,
-    resolve_settings_path,
-)
 
 ui_app = typer.Typer(help="Interfaz web (ADR 0021).", no_args_is_help=True)
 
@@ -29,7 +19,24 @@ def serve(
     port: int = typer.Option(8000, min=1, max=65535, help="Puerto de escucha."),
 ) -> None:
     """Sirve la UI; la autenticación la hace el JWT de Access en cada petición."""
-    import uvicorn
+    from datetime import UTC, datetime
+    from functools import partial
+
+    try:
+        import uvicorn
+
+        from ens_evidence.ui.access import load_jwks_file
+        from ens_evidence.ui.app import create_ui_app
+        from ens_evidence.ui.config import UiConfigError, load_ui_config
+        from ens_evidence.ui.routes import ui_routes
+    except ImportError:
+        raise _fail("falta el extra ui: instala ens-evidence[ui]") from None
+    from ens_evidence.workspace import (
+        SettingsError,
+        load_settings,
+        open_store,
+        resolve_settings_path,
+    )
 
     try:
         config = load_ui_config()
@@ -43,6 +50,7 @@ def serve(
         open_store(settings),
         partial(datetime.now, UTC),
         partial(load_jwks_file, config.jwks_file),
+        routes=ui_routes(),
     )
     uvicorn.run(
         app,

@@ -143,6 +143,23 @@ def add_service(
     return revoke_approval(store, "scope add-service", now)
 
 
+def include_asset(store: WorkspaceStore, asset_id: str, now: datetime) -> bool:
+    """Incluye en el alcance un activo existente. True si revocó la aprobación.
+
+    Si ya estaba incluido no cambia nada y no revoca.
+    """
+    assets = _read(store, ASSETS_KEY).get("assets") or []
+    if asset_id not in {a.get("id") for a in assets if isinstance(a, dict)}:
+        raise ScopeEditRejected([f"{ASSETS_KEY}: el activo {asset_id} no existe"])
+    system = _read(store, SYSTEM_KEY)
+    if asset_id in (system.get("included_assets") or []):
+        return False
+    system = _with_included(system, "included_assets", asset_id)
+    _checked(SYSTEM_KEY, SystemScope, system)
+    _write(store, SYSTEM_KEY, system)
+    return revoke_approval(store, "scope include-asset", now)
+
+
 def include_service(store: WorkspaceStore, service_id: str, now: datetime) -> bool:
     """Incluye en el alcance un servicio existente. True si revocó la aprobación.
 

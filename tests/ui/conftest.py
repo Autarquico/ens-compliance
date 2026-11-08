@@ -122,3 +122,61 @@ def token(key) -> str:
 
 def auth(token: str) -> dict[str, str]:
     return {"Cf-Access-Jwt-Assertion": token}
+
+
+# --- asistente y vistas (T4b) ------------------------------------------------------------------
+
+EXAMPLE_SCOPE = Path(__file__).resolve().parents[2] / "examples" / "workspace" / "scope"
+SCOPE_NAMES = ("assets", "services", "dependencies", "system")
+WRITE_HEADERS = {"Origin": ORIGIN, "Sec-Fetch-Site": "same-origin"}
+
+
+def seed_example_scope(store: LocalStore) -> LocalStore:
+    for name in SCOPE_NAMES:
+        store.write_text(
+            f"scope/{name}.yaml", (EXAMPLE_SCOPE / f"{name}.yaml").read_text(encoding="utf-8")
+        )
+    return store
+
+
+class Session:
+    """Un cliente autenticado con un JWT de Access válido."""
+
+    def __init__(self, client: TestClient, token: str) -> None:
+        self._client = client
+        self._token = token
+
+    def get(self, path: str, **kwargs):
+        return self._client.get(path, headers=auth(self._token), follow_redirects=False, **kwargs)
+
+    def post(self, path: str, data: dict, *, htmx: bool = False):
+        headers = {**auth(self._token), **WRITE_HEADERS}
+        if htmx:
+            headers["HX-Request"] = "true"
+        return self._client.post(path, data=data, headers=headers, follow_redirects=False)
+
+
+def ui_client(config: UiConfig, store: LocalStore, key) -> TestClient:
+    from ens_evidence.ui.routes import ui_routes
+
+    app = create_ui_app(config, store, lambda: NOW, lambda: jwks_for(key), routes=ui_routes())
+    return TestClient(app, base_url=ORIGIN)
+
+
+@pytest.fixture
+def example_store(store: LocalStore) -> LocalStore:
+    return seed_example_scope(store)
+
+
+@pytest.fixture
+def raw_client(config, example_store, key) -> TestClient:
+    return ui_client(config, example_store, key)
+
+
+@pytest.fixture
+def session(raw_client, token) -> Session:
+    return Session(raw_client, token)
+
+
+def snapshot_of(store: LocalStore) -> dict[str, bytes]:
+    return {k: store.read_bytes(k) for k in store.list("")}

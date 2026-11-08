@@ -298,6 +298,7 @@ from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.models import AssetType, Deployment
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SCOPE_KEYS, synced_keys
+from ens_evidence.ui.cli import ui_app
 from ens_evidence.workspace import (
     AlreadyExists,
     BackupSettings,
@@ -377,6 +378,7 @@ app.add_typer(incident_app, name="incident")
 app.add_typer(preaudit_app, name="preaudit")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(agent_app, name="agent")
+app.add_typer(ui_app, name="ui")
 
 SCHEMAS_DIR = Path("schemas")
 
