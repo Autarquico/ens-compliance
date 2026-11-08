@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 57
-prs: []
+prs: [60]
 related_issues: [57]
 depends_on: [audit-pack-tuning]
 supersedes: []
 related_specs: [audit-benchmark, audit-pack-tuning]
 created: 2026-11-06
-updated: 2026-11-06
+updated: 2026-11-08
 ---
 
 # Reservada nueva y dev ampliado para el umbral de v0.1
