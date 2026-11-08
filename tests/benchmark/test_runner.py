@@ -12,6 +12,7 @@ from pathlib import Path
 import pytest
 from typer.testing import CliRunner
 
+from ens_evidence.benchmark import cli as cli_module
 from ens_evidence.benchmark import runner as runner_module
 from ens_evidence.benchmark.access import MEASUREMENTS_FILE
 from ens_evidence.benchmark.baseline import BASELINE_FILE
@@ -29,6 +30,7 @@ from ens_evidence.benchmark.report import assemble
 from ens_evidence.benchmark.runner import REQUIRED_PAIRS, Pair, PartitionRun, ProfileCache
 from ens_evidence.catalog import catalog_sha256
 from ens_evidence.cli import app
+from ens_evidence.models.preaudit import Provider
 from ens_evidence.preaudit import service
 from ens_evidence.preaudit.pack import load_pack
 from ens_evidence.preaudit.payload import build_payload
@@ -40,7 +42,18 @@ NOTICE = (
     "Cobertura del banco, no garantía universal. Superar el banco no aprueba un expediente real."
 )
 AT = datetime(2026, 11, 1, 9, 0, tzinfo=UTC)
-CLAUDE, CODEX = REQUIRED_PAIRS
+(CLAUDE,) = REQUIRED_PAIRS
+CODEX = Pair(Provider.CODEX, "gpt-6.1-sol")
+RECORDED_PAIRS = (CLAUDE, CODEX)
+
+
+@pytest.fixture
+def codex_es_puerta(monkeypatch):
+    """Repone codex como par que es puerta, para probar la mecánica de varios pares."""
+    monkeypatch.setattr(runner_module, "REQUIRED_PAIRS", RECORDED_PAIRS)
+    monkeypatch.setattr(cli_module, "REQUIRED_PAIRS", RECORDED_PAIRS)
+
+
 DESTINATION = {
     CLAUDE.provider: "claude-code 2.1.0, sesión del usuario; ejecutable claude (sha256 "
     "308831041ea4863c3f87d222c31f759411898c874a9006b4bd6c745858b8f3bd)",
@@ -220,7 +233,7 @@ def record(root: Path, memo: Memo, key: str, pair: Pair, replies: list[dict], **
     return write_recording(root, recording, replace=True)
 
 
-def record_all(root: Path, memo: Memo, pairs=REQUIRED_PAIRS, judged: list[dict] | None = None):
+def record_all(root: Path, memo: Memo, pairs=RECORDED_PAIRS, judged: list[dict] | None = None):
     for pair in pairs:
         record(root, memo, "dev/correcto", pair, [EMPTY] * 3)
         record(root, memo, "dev/inventario-caducado", pair, [EMPTY] * 3)
@@ -281,7 +294,9 @@ def test_la_puerta_target_pasa_en_desarrollo_como_objetivo_de_ajuste(bench, memo
     assert not (bench / MEASUREMENTS_FILE).exists()
 
 
-def test_la_puerta_target_falla_si_un_par_de_la_puerta_no_llega_al_80_de_juicio(bench, memo):
+def test_la_puerta_target_falla_si_un_par_de_la_puerta_no_llega_al_80_de_juicio(
+    bench, memo, codex_es_puerta
+):
     record_all(bench, memo)
     record(bench, memo, "dev/juicio", CODEX, [EMPTY] * 3)
 
@@ -298,7 +313,9 @@ def test_la_puerta_target_falla_si_un_par_de_la_puerta_no_llega_al_80_de_juicio(
     assert by_pair[str(CODEX)]["gate_problems"] == ["detección de juicio 0.0 % (mínimo 80 %)"]
 
 
-def test_la_puerta_target_sin_las_grabaciones_de_un_par_de_la_puerta_sale_con_3(bench, memo):
+def test_la_puerta_target_sin_las_grabaciones_de_un_par_de_la_puerta_sale_con_3(
+    bench, memo, codex_es_puerta
+):
     record_all(bench, memo, pairs=[CLAUDE])
 
     result = run(bench, "--all-recorded", "--gate", "target")
@@ -311,7 +328,7 @@ def test_la_puerta_target_sin_las_grabaciones_de_un_par_de_la_puerta_sale_con_3(
 def test_assemble_no_pasa_la_puerta_si_falta_un_par_de_la_puerta(tmp_path, gate):
     ran = PartitionRun(cases=[], pairs=[CLAUDE], runs={CLAUDE: []})
 
-    result = assemble(tmp_path, Partition.DEV, ran, now=AT, gate=gate, gating=REQUIRED_PAIRS)
+    result = assemble(tmp_path, Partition.DEV, ran, now=AT, gate=gate, gating=RECORDED_PAIRS)
 
     assert result.gate_passed is False
     assert result.gate_problems == [f"falta {CODEX}, que es puerta"]
@@ -346,7 +363,7 @@ def test_el_informe_json_lleva_fuentes_timestamps_y_el_caso_solo_determinista(be
     assert data["pack_sha256"] == load_pack().sha256 and data["catalog_sha256"]
     assert data["cases_sha256"] and data["run_at"] and data["gate"] is None
     assert [(r["provider"], r["model"]) for r in data["results"]] == [
-        (p.provider.value, p.model) for p in sorted(REQUIRED_PAIRS)
+        (p.provider.value, p.model) for p in sorted(RECORDED_PAIRS)
     ]
     first = data["results"][0]
     assert first["temperature"] is None and "no aplica" in first["temperature_note"]
@@ -366,7 +383,7 @@ def test_el_informe_json_lleva_fuentes_timestamps_y_el_caso_solo_determinista(be
     assert totals["false_alarms"]["numerator"] == 0
 
 
-def test_falta_un_par_requerido_sale_con_3(bench, memo):
+def test_falta_un_par_requerido_sale_con_3(bench, memo, codex_es_puerta):
     record_all(bench, memo, pairs=[CLAUDE])
 
     result = run(bench, "--all-recorded", "--gate", "baseline")
@@ -375,7 +392,7 @@ def test_falta_un_par_requerido_sale_con_3(bench, memo):
     assert f"falta la grabación de {CODEX}" in result.output
 
 
-def test_un_caso_de_juicio_sin_grabacion_sale_con_3(bench, memo):
+def test_un_caso_de_juicio_sin_grabacion_sale_con_3(bench, memo, codex_es_puerta):
     record_all(bench, memo)
     recording_path(bench, "dev/correcto", CODEX.provider, CODEX.model).unlink()
 
@@ -485,7 +502,7 @@ def test_baseline_escribe_con_diff_y_la_puerta_pasa_contra_ella(bench, memo):
     assert "sin cambios" in baseline(bench).output
 
 
-def test_perder_un_defecto_frente_a_la_linea_base_sale_con_1(bench, memo):
+def test_perder_un_defecto_frente_a_la_linea_base_sale_con_1(bench, memo, codex_es_puerta):
     record_all(bench, memo)
     assert baseline(bench, "--write").exit_code == 0
     record(bench, memo, "dev/juicio", CODEX, [EMPTY] * 3)
@@ -565,7 +582,7 @@ def test_un_caso_nuevo_que_el_pack_no_detecta_no_es_regresion(bench, memo):
     path = bench / "cases" / "dev" / "juicio-bis.yaml"
     path.write_text(JUDGED.replace("id: juicio\n", "id: juicio-bis\n", 1))
     memo(bench, load_case(path, bench), memo.scratch / "warm" / "juicio-bis")
-    for pair in REQUIRED_PAIRS:
+    for pair in RECORDED_PAIRS:
         record(bench, memo, "dev/juicio-bis", pair, [EMPTY] * 3)
 
     result = run(bench, "--all-recorded", "--gate", "baseline")

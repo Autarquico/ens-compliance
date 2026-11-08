@@ -13,6 +13,7 @@ import httpx
 import pytest
 from typer.testing import CliRunner
 
+from ens_evidence.benchmark import cli as cli_module
 from ens_evidence.benchmark import runner as runner_module
 from ens_evidence.benchmark import score as score_module
 from ens_evidence.benchmark.access import MEASUREMENTS_FILE
@@ -40,7 +41,18 @@ FIXTURES = Path(__file__).parent / "fixtures"
 VERDICT_WORDS = re.compile(r"certific|garantiz|\bconforme\b", re.IGNORECASE)
 NOTICE = "Superar el banco no aprueba un expediente real."
 AT = datetime(2026, 11, 1, 9, 0, tzinfo=UTC)
-CLAUDE, CODEX = REQUIRED_PAIRS
+(CLAUDE,) = REQUIRED_PAIRS
+CODEX = Pair(Provider.CODEX, "gpt-6.1-sol")
+RECORDED_PAIRS = (CLAUDE, CODEX)
+
+
+@pytest.fixture
+def codex_es_puerta(monkeypatch):
+    """Repone codex como par que es puerta, para probar la mecánica de varios pares."""
+    monkeypatch.setattr(runner_module, "REQUIRED_PAIRS", RECORDED_PAIRS)
+    monkeypatch.setattr(cli_module, "REQUIRED_PAIRS", RECORDED_PAIRS)
+
+
 DESTINATION = {
     CLAUDE.provider: "claude-code 2.1.0, sesión del usuario; ejecutable claude (sha256 "
     + "1" * 64
@@ -108,14 +120,14 @@ def integrity() -> Integrity:
 
 @pytest.fixture(scope="module")
 def recorded_dev(tmp_path_factory, template, memo, integrity) -> Path:
-    """La partición de desarrollo grabada por los dos pares de la puerta, todo detectado y sin
-    falsas alarmas, con su línea base escrita por `benchmark baseline --write`."""
+    """La partición de desarrollo grabada por el par de la puerta y por codex (informativo), todo
+    detectado y sin falsas alarmas, con su línea base escrita por `benchmark baseline --write`."""
     root = tmp_path_factory.mktemp("acceptance-dev") / "bench"
     shutil.copytree(template, root)
     with pytest.MonkeyPatch.context() as patch:
         patch.setattr(runner_module, "ProfileCache", lambda scratch: memo)
         patch.setattr(service, "dossier_problems", integrity)
-        for pair in REQUIRED_PAIRS:
+        for pair in RECORDED_PAIRS:
             record(root, memo, DEV_CORRECT, pair, [EMPTY] * 3)
             record(root, memo, DEV_DETERMINISTIC, pair, [EMPTY] * 3)
             record(root, memo, DEV_JUDGED, pair, [detecting(memo, DEV_JUDGED)] * 3)
@@ -275,8 +287,10 @@ def test_umbral_sale_con_0_para_el_proveedor_que_llega_y_con_1_para_el_que_no(ho
 
 
 @pytest.mark.parametrize("failing", [CLAUDE, CODEX], ids=["claude-code", "codex"])
-def test_si_una_familia_de_proveedor_no_llega_v01_no_cierra_y_queda_anotado(holdout, memo, failing):
-    for pair in REQUIRED_PAIRS:
+def test_si_una_familia_de_proveedor_no_llega_v01_no_cierra_y_queda_anotado(
+    holdout, memo, failing, codex_es_puerta
+):
+    for pair in RECORDED_PAIRS:
         judged = [EMPTY] * 3 if pair == failing else [detecting(memo, HOLDOUT_JUDGED)] * 3
         record_holdout(holdout, memo, pair, judged)
 
@@ -294,13 +308,15 @@ def test_si_una_familia_de_proveedor_no_llega_v01_no_cierra_y_queda_anotado(hold
         if "result" in line
     }
     assert {pair: m["gate_passed"] for pair, m in measured.items()} == {
-        pair: pair != failing for pair in REQUIRED_PAIRS
+        pair: pair != failing for pair in RECORDED_PAIRS
     }
     assert all(m["gate"] == "threshold" for m in measured.values())
 
 
-def test_los_dos_pares_de_la_puerta_llegan_y_v01_cierra_el_umbral(holdout, memo):
-    for pair in REQUIRED_PAIRS:
+def test_con_codex_como_puerta_los_dos_pares_llegan_y_v01_cierra_el_umbral(
+    holdout, memo, codex_es_puerta
+):
+    for pair in RECORDED_PAIRS:
         record_holdout(holdout, memo, pair, [detecting(memo, HOLDOUT_JUDGED)] * 3)
 
     result = measure_holdout(holdout, "--all-recorded")
@@ -309,6 +325,17 @@ def test_los_dos_pares_de_la_puerta_llegan_y_v01_cierra_el_umbral(holdout, memo)
     assert "resultado: la puerta threshold pasa" in result.output
     assert "v0.1 no cierra" not in result.output
     assert_report(result.output)
+
+
+def test_codex_grabado_que_no_llega_no_decide_el_umbral_mientras_no_es_puerta(holdout, memo):
+    record_holdout(holdout, memo, CLAUDE, [detecting(memo, HOLDOUT_JUDGED)] * 3)
+    record_holdout(holdout, memo, CODEX, [EMPTY] * 3)
+
+    result = measure_holdout(holdout, "--all-recorded")
+
+    assert result.exit_code == 0, result.output
+    assert "resultado: la puerta threshold pasa" in result.output
+    assert "(informativo: este par no es puerta)" in result.output
 
 
 def test_un_par_extra_no_decide_el_umbral(holdout, memo):
@@ -376,7 +403,7 @@ def test_la_reservada_sin_measurement_no_se_mide_ni_se_anota(holdout, memo):
     assert not (holdout / MEASUREMENTS_FILE).exists()
 
 
-def test_el_umbral_sin_un_par_de_la_puerta_sale_con_3(holdout, memo):
+def test_el_umbral_sin_un_par_de_la_puerta_sale_con_3(holdout, memo, codex_es_puerta):
     record_holdout(holdout, memo, CLAUDE, [detecting(memo, HOLDOUT_JUDGED)] * 3)
 
     result = measure_holdout(holdout, "--all-recorded")
@@ -429,7 +456,7 @@ def test_un_cambio_en_el_audit_pack_sin_regrabar_sale_con_3(dev, altered_pack):
     assert "el audit pack ha cambiado; regraba" in checked.output
 
 
-def test_una_grabacion_nueva_que_pierde_un_defecto_sale_con_1(dev, memo):
+def test_una_grabacion_nueva_que_pierde_un_defecto_sale_con_1(dev, memo, codex_es_puerta):
     record(dev, memo, DEV_JUDGED, CODEX, [EMPTY] * 3)
 
     result = ci_run(dev)
@@ -450,7 +477,7 @@ def test_una_subida_de_la_tasa_a_frente_a_la_linea_base_sale_con_1(dev, memo):
     assert_report(result.output)
 
 
-def test_una_subida_de_la_tasa_b_frente_a_la_linea_base_sale_con_1(dev, memo):
+def test_una_subida_de_la_tasa_b_frente_a_la_linea_base_sale_con_1(dev, memo, codex_es_puerta):
     record(dev, memo, DEV_CORRECT, CODEX, [false_alarm(memo, DEV_CORRECT)] * 3)
 
     result = ci_run(dev)
@@ -460,7 +487,7 @@ def test_una_subida_de_la_tasa_b_frente_a_la_linea_base_sale_con_1(dev, memo):
     assert_report(result.output)
 
 
-def test_si_falta_un_par_requerido_sale_con_3(dev):
+def test_si_falta_un_par_requerido_sale_con_3(dev, codex_es_puerta):
     for key in (DEV_CORRECT, DEV_JUDGED, DEV_DETERMINISTIC):
         recording_path(dev, key, CODEX.provider, CODEX.model).unlink()
 

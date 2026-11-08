@@ -120,8 +120,10 @@ anotarlo (§ 5).
 
 ## 3. Graba
 
-Graba cada caso de juicio de la partición con los dos pares que son puerta
-de v0.1: `claude-code/claude-opus-5-5` y `codex/gpt-6.1-sol`. Es un envío
+Graba cada caso de juicio de la partición con el par que es puerta de v0.1,
+`claude-code/claude-opus-5-5`. `codex/gpt-6.1-sol` está pospuesto por cuota
+(ADR 0018, enmienda de 2026-11-08): se puede grabar e informar, pero no es
+puerta hasta su seguimiento. Es un envío
 real: los payloads (ficticios) salen hacia Anthropic u OpenAI.
 
 El banco no lee el fichero de ajustes: el proveedor y el modelo vienen de
@@ -293,6 +295,19 @@ la puerta del CI falla. Una retirada solo cubre la versión cuya huella anota:
 si el mismo id vuelve a cambiar en otro PR, sustituye su `sha256` por la nueva
 que imprime la puerta.
 
+**Retirar un par** (proveedor y modelo) que la línea base de la rama base
+tenía: la puerta lo rechaza (`falta <proveedor>/<modelo>, que la línea base
+tenía, sin una entrada retired`) e imprime la huella de su entrada. Anótala
+igual, con el par como `id`:
+
+```json
+{"id": "codex/gpt-6.1-sol", "sha256": "<huella de la entrada del par>",
+ "reason": "<por qué sale>"}
+```
+
+Solo cubre esa entrada: si la línea base del par cambia, hay que anotar la
+nueva huella. Si el par vuelve a grabarse, la retirada sobra y se borra.
+
 **Añadir un caso o un defecto** no necesita anotación ni cuenta como
 regresión, aunque el pack no lo detecte o dé una falsa alarma en él: la
 puerta compara la detección y las tasas A y B solo sobre lo que no ha
@@ -325,7 +340,7 @@ texto, quita `--format json --out bench.json`. Para un solo par:
 Solo cuando el usuario decide medir. Cada orden lleva `--measurement` y deja
 su línea en `benchmark/measurements.jsonl`.
 
-1. Graba la reservada con los dos pares (§ 3.1), añadiendo
+1. Graba la reservada con el par que es puerta (§ 3.1), añadiendo
    `--partition holdout --measurement` a `prepare` y a `record`:
 
    ```bash
@@ -334,7 +349,7 @@ su línea en `benchmark/measurements.jsonl`.
    uv run ens-evidence benchmark record --partition holdout --measurement \
      --provider claude-code --model claude-opus-5-5 \
      --consent <huella combinada> --by "<tu nombre>"
-   # igual con codex/gpt-6.1-sol y --accept-shell-risk
+   # opcional, informativo: igual con codex/gpt-6.1-sol y --accept-shell-risk
    ```
 
 2. Mide:
@@ -344,12 +359,12 @@ su línea en `benchmark/measurements.jsonl`.
      --all-recorded --gate threshold
    ```
 
-   Con `--all-recorded`, deciden los dos pares de v0.1; los demás grabados se
+   Con `--all-recorded`, decide el par de v0.1 (hoy solo Anthropic); los demás grabados se
    informan. Por par: 100 % de los deterministas, ≥ 80 % de los de juicio,
    tasa A ≤ 20 % y tasa B ≤ 20 %, sobre al menos 20 defectos de juicio, 10
    deterministas y 3 expedientes correctos.
 
-   - **0:** los dos pares pasan el umbral del banco.
+   - **0:** los pares que son puerta pasan el umbral del banco.
    - **1:** algún par no llega. v0.1 no cierra. El informe dice qué falla.
    - **2:** opción no válida (por ejemplo, sin `--measurement`).
    - **3:** falta la grabación de un par que es puerta, o una está desligada.

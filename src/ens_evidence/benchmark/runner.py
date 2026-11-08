@@ -59,7 +59,7 @@ class Pair:
 
 REQUIRED_PAIRS = (
     Pair(Provider.CLAUDE_CODE, "claude-opus-5-5"),
-    Pair(Provider.CODEX, "gpt-6.1-sol"),
+    # Pair(Provider.CODEX, "gpt-6.1-sol"),  # pospuesto por cuota (ADR 0018, 2026-11-08)
 )
 """Los pares que pasan el umbral de v0.1 (decisión del usuario D4): el plan contratado."""
 

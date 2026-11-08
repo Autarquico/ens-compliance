@@ -435,6 +435,12 @@ def _pair(entry: BaselineEntry) -> str:
     return f"{entry.provider}/{entry.model}"
 
 
+def pair_sha256(entry: BaselineEntry) -> str:
+    """La huella de la entrada de un par en la línea base. Una retirada del par la anota y solo
+    cubre esa versión: si el par se reescribe, otra baja exige otra retirada."""
+    return hashlib.sha256(canonical_json(entry.model_dump(mode="json"))).hexdigest()
+
+
 def baseline_gate(
     current: Sequence[BaselineEntry],
     baseline: Baseline,
@@ -445,8 +451,12 @@ def baseline_gate(
     previous = {_pair(e): e for e in baseline.entries}
     verdict = BaselineVerdict(general=inventory_problems(inventory, baseline.inventory, retired))
     present = {_pair(e) for e in current}
+    allowed = {r.id: r.sha256 for r in retired}
     verdict.general += [
-        f"falta {pair}, que la línea base tenía" for pair in sorted(previous) if pair not in present
+        f"falta {pair}, que la línea base tenía, sin una entrada `retired` "
+        f"(sha256 en la línea base: {pair_sha256(previous[pair])})"
+        for pair in sorted(previous)
+        if pair not in present and allowed.get(pair) != pair_sha256(previous[pair])
     ]
     for entry in current:
         problems = _deterministic_problems(entry.totals)

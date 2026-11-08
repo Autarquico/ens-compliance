@@ -496,9 +496,7 @@ def run(
     if gate is GateChoice.TARGET and partition is not Partition.DEV:
         raise _fail("Error: la puerta target es de la partición de desarrollo")
     if gate is GateChoice.TARGET and not all_recorded:
-        raise _fail(
-            "Error: la puerta target exige --all-recorded: deciden los dos pares de la puerta"
-        )
+        raise _fail("Error: la puerta target exige --all-recorded: deciden los pares de la puerta")
     pair = Pair(provider, model) if provider is not None and model is not None else None
     replayed = _replay(cases, partition, pair, gate is not None, "run", measurement)
     pack_sha256, bench, ran = replayed

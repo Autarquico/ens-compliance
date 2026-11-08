@@ -243,6 +243,20 @@ cierra v0.1; se pasa antes de `baseline --write`.
 - Tamaño mínimo: reservada con 20 defectos de juicio, 10 deterministas y 3
   correctos; desarrollo con 10, 6 y 2. Solo BÁSICA.
 
+**Enmienda de 2026-11-08 (decisión del usuario, por cuota):** el par OpenAI
+(`codex/gpt-6.1-sol`) se pospone porque la cuota del plan está agotada hasta
+el 2026-11-11 («postponemos la prueba de codex»). Mientras tanto,
+`claude-code/claude-opus-5-5` es el único par que es puerta (`REQUIRED_PAIRS`).
+El par de OpenAI sigue soportado: se puede grabar, informar y puntuar, pero
+no decide. v0.1 se cierra de forma provisional solo sobre Anthropic; el
+umbral de OpenAI queda pendiente de su seguimiento, que repone el par y
+regraba. Esta enmienda no declara que OpenAI cumpla el umbral ni ninguna
+conformidad. Las grabaciones de desarrollo de codex se retiran del árbol
+(siguen en el historial de git).
+La puerta de línea base admite retirar un par con una entrada `retired` cuyo
+`id` es `proveedor/modelo` y cuyo `sha256` es el de su entrada en la línea base
+de la rama base; el par `codex/gpt-6.1-sol` se retira así, hasta su seguimiento.
+
 ### Disciplina de la reservada
 
 Es procedimental, y así se dice:

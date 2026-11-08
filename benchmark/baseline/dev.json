@@ -2403,6 +2403,11 @@
       "id": "dev/gestoria-correcta",
       "sha256": "1ff86efbccc5f1adcb663b40e57499c91ca856546421c9f197787ef973ee80dc",
       "reason": "audit-pack-tuning (#56): la huella del caso incluye la de su perfil; perfiles dev realistas (enlaces documento-medida, justificaciones propias, actas y evidencias coherentes) y procedimientos v2 con cobertura operativa"
+    },
+    {
+      "id": "codex/gpt-6.1-sol",
+      "sha256": "c9b7520fa84517d07486454112f06e110af0c9022383544c7ed54eea9898c5ef",
+      "reason": "aplazado por decisión del usuario (cuota del plan); ver audit-openai-pair, #59"
     }
   ]
 }
