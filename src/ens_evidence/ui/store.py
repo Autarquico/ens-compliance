@@ -9,6 +9,7 @@ WRITABLE_PREFIXES = (
     "controls",
     "risk",
     "org",
+    "incidents",
     "evidence/assessments",
     "evidence/raw",
     "evidence/manifests",
