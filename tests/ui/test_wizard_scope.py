@@ -245,7 +245,8 @@ def test_oversized_form_is_rejected(session, example_store):
 
 
 def test_dependencias_es_opcional_con_el_alcance_aprobado(completed):
-    assert completed.get("/asistente").headers["location"] == "/"
+    # Con el alcance y la categorización hechos, el asistente sigue por los riesgos.
+    assert completed.get("/asistente").headers["location"] == "/asistente/riesgos-metodologia"
     page = completed.get("/asistente/sistema").text
     assert "Dependencias (opcional)" in page
 

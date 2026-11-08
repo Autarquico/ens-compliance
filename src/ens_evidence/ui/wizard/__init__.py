@@ -13,11 +13,20 @@ from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, render
 from ens_evidence.ui.store import UiStore
+from ens_evidence.ui.wizard.applicability import APPLICABILITY_STEPS
 from ens_evidence.ui.wizard.base import Step, StepInput, StepRejected
 from ens_evidence.ui.wizard.categorization import CATEGORIZATION_STEPS
+from ens_evidence.ui.wizard.docs import DOC_STEPS
+from ens_evidence.ui.wizard.risk import RISK_STEPS
 from ens_evidence.ui.wizard.scope import SCOPE_STEPS
 
-STEPS: tuple[Step, ...] = (*SCOPE_STEPS, *CATEGORIZATION_STEPS)
+STEPS: tuple[Step, ...] = (
+    *SCOPE_STEPS,
+    *CATEGORIZATION_STEPS,
+    *RISK_STEPS,
+    *APPLICABILITY_STEPS,
+    *DOC_STEPS,
+)
 BY_SLUG = {step.slug: step for step in STEPS}
 
 

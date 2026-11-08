@@ -34,6 +34,7 @@ from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.ui.pages import page_context, render
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
+from ens_evidence.ui.wizard.docs import BLOCK_OF, BLOCKS
 from ens_evidence.workspace import NotFound
 
 READINESS_NOTICE = (
@@ -163,9 +164,9 @@ def _documents(store: UiStore, now: datetime, _: object) -> Phase:
         raw = None
     report = validate_answers(raw, load_templates())
     if report.pending:
-        document = report.pending[0].documents[0]
+        block = BLOCK_OF.get(report.pending[0].question.id)
         return Phase(
-            "documentos", label, False, f"/asistente/documentos-{document}",
+            "documentos", label, False, f"/asistente/{block.slug if block else BLOCKS[0].slug}",
             "Responder el cuestionario de documentos",
         )  # fmt: skip
     needs_build = any(

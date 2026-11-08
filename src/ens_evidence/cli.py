@@ -3199,13 +3199,15 @@ def scheduler_run(ctx: typer.Context) -> None:
     stop = threading.Event()
     system_clock = SystemClock(stop)
     heartbeat = file_heartbeat(os.environ)
+    executor = CycleExecutor(store, settings, os.environ, system_clock, stop, heartbeat=heartbeat)
     scheduler = Scheduler(
         system_clock,
-        CycleExecutor(store, settings, os.environ, system_clock, stop, heartbeat=heartbeat),
+        executor,
         lambda: load_schedule_config(store).config,
         workspace_done_periods(store, system_clock),
         stop,
         heartbeat=heartbeat,
+        requests=executor.pending_requests,
     )
     with stop_on_signals(stop):
         scheduler.run()

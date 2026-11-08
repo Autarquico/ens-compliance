@@ -4,7 +4,7 @@
 {%- for s in steps %}
 {%- if loop.first or s.group != loop.previtem.group %}
 {%- if not loop.first %}</ol>{% endif %}
-<p class="step-group" id="grupo-{{ s.group }}">{{ "Alcance" if s.group == "alcance" else "Categorización" }}</p>
+<p class="step-group" id="grupo-{{ s.group }}">{{ {"alcance": "Alcance", "categorizacion": "Categorización", "riesgos": "Riesgos", "aplicabilidad": "Aplicabilidad", "documentos": "Documentos"}[s.group] }}</p>
 <ol class="steps" aria-labelledby="grupo-{{ s.group }}">
 {%- endif %}
   <li>
