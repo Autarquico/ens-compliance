@@ -10,26 +10,16 @@ from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.matrix import matrix_status
 from ens_evidence.matrix.messages import READINESS_LABELS, blocker_text
 from ens_evidence.models.enums import Readiness
-from ens_evidence.models.readiness import Blocker, BlockerKind
+from ens_evidence.models.readiness import Blocker
 from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.ui.pages import page_context, render
-from ens_evidence.ui.views import format_instant
+from ens_evidence.ui.views import BLOCKER_LABELS, format_instant
 
 READINESS_NOTICE = (
     "La herramienta no declara conformidad; la valoración es de la persona que revisa."
 )
 
 
-BLOCKER_LABELS = {
-    BlockerKind.UNDETERMINED_APPLICABILITY: "Aplicabilidad sin decidir",
-    BlockerKind.NOT_APPLICABLE_WITHOUT_JUSTIFICATION: "Falta justificar que no aplica",
-    BlockerKind.MISSING_EVIDENCE: "Falta evidencia",
-    BlockerKind.EXPIRED_EVIDENCE: "Evidencia caducada",
-    BlockerKind.MISSING_REVIEW: "Falta revisión",
-    BlockerKind.EXPIRED_REVIEW: "Revisión caducada",
-    BlockerKind.NOT_COMPLIANT: "Medida desfavorable",
-    BlockerKind.OPEN_FINDING: "Hallazgo abierto",
-}
 CLI_STEP = re.compile(r"\s*Siguiente paso:.*$", re.DOTALL)
 CLI_ONLY = "Esta parte se hace por ahora desde la línea de órdenes."
 

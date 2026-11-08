@@ -3,7 +3,18 @@
 from ens_evidence.workspace.keys import normalize_key
 from ens_evidence.workspace.store import WorkspaceStore
 
-WRITABLE_PREFIXES = ("scope", "controls", "risk", "org", "assessments")
+# Prefijos exactos: `evidence/` entero no, porque ahí escribe también `app` (checks, copias…).
+WRITABLE_PREFIXES = (
+    "scope",
+    "controls",
+    "risk",
+    "org",
+    "evidence/assessments",
+    "evidence/raw",
+    "evidence/manifests",
+    "evidence/preaudits/requests",
+    "evidence/preaudits/dispositions",
+)
 
 
 class WriteNotAllowed(Exception):
@@ -49,6 +60,6 @@ class UiStore:
     @staticmethod
     def _allowed(key: str) -> str:
         normalized = normalize_key(key)
-        if normalized.split("/", 1)[0] not in WRITABLE_PREFIXES or "/" not in normalized:
+        if not any(normalized.startswith(f"{prefix}/") for prefix in WRITABLE_PREFIXES):
             raise WriteNotAllowed("la UI no puede escribir en esa ruta")
         return normalized
