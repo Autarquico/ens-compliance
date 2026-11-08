@@ -69,9 +69,10 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   ocupado (ciclo o copia) se responde 503 con `Retry-After` y osquery
   reintenta; **no hay spool ni drenador**. Los reintentos se deduplican por sha.
 - `log_type=status` se descarta con 200.
-- Cota de almacenamiento: un lote de resultados programados por equipo por
-  intervalo de schedule (6 h menos el desfase de reloj de 5 min); el resto se
-  descarta con 200. La cota es en memoria. Caddy aplica `read_header`,
+- Cota de almacenamiento: un snapshot por consulta del paquete y equipo por
+  intervalo de schedule (6 h menos el desfase de reloj de 5 min), porque
+  osquery entrega cada consulta en POST distintos; los repetidos se descartan
+  con 200 y de un lote mixto se guardan los no vistos. La cota es en memoria. Caddy aplica `read_header`,
   `read_body` e `idle` y completa el cuerpo (`request_buffers`) antes de
   abrir el upstream.
 - Solo se aceptan snapshots de consultas del paquete, filtrados por plataforma
@@ -94,8 +95,8 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   equipos (runbook de agentes).
 - Una revocación se aplica en la siguiente petición (el registro se relee
   siempre); no hay retraso por caché.
-- El volumen de manifiestos crece con cada lote aceptado (un lote por equipo y
-  intervalo como máximo, por la dedupe y el intervalo de 6 h).
+- El volumen de manifiestos crece con cada lote aceptado (un snapshot por consulta y equipo
+  por intervalo como máximo, por la dedupe y el intervalo de 6 h).
 - El tráfico Caddy → `agent` es HTTP plano dentro de una red Docker interna.
 - Rotar `ENS_AGENT_NODE_KEY_SECRET` invalida todos los node_key: hay que
   readmitir todos los equipos.

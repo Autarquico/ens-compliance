@@ -119,9 +119,10 @@ caducadas. `--expires` admite hasta 7d (168h), igual que `--hours` del alta.
 El equipo la recoge en su siguiente sondeo distribuido y el resultado queda
 como evidencia, visible con `query show`.
 
-El servidor guarda como máximo un lote de resultados programados por equipo
-cada 6 h (menos 5 min); un lote extra responde 200 y se descarta
-(`outcome=throttled` en el log). Las consultas en vivo no están sujetas a esta
+El servidor guarda como máximo un snapshot por consulta del paquete y equipo
+cada 6 h (menos 5 min), de modo que los POST separados que osquery envía por
+consulta (splay, `logger_tls_period`) se guardan todos; un snapshot repetido
+responde 200 y se descarta (`outcome=throttled` en el log). Las consultas en vivo no están sujetas a esta
 cota. Las peticiones autenticadas registran `asset=<activo> host=<hash>`.
 
 ## 4. Revocar un equipo

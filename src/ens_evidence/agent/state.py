@@ -77,7 +77,7 @@ class AgentState:
     def __init__(self, state_dir: Path | None = None) -> None:
         self._root = (state_dir or resolve_state_dir()) / AGENT_DIR
         self._written: dict[str, tuple[datetime, str | None]] = {}
-        self._result_batches: dict[str, datetime] = {}
+        self._results: dict[tuple[str, str], datetime] = {}
         self._guard = threading.Lock()
 
     # --- último contacto -------------------------------------------------------------------
@@ -112,18 +112,22 @@ class AgentState:
 
     # --- cota de resultados programados ----------------------------------------------------
 
-    def result_slot_free(self, asset_id: str, now: datetime, spacing: timedelta) -> bool:
-        """`True` si el activo no ha entregado un lote de resultados en el último `spacing`.
+    def result_slot_free(
+        self, asset_id: str, query_id: str, now: datetime, spacing: timedelta
+    ) -> bool:
+        """`True` si el activo no ha entregado un snapshot de esa consulta en el último `spacing`.
 
-        Solo en memoria: reiniciar el servicio reabre la ventana, a lo sumo un lote por equipo.
+        Solo en memoria: reiniciar el servicio reabre la ventana, a lo sumo un snapshot por
+        consulta y equipo.
         """
         with self._guard:
-            last = self._result_batches.get(asset_id)
+            last = self._results.get((asset_id, query_id))
         return last is None or now - last >= spacing
 
-    def record_result_batch(self, asset_id: str, now: datetime) -> None:
+    def record_results(self, asset_id: str, query_ids: Iterable[str], now: datetime) -> None:
         with self._guard:
-            self._result_batches[asset_id] = now
+            for query_id in query_ids:
+                self._results[(asset_id, query_id)] = now
 
     # --- consultas en vivo -----------------------------------------------------------------
 

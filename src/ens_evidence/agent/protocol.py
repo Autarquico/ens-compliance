@@ -35,7 +35,7 @@ from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 
 MAX_HOSTNAME_CHARS = 255
 KNOWN_PLATFORMS = frozenset({"darwin", "linux"})
-# Un lote de resultados programados por intervalo de schedule; lo que sobra se descarta.
+# Un snapshot por consulta del paquete y equipo por intervalo de schedule; lo que sobra se descarta.
 MIN_RESULT_SPACING = timedelta(seconds=SCHEDULE_INTERVAL_SECONDS) - CLOCK_SKEW
 
 
@@ -49,6 +49,10 @@ class Unavailable(Exception):
 
 class MalformedBody(Exception):
     """Credencial válida, pero el cuerpo no tiene la forma que exige el endpoint."""
+
+    def __init__(self, node: "Node") -> None:
+        super().__init__("invalid body")
+        self.node = node
 
 
 class Busy(Exception):
@@ -125,7 +129,7 @@ class AgentService:
         events = fields.get("data")
         if fields.get("log_type") == "result":
             if not isinstance(events, list):
-                raise MalformedBody
+                raise MalformedBody(node)
             stored = self._store_snapshots(node, events)
         else:
             stored = True
@@ -145,7 +149,7 @@ class AgentService:
         fields = _mapping(body)
         answers = fields.get("queries")
         if not isinstance(answers, dict):
-            raise MalformedBody
+            raise MalformedBody(node)
         statuses = fields.get("statuses")
         statuses = statuses if isinstance(statuses, dict) else {}
         if any(self._state.delivered_unanswered(node.asset_id, run_id) for run_id in answers):
@@ -156,20 +160,24 @@ class AgentService:
         return Reply({"node_invalid": False}, node)
 
     def _store_snapshots(self, node: Node, events: list[Any]) -> bool:
-        """`False` si el equipo ya entregó un lote este intervalo y este se descarta."""
+        """`False` si algún snapshot se descarta: su consulta ya se entregó este intervalo."""
         now = self._now()
         snapshots = snapshots_from_events(
             events, host_identifier=node.host_identifier, platform=node.platform, now=now
         )
         if not snapshots:
             return True
-        result = scheduled_result(node.asset_id, node.host_identifier, snapshots)
         with self._workspace_lock():
-            if not self._state.result_slot_free(node.asset_id, now, MIN_RESULT_SPACING):
-                return False
-            write_result(self._store, result, now=now)
-            self._state.record_result_batch(node.asset_id, now)
-        return True
+            fresh = [
+                s
+                for s in snapshots
+                if self._state.result_slot_free(node.asset_id, s.query_id, now, MIN_RESULT_SPACING)
+            ]
+            if fresh:
+                result = scheduled_result(node.asset_id, node.host_identifier, fresh)
+                write_result(self._store, result, now=now)
+                self._state.record_results(node.asset_id, [s.query_id for s in fresh], now)
+        return len(fresh) == len(snapshots)
 
     def _store_answer(self, node: Node, run_id: str, rows: Any, status: Any) -> None:
         delivered = self._state.delivered_unanswered(node.asset_id, run_id)

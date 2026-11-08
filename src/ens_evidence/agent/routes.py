@@ -50,7 +50,14 @@ def _endpoint(name: str, handle: Callable[[Any], Reply], limit: int) -> Callable
         except NodeInvalid:
             log_request(_LOGGER, outcome="node_invalid", endpoint=name)
             return JSONResponse({"node_invalid": True})
-        except MalformedBody:
+        except MalformedBody as bad:
+            log_request(
+                _LOGGER,
+                outcome="invalid_body",
+                endpoint=name,
+                asset_id=bad.node.asset_id,
+                host=host_hash(bad.node.host_identifier),
+            )
             return JSONResponse({"error": "invalid_body"}, status_code=400)
         except Busy:
             log_request(_LOGGER, outcome="busy", endpoint=name)
