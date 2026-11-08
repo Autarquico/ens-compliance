@@ -26,13 +26,14 @@
 {% endif %}
 <section class="section" aria-labelledby="h-bloq">
   <h2 id="h-bloq">Lo que falta</h2>
+  <p class="muted">La Declaración de Aplicabilidad es el documento que dice qué medidas del ENS te tocan; la firma una persona responsable.</p>
   {% if blockers %}
   <div class="table-wrap"><table>
     <caption>Bloqueos para estar preparado. Cada uno necesita una acción de una persona.</caption>
     <thead><tr><th scope="col">Medida</th><th scope="col">Tipo</th><th scope="col">Qué pasa</th></tr></thead>
     <tbody>
     {%- for b in blockers %}
-    <tr><td class="id">{{ b.measure_id or "—" }}</td><td><span class="badge-code">{{ b.kind }}</span></td><td>{{ b.text }}</td></tr>
+    <tr><td class="id">{{ b.measure_id or "—" }}</td><td>{{ b.kind }}</td><td>{{ b.text }}</td></tr>
     {%- endfor %}
     </tbody>
   </table></div>

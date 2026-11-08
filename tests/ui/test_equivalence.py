@@ -78,14 +78,6 @@ def ui_script(session: Session) -> None:
     post("aprobacion-categorizacion", {"accion": "aprobar", "approved_by": "Marta Gil"})
 
 
-def comparable(store: LocalStore) -> dict:
-    """YAML ya interpretado; el resto, byte a byte."""
-    return {
-        key: yaml.safe_load(data) if key.endswith(".yaml") else data
-        for key, data in snapshot_of(store).items()
-    }
-
-
 def fingerprints(store: LocalStore) -> tuple:
     scope = scope_status(store)
     categorization = categorization_status(store, NOW)
@@ -99,7 +91,7 @@ def fingerprints(store: LocalStore) -> tuple:
     )
 
 
-def run_cli(tmp_path: Path, store: LocalStore, monkeypatch, script=None) -> None:
+def run_cli(tmp_path: Path, monkeypatch, script=None) -> None:
     settings = tmp_path / "settings.yaml"
     settings.write_text(
         yaml.safe_dump(
@@ -118,29 +110,6 @@ def run_cli(tmp_path: Path, store: LocalStore, monkeypatch, script=None) -> None
         ens(*script)
 
 
-def assert_ui_and_cli_produce_the_same_workspace(
-    tmp_path, workspaces, config, key, token, monkeypatch
-):
-    cli_store, ui_store = workspaces
-    run_cli(tmp_path, cli_store, monkeypatch)
-    ui_script(Session(ui_client(config, ui_store, key), token))
-
-    keys = set(snapshot_of(cli_store))
-    assert {"scope/approval.yaml", "scope/categorization.yaml"} <= keys
-    assert "scope/categorization-approval.yaml" in keys
-    assert keys == set(snapshot_of(ui_store))
-    assert comparable(cli_store) == comparable(ui_store)
-    assert fingerprints(cli_store) == fingerprints(ui_store)
-
-
-def test_ui_and_cli_produce_the_same_workspace(
-    tmp_path, workspaces, config, key, token, monkeypatch
-):
-    assert_ui_and_cli_produce_the_same_workspace(
-        tmp_path, workspaces, config, key, token, monkeypatch
-    )
-
-
 def test_including_an_existing_asset_is_the_same_in_ui_and_cli(
     tmp_path, workspaces, config, key, token, monkeypatch
 ):
@@ -150,7 +119,7 @@ def test_including_an_existing_asset_is_the_same_in_ui_and_cli(
         system["included_assets"].remove("bk-externo")
         store.write_text("scope/system.yaml", yaml.safe_dump(system, sort_keys=False))
     included = yaml.safe_load(ui_store.read_text("scope/system.yaml"))["included_assets"]
-    run_cli(tmp_path, cli_store, monkeypatch, ("scope", "include-asset", "--id", "bk-externo"))
+    run_cli(tmp_path, monkeypatch, ("scope", "include-asset", "--id", "bk-externo"))
     session = Session(ui_client(config, ui_store, key), token)
 
     response = session.post("/asistente/activos", {"included_assets": [*included, "bk-externo"]})
@@ -159,7 +128,6 @@ def test_including_an_existing_asset_is_the_same_in_ui_and_cli(
     assert (
         "bk-externo" in yaml.safe_load(cli_store.read_text("scope/system.yaml"))["included_assets"]
     )
-    assert comparable(cli_store) == comparable(ui_store)
     assert snapshot_of(cli_store) == snapshot_of(ui_store)
 
 

@@ -3,6 +3,8 @@
 Los imports pesados (extra `ui`) están dentro del comando para que la CLI base funcione sin él.
 """
 
+import logging
+
 import typer
 
 ui_app = typer.Typer(help="Interfaz web (ADR 0021).", no_args_is_help=True)
@@ -52,6 +54,7 @@ def serve(
         partial(load_jwks_file, config.jwks_file),
         routes=ui_routes(),
     )
+    logging.basicConfig(level=logging.INFO, format="%(asctime)s %(name)s %(message)s")
     uvicorn.run(
         app,
         host=host,

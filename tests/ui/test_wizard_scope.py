@@ -180,7 +180,11 @@ def test_servicios_incomplete_new_service_reports_each_field(session, example_st
 
 def test_dependencias_adds_and_empty_form_is_noop(session, example_store):
     before = snapshot_of(example_store)
-    assert session.post("/asistente/dependencias", {"asset": "lap-ana"}).status_code == 303
+    partial = session.post("/asistente/dependencias", {"asset": "lap-ana"})
+    assert partial.status_code == 422
+    assert 'id="err-dependency_id"' in partial.text
+    empty = session.post("/asistente/dependencias", {"purpose": ""})
+    assert empty.status_code == 303 and "guardado" not in empty.headers["location"]
     assert snapshot_of(example_store) == before
 
     response = session.post(

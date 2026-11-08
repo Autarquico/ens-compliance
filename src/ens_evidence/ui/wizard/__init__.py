@@ -3,13 +3,15 @@
 from datetime import datetime
 from typing import Any
 
+from starlette.exceptions import HTTPException
 from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.ui.app import identity_of, render
-from ens_evidence.ui.forms import FormInvalid, FormTooLarge, read_form
+from ens_evidence.ui.audit import audit_write
+from ens_evidence.ui.forms import FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import error_page, page_context
 from ens_evidence.ui.wizard.base import Step, StepInput, StepRejected
@@ -18,7 +20,6 @@ from ens_evidence.ui.wizard.scope import SCOPE_STEPS
 
 STEPS: tuple[Step, ...] = (*SCOPE_STEPS, *CATEGORIZATION_STEPS)
 BY_SLUG = {step.slug: step for step in STEPS}
-FIRST_STEP = STEPS[0].slug
 
 
 def _states(store: UiStore, now: datetime, current: str) -> list[dict[str, str]]:
@@ -27,7 +28,13 @@ def _states(store: UiStore, now: datetime, current: str) -> list[dict[str, str]]
             "slug": s.slug,
             "label": s.label,
             "group": s.group,
-            "state": "current" if s.slug == current else "done" if s.done(store, now) else "todo",
+            "state": "current"
+            if s.slug == current
+            else "done"
+            if s.done(store, now)
+            else "optional"
+            if s.optional
+            else "todo",
         }
         for s in STEPS
     ]
@@ -82,8 +89,9 @@ def _page(
 
 
 def _input(request: Request, form: dict[str, list[str]] | None = None) -> StepInput:
+    store: UiStore = request.app.state.store
     return StepInput(
-        store=request.app.state.store,
+        store=store if form is None else store.recording(),
         now=request.app.state.clock(),
         email=identity_of(request).email,
         query=dict(request.query_params),
@@ -97,21 +105,21 @@ def _step(request: Request) -> Step | None:
 
 async def inicio(request: Request) -> Response:
     store, now = request.app.state.store, request.app.state.clock()
-    pending = next((s.slug for s in STEPS if not s.done(store, now)), FIRST_STEP)
-    return RedirectResponse(f"/asistente/{pending}", status_code=303)
+    pending = next((s.slug for s in STEPS if not s.optional and not s.done(store, now)), None)
+    return RedirectResponse(f"/asistente/{pending}" if pending else "/", status_code=303)
 
 
 async def ver(request: Request) -> Response:
     step = _step(request)
     if step is None:
-        return error_page(request, 404)
+        raise HTTPException(404)
     return _page(request, step, _input(request), saved=request.query_params.get("guardado") == "1")
 
 
 async def guardar(request: Request) -> Response:
     step = _step(request)
     if step is None:
-        return error_page(request, 404)
+        raise HTTPException(404)
     try:
         form = await read_form(request)
     except FormTooLarge:
@@ -131,9 +139,19 @@ async def guardar(request: Request) -> Response:
             form_errors=rejected.form_errors or ["Revisa los campos marcados."],
             status_code=200 if htmx else 422,
         )
+    written = step_input.store.written
+    if written:
+        audit_write(
+            identity=step_input.email,
+            step=step.slug,
+            action=first(form, "accion"),
+            keys=written,
+            at=step_input.now,
+        )
     if htmx:
-        return _page(request, step, _input(request), saved=True)
-    return RedirectResponse(f"/asistente/{step.slug}?guardado=1", status_code=303)
+        return _page(request, step, _input(request), saved=bool(written))
+    suffix = "?guardado=1" if written else ""
+    return RedirectResponse(f"/asistente/{step.slug}{suffix}", status_code=303)
 
 
 def wizard_routes() -> list[BaseRoute]:

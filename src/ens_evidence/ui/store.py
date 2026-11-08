@@ -13,6 +13,11 @@ class WriteNotAllowed(Exception):
 class UiStore:
     def __init__(self, inner: WorkspaceStore) -> None:
         self._inner = inner
+        self.written: list[str] = []
+
+    def recording(self) -> "UiStore":
+        """Una vista del mismo workspace que anota las claves que escribe (una por petición)."""
+        return UiStore(self._inner)
 
     def read_text(self, key: str) -> str:
         return self._inner.read_text(key)
@@ -27,13 +32,19 @@ class UiStore:
         return self._inner.list(prefix)
 
     def write_text(self, key: str, text: str) -> None:
-        self._inner.write_text(self._allowed(key), text)
+        self._inner.write_text(self._allowed_and_noted(key), text)
 
     def write_bytes(self, key: str, data: bytes) -> None:
-        self._inner.write_bytes(self._allowed(key), data)
+        self._inner.write_bytes(self._allowed_and_noted(key), data)
 
     def create_bytes(self, key: str, data: bytes) -> None:
-        self._inner.create_bytes(self._allowed(key), data)
+        self._inner.create_bytes(self._allowed_and_noted(key), data)
+
+    def _allowed_and_noted(self, key: str) -> str:
+        allowed = self._allowed(key)
+        if allowed not in self.written:
+            self.written.append(allowed)
+        return allowed
 
     @staticmethod
     def _allowed(key: str) -> str:

@@ -137,6 +137,10 @@ registro de operaciones de la caja.
 
 ## 6. Recuperar
 
+- **Quién cambió qué.** `docker compose -p ens-box logs ui | grep 'ens_evidence.ui.audit'`:
+  una línea por escritura con `identity=<email>`, paso, acción, claves y hora. No
+  incluye valores del formulario.
+
 - **La interfaz responde 401 a todos.** Es lo esperado sin JWKS válido, con
   `ENS_UI_ACCESS_AUD` o el dominio del team equivocados, o con el reloj del
   host desviado más de 60 s. Revisa el fichero de la sección 4 y

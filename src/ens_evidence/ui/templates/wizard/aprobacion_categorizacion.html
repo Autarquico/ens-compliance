@@ -7,12 +7,12 @@
 <dl class="facts">
   <dt>Estado</dt><dd>{{ m.badge(categorization_state) }}</dd>
   <dt>Categoría calculada</dt><dd>{% if category %}<span class="mono">{{ category }}</span>{% else %}<span class="muted">Aún no se puede calcular</span>{% endif %}</dd>
-  {%- for d in dimension_levels %}<dt><span class="mono">{{ d.code }}</span> · {{ (m.DIMENSIONES | selectattr("code", "equalto", d.code) | first).name }}</dt><dd>{{ d.level }}</dd>{% endfor %}
+  {%- for d in dimension_levels %}<dt><span class="mono">{{ d.code }}</span> · {{ (m.DIMENSIONES | selectattr("code", "equalto", d.code) | first).name }}</dt><dd>{{ "No afecta" if d.level == "not_affected" else d.level }}</dd>{% endfor %}
   {% if approval %}<dt>Aprobada por</dt><dd>{{ approval.approved_by }} <span class="muted">· {{ approval.approved_at }}</span></dd>{% endif %}
 </dl>
 {% if pending or issues %}
 <div class="notice notice-warn"><p><strong>Antes de aprobar:</strong></p>
-<ul>{% for p in pending %}<li>Falta valorar: <span class="mono">{{ p }}</span></li>{% endfor %}{% for i in issues %}<li>{{ i }}</li>{% endfor %}</ul></div>
+<ul>{% for p in pending %}<li>{{ p }}</li>{% endfor %}{% for i in issues %}<li>{{ i }}</li>{% endfor %}</ul></div>
 {% endif %}
 {{ m.revision_humana() }}
 <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>

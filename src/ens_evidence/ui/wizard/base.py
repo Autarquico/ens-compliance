@@ -1,6 +1,7 @@
 """Piezas comunes de los pasos del asistente."""
 
-from collections.abc import Callable
+from collections.abc import Callable, Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass, field
 from datetime import datetime
 from typing import Any
@@ -45,6 +46,16 @@ class Step:
     done: Callable[[UiStore, datetime], bool]
     context: Callable[[StepInput], Context]
     save: Callable[[StepInput], None]
+    optional: bool = False
+
+
+@contextmanager
+def rejected_to_step(rejection: type[Exception]) -> Iterator[None]:
+    """Traduce el rechazo de una API de edición (con `.errors`) en `StepRejected`."""
+    try:
+        yield
+    except rejection as exc:
+        raise StepRejected(form_errors=list(getattr(exc, "errors", ()))) from None
 
 
 def read_yaml(store: UiStore, key: str) -> dict[str, Any]:

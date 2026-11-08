@@ -29,23 +29,17 @@ from ens_evidence.ui.wizard.base import (
     StepRejected,
     items,
     read_yaml,
+    rejected_to_step,
     required,
 )
 
 LEVELS = ("BAJO", "MEDIO", "ALTO", "not_affected")
 KINDS = (("information", "information"), ("service", "services"))
 ROLE_LABELS = {
-    "information": "el responsable de la información",
-    "service": "el responsable del servicio",
+    "information": "del responsable de la información",
+    "service": "del responsable del servicio",
 }
 SCOPE_NOT_APPROVED = "El alcance no está aprobado ahora: apruébalo en el paso «Aprobar el alcance»."
-
-
-def _edit(action, *args) -> None:
-    try:
-        action(*args)
-    except CategorizationEditRejected as exc:
-        raise StepRejected(form_errors=exc.errors) from None
 
 
 def _elements(store: UiStore) -> list[dict]:
@@ -78,7 +72,7 @@ def _elements(store: UiStore) -> list[dict]:
                     "ratings": ratings,
                     "valuation": {
                         "valued_by": str(valuation.get("valued_by") or ""),
-                        "valued_at": str(valuation.get("valued_at") or ""),
+                        "valued_at": format_instant(_parse_instant(valuation.get("valued_at"))),
                     }
                     if isinstance(valuation, dict)
                     else None,
@@ -111,7 +105,8 @@ def _informacion_save(step: StepInput) -> None:
             init_categorization(step.store)
         except ScopeNotApproved:
             raise StepRejected(form_errors=[SCOPE_NOT_APPROVED]) from None
-    _edit(add_information, step.store, values["info_id"], values["description"], step.now)
+    with rejected_to_step(CategorizationEditRejected):
+        add_information(step.store, values["info_id"], values["description"], step.now)
 
 
 def _informacion_done(store: UiStore, now: datetime) -> bool:
@@ -178,9 +173,11 @@ def _valoraciones_save(step: StepInput) -> None:
         raise StepRejected(errors, ["Revisa los campos marcados."])
     due = _valuations_due(step, elements, changes)
     for kind, element_id, dimension, level, justification in changes:
-        _edit(set_rating, step.store, kind, element_id, dimension, level, justification, step.now)
+        with rejected_to_step(CategorizationEditRejected):
+            set_rating(step.store, kind, element_id, dimension, level, justification, step.now)
     for kind, element_id, signer in due:
-        _edit(set_valuation, step.store, kind, element_id, signer, step.now)
+        with rejected_to_step(CategorizationEditRejected):
+            set_valuation(step.store, kind, element_id, signer, step.now)
 
 
 def _valoraciones_done(store: UiStore, now: datetime) -> bool:
@@ -193,6 +190,23 @@ def _valoraciones_done(store: UiStore, now: datetime) -> bool:
 
 
 # --- aprobación de la categorización -----------------------------------------------------------
+
+
+PENDING_KINDS = (("information/", "Información "), ("service/", "Servicio "))
+
+
+def _plain_pending(item: str) -> str:
+    for prefix, label in PENDING_KINDS:
+        if item.startswith(prefix):
+            return label + item.removeprefix(prefix)
+    return item
+
+
+def _parse_instant(value: object) -> datetime | None:
+    try:
+        return datetime.fromisoformat(str(value))
+    except ValueError:
+        return None
 
 
 def _aprobacion_context(step: StepInput) -> Context:
@@ -209,7 +223,7 @@ def _aprobacion_context(step: StepInput) -> Context:
             }
             for item in (computation.levels if computation else ())
         ],
-        "pending": status.pending,
+        "pending": [_plain_pending(p) for p in status.pending],
         "issues": status.errors if status.state is CategorizationState.INVALID else [],
         "approval": {
             "approved_by": approval.approved_by,

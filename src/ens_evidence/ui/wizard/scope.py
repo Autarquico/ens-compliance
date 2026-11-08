@@ -41,6 +41,7 @@ from ens_evidence.ui.wizard.base import (
     items,
     read_yaml,
     reject_removals,
+    rejected_to_step,
     required,
 )
 
@@ -78,13 +79,6 @@ def _included(store: UiStore, name: str) -> list[str]:
     return [str(i) for i in read_yaml(store, SYSTEM_KEY).get(name) or []]
 
 
-def _edit(action) -> None:
-    try:
-        action()
-    except ScopeEditRejected as exc:
-        raise StepRejected(form_errors=exc.errors) from None
-
-
 def _is_bool(name: str) -> bool:
     annotation = Asset.model_fields[name].annotation
     return annotation is bool or bool in get_args(annotation)
@@ -113,7 +107,8 @@ def _sistema_context(step: StepInput) -> Context:
 
 def _sistema_save(step: StepInput) -> None:
     values = required(step.form, {"name": "El nombre del sistema", "description": "La descripción"})
-    _edit(lambda: set_system(step.store, values["name"], values["description"], step.now))
+    with rejected_to_step(ScopeEditRejected):
+        set_system(step.store, values["name"], values["description"], step.now)
 
 
 def _sistema_done(store: UiStore, now: datetime) -> bool:
@@ -177,13 +172,21 @@ def _add_asset(step: StepInput) -> None:
         raise StepRejected(form_errors=["Elige un tipo de activo."]) from None
     asset_id = required(form, {"asset_id": "El identificador"})["asset_id"]
     values: dict = {"id": asset_id, "type": kind.value, "deployment": "deployed"}
-    try:
-        for name in REQUIRED_FIELDS[kind]:
-            if text := first(form, f"asset_{name}"):
-                values[name] = parse_field(name, text)
-    except ScopeEditRejected as exc:
-        raise StepRejected(form_errors=exc.errors) from None
-    _edit(lambda: add_asset(step.store, values, True, step.now))
+    errors: dict[str, list[str]] = {}
+    if any(c.isspace() for c in asset_id):
+        errors["asset_id"] = ["El identificador no puede llevar espacios."]
+    for name in REQUIRED_FIELDS[kind]:
+        if not (text := first(form, f"asset_{name}")):
+            continue
+        try:
+            values[name] = parse_field(name, text)
+        except ScopeEditRejected:
+            label = FIELD_LABELS.get(name, name)
+            errors[f"asset_{name}"] = [f"{label}: escribe sí o no."]
+    if errors:
+        raise StepRejected(errors)
+    with rejected_to_step(ScopeEditRejected):
+        add_asset(step.store, values, True, step.now)
 
 
 def _activos_save(step: StepInput) -> None:
@@ -195,7 +198,8 @@ def _activos_save(step: StepInput) -> None:
         checked, _included(step.store, "included_assets"), "included_assets", "un activo"
     )
     for asset_id in sorted(checked - set(_included(step.store, "included_assets"))):
-        _edit(lambda asset_id=asset_id: include_asset(step.store, asset_id, step.now))
+        with rejected_to_step(ScopeEditRejected):
+            include_asset(step.store, asset_id, step.now)
 
 
 def _activos_done(store: UiStore, now: datetime) -> bool:
@@ -243,9 +247,11 @@ def _servicios_save(step: StepInput) -> None:
         if errors:
             raise StepRejected(errors)
     for service_id in sorted(checked - set(_included(step.store, "included_services"))):
-        _edit(lambda service_id=service_id: include_service(step.store, service_id, step.now))
+        with rejected_to_step(ScopeEditRejected):
+            include_service(step.store, service_id, step.now)
     if adding:
-        _edit(lambda: add_service(step.store, new_id, new_name, new_assets, True, step.now))
+        with rejected_to_step(ScopeEditRejected):
+            add_service(step.store, new_id, new_name, new_assets, True, step.now)
 
 
 def _servicios_done(store: UiStore, now: datetime) -> bool:
@@ -273,7 +279,7 @@ def _dependencias_context(step: StepInput) -> Context:
 
 def _dependencias_save(step: StepInput) -> None:
     form = step.form
-    if not first(form, "dependency_id"):
+    if not any(first(form, name) for name in ("dependency_id", "asset", "depends_on", "purpose")):
         return
     values = required(
         form,
@@ -283,8 +289,8 @@ def _dependencias_save(step: StepInput) -> None:
             "depends_on": "El activo del que depende",
         },
     )
-    _edit(
-        lambda: add_dependency(
+    with rejected_to_step(ScopeEditRejected):
+        add_dependency(
             step.store,
             values["dependency_id"],
             values["asset"],
@@ -292,11 +298,13 @@ def _dependencias_save(step: StepInput) -> None:
             first(form, "purpose") or None,
             step.now,
         )
-    )
 
 
 def _dependencias_done(store: UiStore, now: datetime) -> bool:
-    return bool(items(read_yaml(store, DEPENDENCIES_KEY), "dependencies"))
+    """Opcional para aprobar el alcance: con el alcance aprobado, el paso no queda pendiente."""
+    return bool(items(read_yaml(store, DEPENDENCIES_KEY), "dependencies")) or _aprobacion_done(
+        store, now
+    )
 
 
 # --- aprobación del alcance --------------------------------------------------------------------
@@ -344,8 +352,9 @@ SCOPE_STEPS = (
          _activos_done, _activos_context, _activos_save),
     Step("servicios", "Servicios", "Qué servicios ofreces", "alcance", "wizard/servicios.html",
          _servicios_done, _servicios_context, _servicios_save),
-    Step("dependencias", "Dependencias", "De qué depende cada activo", "alcance",
-         "wizard/dependencias.html", _dependencias_done, _dependencias_context, _dependencias_save),
+    Step("dependencias", "Dependencias (opcional)", "De qué depende cada activo", "alcance",
+         "wizard/dependencias.html", _dependencias_done, _dependencias_context, _dependencias_save,
+         optional=True),
     Step("aprobacion-alcance", "Aprobar el alcance", "Aprobar el alcance", "alcance",
          "wizard/aprobacion_alcance.html", _aprobacion_done, _aprobacion_context, _aprobacion_save),
 )  # fmt: skip

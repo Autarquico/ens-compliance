@@ -319,10 +319,6 @@ def test_cabeceras_de_seguridad_en_los_errores_de_la_app(client, token):
         assert_security_headers(response, label)
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="ServerErrorMiddleware queda fuera de SecurityHeadersMiddleware (500 sin cabeceras)",
-)
 def test_cabeceras_de_seguridad_en_un_500(config, example_store, key):
     async def boom(request):
         raise RuntimeError("fallo interno con datos sensibles")

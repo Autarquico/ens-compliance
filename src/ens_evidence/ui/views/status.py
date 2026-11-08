@@ -1,5 +1,7 @@
 """Estado general: preparación, alcance, categorización y lo que falta. Solo lee."""
 
+import re
+
 from starlette.requests import Request
 from starlette.responses import Response
 
@@ -8,6 +10,7 @@ from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.matrix import matrix_status
 from ens_evidence.matrix.messages import READINESS_LABELS, blocker_text
 from ens_evidence.models.enums import Readiness
+from ens_evidence.models.readiness import Blocker, BlockerKind
 from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.ui.app import render
 from ens_evidence.ui.views import format_instant, page_context
@@ -15,6 +18,25 @@ from ens_evidence.ui.views import format_instant, page_context
 READINESS_NOTICE = (
     "La herramienta no declara conformidad; la valoración es de la persona que revisa."
 )
+
+
+BLOCKER_LABELS = {
+    BlockerKind.UNDETERMINED_APPLICABILITY: "Aplicabilidad sin decidir",
+    BlockerKind.NOT_APPLICABLE_WITHOUT_JUSTIFICATION: "Falta justificar que no aplica",
+    BlockerKind.MISSING_EVIDENCE: "Falta evidencia",
+    BlockerKind.EXPIRED_EVIDENCE: "Evidencia caducada",
+    BlockerKind.MISSING_REVIEW: "Falta revisión",
+    BlockerKind.EXPIRED_REVIEW: "Revisión caducada",
+    BlockerKind.NOT_COMPLIANT: "Medida desfavorable",
+    BlockerKind.OPEN_FINDING: "Hallazgo abierto",
+}
+CLI_STEP = re.compile(r"\s*Siguiente paso:.*$", re.DOTALL)
+CLI_ONLY = "Esta parte se hace por ahora desde la línea de órdenes."
+
+
+def plain_blocker_text(blocker: Blocker) -> str:
+    """El texto de la CLI sin su orden final: la web no puede ejecutarla."""
+    return CLI_STEP.sub("", blocker_text(blocker)).rstrip(" .") + f". {CLI_ONLY}"
 
 
 def next_step(scope: ScopeState, categorization: CategorizationState) -> tuple[str | None, str]:
@@ -51,7 +73,11 @@ def estado(request: Request) -> Response:
         next_step_url=url,
         next_step_label=label,
         blockers=[
-            {"kind": b.kind.value, "measure_id": b.measure_id, "text": blocker_text(b)}
+            {
+                "kind": BLOCKER_LABELS[b.kind],
+                "measure_id": b.measure_id,
+                "text": plain_blocker_text(b),
+            }
             for b in readiness.blockers
         ],
         generated_at=format_instant(now),

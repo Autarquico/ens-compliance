@@ -183,7 +183,6 @@ VIEW_CONTEXT = {
                 "title": "Análisis de riesgos",
                 "applicability": "APPLICABLE",
                 "assessment": "NOT_ASSESSED",
-                "check_status": None,
                 "evidence_count": 0,
             }
         ],
@@ -196,7 +195,6 @@ VIEW_CONTEXT = {
                 "source": "github",
                 "collected_at": "2026-11-08 10:00",
                 "status": "SUCCESS",
-                "items_count": 3,
             }
         ],
     },
@@ -247,8 +245,8 @@ def _cases():
         for hx in (False, True):
             yield name, {**CHROME, **_wizard(step, hx_request=hx, **WIZARD_EXTRA[step])}
     for status in (401, 403, 409, 500):
-        yield "error.html", {**CHROME, "status_code": status, "message": None}
-    yield "error.html", {**CHROME, "status_code": 403, "message": HOSTILE}
+        yield "error.html", {**CHROME, "status": status, "message": None}
+    yield "error.html", {**CHROME, "status": 403, "message": HOSTILE}
 
 
 def _with_errors(name, context):
@@ -309,7 +307,8 @@ def test_wizard_exposes_progress_and_editable_approver():
     html = env.get_template(WIZARD_TEMPLATES["aprobacion-alcance"]).render(**context)
     assert "Paso 5 de 8" in html
     assert 'name="approved_by"' in html and 'value="ana@example.org"' in html
-    assert "Guardar" in html
+    assert "Guardar" not in html
+    assert "Aprobar alcance" in html
 
 
 def test_htmx_response_is_a_fragment():
@@ -324,7 +323,7 @@ def test_states_are_not_colour_only():
     html = env.get_template("views/matriz.html").render(
         **CHROME, **VIEW_CONTEXT["views/matriz.html"]
     )
-    assert "Sin datos" in html and "<svg" in html
+    assert "Sin evaluar" in html and "<svg" in html
 
 
 def test_base_carries_safe_htmx_config_and_no_cdn():

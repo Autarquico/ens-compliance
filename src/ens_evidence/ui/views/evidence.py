@@ -21,7 +21,6 @@ def evidencias(request: Request) -> Response:
                 "source": m.source,
                 "collected_at": format_instant(m.collected_at),
                 "status": "EXPIRED" if m.valid_until and m.valid_until <= now else "CURRENT",
-                "items_count": 1,
             }
             for m in sorted(listing.manifests, key=lambda m: m.collected_at, reverse=True)
         ],

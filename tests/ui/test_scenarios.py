@@ -10,12 +10,13 @@ from ens_evidence.ui.wizard import STEPS
 from .conftest import (
     ORIGIN,
     WRITE_HEADERS,
+    Session,
     auth,
     mint,
     snapshot_of,
     ui_client,
 )
-from .test_equivalence import assert_ui_and_cli_produce_the_same_workspace
+from .test_equivalence import fingerprints, run_cli, ui_script
 
 RUNBOOK = Path(__file__).resolve().parents[2] / "docs" / "runbooks" / "interfaz-web.md"
 GET_ROUTES = [
@@ -95,9 +96,16 @@ def test_mfa_exigido_por_access():
 def test_alcance_y_categorizacion_equivalentes_a_la_cli(
     tmp_path, workspaces, config, key, token, monkeypatch
 ):
-    assert_ui_and_cli_produce_the_same_workspace(
-        tmp_path, workspaces, config, key, token, monkeypatch
-    )
+    cli_store, ui_store = workspaces
+    run_cli(tmp_path, monkeypatch)
+    ui_script(Session(ui_client(config, ui_store, key), token))
+
+    keys = set(snapshot_of(cli_store))
+    assert {"scope/approval.yaml", "scope/categorization.yaml"} <= keys
+    assert "scope/categorization-approval.yaml" in keys
+    assert keys == set(snapshot_of(ui_store))
+    assert snapshot_of(cli_store) == snapshot_of(ui_store)  # bytes: la spec exige ficheros iguales
+    assert fingerprints(cli_store) == fingerprints(ui_store)
 
 
 HOSTILE_KEYS = [

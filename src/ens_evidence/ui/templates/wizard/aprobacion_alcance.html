@@ -18,7 +18,6 @@
   {{ m.approver_field(approver_default) }}
   <div class="actions">
     <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if scope_errors %} disabled{% endif %}>Aprobar alcance</button>
-    <button class="btn" type="submit" name="accion" value="guardar">Guardar</button>
     {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
     {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
   </div>

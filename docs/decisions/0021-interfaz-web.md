@@ -87,6 +87,10 @@ puede ser otra persona (un asesor que rellena en nombre del responsable); el
 registro ENS debe reflejar a quien asume la decisión, no al operador de la
 pantalla. La revisión humana sigue siendo obligatoria.
 
+Cada escritura que se guarda emite una línea en el logger
+`ens_evidence.ui.audit`: `identity` (email del JWT), `step`, `action`, claves
+escritas y `at` (reloj inyectado). Nunca cuerpos de formulario ni valores.
+
 ## Consecuencias
 
 - Una superficie web nueva con review de seguridad obligatoria.

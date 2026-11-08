@@ -40,7 +40,7 @@
     {%- endfor %}
     {%- set vname = "valued_by~" ~ el.kind ~ "~" ~ el.id %}
     <div class="field">
-      <label for="{{ vname }}">Lo valora<span class="hint">Nombre de {{ el.role_label }}.{% if el.valuation %} Última valoración: {{ el.valuation.valued_at }}.{% endif %}</span></label>
+      <label for="{{ vname }}">Lo valora<span class="hint">Nombre {{ el.role_label }}.{% if el.valuation %} Última valoración: {{ el.valuation.valued_at }}.{% endif %}</span></label>
       <input type="text" id="{{ vname }}" name="{{ vname }}" value="{{ el.valuation.valued_by if el.valuation else (approver_default or '') }}"{% if (errors or {}).get(vname) %} aria-invalid="true" aria-describedby="err-{{ vname }}"{% endif %}>
       {{ m.field_errors(vname) }}
     </div>

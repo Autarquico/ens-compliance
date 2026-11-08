@@ -6,10 +6,10 @@
 {% include "partials/_paso_cabecera.html" %}
 <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
   <fieldset class="checks">
-    <legend>Servicios que entran en el alcance</legend>
+    <legend>Servicios que entran en el alcance <span class="hint">Lo ya incluido no se puede quitar desde aquí todavía.</span></legend>
     {%- for s in services %}
     <div class="check">
-      <input type="checkbox" id="servicio-{{ loop.index }}" name="included_services" value="{{ s.id }}"{% if s.included %} checked{% endif %}>
+      <input type="checkbox" id="servicio-{{ loop.index }}" name="included_services" value="{{ s.id }}"{% if s.included %} checked disabled{% endif %}>{% if s.included %}<input type="hidden" name="included_services" value="{{ s.id }}">{% endif %}
       <label for="servicio-{{ loop.index }}"><span class="mono">{{ s.id }}</span> · {{ s.name }} <span class="muted">({{ s.assets | join(", ") }})</span></label>
     </div>
     {%- else %}

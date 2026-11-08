@@ -5,7 +5,7 @@
   "COMPLIANT": ("ok", "Favorable"), "NON_COMPLIANT": ("bad", "Desfavorable"), "REQUIRES_REVIEW": ("warn", "Pide revisión"), "NOT_ASSESSED": ("neutral", "Sin evaluar"),
   "READY": ("ok", "Preparado para revisión"), "NOT_READY": ("bad", "Aún no preparado"),
   "GENERATED": ("neutral", "Generado"), "SELF_ASSESSED": ("neutral", "Autoevaluado"), "ANALYZED": ("neutral", "Analizado"), "DECLARED": ("ok", "Declarado por una persona"),
-  "NOT_APPROVED": ("warn", "Sin aprobar"), "APPROVED": ("ok", "Aprobado"), "STALE": ("warn", "Desactualizado"), "INVALID": ("bad", "Con errores"),
+  "NOT_APPROVED": ("warn", "Sin aprobar"), "APPROVED": ("ok", "Aprobado"), "STALE": ("warn", "Desactualizado"), "INVALID": ("warn", "Incompleto"),
   "PENDING": ("warn", "Pendiente"), "EXPIRED": ("warn", "Caducado"), "CURRENT": ("ok", "Vigente"),
   "NC_MAYOR": ("bad", "No conformidad mayor (propuesta)"), "NC_MENOR": ("warn", "No conformidad menor (propuesta)"),
   "OBSERVACION": ("info", "Observación (propuesta)"), "SIN_CLASIFICAR": ("neutral", "Sin clasificar"),
@@ -48,9 +48,10 @@
 {%- endmacro %}
 
 {% macro field_errors(name) -%}
-{%- for message in (errors or {}).get(name, []) %}
-<p class="field-error" id="err-{{ name }}">{{ icon("alert") }}<span>{{ message }}</span></p>
-{%- endfor %}
+{%- if (errors or {}).get(name) %}<div id="err-{{ name }}">
+{%- for message in errors.get(name) %}
+<p class="field-error">{{ icon("alert") }}<span>{{ message }}</span></p>
+{%- endfor %}</div>{% endif %}
 {%- endmacro %}
 
 {% macro text_field(name, label, hint=None, multiline=False) -%}
