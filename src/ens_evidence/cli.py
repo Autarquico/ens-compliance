@@ -17,6 +17,7 @@ import yaml
 from pydantic import ValidationError
 
 from ens_evidence import schemas
+from ens_evidence.agent.cli import agent_app
 from ens_evidence.applicability import (
     ApplicabilityRejected,
     DeclarationRejected,
@@ -375,6 +376,7 @@ app.add_typer(matrix_app, name="matrix")
 app.add_typer(incident_app, name="incident")
 app.add_typer(preaudit_app, name="preaudit")
 app.add_typer(benchmark_app, name="benchmark")
+app.add_typer(agent_app, name="agent")
 
 SCHEMAS_DIR = Path("schemas")
 
