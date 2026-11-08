@@ -8,7 +8,7 @@ project:
   one_liner: ""                  # pendiente
 
 aesthetic:
-  family: ""                     # pendiente: el usuario pide "minimalista autárquico pero atractivo"
+  family: "editorial-sobria"     # usuario 2026-11-08: mucho blanco, serif en titulares, tablas hairline; un documento oficial bien hecho
   reference: []
 
 mode:
@@ -16,10 +16,10 @@ mode:
 
 color:
   accent:
-    name: ""                     # pendiente
-    hex_light: ""
-    hex_dark: ""
-    note: ""
+    name: "azul institucional"   # usuario 2026-11-08
+    hex_light: "#1F4FD1"
+    hex_dark: "#7EA2FF"
+    note: "confianza, sector público"
   neutrals_override: ""          # hereda: cold
   semantics_override: {}
 
@@ -47,7 +47,7 @@ motion_override: {}
 density_override: ""
 
 copy:
-  tone: ""                       # pendiente
+  tone: "claro y directo, de tú; frases cortas; jerga ENS siempre explicada"   # usuario 2026-11-08
   voice_examples: []
   forbidden_local:
     - "certificado / certificación ENS aplicado al producto"
