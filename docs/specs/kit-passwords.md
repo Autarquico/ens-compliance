@@ -2,12 +2,12 @@
 codename: ens-compliance
 title: "Kit: gestor de contraseñas del equipo con Vaultwarden"
 type: task
-status: draft
+status: active
 priority: P2
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [69]
 depends_on: [kit-backups]
 supersedes: []
 related_specs: [toolkit-server]
