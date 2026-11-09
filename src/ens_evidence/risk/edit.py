@@ -12,7 +12,7 @@ from typing import Any
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from ens_evidence.categorization.edit import _split_header
+from ens_evidence.categorization.edit import split_leading_comments
 from ens_evidence.risk.init import init_risk
 from ens_evidence.risk.models import (
     METHODOLOGY_KEY,
@@ -26,7 +26,7 @@ from ens_evidence.risk.models import (
     TreatmentPlanFile,
 )
 from ens_evidence.risk.templates import METHODOLOGY_MD
-from ens_evidence.risk.validate import _check_register
+from ens_evidence.risk.validate import check_register_entries
 from ens_evidence.scope.inventory import load_inventory
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.secrets import find_secrets
@@ -45,7 +45,7 @@ def _read(store: WorkspaceStore, key: str) -> tuple[str, dict[str, Any]]:
         text = store.read_text(key)
     except NotFound:
         raise RiskEditRejected([f"{key}: no existe; créalo con risk init"]) from None
-    header, body = _split_header(text)
+    header, body = split_leading_comments(text)
     try:
         raw = safe_load_unique(body)
     except yaml.YAMLError:
@@ -144,7 +144,7 @@ def _check_against_scope(store: WorkspaceStore, risk: dict[str, Any], now: datet
     inventory = load_inventory(store)
     if inventory.inventory is None:
         raise RiskEditRejected(inventory.errors)
-    errors = _check_register(
+    errors = check_register_entries(
         RegisterFile(risks=[Risk.model_validate(risk)]),
         methodology,
         {a.id for a in inventory.inventory.assets.assets},

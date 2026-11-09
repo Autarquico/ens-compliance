@@ -31,7 +31,7 @@ class CategorizationEditRejected(Exception):
         self.errors = errors
 
 
-def _split_header(text: str) -> tuple[str, str]:
+def split_leading_comments(text: str) -> tuple[str, str]:
     lines = text.splitlines(keepends=True)
     end = 0
     while end < len(lines) and (not lines[end].strip() or lines[end].startswith("#")):
@@ -46,7 +46,7 @@ def _read(store: WorkspaceStore) -> tuple[str, dict[str, Any]]:
         raise CategorizationEditRejected(
             [f"{CATEGORIZATION_KEY}: no existe; créalo con categorization init"]
         ) from None
-    header, body = _split_header(text)
+    header, body = split_leading_comments(text)
     try:
         raw = safe_load_unique(body)
     except yaml.YAMLError:

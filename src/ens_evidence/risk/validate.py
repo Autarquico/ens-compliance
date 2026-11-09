@@ -53,12 +53,12 @@ def validate_risk(store: WorkspaceStore, now: datetime) -> tuple[RiskAnalysis | 
         )
     assets = {a.id for a in inventory.inventory.assets.assets}
     services = {s.id for s in inventory.inventory.services.services}
-    errors.extend(_check_register(register, methodology, assets, services, now))
+    errors.extend(check_register_entries(register, methodology, assets, services, now))
     errors.extend(_check_plan(plan, register))
     return (None if errors else RiskAnalysis(methodology, register, plan)), errors
 
 
-def _check_register(
+def check_register_entries(
     register: RegisterFile,
     methodology: Methodology,
     assets: set[str],
