@@ -59,6 +59,8 @@ VIEW_TEMPLATES = [
     "views/incidentes.html",
     "views/incidente_nuevo.html",
     "views/incidente.html",
+    "views/herramientas.html",
+    "views/herramientas_copias.html",
 ]
 # Solo se importa desde otras plantillas.
 INDIRECT = {"_macros.html"}
@@ -678,6 +680,7 @@ VIEW_CONTEXT = {
         ],
         "units": ["op.pl.1.1"],
         "blockers": [HOSTILE],
+        "kit_offer": {"url": "/herramientas/copias", "covers": HOSTILE, "not_covers": HOSTILE},
         "last_review": {
             "by": HOSTILE,
             "role": "Dirección",
@@ -695,6 +698,27 @@ VIEW_CONTEXT = {
         "form_errors": [HOSTILE],
         "uncovered": [HOSTILE],
         "saved": True,
+    },
+    "views/herramientas.html": {
+        "state": {
+            "key": "ok",
+            "tone": "ok",
+            "label": "Al día",
+            "checked_at": "2026-11-08 10:00 UTC",
+        },
+        "measures": ["mp.info.6"],
+        "open_url": "https://copias.example.org",
+    },
+    "views/herramientas_copias.html": {
+        "values": {"id": HOSTILE, "endpoint": HOSTILE, "host_paths": HOSTILE, "volumes": ["data"]},
+        "errors": {"id": [HOSTILE], "write_secret_access_key": [HOSTILE]},
+        "form_errors": [HOSTILE],
+        "notices": [HOSTILE],
+        "backup_assets": [HOSTILE, "copias-caja"],
+        "volumes": [{"value": "data", "label": "Datos"}],
+        "variants": [{"value": "caja", "label": "En la caja"}],
+        "default_read_percent": 5,
+        "enable_command": "deploy/box.sh kit enable copias <fichero>",
     },
     "views/evidencias_nueva.html": {
         "assets": [HOSTILE, "lap-ana"],

@@ -11,6 +11,7 @@ ORIGIN_ENV = "ENS_UI_ORIGIN"
 AUD_ENV = "ENS_UI_ACCESS_AUD"
 TEAM_DOMAIN_ENV = "ENS_UI_ACCESS_TEAM_DOMAIN"
 JWKS_FILE_ENV = "ENS_UI_ACCESS_JWKS_FILE"
+COPIAS_HOST_ENV = "ENS_COPIAS_HOST"
 
 _HOST = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 
@@ -25,6 +26,7 @@ class UiConfig:
     access_aud: str
     team_domain: str
     jwks_file: Path
+    copias_host: str | None = None
 
     @property
     def issuer(self) -> str:
@@ -38,6 +40,7 @@ def load_ui_config(env: Mapping[str, str] | None = None) -> UiConfig:
         access_aud=_required(env, AUD_ENV),
         team_domain=_team_domain(_required(env, TEAM_DOMAIN_ENV)),
         jwks_file=Path(_required(env, JWKS_FILE_ENV)).expanduser(),
+        copias_host=_optional_host(env, COPIAS_HOST_ENV),
     )
 
 
@@ -45,6 +48,15 @@ def _required(env: Mapping[str, str], name: str) -> str:
     value = env.get(name, "").strip()
     if not value:
         raise UiConfigError(f"falta {name}")
+    return value
+
+
+def _optional_host(env: Mapping[str, str], name: str) -> str | None:
+    value = env.get(name, "").strip().lower()
+    if not value:
+        return None
+    if not _HOST.fullmatch(value):
+        raise UiConfigError(f"{name} debe ser un nombre de host (copias.example.com)")
     return value
 
 

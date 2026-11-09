@@ -1,0 +1,22 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Herramientas</h1>
+<p class="lead">Programas que se instalan junto a la caja y aportan evidencia a la matriz. Esta página solo lee: no los ejecuta ni los comprueba.</p>
+{{ m.revision_humana() }}
+<div class="grid">
+  <section class="card" aria-labelledby="h-copias">
+    <h2 id="h-copias">Copias de seguridad</h2>
+    <p>Hace copias cifradas de tus datos a un almacenamiento externo y deja que la herramienta compruebe que existen y se pueden leer.</p>
+    <p><span class="badge tone-{{ state.tone }}">{{ m.icon(m.TONE_ICON[state.tone]) }}<span>{{ state.label }}</span></span></p>
+    <p class="muted">Última comprobación: <span class="mono">{{ state.checked_at }}</span>. El estado sale de la última evidencia guardada, no de una consulta en vivo.</p>
+    <p>Apoya las medidas: {% for measure in measures %}<a class="mono" href="/matriz/{{ measure }}">{{ measure }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. La prueba de restauración la hace y registra una persona.</p>
+    <div class="actions">
+      {% if open_url %}<a class="btn btn-primary" href="{{ open_url }}">Abrir</a>
+      <a class="btn" href="/herramientas/copias">Preparar otro paquete</a>
+      {% else %}<a class="btn btn-primary" href="/herramientas/copias">Preparar las copias</a>{% endif %}
+    </div>
+    {% if not open_url %}<p class="muted">Aún no está desplegado en esta caja. El asistente prepara el paquete de instalación.</p>{% endif %}
+  </section>
+</div>
+{% endblock %}

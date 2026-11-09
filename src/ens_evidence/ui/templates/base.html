@@ -19,7 +19,7 @@
   </header>
   <nav class="main-nav" aria-label="Secciones">
     <ul>
-      {%- for key, href, label in [("estado", "/", "Estado"), ("asistente", "/asistente", "Asistente"), ("matriz", "/matriz", "Matriz"), ("evidencias", "/evidencias", "Evidencias"), ("expediente", "/expediente", "Expediente"), ("incidentes", "/incidentes", "Incidentes"), ("preauditoria", "/preauditoria", "Pre-auditoría")] %}
+      {%- for key, href, label in [("estado", "/", "Estado"), ("asistente", "/asistente", "Asistente"), ("matriz", "/matriz", "Matriz"), ("evidencias", "/evidencias", "Evidencias"), ("expediente", "/expediente", "Expediente"), ("incidentes", "/incidentes", "Incidentes"), ("preauditoria", "/preauditoria", "Pre-auditoría"), ("herramientas", "/herramientas", "Herramientas")] %}
       <li><a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a></li>
       {%- endfor %}
     </ul>

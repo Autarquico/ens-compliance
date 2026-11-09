@@ -45,6 +45,7 @@ from ens_evidence.ui.pages import error_page, identity_of, page_context, render
 from ens_evidence.ui.plain import CLI_TRACE, translate
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import BLOCKER_LABELS, format_instant
+from ens_evidence.ui.views.tools import copias_offer
 from ens_evidence.workspace import WorkspaceError
 
 ROLE_LABELS = {
@@ -309,6 +310,7 @@ def _detail_page(
         evidence_offers=_evidence_offers(store, now) if selected else [],
         units=_units(status),
         blockers=_blockers(status),
+        kit_offer=copias_offer(store, measure_id),
         last_review=_last_review(status),
         owner_roles=[{"value": r.value, "label": ROLE_LABELS[r]} for r in Role],
         review_roles=[{"value": r.value, "label": ROLE_LABELS[r]} for r in REVIEW_ROLES],
