@@ -2,12 +2,12 @@
 codename: ens-compliance
 title: "Kit: identidad y doble factor (Authentik o Keycloak)"
 type: task
-status: draft
+status: active
 priority: P2
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [70]
 depends_on: [kit-backups]
 supersedes: []
 related_specs: [toolkit-server]
