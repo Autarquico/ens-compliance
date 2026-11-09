@@ -900,7 +900,18 @@ kit_copias_enable() {
 
   info "Arrancando Backrest y publicando $COPIAS_HOST..."
   dc up -d --no-build --no-deps --force-recreate backrest caddy
-  wait_running backrest || die "Backrest no arranca; revisa: docker compose -p $PROJECT logs backrest"
+  if wait_running backrest; then
+    # Con la configuración nueva sana, sus restos con claves de escritura ya no sirven para nada.
+    in_backrest_config 'rm -f /config/config.json.prev /config/config.json.pre-update' ||
+      warn "No se pudieron borrar config.json.prev ni config.json.pre-update del volumen; bórralos a mano."
+  else
+    if [ "$has_config" = 1 ]; then
+      in_backrest_config 'set -eu; umask 077; cp /config/config.json.prev /config/config.json.new && mv /config/config.json.new /config/config.json' &&
+        dc up -d --no-build --no-deps --force-recreate backrest || true
+      die "Backrest no arranca con la configuración del paquete. Se ha restaurado la anterior; config.json.prev se conserva para el rollback. Revisa: docker compose -p $PROJECT logs backrest"
+    fi
+    die "Backrest no arranca; revisa: docker compose -p $PROJECT logs backrest"
+  fi
   wait_healthy caddy || die "caddy no está sano; revisa: docker compose -p $PROJECT logs caddy"
   recreate_service app
   info ""

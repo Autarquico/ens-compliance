@@ -86,8 +86,8 @@ def test_gzip_header_carries_no_filename_or_wall_clock():
 def test_manifest_matches_files():
     members = unpack(render_bundle(inputs(), SECRETS, NOW))
     lines = members["copias/MANIFEST"][1].decode().splitlines()
-    assert lines[0] == "format: ens-kit-backups/1"
-    listed = {n: h for h, n in (line.removeprefix("sha256 ").split("  ") for line in lines[1:])}
+    assert lines[0] == "version: 1"
+    listed = {n: h for h, n in (line.split("  ") for line in lines[1:])}
     others = {n: b for n, (_, b) in members.items() if n != "copias/MANIFEST"}
     assert listed == {n: hashlib.sha256(b).hexdigest() for n, b in others.items()}
 
@@ -104,9 +104,16 @@ def test_config_json_is_backrest_format_without_users():
     ]
     assert {"prunePolicy", "checkPolicy"} <= set(repo)
     plan = config["plans"][0]
-    assert plan["paths"] == ["/source/data", "/source/host/srv/datos"]
+    assert plan["paths"] == ["/source/caja", "/source/host/srv/datos"]
     assert plan["schedule"] == {"cron": "0 2 * * *"}
     assert plan["retention"] == {"policyTimeBucketed": {"daily": 90}}
+
+
+def test_compose_override_without_host_paths_mounts_nothing_new():
+    override = yaml.safe_load(
+        unpack(render_bundle(inputs(host_paths=[]), SECRETS, NOW))["copias/compose.yaml"][1]
+    )
+    assert override == {"services": {"backrest": {"volumes": []}}}
 
 
 def test_compose_override_mounts_read_only_only_on_backrest():
@@ -116,7 +123,6 @@ def test_compose_override_mounts_read_only_only_on_backrest():
     assert list(override) == ["services"]
     assert list(override["services"]) == ["backrest"]
     assert override["services"]["backrest"]["volumes"] == [
-        "data:/source/data:ro",
         "/srv/datos:/source/host/srv/datos:ro",
     ]
 
@@ -166,11 +172,11 @@ def test_min_check_read_data_percent_is_explicit_and_bounded():
             inputs(schedule={**schedule, "min_check_read_data_percent": bad})
 
 
-@pytest.mark.parametrize("retention", [30, 10])
-def test_retention_not_above_lock_is_rejected(retention):
-    with pytest.raises(ValidationError) as exc:
-        inputs(schedule={**inputs().schedule.model_dump(), "retention_days": retention})
-    assert "debe ser mayor que el periodo de bloqueo" in validation_messages(exc.value)[0]
+@pytest.mark.parametrize("retention", [30, 10, 90])
+def test_retention_is_never_rejected_for_the_lock_and_notice_is_informative(retention):
+    chosen = inputs(schedule={**inputs().schedule.model_dump(), "retention_days": retention})
+    assert len(chosen.notices) == 1
+    assert "sigue ocupando espacio" in chosen.notices[0]
 
 
 @pytest.mark.parametrize(

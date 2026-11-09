@@ -688,7 +688,7 @@ def test_caddy_publica_backrest_en_su_host_y_el_resto_sigue_en_403(box, ui_env_w
     assert "403" in get("copias.invalid").stderr
 
 
-def test_kit_enable_repetido_exige_replace_config_y_conserva_la_anterior(
+def test_kit_enable_repetido_exige_replace_config_y_borra_la_anterior_si_arranca_sano(
     box, ui_env_with_copias_host, tmp_path
 ):
     package = copias_package(tmp_path, tmp_path)
@@ -701,7 +701,33 @@ def test_kit_enable_repetido_exige_replace_config_y_conserva_la_anterior(
     listing = run(
         ["docker", "run", "--rm", "-v", f"{box.project}_backrest-config:/c", "alpine:3", "ls", "/c"]
     )
-    assert "config.json.prev" in listing.stdout
+    assert "config.json.prev" not in listing.stdout, (
+        "Backrest sano: los restos con claves se borran"
+    )
+    assert "config.json" in listing.stdout
+
+
+def test_kit_enable_con_una_config_que_backrest_no_acepta_restaura_la_anterior_y_la_conserva(
+    box, ui_env_with_copias_host, tmp_path
+):
+    broken = copias_package(
+        tmp_path, tmp_path, config=CONFIG_JSON.replace('"version": 4', '"version": 0')
+    )
+    before = run(
+        ["docker", "run", "--rm", "-v", f"{box.project}_backrest-config:/c", "alpine:3"]
+        + ["sh", "-c", "sha256sum < /c/config.json"]
+    ).stdout
+
+    result = box.sh("kit", "enable", "copias", "--replace-config", str(broken))
+
+    assert result.returncode != 0
+    assert "restaurado la anterior" in result.stderr
+    after = run(
+        ["docker", "run", "--rm", "-v", f"{box.project}_backrest-config:/c", "alpine:3"]
+        + ["sh", "-c", "sha256sum < /c/config.json; ls /c"]
+    ).stdout
+    assert after.startswith(before)
+    assert "config.json.prev" in after
 
 
 def test_kit_disable_para_backrest_sin_borrar_volumenes_ni_secretos(box, ui_env_with_copias_host):

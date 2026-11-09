@@ -29,7 +29,7 @@ from pydantic import (
     model_validator,
 )
 
-FORMAT = "ens-kit-backups/1"
+MANIFEST_VERSION = 1
 # Versión del formato de config.json de Backrest v1.14.1 (nº de migraciones en
 # internal/config/migrations: 001…006); una menor haría que Backrest migre en el arranque.
 BACKREST_CONFIG_VERSION = 6
@@ -37,6 +37,9 @@ BACKREST_CONFIG_VERSION = 6
 # configuración y datos de Backrest quedan fuera: el primero guarda secretos.
 ALLOWED_VOLUMES = frozenset({"data"})
 SOURCE_ROOT = "/source"
+# compose.yaml de la caja ya monta `data` en `:ro` en /source/caja; el paquete no lo vuelve a montar
+# (box.sh rechaza que el override toque /source/caja).
+VOLUME_MOUNTS = {"data": f"{SOURCE_ROOT}/caja"}
 _FORBIDDEN_TREES = ("/proc", "/sys", "/dev")
 _DOCKER_SOCKETS = ("/var/run/docker.sock", "/run/docker.sock")
 _SECRET_CHARS = re.compile(r"[A-Za-z0-9/+=_.\-]{8,256}")
@@ -176,13 +179,19 @@ class BackupInputs(_Strict):
     def _consistent(self) -> Self:
         if not self.volumes and not self.host_paths:
             raise ValueError("elige qué se copia: al menos un volumen o una ruta")
-        if self.schedule.retention_days <= self.destination.lock_days:
-            raise ValueError(
-                f"la retención ({self.schedule.retention_days} días) debe ser mayor que el "
-                f"periodo de bloqueo de objetos ({self.destination.lock_days} días): "
-                "con menos, Backrest no podría borrar copias antiguas y fallaría al limpiar"
-            )
         return self
+
+    @property
+    def notices(self) -> tuple[str, ...]:
+        """Avisos informativos (no rechazan nada) para mostrar junto al formulario."""
+        lock, retention = self.destination.lock_days, self.schedule.retention_days
+        if lock <= 0:
+            return ()
+        return (
+            f"Con bloqueo de objetos ({lock} días), lo que Backrest pode tras {retention} días "
+            f"sigue ocupando espacio en el destino hasta que vence el bloqueo: "
+            "el borrado solo deja una marca y la versión protegida se conserva.",
+        )
 
     @property
     def env_prefix(self) -> str:
@@ -268,15 +277,13 @@ def _mount_target(host_path: str) -> str:
 
 
 def _container_paths(inputs: BackupInputs) -> list[str]:
-    return [f"{SOURCE_ROOT}/{v}" for v in inputs.volumes] + [
+    return [VOLUME_MOUNTS[v] for v in inputs.volumes] + [
         _mount_target(p) for p in inputs.host_paths
     ]
 
 
 def _compose_override(inputs: BackupInputs) -> dict:
-    mounts = [f"{v}:{SOURCE_ROOT}/{v}:ro" for v in inputs.volumes] + [
-        f"{p}:{_mount_target(p)}:ro" for p in inputs.host_paths
-    ]
+    mounts = [f"{p}:{_mount_target(p)}:ro" for p in inputs.host_paths]
     return {"services": {"backrest": {"volumes": mounts}}}
 
 
@@ -312,8 +319,8 @@ def _yaml(data: dict) -> str:
 
 
 def _manifest(files: dict[str, bytes]) -> bytes:
-    lines = [f"format: {FORMAT}"]
-    lines += [f"sha256 {hashlib.sha256(body).hexdigest()}  {name}" for name, body in files.items()]
+    lines = [f"version: {MANIFEST_VERSION}"]
+    lines += [f"{hashlib.sha256(body).hexdigest()}  {name}" for name, body in files.items()]
     return ("\n".join(lines) + "\n").encode()
 
 

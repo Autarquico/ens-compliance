@@ -86,6 +86,12 @@ Repetir `kit enable` sobre una caja con Backrest ya configurado exige
 `config.json.prev` dentro del volumen) y **borra el usuario de Backrest**, así
 que repite el paso 5.
 
+`config.json.prev` (y `config.json.pre-update`, que Backrest deja al migrar la
+configuración) llevan claves de escritura. `box.sh` los borra en cuanto
+comprueba que Backrest arranca sano con la configuración nueva. Si no arranca,
+restaura la anterior desde `config.json.prev` y lo conserva, como conserva
+`config.json.pre-update`, para el rollback: bórralos a mano cuando ya no hagan falta.
+
 ## 3. Primera prueba de restauración
 
 mp.info.6 no se evidencia sin una prueba hecha por una persona.
@@ -168,7 +174,7 @@ release nueva, no editando el clon.
   ejecutado: pruébala primero en un repositorio de prueba.
 - **Todo a la vez** (paquete nuevo): `kit enable copias --replace-config`; hay
   que volver a crear el usuario de Backrest.
-- Tras rotar, borra `config.json.prev` del volumen si quedó.
+- Tras rotar, borra `config.json.prev` y `config.json.pre-update` del volumen si quedaron (`kit enable` ya los borra cuando Backrest arranca sano).
 
 ## 7. Desactivar
 
