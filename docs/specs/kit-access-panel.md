@@ -2,12 +2,12 @@
 codename: ens-compliance
 title: "Kit: panel de acceso a las herramientas"
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [68]
 depends_on: [kit-backups, kit-secrets]
 supersedes: []
 related_specs: [toolkit-server]
