@@ -117,16 +117,17 @@ Las herramientas tienen que estar siempre encendidas, igual que el scheduler, el
 
 ## Tasks (no autoritativo — el board manda)
 
-- [ ] Perfiles del kit en el Compose de la caja; bastionado del VPS en el instalador; runbook de restauración completa del VPS
-- [ ] Registro del kit: medida → herramienta, y recomendación en la matriz
-- [ ] Panel de acceso `/herramientas`: subdominios tras Access y SSO con el IdP del kit
-- [ ] Panel de monitorización `/monitorizacion`: salud por herramienta, VPS (osquery), caja, histórico y avisos
-- [ ] Copias: restic + Backrest, conector y checks (copia vigente y prueba de restauración)
-- [ ] Claves: OpenBao con desbloqueo Shamir en manos humanas, conector y checks
-- [ ] Contraseñas: Vaultwarden, conector y checks
-- [ ] Identidad: elegir entre Authentik y Keycloak; conector y checks; login de la propia app por OIDC contra ella
-- [ ] Código dañino: ClamAV en el instalador de agentes y su evidencia por osquery
-- [ ] Guías para contratar un VPS (OVH, Hetzner, Scaleway)
+Sub-specs, en este orden:
+
+- [ ] `kit-backups`: copias con restic y Backrest (primera herramienta y contrato concreto)
+- [ ] `kit-secrets`: claves y secretos con OpenBao
+- [ ] `kit-access-panel`: contrato común extraído y panel `/herramientas`
+- [ ] `kit-passwords`: Vaultwarden
+- [ ] `kit-identity`: Authentik o Keycloak, y SSO del kit
+- [ ] `kit-antimalware`: ClamAV en Linux y antimalware nativo por osquery
+- [ ] `kit-monitoring`: panel `/monitorizacion`
+- [ ] Bastionado del VPS y restauración completa: en `installer`
+- [ ] Guías para contratar un VPS y un destino S3: en `setup-guides`
 
 ## Referencias
 
