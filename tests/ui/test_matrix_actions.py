@@ -284,10 +284,22 @@ def test_medida_que_no_aplica_se_revisa_sin_valoracion(web, signed):
     assert response.status_code == 303
 
 
-def test_el_by_se_prellena_con_el_email_y_se_puede_cambiar(web):
+def test_el_by_no_se_prellena_con_el_email(web):
     page = web.get(f"/matriz/{MEASURE}").text
 
-    assert 'name="by" value="ana@example.com"' in page
+    assert 'name="by" value=""' in page
+    assert "Queda registrado como lo declaras." in page
+
+
+def test_un_email_como_revisor_se_rechaza_y_no_escribe(web, signed):
+    prepared(web, signed)
+    before = snapshot_of(signed)
+
+    response = web.post(f"/matriz/{MEASURE}/revisar", {**REVIEW, "by": "ana@example.org"})
+
+    assert response.status_code == 422
+    assert "indica solo un nombre" in response.text
+    assert snapshot_of(signed) == before
 
 
 def test_origen_ajeno_no_escribe(web, signed):

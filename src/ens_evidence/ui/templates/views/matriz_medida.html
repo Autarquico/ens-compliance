@@ -119,7 +119,7 @@
   <p>{{ last_review.conclusion }}</p>
   {% else %}<p class="muted">Nadie ha revisado esta medida.</p>{% endif %}
   <form method="post" action="/matriz/{{ measure_id }}/revisar" novalidate>
-    <div class="field"><label for="f-by">Quién revisa<span class="hint">Tu nombre completo. Se registra como lo declaras; puedes cambiarlo.</span></label>
+    <div class="field"><label for="f-by">Quién revisa<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
       <input type="text" id="f-by" name="by" value="{{ by_default }}" autocomplete="name"></div>
     <div class="field"><label for="f-role">Rol</label>
       <select id="f-role" name="role">

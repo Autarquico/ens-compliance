@@ -33,9 +33,11 @@ from ens_evidence.matrix import (
 from ens_evidence.matrix.evidence import is_linkable
 from ens_evidence.matrix.links import CHECK, DOCUMENT, EVIDENCE, KIND_LABELS
 from ens_evidence.matrix.model import MAX_REVIEW_EVERY_DAYS
+from ens_evidence.matrix.review import uncovered_message
 from ens_evidence.models.dossier import SELF_ASSESSORS
 from ens_evidence.models.enums import MeasureAssessment, Role
 from ens_evidence.models.readiness import BlockerKind
+from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
@@ -72,7 +74,7 @@ KNOWN_PROBLEMS = (
     ("falta el responsable", "Falta el responsable: indícalo en «Responsable»."),
 )
 GENERIC_PROBLEM = "La revisión no se puede registrar todavía."
-UNCOVERED_MARK = "sin cubrir"
+BY_LABEL = "Quién revisa"
 
 
 class Rejected(Exception):
@@ -314,7 +316,7 @@ def _detail_page(
         assessments=[{"value": a.value, "label": ASSESSMENT_LABELS[a]} for a in ASSESSMENT_LABELS],
         max_days=MAX_REVIEW_EVERY_DAYS,
         generated_at=format_instant(now),
-        by_default=echo.get("by", email),
+        by_default=echo.get("by", ""),
         values=echo,
         form_errors=form_errors or [],
         uncovered=list(uncovered),
@@ -395,6 +397,8 @@ def _review(store: UiStore, now: datetime, measure_id: str, email: str, form: Fo
     errors = []
     if not by:
         errors.append("Indica quién revisa.")
+    else:
+        errors += (plain(e) for e in check_declared_name(by, BY_LABEL))
     if role not in {r.value for r in REVIEW_ROLES}:
         errors.append("Elige el rol de quien revisa.")
     if not conclusion:
@@ -417,10 +421,10 @@ def _review(store: UiStore, now: datetime, measure_id: str, email: str, form: Fo
     except MatrixRejected as exc:
         raise Rejected(*map(plain, exc.errors)) from None
     if plan.problems:
-        gaps = tuple(p for p in plan.problems if UNCOVERED_MARK in p)
-        others = [plain(p) for p in plan.problems if UNCOVERED_MARK not in p]
-        summary = ["No se puede dar por favorable: hay cláusulas sin cubrir."] if gaps else []
-        raise Rejected(*others, *summary, uncovered=gaps)
+        gap_texts = {uncovered_message(g) for g in plan.uncovered}
+        others = [plain(p) for p in plan.problems if p not in gap_texts]
+        summary = ["No se puede dar por favorable: hay cláusulas sin cubrir."] if gap_texts else []
+        raise Rejected(*others, *summary, uncovered=tuple(g.unit for g in plan.uncovered))
     record_review(store, plan)
 
 
