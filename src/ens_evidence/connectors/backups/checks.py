@@ -39,6 +39,9 @@ def _views(result: CollectionResult) -> list[CollectionResult] | None:
         return None
 
 
+_VIEW_KEYS = ("error", "repository_id", "thresholds", "offsite", "sections")
+
+
 def _view(result: CollectionResult, entry: dict[str, Any]) -> CollectionResult:
     return CollectionResult(
         source=result.source,
@@ -48,9 +51,6 @@ def _view(result: CollectionResult, entry: dict[str, Any]) -> CollectionResult:
         data={key: entry.get(key) for key in _VIEW_KEYS},
         collection_status=CollectionStatus(entry["collection_status"]),
     )
-
-
-_VIEW_KEYS = ("error", "repository_id", "thresholds", "offsite", "sections")
 
 
 def _unreadable(check_id: str, result: CollectionResult, evaluated_at: datetime, evidence_id: str):
@@ -77,7 +77,6 @@ def _per_repository(check_id: str, check: Check) -> Check:
             for outcome in check(view, evidence_id, evaluated_at)
         ]
 
-    run.__name__ = check_id.split(".", 1)[1]
     return run
 
 

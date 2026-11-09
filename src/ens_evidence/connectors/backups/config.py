@@ -11,7 +11,7 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints, model_vali
 
 from ens_evidence.connectors.restic.config import Days, Offsite, WorkspaceRecords
 
-RepositoryId = Annotated[str, StringConstraints(pattern=r"^[A-Za-z][A-Za-z0-9_]{0,39}$")]
+RepositoryId = Annotated[str, StringConstraints(pattern=r"^[a-z][a-z0-9_]{1,30}$")]
 
 
 class _Strict(BaseModel):

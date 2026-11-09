@@ -58,11 +58,11 @@ def unpack(blob):
         return {m.name: (m, tar.extractfile(m).read()) for m in tar.getmembers()}
 
 
-def test_bundle_is_deterministic():
+def test_el_paquete_es_determinista():
     assert render_bundle(inputs(), SECRETS, NOW) == render_bundle(inputs(), SECRETS, NOW)
 
 
-def test_bundle_has_exactly_the_contract_files_in_order():
+def test_el_paquete_tiene_exactamente_los_ficheros_del_contrato_en_orden():
     members = unpack(render_bundle(inputs(), SECRETS, NOW))
     assert list(members) == [
         "copias/config.json",
@@ -76,14 +76,14 @@ def test_bundle_has_exactly_the_contract_files_in_order():
         assert member.mtime == int(NOW.timestamp())
 
 
-def test_gzip_header_carries_no_filename_or_wall_clock():
+def test_la_cabecera_gzip_no_lleva_nombre_ni_hora_de_reloj():
     blob = render_bundle(inputs(), SECRETS, NOW)
     assert gzip.decompress(blob)
     assert int.from_bytes(blob[4:8], "little") == int(NOW.timestamp())
     assert blob[3] == 0  # sin FNAME
 
 
-def test_manifest_matches_files():
+def test_el_manifest_coincide_con_los_ficheros():
     members = unpack(render_bundle(inputs(), SECRETS, NOW))
     lines = members["copias/MANIFEST"][1].decode().splitlines()
     assert lines[0] == "version: 1"
@@ -92,7 +92,7 @@ def test_manifest_matches_files():
     assert listed == {n: hashlib.sha256(b).hexdigest() for n, b in others.items()}
 
 
-def test_config_json_is_backrest_format_without_users():
+def test_config_json_tiene_el_formato_de_backrest_sin_usuarios():
     config = json.loads(unpack(render_bundle(inputs(), SECRETS, NOW))["copias/config.json"][1])
     assert "auth" not in config
     repo = config["repos"][0]
@@ -109,14 +109,14 @@ def test_config_json_is_backrest_format_without_users():
     assert plan["retention"] == {"policyTimeBucketed": {"daily": 90}}
 
 
-def test_compose_override_without_host_paths_mounts_nothing_new():
+def test_el_override_sin_rutas_del_host_no_monta_nada_nuevo():
     override = yaml.safe_load(
         unpack(render_bundle(inputs(host_paths=[]), SECRETS, NOW))["copias/compose.yaml"][1]
     )
     assert override == {"services": {"backrest": {"volumes": []}}}
 
 
-def test_compose_override_mounts_read_only_only_on_backrest():
+def test_el_override_monta_en_solo_lectura_y_solo_en_backrest():
     override = yaml.safe_load(
         unpack(render_bundle(inputs(), SECRETS, NOW))["copias/compose.yaml"][1]
     )
@@ -127,7 +127,7 @@ def test_compose_override_mounts_read_only_only_on_backrest():
     ]
 
 
-def test_app_env_has_read_credentials_only():
+def test_app_env_solo_lleva_las_credenciales_de_lectura():
     env = unpack(render_bundle(inputs(), SECRETS, NOW))["copias/app.env"][1].decode()
     assert env.splitlines() == [
         "ENS_BACKUPS_CAJA_RESTIC_PASSWORD=repo-pass-0123456789",
@@ -137,7 +137,7 @@ def test_app_env_has_read_credentials_only():
     assert "WRITE" not in env.upper().replace("WRITE_", "")
 
 
-def test_backups_fragment_has_no_secret_and_expected_shape():
+def test_el_fragmento_de_backups_no_lleva_secretos_y_tiene_la_forma_esperada():
     members = unpack(render_bundle(inputs(), SECRETS, NOW))
     text = members["copias/backups.yaml"][1].decode()
     for value in (
@@ -163,7 +163,7 @@ def test_backups_fragment_has_no_secret_and_expected_shape():
     }
 
 
-def test_min_check_read_data_percent_is_explicit_and_bounded():
+def test_el_porcentaje_minimo_de_lectura_es_explicito_y_acotado():
     schedule = inputs().schedule.model_dump()
     chosen = inputs(schedule={**schedule, "min_check_read_data_percent": 0}).schedule
     assert chosen.min_check_read_data_percent == 0
@@ -173,10 +173,16 @@ def test_min_check_read_data_percent_is_explicit_and_bounded():
 
 
 @pytest.mark.parametrize("retention", [30, 10, 90])
-def test_retention_is_never_rejected_for_the_lock_and_notice_is_informative(retention):
-    chosen = inputs(schedule={**inputs().schedule.model_dump(), "retention_days": retention})
-    assert len(chosen.notices) == 1
-    assert "sigue ocupando espacio" in chosen.notices[0]
+def test_la_retencion_nunca_se_rechaza_por_el_bloqueo(retention):
+    schedule = {**inputs().schedule.model_dump(), "retention_days": retention}
+
+    assert inputs(schedule=schedule).schedule.retention_days == retention
+
+
+@pytest.mark.parametrize("identifier", ["1-x", "Caja", "a", "x" * 32, "con-guion"])
+def test_un_identificador_de_repositorio_no_valido_se_rechaza(identifier):
+    with pytest.raises(ValidationError):
+        inputs(id=identifier)
 
 
 @pytest.mark.parametrize(
@@ -197,21 +203,21 @@ def test_retention_is_never_rejected_for_the_lock_and_notice_is_informative(rete
         "/srv/a\nb",
     ],
 )
-def test_forbidden_host_paths_are_rejected(path):
+def test_las_rutas_del_host_prohibidas_se_rechazan(path):
     with pytest.raises(ValueError):
         normalize_host_path(path)
     with pytest.raises(ValidationError):
         inputs(host_paths=[path])
 
 
-def test_unknown_volume_and_empty_selection_rejected():
+def test_un_volumen_desconocido_y_una_seleccion_vacia_se_rechazan():
     with pytest.raises(ValidationError):
         inputs(volumes=["backrest-config"])
     with pytest.raises(ValidationError):
         inputs(volumes=[], host_paths=[])
 
 
-def test_host_paths_are_normalized_and_deduplicated():
+def test_las_rutas_del_host_se_normalizan_y_se_deduplican():
     assert inputs(host_paths=["/srv/datos/", "/srv//datos"]).host_paths == ("/srv/datos",)
 
 
@@ -225,13 +231,13 @@ def test_host_paths_are_normalized_and_deduplicated():
         {"prefix": "../otro"},
     ],
 )
-def test_bad_destination_rejected(destination):
+def test_un_destino_no_valido_se_rechaza(destination):
     base = inputs().destination.model_dump()
     with pytest.raises(ValidationError):
         inputs(destination={**base, **destination})
 
 
-def test_write_and_read_credentials_must_differ():
+def test_las_credenciales_de_escritura_y_lectura_deben_ser_distintas():
     data = SECRETS.model_dump()
     data["read_access_key_id"] = SECRETS.write_access_key_id
     data["read_secret_access_key"] = SECRETS.write_secret_access_key
@@ -240,7 +246,7 @@ def test_write_and_read_credentials_must_differ():
     assert "distintas" in validation_messages(exc.value)[0]
 
 
-def test_secrets_with_unsafe_characters_rejected_and_not_echoed():
+def test_los_secretos_con_caracteres_inseguros_se_rechazan_sin_repetirse():
     data = {**SECRETS.model_dump(), "repo_password": SecretStr("mal valor\nX=1")}
     with pytest.raises(ValidationError) as exc:
         BundleSecrets.model_validate(data)
@@ -248,18 +254,18 @@ def test_secrets_with_unsafe_characters_rejected_and_not_echoed():
     assert "repo-pass" not in repr(SECRETS)
 
 
-def test_generated_password_is_valid_and_random():
+def test_la_contrasena_generada_es_valida_y_aleatoria():
     first, second = generate_repo_password(), generate_repo_password()
     assert first != second
     BundleSecrets.model_validate({**SECRETS.model_dump(), "repo_password": first})
 
 
-def test_naive_datetime_rejected():
+def test_una_fecha_sin_zona_horaria_se_rechaza():
     with pytest.raises(BackupInputError):
         render_bundle(inputs(), SECRETS, datetime(2026, 11, 9))
 
 
-def test_host_bundle_has_own_repository_and_no_compose():
+def test_el_paquete_de_otro_servidor_tiene_repositorio_propio_y_no_lleva_compose():
     host = inputs(
         id="servidor2",
         asset_id="srv-02",
@@ -285,6 +291,6 @@ def test_host_bundle_has_own_repository_and_no_compose():
         assert value not in instructions
 
 
-def test_host_bundle_rejects_box_volumes():
+def test_el_paquete_de_otro_servidor_rechaza_los_volumenes_de_la_caja():
     with pytest.raises(BackupInputError):
         render_host_bundle(inputs(), SECRETS, NOW)

@@ -29,6 +29,8 @@ from pydantic import (
     model_validator,
 )
 
+from ens_evidence.connectors.backups.config import RepositoryId
+
 MANIFEST_VERSION = 1
 # Versión del formato de config.json de Backrest v1.14.1 (nº de migraciones en
 # internal/config/migrations: 001…006); una menor haría que Backrest migre en el arranque.
@@ -43,7 +45,6 @@ VOLUME_MOUNTS = {"data": f"{SOURCE_ROOT}/caja"}
 _FORBIDDEN_TREES = ("/proc", "/sys", "/dev")
 _DOCKER_SOCKETS = ("/var/run/docker.sock", "/run/docker.sock")
 _SECRET_CHARS = re.compile(r"[A-Za-z0-9/+=_.\-]{8,256}")
-_ID = re.compile(r"[a-z][a-z0-9_]{1,30}")
 _CRON_FIELD = re.compile(r"[0-9*/,\-]+")
 _BUCKET = re.compile(r"[a-z0-9][a-z0-9.\-]{1,61}[a-z0-9]")
 _PREFIX_SEGMENT = re.compile(r"[A-Za-z0-9._\-]+")
@@ -146,20 +147,13 @@ def normalize_host_path(value: str) -> str:
 
 
 class BackupInputs(_Strict):
-    id: str
+    id: RepositoryId
     asset_id: Text
     destination: S3Destination
     schedule: Schedule
     volumes: tuple[str, ...] = ()
     host_paths: tuple[str, ...] = ()
-    instance: str = "caja"
-
-    @field_validator("id", "instance")
-    @classmethod
-    def _identifier(cls, value: str) -> str:
-        if not _ID.fullmatch(value):
-            raise ValueError("el identificador usa minúsculas, cifras y _ (2-31 caracteres)")
-        return value
+    instance: RepositoryId = "caja"
 
     @field_validator("volumes")
     @classmethod
@@ -180,18 +174,6 @@ class BackupInputs(_Strict):
         if not self.volumes and not self.host_paths:
             raise ValueError("elige qué se copia: al menos un volumen o una ruta")
         return self
-
-    @property
-    def notices(self) -> tuple[str, ...]:
-        """Avisos informativos (no rechazan nada) para mostrar junto al formulario."""
-        lock, retention = self.destination.lock_days, self.schedule.retention_days
-        if lock <= 0:
-            return ()
-        return (
-            f"Con bloqueo de objetos ({lock} días), lo que Backrest pode tras {retention} días "
-            f"sigue ocupando espacio en el destino hasta que vence el bloqueo: "
-            "el borrado solo deja una marca y la versión protegida se conserva.",
-        )
 
     @property
     def env_prefix(self) -> str:
@@ -230,10 +212,6 @@ def generate_repo_password() -> SecretStr:
     return SecretStr(secrets.token_urlsafe(32))
 
 
-def _repo_uri(inputs: BackupInputs) -> str:
-    return inputs.destination.repository
-
-
 def _backrest_config(inputs: BackupInputs, secret: BundleSecrets, paths: list[str]) -> dict:
     schedule = inputs.schedule
     return {
@@ -243,7 +221,7 @@ def _backrest_config(inputs: BackupInputs, secret: BundleSecrets, paths: list[st
         "repos": [
             {
                 "id": inputs.id,
-                "uri": _repo_uri(inputs),
+                "uri": inputs.destination.repository,
                 "password": secret.repo_password.get_secret_value(),
                 "env": [
                     f"AWS_ACCESS_KEY_ID={secret.write_access_key_id.get_secret_value()}",
@@ -301,7 +279,7 @@ def _backups_fragment(inputs: BackupInputs) -> str:
     entry = {
         "id": inputs.id,
         "asset_id": inputs.asset_id,
-        "repository": _repo_uri(inputs),
+        "repository": inputs.destination.repository,
         "max_backup_age_hours": s.max_backup_age_hours,
         "max_check_age_days": s.max_check_age_days,
         "restore_test_validity_days": s.restore_test_validity_days,
@@ -368,7 +346,7 @@ def render_bundle(inputs: BackupInputs, secret: BundleSecrets, now: datetime) ->
 def _host_instructions(inputs: BackupInputs) -> str:
     return f"""# Copias de «{inputs.instance}» en otro servidor Linux
 
-Repositorio propio: {_repo_uri(inputs)} (id «{inputs.id}»),
+Repositorio propio: {inputs.destination.repository} (id «{inputs.id}»),
 en el mismo destino que las demás copias.
 
 1. Instala Backrest v1.14.1 con el script de instalación de su README

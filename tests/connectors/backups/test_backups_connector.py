@@ -269,3 +269,9 @@ def test_el_proceso_real_solo_admite_el_check_configurado():
 
     with pytest.raises(ValueError, match="no permitido"):
         process(check_command(100))
+
+
+@pytest.mark.parametrize("identifier", ["1-x", "con-guion", "Caja", "a", "x" * 32])
+def test_un_id_de_repositorio_fuera_del_patron_unico_se_rechaza(identifier):
+    with pytest.raises(ValidationError):
+        BackupsConfig(repositories=[repo(identifier, "bk")])
