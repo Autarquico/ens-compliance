@@ -314,14 +314,9 @@ def test_una_copia_que_deja_de_hacerse_pone_la_tarjeta_en_rojo_y_dice_que_hay_pr
     assert "Con problemas" in html and 'class="badge tone-bad"' in html
 
 
-@pytest.mark.xfail(
-    strict=True,
-    reason="spec kit-backups, 'una copia que deja de hacerse se ve': la tarjeta en rojo debe "
-    "llevar el enlace al runbook y la plantilla herramientas.html no lo tiene",
-)
 def test_la_tarjeta_en_rojo_enlaza_al_runbook(session, example_store):
     from .test_tools import record
 
     record(example_store, CheckStatus.FAIL)
 
-    assert "kit-copias" in session.get("/herramientas").text
+    assert 'href="/ayuda/kit-copias"' in session.get("/herramientas").text

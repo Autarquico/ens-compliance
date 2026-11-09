@@ -4,6 +4,7 @@ import io
 import logging
 import tarfile
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 from applicability.helpers import LATER, decide_all_undetermined, prepared_workspace, uniform
@@ -344,3 +345,43 @@ def test_retencion_menor_que_el_bloqueo_no_se_rechaza(session):
     response = session.post("/herramientas/copias", FORM | {"retention_days": "10"})
 
     assert response.status_code == 200
+
+
+RUNBOOK_SOURCE = Path(__file__).resolve().parents[2] / "docs" / "runbooks" / "kit-copias.md"
+
+
+def test_el_runbook_servido_es_el_de_docs():
+    from ens_evidence.ui.views.help import RUNBOOKS_DIR
+
+    assert (RUNBOOKS_DIR / "kit-copias.md").read_bytes() == RUNBOOK_SOURCE.read_bytes()
+
+
+def test_el_runbook_se_sirve_en_ayuda(session):
+    response = session.get("/ayuda/kit-copias")
+
+    assert response.status_code == 200
+    assert "Kit de copias" in response.text and "Primera prueba de restauración" in response.text
+    assert "deploy/box.sh kit enable copias /ruta/al/paquete.tar.gz" in response.text
+    assert "<script>" not in response.text
+
+
+@pytest.mark.parametrize("name", ["otro", "caja", "kit-copias.md", "..%2Fcaja", "%2e%2e/caja"])
+def test_otros_nombres_de_ayuda_dan_404(session, name):
+    assert session.get(f"/ayuda/{name}").status_code == 404
+
+
+def test_el_markdown_se_escapa_y_no_emite_html_propio():
+    from ens_evidence.ui.views.help import parse_markdown
+
+    blocks = parse_markdown(
+        "# T\n\n<script>x</script> `<b>`\n\n1. uno\n   ```\n   <i>\n   ```\n2. dos"
+    )
+
+    assert [b["kind"] for b in blocks] == ["h", "p", "ol", "pre", "ol"]
+    assert blocks[1]["inline"][0]["text"] == "<script>x</script> "
+    assert blocks[3]["text"] == "<i>"
+    assert blocks[4]["start"] == 2
+
+
+def test_la_tarjeta_sin_problemas_no_enlaza_al_runbook(session):
+    assert "/ayuda/kit-copias" not in session.get("/herramientas").text
