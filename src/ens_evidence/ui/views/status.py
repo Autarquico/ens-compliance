@@ -23,6 +23,7 @@ from ens_evidence.models.readiness import BlockerKind
 from ens_evidence.preaudit.findings import current_dossier_run
 from ens_evidence.scope import scope_status
 from ens_evidence.ui.pages import page_context, render
+from ens_evidence.ui.plain import translate
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard import STEPS
@@ -37,19 +38,6 @@ FLOW_COMPLETE = (
 )
 
 _SIGUIENTE_PASO = re.compile(r"\s*Siguiente paso:.*$", re.DOTALL)
-_COMMAND = re.compile(
-    r"\s*[:(]?\s*(?:ens-evidence\s+)?\b(?:"
-    r"matrix (?:review|link|set|unlink|init|status)"
-    r"|docs (?:approve|status|build|init)"
-    r"|evidence (?:import|verify)"
-    r"|incident (?:verify|new|update|close)"
-    r"|preaudit (?:review|show)"
-    r"|applicability (?:status|propose)"
-    r"|catalog show"
-    r"|collect [a-z]+"
-    r"|check --all"
-    r")\b(?:[^.;]|\.(?=\S))*\)?"
-)
 _LOOSE_END = re.compile(r"\s*(?:\b(?:Comprueba|Revisa|Detalle)\b)?\s*[:,;]?\s*(?=\.|$)")
 _MEASURE_ID = re.compile(r"[a-z]{2}\.[a-z]+\.\d")
 
@@ -57,7 +45,7 @@ _MEASURE_ID = re.compile(r"[a-z]{2}\.[a-z]+\.\d")
 def plain_text(line: str) -> str:
     """El texto de la CLI sin las órdenes: la web tiene sus propios botones."""
     text = _SIGUIENTE_PASO.sub("", line)
-    text = _COMMAND.sub("", text)
+    text = translate(text)
     text = _LOOSE_END.sub("", text).strip(" .:;,")
     if not _MEASURE_ID.match(text):
         text = text[:1].upper() + text[1:]

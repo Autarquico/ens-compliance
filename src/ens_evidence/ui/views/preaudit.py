@@ -39,11 +39,12 @@ from ens_evidence.preaudit.requests import (
     requests_of,
 )
 from ens_evidence.preaudit.review import ReviewRejected, review
-from ens_evidence.preaudit.service import PREPARED_NAME
+from ens_evidence.preaudit.service import PreparedRecord, read_prepared
 from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, render
+from ens_evidence.ui.plain import translate
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
 
@@ -86,15 +87,7 @@ DECISIONS = {
     DispositionState.RESOLVED: ("resolved", "Resuelto: lo corrige una evidencia"),
     DispositionState.DISMISSED: ("dismissed", "Descartado: explico el motivo"),
 }
-FIELD_WORDS = {
-    "--by:": "Quién lo hace:",
-    "--evidence:": "La evidencia:",
-    "--reason:": "El motivo:",
-    "--decision:": "La decisión:",
-}
 BY_LABEL = "Quién lo hace"
-_COMMAND = re.compile(r"\s*\(?`(?:--|ens-evidence)[^`]*`\)?")
-_PREPARED_KEY = re.compile(rf"{re.escape(PREAUDITS_PREFIX)}/[^/]+/{re.escape(PREPARED_NAME)}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
 
 
@@ -109,9 +102,7 @@ class Rejected(Exception):
 
 def plain(message: str) -> str:
     """Sin órdenes de CLI en el texto que ve la persona."""
-    for flag, words in FIELD_WORDS.items():
-        message = message.replace(flag, words)
-    return _COMMAND.sub("", message).replace("`preaudit`", "la pre-auditoría")
+    return translate(message)
 
 
 # --- lectura -----------------------------------------------------------------------------------
@@ -128,17 +119,12 @@ def _chosen(request: Request, ids: list[str]) -> str | None:
     return ids[-1] if ids else None
 
 
-def latest_prepared(store: UiStore, dossier: str) -> dict[str, Any] | None:
-    """La última preparación de `dossier` (añade `key`); None si no hay o no se puede leer."""
-    for key in sorted(
-        (k for k in store.list(PREAUDITS_PREFIX) if _PREPARED_KEY.fullmatch(k)), reverse=True
-    ):
-        try:
-            data = json.loads(store.read_bytes(key))
-        except ValueError:
-            continue
-        if isinstance(data, dict) and data.get("dossier") == dossier:
-            return {**data, "key": key}
+def latest_prepared(store: UiStore, dossier: str) -> tuple[str, PreparedRecord] | None:
+    """La última preparación de `dossier` con su clave; None si no hay o no se puede leer."""
+    for key in sorted(store.list(PREAUDITS_PREFIX), reverse=True):
+        prepared = read_prepared(store, key)
+        if prepared and prepared.dossier == dossier:
+            return key, prepared
     return None
 
 
@@ -147,27 +133,27 @@ def _count(content: dict[str, Any], name: str) -> int:
     return len(items) if isinstance(items, list) else 0
 
 
-def _prepared_summary(store: UiStore, prepared: dict[str, Any]) -> dict[str, Any]:
-    provider = str(prepared.get("provider", ""))
-    sha256 = str(prepared.get("payload_sha256", ""))
+def _prepared_summary(store: UiStore, found: tuple[str, PreparedRecord]) -> dict[str, Any]:
+    key, prepared = found
+    provider, sha256 = prepared.provider, prepared.payload_sha256
     counts = {"measures": 0, "documents": 0, "evidence": 0}
     intact = False
     try:
-        raw = store.read_bytes(str(prepared.get("payload", "")))
+        raw = store.read_bytes(prepared.payload)
         intact = hashlib.sha256(raw).hexdigest() == sha256 and bool(_SHA256.fullmatch(sha256))
         content = json.loads(raw).get("dossier", {}) if intact else {}
         counts = {name: _count(content, name) for name in counts}
     except (ValueError, OSError, AttributeError):
         intact = False
     return {
-        "key": prepared["key"],
+        "key": key,
         "provider": provider,
-        "model": str(prepared.get("model", "")),
-        "destination": str(prepared.get("destination", "")),
+        "model": prepared.model,
+        "destination": prepared.destination,
         "recipient": PLAN_RECIPIENT.get(provider),
-        "shell": bool(prepared.get("requires_shell_warning")) or provider in SHELL_PROVIDERS,
-        "pack_version": str(prepared.get("pack_version", "")),
-        "prepared_at": str(prepared.get("prepared_at", NO_DATE)),
+        "shell": prepared.requires_shell_warning or provider in SHELL_PROVIDERS,
+        "pack_version": prepared.pack_version,
+        "prepared_at": prepared.prepared_at,
         "sha256": sha256,
         "intact": intact,
         **counts,

@@ -42,6 +42,7 @@ from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, render
+from ens_evidence.ui.plain import CLI_TRACE, translate
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import BLOCKER_LABELS, format_instant
 from ens_evidence.workspace import WorkspaceError
@@ -67,8 +68,6 @@ PENDING_REVIEW_DETAILS = {
     MeasureAssessment.NOT_ASSESSED.value,
     MeasureAssessment.REQUIRES_REVIEW.value,
 }
-_COMMAND = re.compile(r"\s*[(;,]?\s*(?:ver|ejecuta|usa)?\s*`[^`]*`\)?\.?")
-_CLI_TRACE = re.compile(r"`|--|ens-evidence")
 KNOWN_PROBLEMS = (
     ("falta la periodicidad", "Falta la periodicidad de revisión: fíjala en «Responsable»."),
     ("falta el responsable", "Falta el responsable: indícalo en «Responsable»."),
@@ -96,12 +95,12 @@ def plain(message: str) -> str:
     for prefix, text in KNOWN_PROBLEMS:
         if message.lower().startswith(prefix):
             return text
-    if not _CLI_TRACE.search(message):
+    if not CLI_TRACE.search(message):
         return message
-    cleaned = _COMMAND.sub("", message).strip()
-    if not cleaned or _CLI_TRACE.search(cleaned):
+    cleaned = translate(message).strip()
+    if not cleaned or CLI_TRACE.search(cleaned):
         head = re.split(r"[:(;`]|--", message, maxsplit=1)[0].strip().rstrip(".")
-        cleaned = head if head and not _CLI_TRACE.search(head) else GENERIC_PROBLEM
+        cleaned = head if head and not CLI_TRACE.search(head) else GENERIC_PROBLEM
     return cleaned if cleaned.endswith(".") else f"{cleaned}."
 
 
