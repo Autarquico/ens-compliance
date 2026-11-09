@@ -93,12 +93,14 @@ Piezas:
 
 ## Notas técnicas / riesgos
 
-- **Sin verificar:**
-  - el formato de configuración de Backrest y su inicio de sesión propio;
-  - si soporta Windows y macOS para «otros equipos»;
-  - restic con el bloqueo de objetos de R2 (ya anotado en `docs/vision.md`).
-
-  Se comprueba con la imagen fijada antes de cerrar el plan.
+- **Backrest v1.14.1, verificado el 2026-11-09 en su repositorio (README, `proto/v1/config.proto`, Dockerfiles):**
+  - Hay binarios para Linux, macOS y Windows, e imagen Docker `ghcr.io/garethgeorge/backrest` (variantes alpine y scratch) con restic dentro de la imagen. Fuera de Docker descarga restic solo y lo actualiza; se evita fijando `BACKREST_RESTIC_COMMAND` a un binario verificado.
+  - Configuración en un `config.json` (`BACKREST_CONFIG`): `repos` (uri, password en claro, env, prunePolicy, checkPolicy), `plans` (paths, schedule cron, retention) y `auth.users` con `passwordBcrypt`. La app puede generar el fichero entero, con el usuario ya creado.
+  - La contraseña del repositorio va en claro en `config.json`: el volumen de configuración de Backrest es secreto y no lo lee la app.
+  - Tiene modo multihost (emparejamiento de instancias con tokens). Sirve para «otros equipos»; se evalúa en el plan.
+  - Las imágenes no fijan `USER`: se ejecuta con un UID explícito, que necesita permiso de lectura sobre lo que copia.
+- **Retención frente a bloqueo de objetos.** `forget` y `prune` de Backrest fallan sobre objetos todavía bloqueados. La retención del plan tiene que ser mayor que el periodo de bloqueo, y la app lo valida al generar la configuración.
+- **Sin verificar:** restic sobre el bloqueo de objetos de R2 (ya anotado en `docs/vision.md`).
 - **Lo que se copia en solo lectura.** Montar volúmenes de otros servicios no da a Backrest permiso de escritura sobre ellos. Se excluyen los tmpfs y el socket de Docker.
 - **El destino es un punto único de fallo.** Por eso se recomienda un proveedor distinto del de la copia propia de la caja, o al menos credenciales y administración separadas (ADR 0008).
 - **Review de seguridad obligatoria:** credenciales, montajes y exposición tras Access.
