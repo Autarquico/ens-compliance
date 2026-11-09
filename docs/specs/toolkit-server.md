@@ -2,12 +2,12 @@
 codename: ens-compliance
 title: "Kit de herramientas: una herramienta open source para cada carencia"
 type: epic
-status: draft
+status: active
 priority: P1
 size: XL
 issue: null
 prs: []
-related_issues: []
+related_issues: [65]
 depends_on: [box-packaging, installer, web-ui-flujo]
 supersedes: []
 related_specs: [detection-profile, collector-restic, osquery-agents, setup-guides]
