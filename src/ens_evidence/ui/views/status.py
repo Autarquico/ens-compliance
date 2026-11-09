@@ -16,6 +16,8 @@ from ens_evidence.assessment.dossier.store import list_dossiers
 from ens_evidence.assessment.render import blocker_lines_by_measure
 from ens_evidence.categorization import CategorizationState, categorization_status
 from ens_evidence.checks.source import StoredCheckResults
+from ens_evidence.evidence import list_manifests
+from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE
 from ens_evidence.matrix.messages import READINESS_LABELS
 from ens_evidence.models.enums import Category, DossierState, Readiness
 from ens_evidence.models.readiness import BlockerKind
@@ -182,6 +184,13 @@ def _documents(store: UiStore, now: datetime, _: object) -> Phase:
     )
 
 
+INCIDENT_MEASURE = "op.exp.9"
+
+
+def _has_incident_history(store: UiStore) -> bool:
+    return any(m.source == INCIDENT_HISTORY_SOURCE for m in list_manifests(store).manifests)
+
+
 def _matrix(store: UiStore, now: datetime, status) -> Phase:
     label = "Matriz"
     blockers = [
@@ -190,6 +199,11 @@ def _matrix(store: UiStore, now: datetime, status) -> Phase:
     if not blockers and not status.result.errors:
         return Phase("matriz", label, True, "", "")
     first = next((b.measure_id for b in blockers if b.measure_id), None)
+    if first == INCIDENT_MEASURE and not _has_incident_history(store):
+        return Phase(
+            "matriz", label, False, "/incidentes",
+            "Cerrar un incidente (o un simulacro) para sustentar op.exp.9",
+        )  # fmt: skip
     url = f"/matriz/{first}" if first else "/matriz"
     action = f"Revisar la medida {first}" if first else "Revisar la matriz de medidas"
     return Phase("matriz", label, False, url, action)

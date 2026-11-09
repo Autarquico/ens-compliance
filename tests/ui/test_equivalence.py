@@ -333,7 +333,7 @@ def review_plan(store, evidence_covers: bool = True) -> list[Review]:
 
 
 def close_incident(ens, by: str = SECURITY) -> None:
-    """El incidente cerrado que sustenta op.exp.9; la web no los registra (lista blanca)."""
+    """El incidente cerrado que sustenta op.exp.9, por la CLI."""
     detected = (NOW - timedelta(hours=6)).isoformat()
     ens(
         "incident",
@@ -349,6 +349,15 @@ def close_incident(ens, by: str = SECURITY) -> None:
     )
     closure = [arg for k, v in CLOSURE.items() for arg in (f"--{k}", v)]
     ens("incident", "close", "INC-2026-001", *closure, "--by", by)
+
+
+def web_close_incident(session: Session, by: str = SECURITY) -> None:
+    """El mismo incidente cerrado que `close_incident`, por la web."""
+    detected = (NOW - timedelta(hours=6)).strftime("%Y-%m-%dT%H:%M")
+    new = {"title": "Acceso indebido", "detected_at": detected, "personal_data": "no", "by": by}
+    location = post_ok(session, "/incidentes/nuevo", new)
+    closure = {k.replace("-", "_"): v for k, v in CLOSURE.items()} | {"by": by}
+    post_ok(session, f"{location.split('?')[0]}/cerrar", closure)
 
 
 def post_ok(session: Session, path: str, data: dict) -> str:
@@ -453,8 +462,8 @@ def web_review(session: Session, store, plan: Review, acta: str, before_links=No
     post_ok(session, f"{base}/revisar", form)
 
 
-def web_full_flow(session: Session, client, token: str, close_the_incident, guide=no_guide) -> str:
-    """Todo por la web; la única excepción es el incidente cerrado que sustenta op.exp.9."""
+def web_full_flow(session: Session, client, token: str, guide=no_guide) -> str:
+    """Todo por la web, incluido el incidente cerrado que sustenta op.exp.9."""
     store = client.app.state.store
     web_script_until_review(session, client, token, guide)
     acta = evidence_id(store)
@@ -470,7 +479,7 @@ def web_full_flow(session: Session, client, token: str, close_the_incident, guid
                     f"/matriz/{REGISTER_MEASURE}/revisar", REVIEW_FORM | {"assessment": "COMPLIANT"}
                 )
                 assert refused.status_code == 422 and "cláusulas sin cubrir" in refused.text.lower()
-                close_the_incident()
+                web_close_incident(session)
 
         web_review(session, store, plan, acta, before)
     guide("matriz revisada")
@@ -719,8 +728,7 @@ def web_flow(tmp_path_factory, key) -> FlowRun:
 
     with pytest.MonkeyPatch.context() as patch:
         sequential_evidence_ids(patch)
-        ens = make_ens(root / "ui-ws", patch)
-        dossier = web_full_flow(session, client, token, lambda: close_incident(ens), guide)
+        dossier = web_full_flow(session, client, token, guide)
     return FlowRun(store, dossier, milestones)
 
 

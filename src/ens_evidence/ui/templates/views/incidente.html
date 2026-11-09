@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% macro by_field(form) -%}
+<div class="field"><label for="f-by-{{ form }}">Quién lo registra<span class="hint">Tu nombre y apellidos, no tu correo. Se registra tal como lo declaras; no se comprueba.</span></label>
+  <input type="text" id="f-by-{{ form }}" name="by" value="{{ values.get('by', '') }}" autocomplete="name"></div>
+{%- endmacro %}
+{% block content %}
+<p><a href="/incidentes">Incidentes</a></p>
+<h1><span class="mono">{{ incident_id }}</span>{% if title %} {{ title }}{% endif %}</h1>
+{% if simulated %}<div class="notice notice-warn" role="note"><p><strong>Simulacro.</strong> {{ simulation_note }}</p></div>{% endif %}
+{{ m.revision_humana() }}
+{% if saved and not form_errors %}<div class="notice notice-ok" role="status"><p>{{ saved }}</p></div>{% endif %}
+{% if form_errors %}
+<div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
+<ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if problems %}
+<div class="notice notice-warn"><p><strong>Este incidente tiene problemas y no admite más registros.</strong> Restáuralo desde la copia de seguridad.</p><ul>{% for p in problems %}<li>{{ p }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if readable %}
+<dl class="facts">
+  <dt>Estado</dt><dd>{{ status_label | capitalize }}</dd>
+  <dt>Severidad declarada</dt><dd>{{ severity }}</dd>
+  <dt>Detectado</dt><dd class="mono">{{ detected_at }}</dd>
+  <dt>Datos personales</dt><dd>{{ personal_data_label | capitalize }}</dd>
+  <dt>Activos</dt><dd>{% if assets %}{% for a in assets %}<span class="mono">{{ a }}</span>{% if not loop.last %}, {% endif %}{% endfor %}{% else %}—{% endif %}</dd>
+  {% if source %}<dt>Origen</dt><dd>{{ source.system }}{% if source.alert_ids %} <span class="muted">· alertas: {{ source.alert_ids | join(", ") }}</span>{% endif %}</dd>{% endif %}
+  <dt>Procedimiento</dt><dd>{% if procedure %}<span class="mono">{{ procedure.name }}</span>, aprobado {{ procedure.approved_at }}{% else %}Ninguno vigente al registrarlo{% endif %}</dd>
+  {% if summary %}<dt>Análisis</dt><dd>{{ summary }}</dd>{% endif %}
+  {% if evidence_ids %}<dt>Evidencias relacionadas</dt><dd class="mono">{{ evidence_ids | join(", ") }}</dd>{% endif %}
+</dl>
+{% if actions %}
+<section class="section" aria-labelledby="h-actuaciones">
+  <h2 id="h-actuaciones">Actuaciones</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Cuándo</th><th scope="col">Tipo</th><th scope="col">Qué se hizo</th></tr></thead>
+    <tbody>
+    {%- for a in actions %}<tr><td class="mono">{{ a.at }}</td><td>{{ a.kind | capitalize }}</td><td>{{ a.description }}</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% if closure %}
+<section class="section" aria-labelledby="h-cierre">
+  <h2 id="h-cierre">Cierre</h2>
+  <dl class="facts">
+    <dt>Cerrado</dt><dd class="mono">{{ closure.at }}</dd>
+    <dt>Conclusión</dt><dd>{{ closure.conclusion }}</dd>
+    <dt>Relevancia jurisdiccional</dt><dd>{{ closure.legal_relevance | capitalize }}{% if closure.legal_advice %} <span class="muted">· asesoramiento: {{ closure.legal_advice }}</span>{% endif %}</dd>
+    <dt>Evidencias preservadas</dt><dd class="mono">{% if closure.preserved %}{{ closure.preserved | join(", ") }}{% else %}—{% endif %}</dd>
+    <dt>Eventos auditables</dt><dd>{{ closure.events_review | capitalize }}: {{ closure.events_detail }}</dd>
+  </dl>
+</section>
+{% endif %}
+{% endif %}
+
+{% if closed %}
+<section class="section" aria-labelledby="h-historial">
+  <h2 id="h-historial">Historial y medidas</h2>
+  {% if history_id %}
+  <p>El historial de este incidente es la evidencia <span class="mono">{{ history_id }}</span>. Para que sustente las medidas, enlázalo en la matriz y que una persona lo revise:</p>
+  <ul>
+    <li><a href="/matriz/{{ op_exp_9 }}">Enlazar el historial en <span class="mono">{{ op_exp_9 }}</span></a>: elige la evidencia <span class="mono">{{ history_id }}</span> y marca la cláusula base.</li>
+    <li><a href="/matriz/{{ op_exp_7 }}">Enlazar el historial en <span class="mono">{{ op_exp_7 }}</span></a>: elige la misma evidencia y marca la cláusula <span class="mono">op.exp.7.1</span>.</li>
+  </ul>
+  {% if simulated %}<p class="muted">Es un simulacro: la matriz lo mostrará como tal y quien revise decide si basta.</p>{% endif %}
+  <p class="muted">Solo la revisión de una persona lo confirma.</p>
+  {% elif history_missing %}
+  <div class="notice notice-warn"><p><strong>Falta el historial.</strong> El cierre está registrado y es definitivo, pero el historial no se generó. Mientras falte, <span class="mono">{{ op_exp_9 }}</span> sigue bloqueada. Los registros no se tocan.</p></div>
+  <form method="post" action="/incidentes/{{ incident_id }}/historial" novalidate>
+    {{ by_field("historial") }}
+    <div class="actions"><button class="btn btn-primary" type="submit">Generar el historial</button></div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="section" aria-labelledby="h-registros">
+  <h2 id="h-registros">Reportes registrados</h2>
+  <div class="table-wrap"><table>
+    <caption>Cada reporte se guarda también como evidencia, con su huella.</caption>
+    <thead><tr><th scope="col">N.º</th><th scope="col">Reporte</th><th scope="col">Cuándo</th><th scope="col">Evidencia</th></tr></thead>
+    <tbody>
+    {%- for r in records %}<tr><td class="mono">{{ r.seq }}</td><td>{{ r.kind | capitalize }}</td><td class="mono">{{ r.at }}</td><td class="mono">{{ r.evidence_id or "—" }}</td></tr>
+    {%- else %}<tr><td colspan="4" class="muted">Sin reportes legibles.</td></tr>{% endfor %}
+    </tbody>
+  </table></div>
+</section>
+
+{% if can_write %}
+<section class="section" aria-labelledby="h-intermedio">
+  <h2 id="h-intermedio">Añadir un reporte intermedio</h2>
+  <p class="muted">Cambia solo lo que haya cambiado; lo demás se queda como estaba.</p>
+  <form method="post" action="/incidentes/{{ incident_id }}/actualizar" novalidate>
+    {{ by_field("actualizar") }}
+    {% if levels %}
+    <div class="field"><label for="f-severity">Severidad</label>
+      <select id="f-severity" name="severity">
+        <option value="">No cambiarla</option>
+        {%- for level in levels %}<option value="{{ level }}"{% if values.get('severity') == level %} selected{% endif %}>{{ level }}</option>{% endfor %}
+      </select></div>
+    {% endif %}
+    <div class="field"><label for="f-personal_data">¿Afecta a datos personales?</label>
+      <select id="f-personal_data" name="personal_data">
+        <option value="">No cambiarlo</option>
+        {%- for o in personal_data_options %}<option value="{{ o.value }}"{% if values.get('personal_data') == o.value %} selected{% endif %}>{{ o.label | capitalize }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label for="f-summary">Análisis<span class="hint">Sustituye el análisis actual. Déjalo como está si no cambia.</span></label>
+      <textarea id="f-summary" name="summary">{{ values.get('summary', summary or '') }}</textarea></div>
+    {{ m.asset_checks(asset_choices, "assets", selected_assets, "Añadir activos afectados") }}
+    <div class="field"><label for="f-action">Actuación realizada<span class="hint">Opcional. Qué se ha hecho, sin datos personales.</span></label>
+      <textarea id="f-action" name="action">{{ values.get('action', '') }}</textarea></div>
+    <div class="field"><label for="f-action_kind">Tipo de actuación</label>
+      <select id="f-action_kind" name="action_kind">
+        {%- for k in action_kinds %}<option value="{{ k.value }}"{% if values.get('action_kind', 'other') == k.value %} selected{% endif %}>{{ k.label | capitalize }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label for="f-action_at">Cuándo se hizo<span class="hint">Opcional. Hora UTC; si lo dejas vacío, ahora.</span></label>
+      <input type="datetime-local" id="f-action_at" name="action_at" value="{{ values.get('action_at', '') }}"></div>
+    <div class="field"><label for="f-evidence">Evidencias relacionadas<span class="hint">Opcional. Identificadores EV-… ya subidos, separados por espacios o comas.</span></label>
+      <input type="text" id="f-evidence" name="evidence" value="{{ values.get('evidence', '') }}"></div>
+    <div class="actions"><button class="btn btn-primary" type="submit">Registrar el reporte intermedio</button></div>
+  </form>
+</section>
+
+<section class="section" aria-labelledby="h-cerrar">
+  <h2 id="h-cerrar">Cerrar el incidente</h2>
+  {% if personal_data == "unknown" %}
+  <div class="notice notice-warn"><p>Antes de cerrar hay que decidir si el incidente afecta a datos personales. Indícalo en un reporte intermedio (sí o no).</p></div>
+  {% else %}
+  <p class="muted">El cierre es el reporte final y es definitivo: después no admite más registros. Se genera el historial del incidente.</p>
+  <form method="post" action="/incidentes/{{ incident_id }}/cerrar" novalidate>
+    {{ by_field("cerrar") }}
+    <div class="field"><label for="f-conclusion">Conclusión<span class="hint">Qué pasó y cómo se resolvió, sin datos personales.</span></label>
+      <textarea id="f-conclusion" name="conclusion">{{ values.get('conclusion', '') }}</textarea></div>
+    <div class="field"><label for="f-auditable_events_result">¿Hubo que cambiar los eventos auditables?<span class="hint">Se revisan tras el análisis del incidente.</span></label>
+      <select id="f-auditable_events_result" name="auditable_events_result">
+        {%- for r in review_results %}<option value="{{ r.value }}"{% if values.get('auditable_events_result') == r.value %} selected{% endif %}>{{ r.label | capitalize }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label for="f-auditable_events_detail">Qué cambió o por qué no cambia</label>
+      <textarea id="f-auditable_events_detail" name="auditable_events_detail">{{ values.get('auditable_events_detail', '') }}</textarea></div>
+    <div class="field"><label for="f-legal_relevance">¿Tiene relevancia jurisdiccional?</label>
+      <select id="f-legal_relevance" name="legal_relevance">
+        {%- for o in personal_data_options %}<option value="{{ o.value }}"{% if values.get('legal_relevance', 'no') == o.value %} selected{% endif %}>{{ o.label | capitalize }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label for="f-legal_advice">Quién da el asesoramiento legal<span class="hint">Obligatorio si hay relevancia jurisdiccional.</span></label>
+      <input type="text" id="f-legal_advice" name="legal_advice" value="{{ values.get('legal_advice', '') }}"></div>
+    <div class="field"><label for="f-preserved_evidence">Evidencias preservadas<span class="hint">Identificadores EV-… separados por espacios o comas. Obligatorio si hay relevancia jurisdiccional.</span></label>
+      <input type="text" id="f-preserved_evidence" name="preserved_evidence" value="{{ values.get('preserved_evidence', '') }}"></div>
+    <div class="actions"><button class="btn btn-primary" type="submit">Cerrar el incidente</button></div>
+  </form>
+  {% endif %}
+</section>
+{% endif %}
+<p class="muted">Datos de {{ generated_at }}.</p>
+{% endblock %}

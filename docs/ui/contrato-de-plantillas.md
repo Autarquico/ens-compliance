@@ -12,10 +12,10 @@ Los textos de usuario se pasan **sin escapar**: la plantilla escapa. No pases `M
 |---|---|---|
 | `product_name` | `str` | Marcador: el nombre del producto está pendiente (`base.yml`). |
 | `identity_email` | `str \| None` | Email del JWT de Access. |
-| `nav_active` | `"estado" \| "asistente" \| "matriz" \| "evidencias" \| "expediente" \| "preauditoria"` | Marca la sección actual. |
+| `nav_active` | `"estado" \| "asistente" \| "matriz" \| "evidencias" \| "expediente" \| "incidentes" \| "preauditoria"` | Marca la sección actual. |
 | `page_title` | `str` | Título de la pestaña. |
 
-Enlaces fijos del menú (las rutas deben existir): `/`, `/asistente`, `/matriz`, `/evidencias`, `/expediente`, `/preauditoria`. Rutas con parámetro: `/matriz/{medida}`, `/evidencias/nueva`, `/expediente/{id}` y `/expediente/{id}/dossier.md`.
+Enlaces fijos del menú (las rutas deben existir): `/`, `/asistente`, `/matriz`, `/evidencias`, `/expediente`, `/incidentes`, `/preauditoria`. Rutas con parámetro: `/matriz/{medida}`, `/evidencias/nueva`, `/expediente/{id}`, `/expediente/{id}/dossier.md`, `/incidentes/nuevo` y `/incidentes/{id}`.
 
 ## Estados (`m.badge`)
 
@@ -122,7 +122,7 @@ Nombres de campo con error: las claves de `errors` son exactamente los nombres d
 
 ## Vistas (contexto común + lo siguiente)
 
-Las vistas con formulario (`matriz_medida`, `evidencias_nueva`, `expediente`, `preauditoria`) reciben además `form_errors: list[str]`, `errors: dict[str, list[str]]`, `values: dict[str, str]` y `saved` (`str \| bool`): como en el asistente, pero los POST redirigen (PRG) y los errores devuelven 422 con la misma página.
+Las vistas con formulario (`matriz_medida`, `evidencias_nueva`, `expediente`, `preauditoria`, `incidente_nuevo`, `incidente`) reciben además `form_errors: list[str]`, `errors: dict[str, list[str]]`, `values: dict[str, str]` y `saved` (`str \| bool`): como en el asistente, pero los POST redirigen (PRG) y los errores devuelven 422 con la misma página.
 
 ### `views/estado.html`
 `readiness: {state:str, summary:str}` (`Readiness`) · `scope_state: str` · `categorization_state: str` · `category: str \| None` · `phases: list[{label:str, state:"done"\|"next"\|"todo"}]` (el recorrido de alcance a pre-auditoría) · `next_step_url: str \| None` y `next_step_label: str` (botón principal; la etiqueta va siempre) · `blockers: list[{measure_id:str\|None, texts:list[str]}]` (agrupados por medida, como `assessment status`) · `generated_at: str`.
@@ -142,6 +142,16 @@ Formulario `multipart/form-data` a `POST /evidencias/nueva`: `asset_id`, `by`, `
 
 ### `views/expediente.html`
 `dossier_id: str \| None` · `category: str \| None` · `dossier_state: str` (`DossierState`, `Sin generar` o `ROTO`) · `generated_at: str` · `declared: None \| {by:str, at:str}` · `sections: list[{title, file, state, state_label, generated_at, fingerprint:str\|None}]` · `transitions: list[{state, actor, role, at}]` · `stale: bool` y `drift_lines: list[str]` · `integrity`, `blocked`, `incomplete: list[str]` · `readiness_notice: str \| None` · `action: "self-assess"\|"analyze"\|"declare"\|None` y `next_text: str` · `can_download: bool` (`GET /expediente/<id>/dossier.md`) · `self_assess_roles: dict[str, str]`. Formularios: `POST /expediente/generar` (sin campos) y `POST /expediente/<id>/<accion>` (`by` más `role` / `conclusion`, `elevated_to`, `elevated`, `manual_judgment_review`, `corrective_measures` / `evidence`, `acknowledge_incomplete`).
+
+### `views/incidentes.html`
+`rows: list[{id, simulated:bool, broken:bool, readable:bool, status:str, closed:bool, severity:str, detected_at:str, title:str}]` (el último estado de cada incidente, más reciente primero; `broken`: la verificación encontró problemas) · `generated_at: str`. `id` en mono y enlaza a `/incidentes/<id>`.
+
+### `views/incidente_nuevo.html`
+Formulario `POST /incidentes/nuevo`: `title`, `detected_at` (`datetime-local`, hora UTC), `by` (vacío por defecto: un nombre, nunca un correo), `severity` (solo si hay `levels`), `assets` multi, `source_system`, `alert_ids`, `personal_data`, `summary` y `simulated` (casilla). Contexto de formulario común a esta vista y a `incidente.html`: `asset_choices: list[{id, label:str\|None}]` · `levels: list[str]` (niveles declarados; vacío si no hay) · `personal_data_options`, `action_kinds`, `review_results: list[{value, label}]` · `selected_assets: list[str]` · `simulation_note: str`. Más `form_errors`, `errors` (vacío) y `values`.
+
+### `views/incidente.html`
+Formularios: `POST /incidentes/<id>/actualizar` (`by`, `severity`, `personal_data`, `summary`, `assets` multi, `action`, `action_kind`, `action_at`, `evidence`), `/cerrar` (`by`, `conclusion`, `auditable_events_result`, `auditable_events_detail`, `legal_relevance`, `legal_advice`, `preserved_evidence`) y `/historial` (`by`; solo si falta el historial de un cierre).
+`incident_id: str` · `readable: bool` (hay registros legibles; si no, solo se muestran `problems` y los reportes) · `simulated: bool` · `title`, `incident_status` (`open`\|`closed`), `status_label`, `severity`, `detected_at`, `personal_data` (`yes`\|`no`\|`unknown`) y `personal_data_label: str` · `closed: bool` · `assets`, `evidence_ids: list[str]` · `source: None \| {system, alert_ids}` · `procedure: None \| {name, approved_at}` · `summary: str \| None` · `actions: list[{at, kind, description}]` · `closure: None \| {at, conclusion, legal_relevance, legal_advice:str\|None, preserved:list[str], events_review, events_detail}` · `records: list[{seq:int, kind, at, evidence_id:str\|None}]` · `problems: list[str]` · `history_id: str \| None` y `history_missing: bool` · `can_write: bool` (abierto y sin problemas: muestra los formularios de reporte y cierre) · `saved: str \| None` · `op_exp_9`, `op_exp_7: str` (enlaces a la matriz) · `generated_at: str`. Tras cerrar, la página dice qué evidencia (`history_id`) enlazar en `/matriz/op.exp.9` y `/matriz/op.exp.7`.
 
 ### `views/preauditoria.html`
 Formularios: `POST /preauditoria/preparar` (`dossier`, `by`), `/enviar` (`dossier`, `reviewed`, `confirm_sha256`, `by`, `accept_shell_risk` si el destino lo pide) y `/hallazgos/<id>` (`dossier`, `decision`, `evidence`, `reason`, `by`). La UI solo deja peticiones; las ejecuta el servicio `app`.

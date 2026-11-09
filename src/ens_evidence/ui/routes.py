@@ -4,6 +4,7 @@ from starlette.routing import BaseRoute
 
 from ens_evidence.ui.views.dossier import DOSSIER_ROUTES
 from ens_evidence.ui.views.evidence import EVIDENCE_ROUTES
+from ens_evidence.ui.views.incidents import INCIDENT_ROUTES
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
 from ens_evidence.ui.views.preaudit import PREAUDIT_ROUTES
 from ens_evidence.ui.views.status import STATUS_ROUTES
@@ -16,6 +17,7 @@ def ui_routes() -> list[BaseRoute]:
         *MATRIX_ROUTES,
         *EVIDENCE_ROUTES,
         *DOSSIER_ROUTES,
+        *INCIDENT_ROUTES,
         *PREAUDIT_ROUTES,
         *wizard_routes(),
     ]

@@ -1,0 +1,38 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<p><a href="/incidentes">Incidentes</a></p>
+<h1>Registrar un incidente</h1>
+<p class="lead">Este es el reporte inicial. Después podrás añadir reportes intermedios y, al terminar, cerrarlo.</p>
+{{ m.revision_humana() }}
+{% if form_errors %}
+<div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
+<ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+<aside class="notice" role="note"><p>No escribas datos personales (correos, DNI o NIE, IBAN, teléfonos), claves ni registros en bruto. Describe a las personas por su rol y los datos por referencia, por ejemplo «ticket 123». El registro los rechaza sin guardar nada.</p></aside>
+<form method="post" action="/incidentes/nuevo" novalidate>
+  {{ m.text_field("title", "Título", "Breve y sin datos personales.") }}
+  <div class="field"><label for="f-detected_at">Cuándo se detectó<span class="hint">Hora UTC.</span></label>
+    <input type="datetime-local" id="f-detected_at" name="detected_at" value="{{ values.get('detected_at', '') }}"></div>
+  <div class="field"><label for="f-by">Quién lo registra<span class="hint">Tu nombre y apellidos, no tu correo. Se registra tal como lo declaras; no se comprueba.</span></label>
+    <input type="text" id="f-by" name="by" value="{{ values.get('by', '') }}" autocomplete="name"></div>
+  {% if levels %}
+  <div class="field"><label for="f-severity">Severidad<span class="hint">Uno de los niveles que declaraste en tu procedimiento.</span></label>
+    <select id="f-severity" name="severity">
+      <option value="">Sin determinar</option>
+      {%- for level in levels %}<option value="{{ level }}"{% if values.get('severity') == level %} selected{% endif %}>{{ level }}</option>{% endfor %}
+    </select></div>
+  {% else %}<p class="muted">Todavía no has declarado niveles de clasificación de incidentes, así que no se indica severidad.</p>{% endif %}
+  {{ m.asset_checks(asset_choices, "assets", selected_assets, "Activos afectados") }}
+  {{ m.text_field("source_system", "Sistema que originó la alerta", "Opcional.") }}
+  {{ m.text_field("alert_ids", "Ids de alerta", "Opcional. Separados por espacios o comas.") }}
+  <div class="field"><label for="f-personal_data">¿Afecta a datos personales?</label>
+    <select id="f-personal_data" name="personal_data">
+      {%- for o in personal_data_options %}<option value="{{ o.value }}"{% if values.get('personal_data', 'unknown') == o.value %} selected{% endif %}>{{ o.label | capitalize }}</option>{% endfor %}
+    </select></div>
+  {{ m.text_field("summary", "Análisis inicial", "Opcional. Qué ha pasado y qué se sabe hasta ahora.", True) }}
+  <div class="field"><label><input type="checkbox" name="simulated" value="1"{% if values.get('simulated') %} checked{% endif %}> Es un simulacro</label>
+    <span class="hint">{{ simulation_note }} Hace falta el procedimiento de incidentes aprobado y vigente.</span></div>
+  <div class="actions"><button class="btn btn-primary" type="submit">Registrar el incidente</button></div>
+</form>
+{% endblock %}

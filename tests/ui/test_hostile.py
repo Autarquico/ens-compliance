@@ -500,7 +500,6 @@ def test_un_consentimiento_con_otra_huella_o_sin_marcar_no_crea_la_peticion(prep
 
 
 FORBIDDEN_KEYS = [
-    "incidents/INC-2026-001/000001-x.yaml",
     "evidence/preaudits/runs/x.json",
     "evidence/preaudits/payloads/x.json",
     "evidence/preaudits/requests",
@@ -540,6 +539,13 @@ NEW_POSTS = [
     (f"/expediente/{DOSSIER}/self-assess", {"by": "Ana", "role": "system_administrator"}),
     (f"/expediente/{DOSSIER}/analyze", {"by": "Ana", "conclusion": "x", "elevated_to": "Y"}),
     (f"/expediente/{DOSSIER}/declare", {"by": "Ana"}),
+    (
+        "/incidentes/nuevo",
+        {"title": "Phishing", "detected_at": "2026-11-08T06:00", "by": "Ana Ruiz"},
+    ),
+    ("/incidentes/INC-2026-001/actualizar", {"by": "Ana Ruiz", "action": "Bloqueo"}),
+    ("/incidentes/INC-2026-001/cerrar", {"by": "Ana Ruiz", "conclusion": "x"}),
+    ("/incidentes/INC-2026-001/historial", {"by": "Ana Ruiz"}),
     ("/preauditoria/preparar", {"dossier": DOSSIER, "by": "Ana"}),
     ("/preauditoria/enviar", {"dossier": DOSSIER, "reviewed": "1", "by": "Ana"}),
     (f"/preauditoria/hallazgos/{FINDING}", {"decision": "dismissed", "reason": "x", "by": "Ana"}),
