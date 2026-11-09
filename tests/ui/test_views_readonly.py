@@ -69,7 +69,7 @@ def test_views_reject_writes(session, example_store):
 
 def test_estado_points_to_the_wizard_until_scope_is_approved(session, example_store):
     page = session.get("/")
-    assert 'href="/asistente/sistema"' in page.text
+    assert 'href="/asistente/aprobacion-alcance"' in page.text
     assert "Sin aprobar" in page.text
 
     approve_scope(example_store, "Ana", Role.SYSTEM_OWNER, NOW)

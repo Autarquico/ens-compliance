@@ -1,6 +1,7 @@
 """El estado dice cuál es el siguiente paso de todo el flujo y cuenta los bloqueos como la CLI."""
 
 import re
+from dataclasses import replace
 
 import pytest
 
@@ -10,14 +11,16 @@ from ens_evidence.matrix import AssessmentResult
 from ens_evidence.matrix.messages import BLOCKER_TEXTS, _fill
 from ens_evidence.models.enums import Readiness, Role
 from ens_evidence.models.readiness import Blocker, BlockerKind, ReadinessResult
-from ens_evidence.risk.models import METHODOLOGY_MD_KEY
 from ens_evidence.scope import approve_scope
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import BLOCKER_LABELS
 from ens_evidence.ui.views import status as status_view
 from ens_evidence.ui.views.status import FLOW_COMPLETE, Phase, plain_text
+from ens_evidence.ui.wizard import BY_SLUG
 
 from .conftest import NOW
+
+METODOLOGIA_TITLE = BY_SLUG["riesgos-metodologia"].title
 
 
 def fake_status(*blockers: Blocker, errors: tuple[str, ...] = ()) -> AssessmentStatus:
@@ -52,8 +55,12 @@ def next_step_of(page: str) -> tuple[str | None, str]:
 # --- el siguiente paso sale del estado real ------------------------------------------------------
 
 
-def test_siguiente_paso_en_un_workspace_vacio_es_el_alcance(session, example_store):
-    assert next_step_of(session.get("/").text) == ("/asistente/sistema", "Completar el alcance")
+def test_siguiente_paso_sin_aprobar_el_alcance_es_el_primer_paso_del_asistente_que_falta(
+    session, example_store
+):
+    step = BY_SLUG["aprobacion-alcance"]
+
+    assert next_step_of(session.get("/").text) == (f"/asistente/{step.slug}", step.title)
 
 
 def test_siguiente_paso_tras_el_alcance_es_la_categorizacion(session, example_store):
@@ -69,12 +76,15 @@ def test_siguiente_paso_tras_la_categorizacion_son_los_riesgos(completed):
 
     assert next_step_of(page) == (
         "/asistente/riesgos-metodologia",
-        "Elegir tu metodología de riesgos",
+        METODOLOGIA_TITLE,
     )
 
 
-def test_con_la_metodologia_adoptada_toca_registrar_riesgos(completed, example_store):
-    example_store.write_text(METHODOLOGY_MD_KEY, "# Nuestra metodología\n\nMAGERIT adaptada.\n")
+def test_con_la_metodologia_adoptada_toca_registrar_riesgos(completed):
+    completed.post(
+        "/asistente/riesgos-metodologia",
+        {"name": "MAGERIT v3", "reference": "Guía MAGERIT", "adaptation": "Tres niveles"},
+    )
 
     url, _ = next_step_of(completed.get("/").text)
 
@@ -224,3 +234,38 @@ def test_ningun_texto_deja_ordenes_de_la_cli(key):
     assert not re.search(r"--|\bmatrix \w|\bdocs \w|ens-evidence|evidence import|incident \w", text)
     assert "Siguiente paso" not in text
     assert text.endswith(".") and ".." not in text
+
+
+# --- una sola fuente de verdad con el asistente ---------------------------------------------------
+
+
+def test_el_estado_pregunta_a_los_pasos_del_asistente(monkeypatch, session, example_store):
+    sistema = BY_SLUG["sistema"]
+    monkeypatch.setattr(status_view, "STEPS", (replace(sistema, done=lambda *_: False),))
+    assert next_step_of(session.get("/").text)[0] == "/asistente/sistema"
+
+    monkeypatch.setattr(status_view, "STEPS", (replace(sistema, done=lambda *_: True),))
+    assert status_view._scope(UiStore(example_store), NOW, None).done
+
+
+# --- el resumen y el recorrido ------------------------------------------------------------
+
+
+def test_el_resumen_no_cuenta_general_como_medida(monkeypatch, session):
+    general = Blocker(kind=BlockerKind.UNDETERMINED_APPLICABILITY, measure_id=None)
+    monkeypatch.setattr(status_view, "assessment_status", lambda *a: fake_status(general))
+
+    page = session.get("/").text
+
+    assert "1 bloqueo" in page
+    assert "medida." not in page.split("Preparación:")[1].split("</p>")[0]
+    assert " en 0 medidas" not in page
+
+
+def test_con_una_fase_previa_pendiente_los_bloqueos_remiten_al_recorrido(completed):
+    page = completed.get("/").text
+
+    assert "Estos bloqueos se resuelven siguiendo el recorrido de arriba" in page
+    recorrido, falta = page.split('id="h-bloq"')
+    assert "es el documento que dice qué medidas del ENS te tocan" in recorrido
+    assert "es el documento que dice qué medidas del ENS te tocan" not in falta

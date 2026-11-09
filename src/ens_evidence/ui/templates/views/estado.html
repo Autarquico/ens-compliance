@@ -21,6 +21,7 @@
       {%- elif p.state == "next" %}{{ m.icon("clock") }}<strong>{{ p.label }}</strong> <span class="muted">· Ahora</span>
       {%- else %}{{ m.icon("help") }}<span>{{ p.label }}</span> <span class="muted">· Pendiente</span>
       {%- endif %}
+      {%- if p.label == "Aplicabilidad" %}<br><span class="muted">La Declaración de Aplicabilidad es el documento que dice qué medidas del ENS te tocan; la firma una persona responsable.</span>{% endif %}
     </li>
     {%- endfor %}
   </ol>
@@ -44,11 +45,11 @@
 </div>
 <section class="section" aria-labelledby="h-bloq">
   <h2 id="h-bloq">Lo que falta</h2>
-  <p class="muted">La Declaración de Aplicabilidad es el documento que dice qué medidas del ENS te tocan; la firma una persona responsable.</p>
   {% if errors %}
   <div class="notice notice-warn"><p><strong>No se ha podido leer algo del workspace:</strong></p><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
   {% endif %}
   {% if blockers %}
+  {% if earlier_phase_pending %}<p class="muted">Estos bloqueos se resuelven siguiendo el recorrido de arriba.</p>{% endif %}
   <div class="table-wrap"><table>
     <caption>Cada punto necesita una acción de una persona.</caption>
     <thead><tr><th scope="col">Medida</th><th scope="col">Qué pasa</th></tr></thead>

@@ -9,35 +9,24 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
-from ens_evidence.applicability import DeclarationState, declaration_status, validate_applicability
 from ens_evidence.assessment import assessment_status
 from ens_evidence.assessment.dossier import dossier_status
 from ens_evidence.assessment.dossier.store import list_dossiers
 from ens_evidence.assessment.render import blocker_lines_by_measure
-from ens_evidence.categorization import CategorizationState, categorization_status
+from ens_evidence.categorization import categorization_status
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.importer import INCIDENT_HISTORY_SOURCE
 from ens_evidence.matrix.messages import READINESS_LABELS
 from ens_evidence.models.enums import Category, DossierState, Readiness
 from ens_evidence.models.readiness import BlockerKind
-from ens_evidence.orgdocs import (
-    DocumentState,
-    all_statuses,
-    load_templates,
-    read_answers,
-    validate_answers,
-)
 from ens_evidence.preaudit.findings import current_dossier_run
-from ens_evidence.risk import RiskState, risk_status, validate_risk
-from ens_evidence.risk.models import METHODOLOGY_MD_KEY
-from ens_evidence.risk.templates import METHODOLOGY_MD
-from ens_evidence.scope import ScopeState, scope_status
+from ens_evidence.scope import scope_status
 from ens_evidence.ui.pages import page_context, render
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
-from ens_evidence.ui.wizard.docs import BLOCK_OF, BLOCKS
-from ens_evidence.workspace import NotFound
+from ens_evidence.ui.wizard import STEPS
+from ens_evidence.ui.wizard.docs import GROUP
 
 READINESS_NOTICE = (
     "La herramienta no declara conformidad; la valoración es de la persona que revisa."
@@ -99,89 +88,24 @@ class Phase:
 # --- cada fase calcula su estado real y, si falta, adónde ir ------------------------------------
 
 
-def _scope(store: UiStore, now: datetime, _: object) -> Phase:
-    done = scope_status(store).state is ScopeState.APPROVED
-    return Phase("alcance", "Alcance", done, "/asistente/sistema", "Completar el alcance")
+def _wizard_phase(key: str, label: str, group: str) -> Callable[..., Phase]:
+    """Una fase del asistente: hecha cuando lo están sus pasos; si no, va al primero que falta."""
+
+    def compute(store: UiStore, now: datetime, _: object) -> Phase:
+        required = [s for s in STEPS if s.group == group and not s.optional]
+        pending = next((s for s in required if not s.done(store, now)), None)
+        if pending is None:
+            return Phase(key, label, True, "", "")
+        return Phase(key, label, False, f"/asistente/{pending.slug}", pending.title)
+
+    return compute
 
 
-def _categorization(store: UiStore, now: datetime, _: object) -> Phase:
-    done = categorization_status(store, now).state is CategorizationState.CURRENT
-    return Phase(
-        "categorizacion", "Categorización", done, "/asistente/informacion",
-        "Completar la categorización",
-    )  # fmt: skip
-
-
-def _methodology_adopted(store: UiStore) -> bool:
-    try:
-        return store.read_text(METHODOLOGY_MD_KEY) != METHODOLOGY_MD
-    except NotFound:
-        return False
-
-
-def _risk(store: UiStore, now: datetime, _: object) -> Phase:
-    label = "Riesgos"
-    if risk_status(store, now).state is RiskState.APPROVED:
-        return Phase("riesgos", label, True, "", "")
-    if not _methodology_adopted(store):
-        return Phase(
-            "riesgos", label, False, "/asistente/riesgos-metodologia",
-            "Elegir tu metodología de riesgos",
-        )  # fmt: skip
-    analysis, _errors = validate_risk(store, now)
-    if analysis is None or not analysis.register.risks:
-        return Phase("riesgos", label, False, "/asistente/riesgos", "Registrar tus riesgos")
-    return Phase(
-        "riesgos", label, False, "/asistente/aprobacion-riesgos", "Aprobar el análisis de riesgos"
-    )
-
-
-def _applicability(store: UiStore, now: datetime, _: object) -> Phase:
-    label = "Aplicabilidad"
-    if declaration_status(store, now).state is DeclarationState.CURRENT:
-        return Phase("aplicabilidad", label, True, "", "")
-    validation = validate_applicability(store, now)
-    undecided = validation.measures is None or any(
-        m.applicability.value == "UNDETERMINED" or m.proposed for m in validation.measures.measures
-    )
-    if undecided or validation.errors:
-        return Phase(
-            "aplicabilidad", label, False, "/asistente/aplicabilidad",
-            "Decidir qué medidas te aplican",
-        )  # fmt: skip
-    return Phase(
-        "aplicabilidad", label, False, "/asistente/aprobacion-aplicabilidad",
-        "Firmar la Declaración de Aplicabilidad",
-    )  # fmt: skip
-
-
-def _documents(store: UiStore, now: datetime, _: object) -> Phase:
-    label = "Documentos"
-    statuses = all_statuses(store)
-    if all(s.state is DocumentState.APPROVED for s in statuses):
-        return Phase("documentos", label, True, "", "")
-    try:
-        raw = read_answers(store)
-    except ValueError:
-        raw = None
-    report = validate_answers(raw, load_templates())
-    if report.pending:
-        block = BLOCK_OF.get(report.pending[0].question.id)
-        return Phase(
-            "documentos", label, False, f"/asistente/{block.slug if block else BLOCKS[0].slug}",
-            "Responder el cuestionario de documentos",
-        )  # fmt: skip
-    needs_build = any(
-        s.state is DocumentState.NOT_GENERATED or (s.state is DocumentState.GENERATED and s.reasons)
-        for s in statuses
-    )
-    if needs_build:
-        return Phase(
-            "documentos", label, False, "/asistente/documentos-generar", "Generar los documentos"
-        )
-    return Phase(
-        "documentos", label, False, "/asistente/documentos-aprobar", "Aprobar los documentos"
-    )
+_scope = _wizard_phase("alcance", "Alcance", "alcance")
+_categorization = _wizard_phase("categorizacion", "Categorización", "categorizacion")
+_risk = _wizard_phase("riesgos", "Riesgos", "riesgos")
+_applicability = _wizard_phase("aplicabilidad", "Aplicabilidad", "aplicabilidad")
+_documents = _wizard_phase("documentos", "Documentos", GROUP)
 
 
 INCIDENT_MEASURE = "op.exp.9"
@@ -283,7 +207,7 @@ def estado(request: Request) -> Response:
     readiness = status.result.readiness
     groups = blocker_groups(readiness.blockers)
     count = sum(len(g["texts"]) for g in groups)
-    measures = len(groups)
+    measures = sum(1 for g in groups if g["measure_id"])
     summary = f"Preparación: {READINESS_LABELS[readiness.readiness]}"
     if readiness.readiness is Readiness.NOT_READY:
         summary += f", {count} bloqueo{'' if count == 1 else 's'}"
@@ -291,6 +215,11 @@ def estado(request: Request) -> Response:
     categorization = categorization_status(store, now)
     category = categorization.computation.category if categorization.computation else None
     rows, pending = progress(store, now, status)
+    labels = [r["label"] for r in rows]
+    before_applicability = (
+        rows[: labels.index("Aplicabilidad")] if "Aplicabilidad" in labels else []
+    )
+    earlier_phase_pending = any(r["state"] == "next" for r in before_applicability)
     return render(
         request,
         "views/estado.html",
@@ -306,6 +235,7 @@ def estado(request: Request) -> Response:
         next_step_url=pending.url if pending else None,
         next_step_label=pending.action if pending else FLOW_COMPLETE,
         blockers=groups,
+        earlier_phase_pending=earlier_phase_pending,
         errors=list(status.result.errors),
         generated_at=format_instant(now),
     )
