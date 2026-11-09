@@ -396,3 +396,28 @@ def test_las_credenciales_de_escritura_no_estan_fuera_del_volumen_de_backrest(bo
     assert READER[1] in env
     leaks = run(["grep", "-rl", "--exclude-dir=tests", WRITER[1], str(box.clone)]).stdout
     assert leaks.strip() == ""
+
+
+def test_reset_password_cambia_la_contrasena_sin_paquete_y_conserva_la_configuracion(
+    box, enabled, backrest_password
+):
+    before = json.loads(installed_config(box))
+
+    result = box.sh("kit", "copias", "reset-password")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    found = re.search(r"^  Contraseña: (\S{32})$", result.stdout, re.MULTILINE)
+    assert found, result.stdout
+    new = found.group(1)
+    assert new != backrest_password
+    old_code, _ = backrest_rpc(box, "v1.Backrest/GetConfig", "{}", password=backrest_password)
+    new_code, _ = backrest_rpc(box, "v1.Backrest/GetConfig", "{}", password=new)
+    assert (old_code, new_code) == ("401", "200")
+    after = json.loads(installed_config(box))
+    assert {k: v for k, v in after.items() if k != "auth"} == {
+        k: v for k, v in before.items() if k != "auth"
+    }
+    assert new not in result.stderr
+    for path in (box.clone / "deploy").rglob("*"):
+        if path.is_file():
+            assert new not in path.read_text(errors="ignore"), path

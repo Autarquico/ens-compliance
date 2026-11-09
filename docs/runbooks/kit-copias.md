@@ -79,8 +79,11 @@ escritura: trátalo como un secreto.
    `admin` con la autenticación activada. Backrest nunca arranca publicado sin
    usuario. Al terminar, `box.sh` muestra la contraseña **una sola vez** en la
    terminal; no la escribe en ningún fichero ni en los registros. Guárdala en el
-   gestor de contraseñas. Si la pierdes, repite `kit enable copias --replace-config`
-   con el mismo paquete (genera otra).
+   gestor de contraseñas. Si la pierdes, no hace falta el
+   paquete: `deploy/box.sh kit copias reset-password` reescribe solo el usuario
+   `admin` del `config.json` que ya hay en el volumen, reinicia `backrest` y
+   muestra la contraseña nueva una sola vez (la anterior deja de valer). Falla con
+   un error claro si las copias no están activadas.
 6. **Comprobar.** `deploy/box.sh status`; en Backrest, lanza el plan una vez.
    En la siguiente vuelta del scheduler la app lee el repositorio con las
    credenciales de lectura y `--no-lock`.
@@ -214,3 +217,29 @@ verificar, `docs/vision.md`):
 4. Con el de escritura: `restic forget --prune` y comprueba qué objetos quedan
    dentro de la retención (`rclone ls --s3-versions` o el panel).
 5. Anota el resultado y la fecha como revisión humana.
+
+## 9. Si la tarjeta dice…
+
+La tarjeta de copias de la app resume lo que lee del repositorio. Primeros pasos
+según lo que muestre:
+
+- **Caída.** La app no ha podido leer el repositorio. Las copias pueden estar
+  haciéndose igualmente: Backrest es independiente de la app. Comprueba, por este
+  orden:
+  1. Credenciales de lectura: `ENS_BACKUPS_<ID>_*` en `deploy/.env` (caducadas,
+     revocadas o con un valor mal copiado; sección 6).
+  2. Destino: que el bucket y el endpoint sigan siendo los del paquete y que el
+     proveedor no esté caído.
+  3. Red: que el VPS salga a internet hacia el destino
+     (`docker compose -p ens-box logs app`).
+  Tras corregir, `deploy/box.sh restart app` y espera a la siguiente vuelta del
+  scheduler.
+- **Con problemas.** La app sí lee el repositorio, pero alguna comprobación ha
+  fallado. Mira cuál en el detalle de la tarjeta:
+  1. Copia antigua: abre Backrest y revisa el último intento del plan (error de
+     origen, credenciales de escritura, destino sin espacio o sin acceso); lanza
+     el plan una vez.
+  2. Integridad: `restic check` ha fallado; no borres nada, y conserva el
+     registro para revisarlo con la persona responsable.
+  3. Prueba de restauración vencida: repite la sección 3 y regístrala como
+     prueba de restauración (revisión humana).

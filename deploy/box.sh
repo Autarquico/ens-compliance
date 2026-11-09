@@ -8,6 +8,7 @@
 #   deploy/box.sh status
 #   deploy/box.sh kit enable copias [--replace-config] <paquete.tar.gz>
 #   deploy/box.sh kit disable copias
+#   deploy/box.sh kit copias reset-password
 #
 # Lo ejecuta una persona con Docker en la VM, desde un clon del repositorio con la etiqueta
 # desplegada (git checkout <tag>). La imagen, compose.yaml y el Caddyfile salen de `git archive`
@@ -93,7 +94,7 @@ trap 'cleanup; release_lock' EXIT
 trap 'exit 130' INT TERM
 
 usage() {
-  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared|agent|ui|backrest] | status | kit enable copias [--replace-config] <paquete> | kit disable copias"
+  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared|agent|ui|backrest] | status | kit enable copias [--replace-config] <paquete> | kit disable copias | kit copias reset-password"
 }
 
 # --- comprobaciones ------------------------------------------------------------------------
@@ -754,7 +755,6 @@ extract_copias_package() {
     die "El paquete contiene enlaces u otros tipos de fichero; no se instala."
   mkdir "$dest"
   tar -xzf "$package" -C "$dest"
-  [ -z "$(find "$dest" ! -type f ! -type d)" ] || die "El paquete contiene enlaces u otros tipos de fichero; no se instala."
   for name in MANIFEST config.json compose.yaml app.env backups.yaml; do
     [ -f "$dest/copias/$name" ] || die "Al paquete le falta copias/$name."
   done
@@ -813,6 +813,14 @@ backrest_password_hash() {
   [ -n "$image" ] || die "No se encuentra la imagen de caddy en $REL/compose.yaml."
   docker run --rm -i --network none --read-only --cap-drop ALL --cap-add NET_BIND_SERVICE \
     --security-opt no-new-privileges:true "$image" caddy hash-password | tr -d '\n' | base64 | tr -d '\n'
+}
+
+# La contraseña solo vive en `backrest_password`: va al hash por stdin y se muestra al final, una vez.
+new_backrest_credentials() {
+  backrest_password=$(head -c 48 /dev/urandom | base64 | tr -d '=+/\n' | cut -c1-32)
+  [ "${#backrest_password}" -eq 32 ] || die "No se pudo generar la contraseña de Backrest."
+  password_hash=$(printf '%s\n' "$backrest_password" | backrest_password_hash)
+  [ -n "$password_hash" ] || die "No se pudo calcular el bcrypt de la contraseña de Backrest."
 }
 
 # Solo `repositories` con id y sin claves de credencial (la config del conector no lleva secretos).
@@ -909,11 +917,7 @@ kit_copias_enable() {
   [ "$has_config" = 0 ] || [ "$replace" = 1 ] ||
     die "Backrest ya tiene configuración (con su usuario). Para sustituirla por la del paquete usa --replace-config (la anterior queda como config.json.prev en su volumen)."
 
-  # La contraseña solo vive en esta variable: va al hash por stdin y se muestra al final, una vez.
-  backrest_password=$(head -c 48 /dev/urandom | base64 | tr -d '=+/\n' | cut -c1-32)
-  [ "${#backrest_password}" -eq 32 ] || die "No se pudo generar la contraseña de Backrest."
-  password_hash=$(printf '%s\n' "$backrest_password" | backrest_password_hash) ||
-    die "No se pudo calcular el bcrypt de la contraseña de Backrest."
+  new_backrest_credentials
 
   # Instalación. config.json (con el usuario inicial) solo llega al volumen por stdin; app.env solo a deploy/.env (600).
   add_backrest_user "$password_hash" <"$pkg/config.json" |
@@ -954,7 +958,35 @@ kit_copias_enable() {
   info "  Usuario:    admin"
   info "  Contraseña: $backrest_password"
   info "  Se muestra solo ahora y no se guarda en ningún sitio: pásala a tu gestor de contraseñas."
+  info "  Si la pierdes: deploy/box.sh kit copias reset-password (no hace falta el paquete)."
   info "  Borra el paquete $package: lleva las claves de escritura."
+}
+
+# Sin paquete: reescribe solo `auth` del config.json que ya hay en el volumen y reinicia Backrest.
+kit_copias_reset_password() {
+  [ $# -eq 0 ] || usage
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  [ -e "$COPIAS_OVERRIDE" ] || die "Las copias no están activadas (falta $COPIAS_OVERRIDE); no hay contraseña que restablecer."
+  has_config=$(in_backrest_config 'test -s /config/config.json && echo 1 || echo 0')
+  [ "$has_config" = 1 ] || die "Backrest no tiene config.json en su volumen; activa las copias con kit enable copias."
+  new_backrest_credentials
+  in_backrest_config 'cat /config/config.json' | add_backrest_user "$password_hash" |
+    in_backrest_config 'set -eu; umask 077
+    cat >/config/config.json.new
+    [ -s /config/config.json.new ] || { rm -f /config/config.json.new; exit 1; }
+    mv /config/config.json.new /config/config.json' ||
+    die "No se pudo reescribir la configuración de Backrest; la contraseña anterior sigue vigente."
+  dc up -d --no-build --no-deps --force-recreate backrest
+  wait_running backrest || die "Backrest no arranca; revisa: docker compose -p $PROJECT logs backrest"
+  info ""
+  info "Contraseña de Backrest restablecida:"
+  info "  Usuario:    admin"
+  info "  Contraseña: $backrest_password"
+  info "  Se muestra solo ahora y no se guarda en ningún sitio: pásala a tu gestor de contraseñas."
 }
 
 kit_copias_disable() {
@@ -980,6 +1012,11 @@ kit_copias_disable() {
 
 cmd_kit() {
   [ $# -ge 2 ] || usage
+  if [ "$1" = copias ] && [ "$2" = reset-password ]; then
+    shift 2
+    kit_copias_reset_password "$@"
+    return
+  fi
   action=$1
   tool=$2
   shift 2

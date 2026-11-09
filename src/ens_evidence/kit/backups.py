@@ -79,14 +79,14 @@ class S3Destination(_Strict):
         if parts.username or parts.password or parts.query or parts.fragment:
             raise ValueError("el endpoint S3 no puede llevar usuario, contraseña ni parámetros")
         if parts.path not in ("", "/"):
-            raise ValueError("el endpoint S3 no lleva ruta: el cubo y el prefijo se piden aparte")
+            raise ValueError("el endpoint S3 no lleva ruta: el bucket y el prefijo se piden aparte")
         return f"https://{parts.netloc}"
 
     @field_validator("bucket")
     @classmethod
     def _bucket(cls, value: str) -> str:
         if not _BUCKET.fullmatch(value):
-            raise ValueError("el nombre del cubo no es válido (3-63 caracteres a-z, 0-9, . o -)")
+            raise ValueError("el nombre del bucket no es válido (3-63 caracteres a-z, 0-9, . o -)")
         return value
 
     @field_validator("prefix")

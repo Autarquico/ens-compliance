@@ -814,7 +814,7 @@ def test_el_usuario_inicial_de_backrest_rechaza_un_hash_que_no_es_bcrypt_en_base
     assert result.stdout == ""
 
 
-def test_la_contrasena_inicial_de_backrest_solo_va_a_stdin_del_hash_y_a_la_terminal():
+def test_la_contrasena_de_backrest_solo_va_a_stdin_del_hash_y_a_la_terminal():
     kit = BOX_SH.read_text(encoding="utf-8").partition("# --- kit de herramientas")[2]
     uses = [
         line.strip()
@@ -822,14 +822,73 @@ def test_la_contrasena_inicial_de_backrest_solo_va_a_stdin_del_hash_y_a_la_termi
         if "backrest_password" in line.replace("backrest_password_hash", "")
     ]
 
-    assert len(uses) == 4, uses
-    assert uses[0].startswith("backrest_password=$(head -c 48 /dev/urandom")
-    assert uses[1].startswith('[ "${#backrest_password}" -eq 32 ]')
-    assert uses[2].startswith(
+    assert len(uses) == 6, uses
+    assert uses[0].startswith("# La contraseña solo vive en `backrest_password`")
+    assert uses[1].startswith("backrest_password=$(head -c 48 /dev/urandom")
+    assert uses[2].startswith('[ "${#backrest_password}" -eq 32 ]')
+    assert uses[3].startswith(
         "password_hash=$(printf '%s\\n' \"$backrest_password\" | backrest_password_hash)"
     )
-    assert uses[3].startswith('info "  Contraseña: $backrest_password"')
+    assert all(u.startswith('info "  Contraseña: $backrest_password"') for u in uses[4:])
     assert "--plaintext" not in kit
+
+
+def test_el_usuario_inicial_conserva_el_resto_de_la_configuracion_de_backrest():
+    config = json.dumps({"repos": [{"id": "bk-caja"}], "plans": [{"id": "p"}]})
+
+    result = run_validator("add_backrest_user", config, BCRYPT_B64)
+
+    assert result.returncode == 0, result.stderr
+    out = json.loads(result.stdout)
+    assert (out["repos"], out["plans"]) == ([{"id": "bk-caja"}], [{"id": "p"}])
+
+
+def test_si_docker_no_calcula_el_bcrypt_se_aborta_con_un_mensaje_claro(tmp_path):
+    (tmp_path / "compose.yaml").write_text("services:\n  caddy:\n    image: caddy:2\n")
+    bin_dir = tmp_path / "bin"
+    bin_dir.mkdir()
+    docker = bin_dir / "docker"
+    docker.write_text('#!/bin/sh\ncase "$*" in *hash-password*) exit 1 ;; esac\nexit 0\n')
+    docker.chmod(0o755)
+    script = "set -eu\nREL=$1\n" + "".join(
+        shell_function(n) for n in ("die", "backrest_password_hash")
+    )
+    script += shell_function("new_backrest_credentials") + "new_backrest_credentials\necho llegó\n"
+    env = {**os.environ, "PATH": f"{bin_dir}:{os.environ['PATH']}"}
+
+    result = subprocess.run(
+        ["sh", "-c", script, "sh", str(tmp_path)], env=env, capture_output=True, text=True
+    )
+
+    assert result.returncode != 0
+    assert "No se pudo calcular el bcrypt" in result.stderr
+    assert "llegó" not in result.stdout
+
+
+def test_el_uso_de_box_sh_lista_el_restablecimiento_de_la_contrasena(clone_with_docker_stub):
+    root, env = clone_with_docker_stub
+
+    result = subprocess.run(
+        ["sh", str(root / "deploy" / "box.sh"), "kit"], env=env, capture_output=True, text=True
+    )
+
+    assert result.returncode != 0
+    assert "kit copias reset-password" in result.stderr
+
+
+def test_restablecer_la_contrasena_sin_las_copias_activadas_falla_con_un_error_claro(
+    clone_with_docker_stub,
+):
+    root, env = clone_with_docker_stub
+
+    result = subprocess.run(
+        ["sh", str(root / "deploy" / "box.sh"), "kit", "copias", "reset-password"],
+        env=env,
+        capture_output=True,
+        text=True,
+    )
+
+    assert result.returncode != 0
 
 
 FILES = ("config.json", "compose.yaml", "app.env", "backups.yaml")
