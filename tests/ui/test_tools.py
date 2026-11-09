@@ -14,6 +14,7 @@ from starlette.testclient import TestClient
 from ens_evidence.applicability import approve_declaration, propose_applicability
 from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.checks.store import record_run
+from ens_evidence.connectors.backups import checks as backups_checks
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus
 from ens_evidence.ui.app import create_ui_app
@@ -53,7 +54,7 @@ FORM = {
 def record(store, *statuses: CheckStatus, complete: bool = True) -> None:
     results = [
         CheckResult(
-            check_id="BACKUP-001",
+            check_id=backups_checks.RECENT,
             asset_id="bk-diario",
             status=s,
             evaluated_at=NOW - timedelta(hours=1),
