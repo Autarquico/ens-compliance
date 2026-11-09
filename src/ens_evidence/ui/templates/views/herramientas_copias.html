@@ -5,18 +5,18 @@
 <h1>Preparar las copias de seguridad</h1>
 <p class="lead">Rellena el formulario y descarga un paquete de instalación. La contraseña del repositorio se genera al enviar y viaja solo dentro del paquete.</p>
 {{ m.revision_humana() }}
+<p>La política de copias (mp.info.6.1) la define y aprueba una persona; este asistente solo prepara la instalación. Consulta <a href="/matriz/mp.info.6">mp.info.6 en la matriz</a>.</p>
 {% if form_errors %}
 <div class="notice notice-bad" role="alert"><p><strong>No se ha generado el paquete.</strong> Revisa esto:</p>
 <ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% endif %}
-{% for n in notices %}<aside class="notice" role="note"><p>{{ n }}</p></aside>{% endfor %}
 <aside class="notice" role="note"><p>Con bloqueo de objetos, lo que Backrest pode al cumplirse la retención sigue ocupando espacio en el destino hasta que vence el bloqueo: el borrado solo deja una marca y la versión protegida se conserva.</p></aside>
 <aside class="notice notice-warn" role="note"><p><strong>El paquete se descarga una sola vez.</strong> Contiene la contraseña del repositorio y las claves de escritura. Nada de eso se guarda en la herramienta: si lo pierdes, no hay forma de recuperarlo y las copias dejarían de poder leerse. Guárdalo en un gestor de contraseñas y no lo subas a Git.</p></aside>
 <section class="card" aria-labelledby="h-despues">
   <h2 id="h-despues">Después de descargarlo</h2>
   <ol>
     <li>Copia el paquete al servidor y ejecuta: <code class="mono">{{ enable_command }}</code></li>
-    <li>Abre Backrest justo después: en el primer acceso hay que crear el usuario de Backrest. Hasta entonces solo lo protege el acceso de Cloudflare.</li>
+    <li>Abre Backrest justo después: entras con el usuario «admin» y la contraseña que el comando muestra una sola vez en la terminal; guárdala en tu gestor de contraseñas.</li>
     <li>Para otro servidor Linux, el paquete trae un fichero <span class="mono">INSTRUCCIONES.md</span> con los pasos.</li>
   </ol>
 </section>
@@ -40,7 +40,7 @@
 
   <h2>Destino S3</h2>
   {{ m.text_field("endpoint", "Dirección S3", "Con https:// y sin ruta. Por ejemplo: https://cuenta.r2.cloudflarestorage.com.") }}
-  {{ m.text_field("bucket", "Cubo", "El nombre del cubo, de 3 a 63 caracteres.") }}
+  {{ m.text_field("bucket", "Bucket", "Así lo llama tu proveedor (R2, B2, OVH…). De 3 a 63 caracteres.") }}
   {{ m.text_field("prefix", "Prefijo", "Opcional. Una carpeta dentro del cubo; conviene que sea distinta en cada conjunto de copias, por ejemplo el identificador.") }}
   {{ m.text_field("lock_days", "Días de bloqueo del cubo", "Los que protege el bloqueo de objetos del cubo. Es obligatorio: el cubo debe tenerlo activado.") }}
 
@@ -56,9 +56,9 @@
 
   <h2>Cuándo y cuánto tiempo</h2>
   {{ m.text_field("cron", "Cuándo se copia", "Cinco campos: minuto hora día mes día-de-la-semana. Por ejemplo, 0 2 * * * es cada día a las 02:00.") }}
-  {{ m.text_field("retention_days", "Días que se conservan", "Debe ser mayor que los días de bloqueo.") }}
+  {{ m.text_field("retention_days", "Días que se conservan", "Cuántos días atrás quieres poder restaurar. Lo que se descarta antes de que venza el bloqueo sigue ocupando espacio hasta entonces.") }}
   {{ m.text_field("max_backup_age_hours", "Antigüedad máxima de la última copia (horas)", "Pasado ese tiempo sin copia nueva, la comprobación falla.") }}
-  {{ m.text_field("max_check_age_days", "Antigüedad máxima de la última comprobación (días)", "") }}
+  {{ m.text_field("max_check_age_days", "Antigüedad máxima de la última comprobación (días)", "Pasado ese plazo sin una comprobación nueva del repositorio, la comprobación falla.") }}
   {{ m.text_field("restore_test_validity_days", "Validez de la prueba de restauración (días)", "La prueba la hace y registra una persona; pasado este plazo hay que repetirla.") }}
   {{ m.text_field("min_check_read_data_percent", "Porcentaje de datos que se relee en cada comprobación", "De 0 a 100. Por defecto " ~ default_read_percent ~ ". Con 0 solo se comprueba la estructura del repositorio.") }}
 

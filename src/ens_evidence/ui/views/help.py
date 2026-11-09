@@ -18,20 +18,38 @@ from starlette.routing import BaseRoute, Route
 from ens_evidence.ui.pages import error_page, page_context, render
 
 RUNBOOKS_DIR = Path(__file__).resolve().parent.parent / "runbooks"
-RUNBOOKS = frozenset({"kit-copias"})
+RUNBOOKS = frozenset({"kit-copias", "restauracion-de-evidencias"})
 
 _HEADING = re.compile(r"(#{1,6}) (.+)")
 _BULLET = re.compile(r"- (.*)")
 _NUMBERED = re.compile(r"(\d+)\. (.*)")
-_LINK = re.compile(r"\[([^\]]+)\]\([^)]*\)")
+_LINK = re.compile(r"\[([^\]]+)\]\(([^)]*)\)")
+_RUNBOOK_TARGET = re.compile(r"([a-z0-9-]+)\.md")
 _CODE = re.compile(r"`([^`]*)`")
 
 
+def _runbook_href(target: str) -> str | None:
+    named = _RUNBOOK_TARGET.fullmatch(target)
+    return f"/ayuda/{named[1]}" if named and named[1] in RUNBOOKS else None
+
+
 def _inline(text: str) -> list[dict[str, Any]]:
-    """Texto con `código`: segmentos que la plantilla escapa. Enlaces y negritas quedan en texto."""
-    text = _LINK.sub(r"\1", text).replace("**", "")
-    parts = _CODE.split(text)
-    return [{"code": i % 2 == 1, "text": t} for i, t in enumerate(parts) if t]
+    """Segmentos que la plantilla escapa: `código` y enlaces a otros runbooks de esta ayuda.
+
+    Cualquier otro enlace y las negritas quedan en texto plano.
+    """
+    parts: list[dict[str, Any]] = []
+    position = 0
+    for link in [*_LINK.finditer(text), None]:
+        end = link.start() if link else len(text)
+        plain = text[position:end].replace("**", "")
+        parts += [{"code": i % 2 == 1, "text": t} for i, t in enumerate(_CODE.split(plain)) if t]
+        if link:
+            href = _runbook_href(link[2])
+            label = link[1].replace("**", "")
+            parts.append({"code": False, "text": label, **({"href": href} if href else {})})
+            position = link.end()
+    return parts
 
 
 def parse_markdown(source: str) -> list[dict[str, Any]]:

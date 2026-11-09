@@ -107,15 +107,21 @@ def test_panel_con_evidencia_al_dia_muestra_la_fecha(session, example_store):
 
 
 @pytest.mark.parametrize(
-    "statuses,complete",
-    [((CheckStatus.PASS, CheckStatus.FAIL), True), ((CheckStatus.PASS,), False)],
+    "statuses,complete,label",
+    [
+        ((CheckStatus.PASS, CheckStatus.FAIL), True, "Con problemas"),
+        ((CheckStatus.PASS,), False, "Caída"),
+        ((CheckStatus.ERROR, CheckStatus.UNKNOWN), True, "Caída"),
+    ],
 )
-def test_panel_con_fallos_o_ejecucion_incompleta_dice_con_problemas(
-    session, example_store, statuses, complete
-):
+def test_panel_distingue_con_problemas_de_caida(session, example_store, statuses, complete, label):
     record(example_store, *statuses, complete=complete)
 
-    assert "Con problemas" in session.get("/herramientas").text
+    html = session.get("/herramientas").text
+
+    assert label in html
+    assert ("Caída" in html) is (label == "Caída")
+    assert 'href="/ayuda/kit-copias"' in html
 
 
 def test_panel_abre_backrest_en_el_host_configurado(config, example_store, key, token):
@@ -159,7 +165,7 @@ def test_el_formulario_muestra_el_defecto_y_no_prellena_claves(session):
     html = session.get("/herramientas/copias").text
 
     assert 'name="min_check_read_data_percent" value="5"' in html
-    assert "box.sh kit enable copias" in html and "primer acceso" in html
+    assert "box.sh kit enable copias" in html and "usuario «admin»" in html
     assert 'type="password"' in html and 'value="ana@example.com"' not in html
 
 
@@ -331,14 +337,33 @@ def test_las_paginas_nuevas_no_prometen_cumplimiento(session, web):
     assert not forbidden.search(web.get("/matriz/mp.info.6").text)
 
 
-def test_el_aviso_del_bloqueo_sale_junto_al_formulario_y_tras_validar(session):
-    assert "sigue ocupando espacio" in session.get("/herramientas/copias").text
-
+def test_el_aviso_del_bloqueo_sale_una_vez_en_get_y_en_422(session):
+    notice = "el borrado solo deja una marca"
     same_keys = {"read_access_key_id": WRITE_KEY, "read_secret_access_key": WRITE_SECRET}
-    response = session.post("/herramientas/copias", FORM | same_keys)
 
-    assert response.status_code == 422
-    assert "Con bloqueo de objetos (30 días)" in response.text
+    get = session.get("/herramientas/copias")
+    rejected = session.post("/herramientas/copias", FORM | same_keys)
+
+    assert rejected.status_code == 422
+    assert get.text.count(notice) == 1 and rejected.text.count(notice) == 1
+
+
+def test_la_ayuda_de_retencion_no_exige_mas_que_el_bloqueo(session):
+    assert "Debe ser mayor que los días de bloqueo" not in session.get("/herramientas/copias").text
+
+
+def test_el_asistente_remite_a_la_politica_de_copias(session):
+    html = session.get("/herramientas/copias").text
+
+    assert "mp.info.6.1" in html and 'href="/matriz/mp.info.6"' in html
+
+
+def test_el_asistente_dice_bucket_y_explica_la_comprobacion_y_el_acceso(session):
+    html = tail(session.get("/herramientas/copias").text)
+
+    assert "Bucket" in html and "Cubo" not in html
+    assert "Pasado ese plazo sin una comprobación nueva" in html
+    assert "usuario «admin»" in html and "una sola vez" in html
 
 
 def test_retencion_menor_que_el_bloqueo_no_se_rechaza(session):
@@ -385,3 +410,25 @@ def test_el_markdown_se_escapa_y_no_emite_html_propio():
 
 def test_la_tarjeta_sin_problemas_no_enlaza_al_runbook(session):
     assert "/ayuda/kit-copias" not in session.get("/herramientas").text
+
+
+def test_los_enlaces_a_otros_runbooks_se_resuelven_y_el_resto_es_texto():
+    from ens_evidence.ui.views.help import parse_markdown
+
+    text = "[a](restauracion-de-evidencias.md) [b](caja.md) [c](../specs/x.md) y `code`"
+    parts = parse_markdown(text)[0]["inline"]
+
+    assert [p.get("href") for p in parts if "href" in p] == ["/ayuda/restauracion-de-evidencias"]
+    assert [p["text"] for p in parts if not p["code"]][:3] == ["a", " ", "b"]
+
+
+def test_el_runbook_de_restauracion_servido_es_el_de_docs(session):
+    from ens_evidence.ui.views.help import RUNBOOKS_DIR
+
+    name = "restauracion-de-evidencias.md"
+    source = RUNBOOK_SOURCE.parent / name
+
+    assert (RUNBOOKS_DIR / name).read_bytes() == source.read_bytes()
+    assert (
+        session.get("/ayuda/kit-copias").text.count('href="/ayuda/restauracion-de-evidencias"') >= 1
+    )

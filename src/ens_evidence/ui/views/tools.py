@@ -40,6 +40,7 @@ ENABLE_COMMAND = "deploy/box.sh kit enable copias <fichero>"
 STATES = {
     "ok": ("ok", "Al día"),
     "problems": ("bad", "Con problemas"),
+    "down": ("bad", "Caída"),
     "nodata": ("neutral", "Sin datos"),
 }
 VOLUME_LABELS = {"data": "Datos de la caja (el workspace con tus evidencias)"}
@@ -50,25 +51,27 @@ SECRET_FIELDS = (
     "read_access_key_id",
     "read_secret_access_key",
 )
-LABELS = {
-    "id": "Identificador de las copias",
-    "asset_id": "Activo de copias",
-    "instance": "Nombre del servidor",
-    "endpoint": "Dirección S3",
-    "bucket": "Cubo",
-    "prefix": "Prefijo",
-    "lock_days": "Días de bloqueo del cubo",
-    "cron": "Cuándo se copia",
-    "retention_days": "Días que se conservan",
-    "max_backup_age_hours": "Antigüedad máxima de la última copia (horas)",
-    "max_check_age_days": "Antigüedad máxima de la última comprobación (días)",
-    "restore_test_validity_days": "Validez de la prueba de restauración (días)",
-    "min_check_read_data_percent": "Porcentaje de datos que se relee en cada comprobación",
-    "volumes": "Qué se copia de la caja",
-    "host_paths": "Rutas del servidor",
-    "variant": "Dónde se instala",
-    **dict.fromkeys(SECRET_FIELDS, "Clave"),
-}
+FIELDS = frozenset(
+    {
+        "id",
+        "asset_id",
+        "instance",
+        "endpoint",
+        "bucket",
+        "prefix",
+        "lock_days",
+        "cron",
+        "retention_days",
+        "max_backup_age_hours",
+        "max_check_age_days",
+        "restore_test_validity_days",
+        "min_check_read_data_percent",
+        "volumes",
+        "host_paths",
+        "variant",
+        *SECRET_FIELDS,
+    }
+)
 INT_FIELDS = (
     "lock_days",
     "retention_days",
@@ -87,27 +90,27 @@ class Rejected(Exception):
         self,
         fields: dict[str, list[str]],
         general: list[str],
-        notices: tuple[str, ...] = (),
     ) -> None:
         super().__init__("rechazado")
         self.fields = fields
         self.general = general
-        self.notices = notices
 
 
 # --- estado del kit (solo evidencia del workspace) -----------------------------------------------
 
 
 def kit_state(store: UiStore) -> dict[str, Any]:
-    """`ok`, `problems` o `nodata`, y la fecha de la última comprobación guardada."""
+    """`ok`, `problems`, `down` o `nodata`, y la fecha de la última comprobación guardada."""
     scan = scan_runs(store, CONNECTOR)
     last = scan.last(CONNECTOR)
     if last is None:
         key = "problems" if CONNECTOR in scan.unreadable else "nodata"
         return _state(key, None)
     run = last.run
-    healthy = run.complete and bool(run.results)
-    healthy = healthy and all(r.status is CheckStatus.PASS for r in run.results)
+    unanswered = {CheckStatus.ERROR, CheckStatus.UNKNOWN}
+    if not run.complete or all(r.status in unanswered for r in run.results):
+        return _state("down", run.finished_at)
+    healthy = all(r.status is CheckStatus.PASS for r in run.results)
     return _state("ok" if healthy else "problems", run.finished_at)
 
 
@@ -174,7 +177,6 @@ def _page(
     values: dict[str, Any] | None = None,
     errors: dict[str, list[str]] | None = None,
     form_errors: list[str] | None = None,
-    notices: tuple[str, ...] = (),
     status_code: int = 200,
 ) -> Response:
     return render(
@@ -189,7 +191,6 @@ def _page(
         | (values or {}),
         errors=errors or {},
         form_errors=form_errors or [],
-        notices=list(notices),
         backup_assets=_backup_assets(request.app.state.store),
         volumes=[{"value": v, "label": VOLUME_LABELS.get(v, v)} for v in sorted(ALLOWED_VOLUMES)],
         variants=[{"value": k, "label": v} for k, v in VARIANTS.items()],
@@ -298,7 +299,7 @@ def _collect(exc: ValidationError, fields: dict[str, list[str]], general: list[s
     for item in exc.errors(include_input=False, include_url=False):
         text = _text(item)
         name = _field_of(item["loc"])
-        if name in LABELS:
+        if name in FIELDS:
             fields.setdefault(name, []).append(text)
         else:
             general.append(text)
@@ -325,7 +326,7 @@ def _bundle(form: Form, assets: list[str], now: Any) -> tuple[bytes, str, str]:
     inputs = _inputs(form, fields, general, assets)
     secret = _secrets(form, fields, general)
     if inputs is None or secret is None or fields or general:
-        raise Rejected(fields, general, inputs.notices if inputs else ())
+        raise Rejected(fields, general)
     try:
         if first(form, "variant") == "servidor":
             return render_host_bundle(inputs, secret, now), inputs.id, "paquete-servidor"
@@ -349,7 +350,6 @@ async def generar(request: Request) -> Response:
             request,
             values=_echo(form),
             errors=rejected.fields,
-            notices=rejected.notices,
             form_errors=rejected.general
             or ["No se ha generado el paquete. Revisa los campos marcados."],
             status_code=422,

@@ -2,7 +2,7 @@
 {% block content %}
 <h1>{{ title }}</h1>
 <p class="muted"><a href="/herramientas">Volver a Herramientas</a>. Documento de solo lectura que viaja con la aplicación.</p>
-{% macro inline(parts) %}{% for p in parts %}{% if p.code %}<code class="mono">{{ p.text }}</code>{% else %}{{ p.text }}{% endif %}{% endfor %}{% endmacro %}
+{% macro inline(parts) %}{% for p in parts %}{% if p.code %}<code class="mono">{{ p.text }}</code>{% elif p.href %}<a href="{{ p.href }}">{{ p.text }}</a>{% else %}{{ p.text }}{% endif %}{% endfor %}{% endmacro %}
 {% for b in blocks %}
 {% if b.kind == "h" %}<h{{ b.level }}>{{ inline(b.inline) }}</h{{ b.level }}>
 {% elif b.kind == "p" %}<p>{{ inline(b.inline) }}</p>
