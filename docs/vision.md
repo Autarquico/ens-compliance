@@ -84,7 +84,7 @@ y pegar un comando, pero no sabe de seguridad ni de ENS.
 
 ## Arquitectura propuesta
 
-Una VM (o un portátil para evaluar) con `docker compose up`:
+Un VPS (o un portátil para evaluar, sin evidencia continua ni kit; ADR 0019) con `docker compose up`:
 
 ```
                   Internet
@@ -167,7 +167,8 @@ Cada fase es usable por sí sola.
   generador documental; login con MFA u OIDC; instalador de un comando;
   servidor osquery embebido y agentes; conector Microsoft 365; guías de
   servicios externos; revisión de las plantillas por un auditor ENS; landing
-  mínima.
+  mínima; kit de herramientas en el VPS con la primera ola (copias,
+  claves, contraseñas, identidad y antimalware).
 - **v0.3 y siguientes.** Perfil de detección (wazuh-manager sin cabeza +
   VictoriaLogs + panel de seguridad); incidentes; bundle offline y releases
   firmadas; paquetes de agente por sistema operativo; landing completa; más
@@ -236,6 +237,29 @@ Estados del expediente, en orden, cada uno con fecha y persona:
   aplicación.
 - Sin verificar: que restic funcione sobre un bucket con bloqueo de objetos de
   R2.
+
+## Kit de herramientas
+
+La herramienta no se limita a decir qué falta. Para cada carencia habitual
+ofrece una herramienta open source y la despliega: si la pyme no tiene
+copias de seguridad, le da un sistema para gestionarlas, y si no tiene
+almacén de claves, se lo da también. Spec: `docs/specs/toolkit-server.md`.
+
+- **Dónde vive (ADR 0019).** En el mismo VPS que la caja, siempre encendido:
+  uno que contrata la pyme (OVH, Hetzner, Scaleway…) o un servidor propio.
+  Cada herramienta es un perfil de Compose. El ordenador de la pyme solo abre
+  la web; un portátil sirve para evaluar la herramienta, sin el kit.
+- **Cómo se despliega.** La app genera la configuración y el comando, y el
+  usuario los ejecuta. Nunca guarda credenciales del servidor ni lo cambia
+  sin una acción explícita.
+- **Contrato de cada herramienta:** servicio, conector de solo lectura, checks
+  de uso real, runbook y aviso cuando falla. Instalar no es cumplir (regla 1).
+- **Primera ola (v0.2):** restic + Backrest (mp.info.6), OpenBao (op.exp.10),
+  Vaultwarden (apoyo parcial a op.acc.6), Authentik o Keycloak (op.acc.6) y
+  antimalware (op.exp.6: ClamAV en Linux, nativo evidenciado por osquery en
+  Windows y macOS).
+- **El servidor no guarda sus propios rescates:** las copias van a S3 con
+  bloqueo de objetos y las claves de desbloqueo quedan en manos de personas.
 
 ## Restricciones / no-goals
 
@@ -377,3 +401,5 @@ Cada escenario indica la versión en la que debe cumplirse.
     decididos (Anthropic y OpenAI).
   - Ollama u otro servidor local mediante el `base_url` del cliente
     OpenAI-compatible: sin verificar.
+  - Identidad del kit: Authentik o Keycloak (RAM, mantenimiento, OIDC para la
+    propia app).
