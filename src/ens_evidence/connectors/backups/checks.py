@@ -1,9 +1,12 @@
-"""Checks BACKUP-001..006 del conector `backups`: la lógica de Restic, aplicada por repositorio.
+"""Checks BACKUP-001, 003, 004, 005 y 006 de `backups`: la lógica de Restic, por repositorio.
 
 Cada repositorio de `data.repositories` se proyecta a un `CollectionResult` con la forma que
 esperan los checks de Restic y se evalúa con ellos; el resultado lleva el `asset_id` del
 repositorio. Solo BACKUP-001 difiere: cuenta cualquier snapshot, porque estos repositorios los
-escribe otra herramienta y no hay runs del workspace que los citen. Sin repositorios
+escribe otra herramienta y no hay runs del workspace que los citen. BACKUP-002 (errores de
+ejecución) no aplica: la app no ve las ejecuciones de Backrest; una copia fallida se detecta
+por BACKUP-001 (frescura). BACKUP-004 evalúa el `restic check` que el conector ejecuta en
+cada recogida. Sin repositorios
 interpretables no hay PASS.
 """
 
@@ -18,7 +21,6 @@ from ens_evidence.models.contracts import CheckResult, CollectionResult
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 
 RECENT = "backups.backup_001_recent"
-NO_ERRORS = "backups.backup_002_no_errors"
 REPOSITORY_ACCESSIBLE = "backups.backup_003_repository_accessible"
 INTEGRITY = "backups.backup_004_integrity"
 RESTORE_TEST = "backups.backup_005_restore_test"
@@ -91,7 +93,6 @@ def _recent(view: CollectionResult, evidence_id: str, evaluated_at: datetime) ->
 
 
 backup_001_recent = _per_repository(RECENT, _recent)
-backup_002_no_errors = _per_repository(NO_ERRORS, restic.backup_002_no_errors)
 backup_003_repository_accessible = _per_repository(
     REPOSITORY_ACCESSIBLE, restic.backup_003_repository_accessible
 )
@@ -101,7 +102,6 @@ backup_006_offsite = _per_repository(OFFSITE, restic.backup_006_offsite)
 
 ALL_CHECKS = (
     backup_001_recent,
-    backup_002_no_errors,
     backup_003_repository_accessible,
     backup_004_integrity,
     backup_005_restore_test,

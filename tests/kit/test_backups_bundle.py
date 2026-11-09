@@ -151,9 +151,19 @@ def test_backups_fragment_has_no_secret_and_expected_shape():
                 "max_backup_age_hours": 26,
                 "max_check_age_days": 35,
                 "restore_test_validity_days": 365,
+                "min_check_read_data_percent": 5,
             }
         ]
     }
+
+
+def test_min_check_read_data_percent_is_explicit_and_bounded():
+    schedule = inputs().schedule.model_dump()
+    chosen = inputs(schedule={**schedule, "min_check_read_data_percent": 0}).schedule
+    assert chosen.min_check_read_data_percent == 0
+    for bad in (-1, 101, 2.5):
+        with pytest.raises(ValidationError):
+            inputs(schedule={**schedule, "min_check_read_data_percent": bad})
 
 
 @pytest.mark.parametrize("retention", [30, 10])

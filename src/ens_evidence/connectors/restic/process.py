@@ -46,8 +46,10 @@ class ResticProcess:
         base_env: Mapping[str, str] | None = None,
         region: str | None = None,
         allowed: frozenset[tuple[str, ...]] = ALLOWED,
+        timeout: float = TIMEOUT_SECONDS,
     ) -> None:
         self._allowed = allowed
+        self._timeout = timeout
         self._repository = repository
         self._env = subprocess_env(secrets, base_env, region)
 
@@ -66,7 +68,7 @@ class ResticProcess:
                 text=True,
                 check=False,
                 shell=False,
-                timeout=TIMEOUT_SECONDS,
+                timeout=self._timeout,
             )
         except subprocess.TimeoutExpired:
             raise ResticUnavailable("timeout") from None

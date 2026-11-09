@@ -57,7 +57,6 @@ CHECK_FUNCTIONS: Mapping[str, CheckFunction] = MappingProxyType(
         restic.RESTORE_TEST: restic.backup_005_restore_test,
         restic.OFFSITE: restic.backup_006_offsite,
         backups.RECENT: backups.backup_001_recent,
-        backups.NO_ERRORS: backups.backup_002_no_errors,
         backups.REPOSITORY_ACCESSIBLE: backups.backup_003_repository_accessible,
         backups.INTEGRITY: backups.backup_004_integrity,
         backups.RESTORE_TEST: backups.backup_005_restore_test,

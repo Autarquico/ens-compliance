@@ -18,10 +18,13 @@ from ens_evidence.backup.environment import load_secrets
 from ens_evidence.backup.errors import BackupError
 from ens_evidence.connectors.backups import BackupsConfig, BackupsConnector, BackupsRun
 from ens_evidence.connectors.backups import checks as backups_checks
+from ens_evidence.connectors.backups.connector import check_command
 from ens_evidence.connectors.restic.process import (
     ALLOWED,
     LIST_ALL_SNAPSHOTS,
+    CommandResult,
     ResticProcess,
+    ResticUnavailable,
 )
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 
@@ -106,7 +109,7 @@ def test_sin_credenciales_el_repositorio_queda_en_error_y_sus_checks_no_pasan():
     assert entry["collection_status"] == "ERROR"
     assert "ENS_BACKUPS_CAJA_RESTIC_PASSWORD" in entry["error"]
     checks = [r for check in backups_checks.ALL_CHECKS for r in check(result, "ev-1", NOW)]
-    assert len(checks) == 6
+    assert len(checks) == 5
     assert CheckStatus.PASS not in {c.status for c in checks}
     assert not json.dumps(result.model_dump(mode="json")).count(PASSWORD)
 
@@ -152,10 +155,11 @@ def test_los_checks_se_evaluan_por_repositorio_con_su_asset_id():
         ("backups.backup_001_recent", "bk-of", CheckStatus.FAIL),
     ]
     every = [r for check in backups_checks.ALL_CHECKS for r in check(result, "ev-1", NOW)]
-    assert len(every) == 12
+    assert len(every) == 10
     assert {
         c.status for c in every if c.check_id.endswith(("004_integrity", "005_restore_test"))
     } == {CheckStatus.UNKNOWN}
+    assert not any("002" in c.check_id for c in every)
     assert all(c.evidence_ids == ["ev-1"] for c in every)
 
 
@@ -189,3 +193,79 @@ def test_sin_repositorios_interpretables_no_hay_pass():
 def test_la_configuracion_rechaza_ids_repetidos_o_invalidos_y_claves_ajenas(repositories):
     with pytest.raises(ValidationError):
         BackupsConfig(repositories=repositories)
+
+
+class CheckingRestic(FakeRestic):
+    def __init__(self, check=(0, ""), **kwargs) -> None:
+        super().__init__(**kwargs)
+        self.check = check
+
+    def __call__(self, args):
+        if "check" in args:
+            self.calls.append(args)
+            if isinstance(self.check, Exception):
+                raise self.check
+            return CommandResult(*self.check)
+        return super().__call__(args)
+
+
+def with_percent(percent: int | None) -> dict:
+    return repo("caja", "bk-caja") | (
+        {} if percent is None else {"min_check_read_data_percent": percent}
+    )
+
+
+def integrity(fake: CheckingRestic, percent: int | None = 5):
+    result = connector({"caja": fake}).collect(config(with_percent(percent)))
+    return result, backups_checks.backup_004_integrity(result, "ev-1", NOW)[0]
+
+
+@pytest.mark.parametrize(
+    ("percent", "flags"),
+    [(5, ("--read-data-subset=5%",)), (0, ())],
+)
+def test_ejecuta_check_sin_lock_con_el_subconjunto_configurado(percent, flags):
+    fake = CheckingRestic().with_snapshots(untagged_snapshot())
+
+    _, outcome = integrity(fake, percent)
+
+    assert ("--no-lock", "--no-cache", "check", "--json", *flags) in fake.calls
+    assert all(call[0] == "--no-lock" for call in fake.calls)
+    assert outcome.status is CheckStatus.PASS
+    assert outcome.asset_id == "bk-caja"
+
+
+def test_check_con_errores_es_fail_y_con_codigo_distinto_de_cero_sin_resumen_tambien():
+    summary = json.dumps({"message_type": "summary", "num_errors": 2, "broken_packs": ["a"]})
+
+    _, with_errors = integrity(CheckingRestic(check=(1, summary)))
+    _, no_summary = integrity(CheckingRestic(check=(1, "")))
+
+    assert with_errors.status is CheckStatus.FAIL
+    assert no_summary.status is CheckStatus.FAIL
+
+
+def test_check_no_ejecutable_nunca_es_pass():
+    _, outcome = integrity(CheckingRestic(check=ResticUnavailable("timeout")))
+
+    assert outcome.status is not CheckStatus.PASS
+
+
+def test_sin_umbral_no_se_ejecuta_check_y_la_integridad_es_unknown():
+    fake = CheckingRestic()
+
+    _, outcome = integrity(fake, None)
+
+    assert not any("check" in call for call in fake.calls)
+    assert outcome.status is CheckStatus.UNKNOWN
+
+
+def test_el_proceso_real_solo_admite_el_check_configurado():
+    process = ResticProcess(
+        "/r",
+        load_secrets("/r", {"ENS_BACKUP_RESTIC_PASSWORD": "x"}),
+        allowed=frozenset({*ALLOWED, check_command(5)}),
+    )
+
+    with pytest.raises(ValueError, match="no permitido"):
+        process(check_command(100))

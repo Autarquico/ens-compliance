@@ -48,6 +48,7 @@ _PRUNE_CRON = "0 4 * * 0"
 _CHECK_CRON = "0 5 1 * *"
 
 Days = Annotated[int, Field(gt=0, strict=True)]
+DEFAULT_MIN_CHECK_READ_DATA_PERCENT = 5
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 
 
@@ -106,6 +107,10 @@ class Schedule(_Strict):
     max_backup_age_hours: Days
     max_check_age_days: Days
     restore_test_validity_days: Days
+    # parte de los datos que la app relee en cada recogida; se emite siempre en backups.yaml
+    min_check_read_data_percent: Annotated[int, Field(ge=0, le=100, strict=True)] = (
+        DEFAULT_MIN_CHECK_READ_DATA_PERCENT
+    )
 
     @field_validator("cron")
     @classmethod
@@ -293,6 +298,7 @@ def _backups_fragment(inputs: BackupInputs) -> str:
         "max_backup_age_hours": s.max_backup_age_hours,
         "max_check_age_days": s.max_check_age_days,
         "restore_test_validity_days": s.restore_test_validity_days,
+        "min_check_read_data_percent": s.min_check_read_data_percent,
     }
     return yaml.safe_dump({"repositories": [entry]}, sort_keys=False, allow_unicode=True)
 
@@ -358,8 +364,8 @@ def _host_instructions(inputs: BackupInputs) -> str:
 Repositorio propio: {_repo_uri(inputs)} (id «{inputs.id}»),
 en el mismo destino que las demás copias.
 
-1. Instala Backrest con el script de instalación de su README
-   (https://github.com/garethgeorge/backrest), versión v1.14.1.
+1. Instala Backrest v1.14.1 con el script de instalación de su README
+   (https://github.com/garethgeorge/backrest).
    Fija `BACKREST_RESTIC_COMMAND` a un binario de restic que hayas verificado.
 2. Copia `config.json` a la ruta de configuración de Backrest de ese servidor (variable
    `BACKREST_CONFIG`) con permisos 600 y propietario el usuario que ejecuta Backrest.

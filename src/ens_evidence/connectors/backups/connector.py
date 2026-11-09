@@ -4,6 +4,7 @@ Un solo `CollectionResult`; cada repositorio lleva su `asset_id`, su estado de r
 secciones. Sin credenciales en el entorno el repositorio queda `ERROR` (nunca PASS, regla 5).
 """
 
+import json
 import os
 from collections.abc import Callable, Mapping
 from datetime import UTC, datetime
@@ -13,6 +14,7 @@ from pydantic import BaseModel
 
 from ens_evidence.backup.environment import load_secrets
 from ens_evidence.backup.errors import BackupError
+from ens_evidence.backup.restic import READ_ONLY
 from ens_evidence.connectors.backups.config import BackupsConfig, BackupsRun, RepositoryConfig
 from ens_evidence.connectors.base import Connector
 from ens_evidence.connectors.restic import sections
@@ -22,6 +24,7 @@ from ens_evidence.connectors.restic.process import (
     LIST_ALL_SNAPSHOTS,
     Executor,
     ResticProcess,
+    ResticUnavailable,
 )
 from ens_evidence.connectors.sections import Section, worst
 from ens_evidence.models.contracts import CollectionResult
@@ -33,6 +36,14 @@ from ens_evidence.workspace.settings import Settings
 
 SOURCE = "backups"
 READ_ALL = frozenset({*ALLOWED, LIST_ALL_SNAPSHOTS})
+CHECK_TIMEOUT_SECONDS = 3600
+
+
+def check_command(read_data_percent: int) -> tuple[str, ...]:
+    """`restic check` sin lock: solo estructura con 0 %, o esa parte de los datos."""
+    subset = (f"--read-data-subset={read_data_percent}%",) if read_data_percent else ()
+    return (*READ_ONLY, "check", "--json", *subset)
+
 
 ExecutorFactory = Callable[[RepositoryConfig], Executor]
 
@@ -100,6 +111,9 @@ class BackupsConnector(Connector):
             execute = self._execute(repository)
             repository_id = sections.read_repository(execute)
             collected = self._sections(execute, config, repository.repository, repository_id)
+            collected["integrity_checks"] = self._integrity(
+                execute, repository.min_check_read_data_percent, repository_id
+            )
         except (sections.CollectionFailed, BackupError) as exc:
             error = str(exc)
         return {
@@ -126,7 +140,52 @@ class BackupsConnector(Connector):
             secrets,
             base_env=self._env,
             region=self._region,
-            allowed=READ_ALL,
+            allowed=self._allowed(repository),
+            timeout=CHECK_TIMEOUT_SECONDS,
+        )
+
+    @staticmethod
+    def _allowed(repository: RepositoryConfig) -> frozenset[tuple[str, ...]]:
+        percent = repository.min_check_read_data_percent
+        return READ_ALL if percent is None else READ_ALL | {check_command(percent)}
+
+    def _integrity(
+        self, execute: Executor, percent: int | None, repository_id: str | None
+    ) -> Section:
+        """`restic check --no-lock` de esta recogida; sin umbral configurado no se ejecuta.
+
+        La evidencia es el propio resultado (código de salida y recuentos), con inicio y fin.
+        """
+        if percent is None or repository_id is None:
+            return Section(status=CollectionStatus.SUCCESS, summary={"count": 0, "unreadable": []})
+        started = self._clock()
+        try:
+            result = execute(check_command(percent))
+        except ResticUnavailable as exc:
+            return Section(
+                status=CollectionStatus.ERROR, reason=f"restic no disponible ({exc.kind})"
+            )
+        finished = self._clock()
+        errors, broken = _check_counts(result.stdout)
+        passed = result.returncode == 0
+        item = {
+            "check_id": f"{SOURCE}-live-{sections.instant(started)}",
+            "status": "completed" if passed else "failed",
+            "started_at": sections.instant(started),
+            "finished_at": sections.instant(finished),
+            "scope": f"subset:{percent}%" if percent else "metadata",
+            "read_data_percent": percent,
+            "exit_code": result.returncode,
+            "num_errors": errors if errors is not None else (0 if passed else None),
+            "broken_packs": broken,
+            "failure": None,
+            "repository_id": repository_id,
+            "bound": True,
+        }
+        return Section(
+            status=CollectionStatus.SUCCESS,
+            items=[item],
+            summary={"count": 1, "unreadable": []},
         )
 
     @staticmethod
@@ -141,7 +200,26 @@ class BackupsConnector(Connector):
             "repository": sections.collect_repository(repository, repository_id),
             "snapshots": snapshots,
             "runs": sections.collect_runs(records, repository_id, repository),
-            "integrity_checks": sections.collect_integrity_checks(records, repository_id),
             "restores": sections.collect_restores(records, repository_id),
             "restore_tests": sections.collect_restore_tests(records, repository_id, snapshots),
         }
+
+
+def _check_counts(stdout: str) -> tuple[int | None, int | None]:
+    """`num_errors` y `broken_packs` del último mensaje `summary` de `restic check --json`."""
+    for line in reversed(stdout.splitlines()):
+        try:
+            message = json.loads(line)
+        except ValueError:
+            continue
+        if isinstance(message, dict) and message.get("message_type") == "summary":
+            return _count(message.get("num_errors")), _broken(message.get("broken_packs"))
+    return None, None
+
+
+def _count(value: object) -> int | None:
+    return value if isinstance(value, int) and not isinstance(value, bool) and value >= 0 else None
+
+
+def _broken(value: object) -> int | None:
+    return 0 if value is None else len(value) if isinstance(value, list) else None

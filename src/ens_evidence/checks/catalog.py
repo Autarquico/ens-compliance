@@ -54,7 +54,6 @@ CHECKS: Mapping[str, CheckSpec] = MappingProxyType(
         "restic.backup_005_restore_test": CheckSpec("restic", SubjectKind.SELF_REPORTED),
         "restic.backup_006_offsite": CheckSpec("restic", SubjectKind.SELF_REPORTED),
         "backups.backup_001_recent": CheckSpec("backups", SubjectKind.SELF_REPORTED),
-        "backups.backup_002_no_errors": CheckSpec("backups", SubjectKind.SELF_REPORTED),
         "backups.backup_003_repository_accessible": CheckSpec("backups", SubjectKind.SELF_REPORTED),
         "backups.backup_004_integrity": CheckSpec("backups", SubjectKind.SELF_REPORTED),
         "backups.backup_005_restore_test": CheckSpec("backups", SubjectKind.SELF_REPORTED),
