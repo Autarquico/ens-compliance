@@ -2,12 +2,12 @@
 codename: ens-compliance
 title: "Kit: copias de seguridad con restic y Backrest"
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [66]
 depends_on: [box-packaging, collector-restic, web-ui-flujo]
 supersedes: []
 related_specs: [toolkit-server, installer]
