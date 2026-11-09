@@ -29,6 +29,14 @@ Las herramientas tienen que estar siempre encendidas, igual que el scheduler, el
 - **Recomendación desde la matriz.** Cada medida sin cubrir que tenga herramienta en el kit dice cuál, qué resuelve y qué no, y cuánto cuesta operarla.
 - **Despliegue.** Cada herramienta es un perfil de Compose de la caja. La app genera la configuración de las elegidas y el comando para activarlas, y el instalador (`installer`) prepara el VPS: cortafuegos, actualizaciones automáticas de seguridad y copia propia. La app no guarda credenciales del servidor y no lo modifica sin una acción explícita del usuario (reglas 6 a 8).
 - **Contrato por herramienta**, igual para todas: (1) servicio en el Compose, (2) conector de solo lectura que recoge evidencia de uso, (3) checks que comprueban uso real, no instalación, (4) runbook de operación, actualización, copia y restauración, (5) aviso en la web cuando deja de funcionar.
+- **Panel de acceso** (`/herramientas` en la web de la caja): la entrada única al kit. Por cada herramienta desplegada muestra para qué sirve en una frase, su estado y un botón «Abrir» que lleva a su interfaz. Las que no están desplegadas aparecen como propuesta, con el botón para añadirlas. Cada herramienta se publica en su propio subdominio, detrás de la misma protección que la web (Cloudflare Access o VPN), nunca en abierto. Si la herramienta lo admite, el inicio de sesión es único contra el proveedor de identidad del kit.
+- **Panel de monitorización** (`/monitorizacion`): una sola página con la salud de todo lo desplegado, sin Grafana ni servicios extra (visión, «Fuera a propósito»). Lo recoge el scheduler de la app:
+  - por herramienta: responde o no, versión y si hay actualización de seguridad, y su dato clave (última copia correcta, OpenBao sellado o no, firmas antimalware al día, usuarios sin doble factor);
+  - del VPS: CPU, memoria y disco (por osquery, que ya corre en el servidor), certificados TLS próximos a caducar y actualizaciones del sistema pendientes;
+  - de la caja: últimas ejecuciones del scheduler, agentes osquery que han dejado de reportar y copia externa al día;
+  - un histórico corto (p. ej. 30 días) y un aviso, por correo o por la propia web, cuando algo pasa a rojo.
+
+  La monitorización es operación, no cumplimiento: un verde en el panel no marca ninguna medida como cumplida. Lo que sí sirve como evidencia (p. ej. la última copia correcta) llega a la matriz por el conector de cada herramienta.
 - **Primera ola de herramientas:**
 
   | Carencia | Herramienta | Medidas que apoya | Evidencia que recoge |
@@ -79,6 +87,16 @@ Las herramientas tienen que estar siempre encendidas, igual que el scheduler, el
 - **When** la app recoge evidencias
 - **Then** la web lo muestra como problema con el enlace a su runbook, y la medida pierde la evidencia vigente
 
+### Scenario: una sola entrada al kit
+- **Given** el kit con varias herramientas desplegadas
+- **When** el usuario abre `/herramientas`
+- **Then** ve cada herramienta con su estado y un botón que abre su interfaz, y ninguna de ellas responde desde Internet sin pasar por la misma protección que la web
+
+### Scenario: el panel de monitorización dice qué falla
+- **Given** el kit en marcha, con una herramienta caída y el disco del VPS por encima del umbral
+- **When** el usuario abre `/monitorizacion`
+- **Then** ve las dos cosas en rojo, desde cuándo y con el enlace a su runbook, recibe el aviso configurado, y ninguna medida de la matriz cambia de estado por el panel
+
 ### Scenario: el paquete no deja secretos en la app
 - **Given** la configuración generada de una herramienta (con secretos de alta, claves S3 y contraseñas iniciales)
 - **When** el usuario lo descarga
@@ -88,6 +106,7 @@ Las herramientas tienen que estar siempre encendidas, igual que el scheduler, el
 
 - **Decidido (ADR 0019):** la caja y el kit en el mismo VPS; el portátil, solo para evaluar, sin kit.
 - **Concentración.** El servidor guarda las claves y las copias de la pyme, así que es un objetivo valioso. Necesita un bastionado mínimo (SSH solo con clave, cortafuegos, actualizaciones automáticas, sin paneles públicos: acceso por Cloudflare Access o VPN), y la review de seguridad es obligatoria en cada herramienta.
+- **Estado de los contenedores sin dar root a la app.** Leer el socket de Docker equivale a ser root en el VPS. La salud se comprueba por HTTP contra cada herramienta y por osquery; si hace falta el estado de los contenedores, se usa un proxy de solo lectura del socket, nunca el socket montado en la app.
 - **Carga de operación.** Cada herramienta añade actualizaciones, copias y usuarios. El kit solo vale si cada una trae runbook y vigilancia. Se empieza con las imprescindibles para BÁSICA.
 - **Licencias.** Verificar la licencia y las condiciones de redistribución de cada herramienta antes de incluirla (Backrest, OpenBao, Vaultwarden, Authentik o Keycloak, ClamAV).
 - **RAM.** Medir el consumo real del conjunto en un VPS pequeño (2-4 GiB) antes de fijar el tamaño recomendado.
@@ -100,6 +119,8 @@ Las herramientas tienen que estar siempre encendidas, igual que el scheduler, el
 
 - [ ] Perfiles del kit en el Compose de la caja; bastionado del VPS en el instalador; runbook de restauración completa del VPS
 - [ ] Registro del kit: medida → herramienta, y recomendación en la matriz
+- [ ] Panel de acceso `/herramientas`: subdominios tras Access y SSO con el IdP del kit
+- [ ] Panel de monitorización `/monitorizacion`: salud por herramienta, VPS (osquery), caja, histórico y avisos
 - [ ] Copias: restic + Backrest, conector y checks (copia vigente y prueba de restauración)
 - [ ] Claves: OpenBao con desbloqueo Shamir en manos humanas, conector y checks
 - [ ] Contraseñas: Vaultwarden, conector y checks

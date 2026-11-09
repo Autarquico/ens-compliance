@@ -254,6 +254,11 @@ almacén de claves, se lo da también. Spec: `docs/specs/toolkit-server.md`.
   sin una acción explícita.
 - **Contrato de cada herramienta:** servicio, conector de solo lectura, checks
   de uso real, runbook y aviso cuando falla. Instalar no es cumplir (regla 1).
+- **Dos paneles en la web de la caja:** uno de acceso, desde el que se abre
+  cada herramienta tras la misma protección que la web, y otro de
+  monitorización con la salud de las herramientas, del VPS y de la caja,
+  con avisos. La monitorización es operación: un verde no cumple ninguna
+  medida.
 - **Primera ola (v0.2):** restic + Backrest (mp.info.6), OpenBao (op.exp.10),
   Vaultwarden (apoyo parcial a op.acc.6), Authentik o Keycloak (op.acc.6) y
   antimalware (op.exp.6: ClamAV en Linux, nativo evidenciado por osquery en
