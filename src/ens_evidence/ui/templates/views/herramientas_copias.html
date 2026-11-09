@@ -41,8 +41,8 @@
   <h2>Destino S3</h2>
   {{ m.text_field("endpoint", "Dirección S3", "Con https:// y sin ruta. Por ejemplo: https://cuenta.r2.cloudflarestorage.com.") }}
   {{ m.text_field("bucket", "Bucket", "Así lo llama tu proveedor (R2, B2, OVH…). De 3 a 63 caracteres.") }}
-  {{ m.text_field("prefix", "Prefijo", "Opcional. Una carpeta dentro del cubo; conviene que sea distinta en cada conjunto de copias, por ejemplo el identificador.") }}
-  {{ m.text_field("lock_days", "Días de bloqueo del cubo", "Los que protege el bloqueo de objetos del cubo. Es obligatorio: el cubo debe tenerlo activado.") }}
+  {{ m.text_field("prefix", "Prefijo", "Opcional. Una carpeta dentro del bucket; conviene que sea distinta en cada conjunto de copias, por ejemplo el identificador.") }}
+  {{ m.text_field("lock_days", "Días de bloqueo del bucket", "Los que protege el bloqueo de objetos del bucket. Es obligatorio: el bucket debe tenerlo activado.") }}
 
   <h2>Qué se copia</h2>
   <fieldset class="checks">

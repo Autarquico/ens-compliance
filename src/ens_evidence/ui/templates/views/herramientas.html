@@ -10,7 +10,10 @@
     <p>Hace copias cifradas de tus datos a un almacenamiento externo y deja que la herramienta compruebe que existen y se pueden leer.</p>
     <p><span class="badge tone-{{ state.tone }}">{{ m.icon(m.TONE_ICON[state.tone]) }}<span>{{ state.label }}</span></span></p>
     <p class="muted">Última comprobación: <span class="mono">{{ state.checked_at }}</span>. El estado sale de la última evidencia guardada, no de una consulta en vivo.</p>
-    {% if state.key in ("problems", "down") %}<p><a href="/ayuda/kit-copias">Qué hacer cuando las copias fallan: runbook de las copias</a>.</p>{% endif %}
+    {% set hints = {
+      "down": "La app no ha podido leer el repositorio; las copias pueden estar haciéndose. Revisa las credenciales de lectura y el destino.",
+      "problems": "Alguna comprobación ha fallado: copia antigua, integridad o prueba de restauración vencida."} %}
+    {% if state.key in hints %}<p>{{ hints[state.key] }} <a href="/ayuda/kit-copias">Qué hacer cuando las copias fallan: runbook de las copias</a>.</p>{% endif %}
     <p>Apoya las medidas: {% for measure in measures %}<a class="mono" href="/matriz/{{ measure }}">{{ measure }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. La prueba de restauración la hace y registra una persona.</p>
     <div class="actions">
       {% if open_url %}<a class="btn btn-primary" href="{{ open_url }}">Abrir</a>

@@ -51,27 +51,6 @@ SECRET_FIELDS = (
     "read_access_key_id",
     "read_secret_access_key",
 )
-FIELDS = frozenset(
-    {
-        "id",
-        "asset_id",
-        "instance",
-        "endpoint",
-        "bucket",
-        "prefix",
-        "lock_days",
-        "cron",
-        "retention_days",
-        "max_backup_age_hours",
-        "max_check_age_days",
-        "restore_test_validity_days",
-        "min_check_read_data_percent",
-        "volumes",
-        "host_paths",
-        "variant",
-        *SECRET_FIELDS,
-    }
-)
 INT_FIELDS = (
     "lock_days",
     "retention_days",
@@ -80,6 +59,19 @@ INT_FIELDS = (
     "restore_test_validity_days",
     "min_check_read_data_percent",
 )
+ECHOED = (
+    "id",
+    "asset_id",
+    "instance",
+    "endpoint",
+    "bucket",
+    "prefix",
+    "cron",
+    "variant",
+    "host_paths",
+    *INT_FIELDS,
+)
+FIELDS = frozenset({*ECHOED, "volumes", *SECRET_FIELDS})
 GENERIC = "Revisa este campo."
 
 
@@ -205,21 +197,7 @@ def asistente(request: Request) -> Response:
 
 def _echo(form: Form) -> dict[str, Any]:
     """Lo escrito que se puede devolver al formulario: nunca las claves."""
-    echoed: dict[str, Any] = {
-        name: first(form, name)
-        for name in (
-            "id",
-            "asset_id",
-            "instance",
-            "endpoint",
-            "bucket",
-            "prefix",
-            "cron",
-            "variant",
-            "host_paths",
-            *INT_FIELDS,
-        )
-    }
+    echoed: dict[str, Any] = {name: first(form, name) for name in ECHOED}
     echoed["volumes"] = list(form.get("volumes", []))
     return echoed
 

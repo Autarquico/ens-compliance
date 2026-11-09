@@ -2,7 +2,9 @@
 
 import io
 import logging
+import re
 import tarfile
+from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 
@@ -19,9 +21,10 @@ from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.config import COPIAS_HOST_ENV, UiConfigError, load_ui_config
+from ens_evidence.ui.views.help import RUNBOOKS_DIR, parse_markdown
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
 
-from .conftest import NOW, ORIGIN, Session, auth, jwks_for, snapshot_of
+from .conftest import NOW, ORIGIN, Session, auth, jwks_for, snapshot_of, ui_client
 
 SHA = "a" * 64
 WRITE_KEY = "WRITEKEY-sentinel-0001"
@@ -122,14 +125,12 @@ def test_panel_distingue_con_problemas_de_caida(session, example_store, statuses
 
     assert label in html
     assert ("Caída" in html) is (label == "Caída")
+    assert ("no ha podido leer" in html) is (label == "Caída")
+    assert ("comprobación ha fallado" in html) is (label == "Con problemas")
     assert 'href="/ayuda/kit-copias"' in html
 
 
 def test_panel_abre_backrest_en_el_host_configurado(config, example_store, key, token):
-    from dataclasses import replace
-
-    from .conftest import Session, ui_client
-
     deployed = Session(
         ui_client(replace(config, copias_host="copias.example.org"), example_store, key), token
     )
@@ -330,8 +331,6 @@ def test_otra_ficha_no_propone_el_kit(web):
 
 
 def test_las_paginas_nuevas_no_prometen_cumplimiento(session, web):
-    import re
-
     forbidden = re.compile(r"certific|garantiza el cumplimiento|cumple el ENS", re.IGNORECASE)
     for path in ("/herramientas", "/herramientas/copias"):
         assert not forbidden.search(session.get(path).text), path
@@ -377,8 +376,6 @@ RUNBOOK_SOURCE = Path(__file__).resolve().parents[2] / "docs" / "runbooks" / "ki
 
 
 def test_el_runbook_servido_es_el_de_docs():
-    from ens_evidence.ui.views.help import RUNBOOKS_DIR
-
     assert (RUNBOOKS_DIR / "kit-copias.md").read_bytes() == RUNBOOK_SOURCE.read_bytes()
 
 
@@ -397,8 +394,6 @@ def test_otros_nombres_de_ayuda_dan_404(session, name):
 
 
 def test_el_markdown_se_escapa_y_no_emite_html_propio():
-    from ens_evidence.ui.views.help import parse_markdown
-
     blocks = parse_markdown(
         "# T\n\n<script>x</script> `<b>`\n\n1. uno\n   ```\n   <i>\n   ```\n2. dos"
     )
@@ -414,8 +409,6 @@ def test_la_tarjeta_sin_problemas_no_enlaza_al_runbook(session):
 
 
 def test_los_enlaces_a_otros_runbooks_se_resuelven_y_el_resto_es_texto():
-    from ens_evidence.ui.views.help import parse_markdown
-
     text = "[a](restauracion-de-evidencias.md) [b](caja.md) [c](../specs/x.md) y `code`"
     parts = parse_markdown(text)[0]["inline"]
 
@@ -424,8 +417,6 @@ def test_los_enlaces_a_otros_runbooks_se_resuelven_y_el_resto_es_texto():
 
 
 def test_el_runbook_de_restauracion_servido_es_el_de_docs(session):
-    from ens_evidence.ui.views.help import RUNBOOKS_DIR
-
     name = "restauracion-de-evidencias.md"
     source = RUNBOOK_SOURCE.parent / name
 
