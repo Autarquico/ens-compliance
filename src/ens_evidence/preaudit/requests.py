@@ -20,7 +20,6 @@ los ficheros del número `n`:
 - `<n>.result.json`: `DONE` o `ERROR`, con un mensaje acotado que nunca lleva valores secretos.
 """
 
-import json
 import re
 from collections.abc import Callable
 from dataclasses import dataclass
@@ -45,9 +44,6 @@ EXPIRES_AFTER = timedelta(hours=24)
 MAX_MESSAGE = 500
 _KEY = re.compile(
     rf"{re.escape(REQUESTS_PREFIX)}/(?P<dossier>[^/]+)/(?P<n>\d{{6}})(?P<part>\.started|\.result)?\.json"
-)
-_PREPARED_KEY = re.compile(
-    rf"{service.PREAUDITS_PREFIX}/\d{{8}}T\d{{12}}Z-[0-9a-f]{{12}}/{re.escape(service.PREPARED_NAME)}"
 )
 _EMAIL = re.compile(r"[^@\s]+@[^@\s]+")
 _INTERRUPTED = (
@@ -133,7 +129,8 @@ def request_prepare(
     store: WorkspaceStore, dossier: str, *, by: str, email: str, now: datetime
 ) -> RequestStatus:
     """Pide preparar el envío de `dossier`. `RequestRejected` si ya hay otra petición viva."""
-    _check_identity(dossier, by, email)
+    if errors := _check_identity_problems(dossier, by, email):
+        raise RequestRejected(errors)
     request = PrepareRequest(dossier=dossier, by=by, email=email, requested_at=now)
     return _create(store, request, now)
 
@@ -179,21 +176,9 @@ def _check_identity_problems(dossier: str, by: str, email: str) -> list[str]:
     return errors
 
 
-def _check_identity(dossier: str, by: str, email: str) -> None:
-    if errors := _check_identity_problems(dossier, by, email):
-        raise RequestRejected(errors)
-
-
 def _prepared_sha256(store: WorkspaceStore, prepared_key: str, dossier: str) -> str | None:
-    if not _PREPARED_KEY.fullmatch(prepared_key):
-        return None
-    try:
-        prepared = json.loads(store.read_bytes(prepared_key))
-    except (ValueError, NotFound):
-        return None
-    if not isinstance(prepared, dict) or prepared.get("dossier") != dossier:
-        return None
-    return prepared.get("payload_sha256")
+    prepared = service.read_prepared(store, prepared_key)
+    return prepared.payload_sha256 if prepared and prepared.dossier == dossier else None
 
 
 def _create(

@@ -22,9 +22,8 @@ registrada como tal. La disposición humana de los hallazgos va aparte (`review.
 """
 
 import hashlib
-import json
 import re
-from collections.abc import Callable, Mapping
+from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
 
@@ -36,6 +35,7 @@ from ens_evidence.assessment.dossier.store import (
     stored_snapshot_sha256,
 )
 from ens_evidence.assessment.dossier.verification import verification_problems
+from ens_evidence.models.contracts import Strict
 from ens_evidence.models.preaudit import (
     CLI_PROVIDERS,
     Consent,
@@ -81,7 +81,7 @@ PREPARED_NAME = "prepared.json"
 PAYLOAD_NAME = "payload.json"
 PREPARED_FORMAT = "ens-preaudit-prepared/1"
 CONSENT_FORMAT = "ens-preaudit-consent/1"
-_PREPARED_KEY = re.compile(
+PREPARED_KEY = re.compile(
     rf"{PREAUDITS_PREFIX}/\d{{8}}T\d{{12}}Z-[0-9a-f]{{12}}/{re.escape(PREPARED_NAME)}"
 )
 DEFAULT_BASE_URL = {
@@ -152,6 +152,34 @@ class Prepared:
     destination: str
     requires_shell_warning: bool
     pack_version: str
+
+
+class PreparedRecord(Strict):
+    """Lo que guarda `prepared.json`: lo que liga el consentimiento a lo preparado."""
+
+    format: str
+    prepared_at: str
+    dossier: str
+    dossier_sha256: str
+    payload: str
+    payload_sha256: str
+    provider: str
+    model: str
+    destination: str
+    requires_shell_warning: bool
+    pack_version: str
+    pack_sha256: str
+
+
+def read_prepared(store: WorkspaceStore, key: str) -> PreparedRecord | None:
+    """El `prepared.json` de `key`; None si la clave no es de una preparación o no se puede leer."""
+    if not PREPARED_KEY.fullmatch(key):
+        return None
+    try:
+        record = PreparedRecord.model_validate_json(store.read_bytes(key))
+    except (ValueError, NotFound):
+        return None
+    return record if record.format == PREPARED_FORMAT else None
 
 
 def prepare(
@@ -359,11 +387,11 @@ def _consented(
             ]
         )
     key, prepared = _find_prepared(store, dossier, consent_sha256)
-    if prepared["pack_sha256"] != pack.sha256:
+    if prepared.pack_sha256 != pack.sha256:
         raise PreAuditRejected(
             ["el audit pack ha cambiado desde la preparación; vuelve a preparar"]
         )
-    if prepared["provider"] != chosen.value or prepared["model"] != config.model:
+    if prepared.provider != chosen.value or prepared.model != config.model:
         raise PreAuditRejected(
             ["el proveedor o el modelo han cambiado desde la preparación; vuelve a preparar"]
         )
@@ -377,7 +405,7 @@ def _consented(
         )
     client = _client(chosen, config, client_factory)
     destination = client.destination
-    if destination != prepared["destination"]:
+    if destination != prepared.destination:
         raise PreAuditRejected(
             ["el destino ha cambiado desde la preparación; vuelve a preparar y a consentir"]
         )
@@ -408,22 +436,14 @@ def _record_consent(store: WorkspaceStore, consented: Consented) -> None:
         ) from None
 
 
-def _find_prepared(store: WorkspaceStore, dossier: str, sha256: str) -> tuple[str, dict]:
+def _find_prepared(store: WorkspaceStore, dossier: str, sha256: str) -> tuple[str, PreparedRecord]:
     """La preparación más reciente de `dossier` con esa huella."""
     found = []
     for key in store.list(PREAUDITS_PREFIX):
-        if not _PREPARED_KEY.fullmatch(key) or key.split("/")[-2][-12:] != sha256[:12]:
+        if not PREPARED_KEY.fullmatch(key) or key.split("/")[-2][-12:] != sha256[:12]:
             continue
-        try:
-            prepared = json.loads(store.read_bytes(key))
-        except (ValueError, NotFound):
-            continue
-        if (
-            isinstance(prepared, dict)
-            and prepared.get("format") == PREPARED_FORMAT
-            and prepared.get("dossier") == dossier
-            and prepared.get("payload_sha256") == sha256
-        ):
+        prepared = read_prepared(store, key)
+        if prepared and prepared.dossier == dossier and prepared.payload_sha256 == sha256:
             found.append((key, prepared))
     if not found:
         raise PreAuditRejected(
@@ -432,10 +452,10 @@ def _find_prepared(store: WorkspaceStore, dossier: str, sha256: str) -> tuple[st
     return max(found, key=lambda item: item[0])
 
 
-def _stored_payload_sha256(store: WorkspaceStore, prepared: Mapping) -> str | None:
+def _stored_payload_sha256(store: WorkspaceStore, prepared: PreparedRecord) -> str | None:
     try:
-        return hashlib.sha256(store.read_bytes(prepared["payload"])).hexdigest()
-    except (NotFound, KeyError, TypeError):
+        return hashlib.sha256(store.read_bytes(prepared.payload)).hexdigest()
+    except NotFound:
         return None
 
 
