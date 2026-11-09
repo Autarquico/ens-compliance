@@ -593,6 +593,20 @@ def test_flujo_completo_hasta_la_firma_de_la_declaracion(completed, example_stor
     assert status.declaration.role.value == "security_officer"
 
 
+def test_un_correo_en_la_firma_de_la_declaracion_se_rechaza_y_no_escribe(completed, example_store):
+    approved_risks(completed)
+    prepared(completed)
+    decide_everything_pending(example_store)
+
+    response = completed.post(
+        "/asistente/aprobacion-aplicabilidad",
+        {"accion": "aprobar", "approved_by": "marta@example.com"},
+    )
+
+    assert response.status_code == 422 and "marta@example.com" not in response.text
+    assert declaration_status(example_store, NOW).state is DeclarationState.NOT_APPROVED
+
+
 # --- lenguaje llano ----------------------------------------------------------------------------
 
 
@@ -611,6 +625,14 @@ def test_los_motivos_salen_sin_ordenes_de_cli(raw):
 
     assert not CLI_ORDER.search(plain) and "(scope approve)" not in plain and "`" not in plain
     assert plain[0].isupper()
+
+
+def test_un_termino_entre_comillas_no_hace_perder_la_idea():
+    (plain,) = plain_errors(
+        ["op.acc.1: la justificación propuesta se editó; quita `proposed` para conservarla"]
+    )
+
+    assert "`" not in plain and "conservarla" in plain and "decídela otra vez" in plain
 
 
 def test_los_pasos_exportados_tienen_las_rutas_fijadas():

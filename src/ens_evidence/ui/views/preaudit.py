@@ -47,6 +47,7 @@ from ens_evidence.ui.pages import error_page, identity_of, page_context, render
 from ens_evidence.ui.plain import translate
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
+from ens_evidence.workspace import NotFound
 
 STEP = "preauditoria"
 NOT_DISPOSED = "No se dispone"
@@ -143,7 +144,7 @@ def _prepared_summary(store: UiStore, found: tuple[str, PreparedRecord]) -> dict
         intact = hashlib.sha256(raw).hexdigest() == sha256 and bool(_SHA256.fullmatch(sha256))
         content = json.loads(raw).get("dossier", {}) if intact else {}
         counts = {name: _count(content, name) for name in counts}
-    except (ValueError, OSError, AttributeError):
+    except (ValueError, OSError, AttributeError, NotFound):
         intact = False
     return {
         "key": key,

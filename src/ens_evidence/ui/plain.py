@@ -46,6 +46,11 @@ COMMAND_TRANSLATIONS: tuple[tuple[re.Pattern[str], str], ...] = tuple(
         (r"`chosen_reinforcements`", "los refuerzos elegidos"),
         (r"`absent_assets`", "la ausencia de activo"),
         (r"`compensation`", "la compensación"),
+        (
+            r"quita `proposed` para conservarla",
+            "decídela otra vez con el botón de su ficha para conservarla",
+        ),
+        (r"`base`", "la obligación base"),
         (r"^[\w/.-]+\.yaml › ", ""),
         # pre-auditoría
         (r"--by:", "Quién lo hace:"),
