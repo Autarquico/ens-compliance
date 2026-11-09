@@ -38,6 +38,7 @@ from ens_evidence.ui.wizard.base import (
     Step,
     StepInput,
     StepRejected,
+    declared_name,
     items,
     read_yaml,
     reject_removals,
@@ -334,7 +335,7 @@ def _aprobacion_context(step: StepInput) -> Context:
 def _aprobacion_save(step: StepInput) -> None:
     if first(step.form, "accion") != "aprobar":
         return
-    by = required(step.form, {"approved_by": "Quién lo aprueba"})["approved_by"]
+    by = declared_name(first(step.form, "approved_by"), "Quién lo aprueba", "approved_by")
     try:
         approve_scope(step.store, by, Role.SYSTEM_OWNER, step.now)
     except ScopeApprovalRejected as exc:

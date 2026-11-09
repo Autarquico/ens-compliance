@@ -367,13 +367,13 @@ def test_the_whole_flow_generates_and_approves_the_six_documents(session, approv
     assert "Aprobar este documento" not in page
 
 
-def test_approval_form_prefills_the_identity_and_names_the_declared_signatory(session, approved):
+def test_approval_form_leaves_the_name_empty_and_names_the_declared_signatory(session, approved):
     fill_all(session)
     session.post("/asistente/documentos-generar", {"accion": "generar"})
 
     page = session.get("/asistente/documentos-aprobar").text
 
-    assert 'name="approved_by" value="ana@example.com"' in page
+    assert 'name="approved_by" value=""' in page
     assert f"<strong>{MANAGER}</strong>" in page
     assert f"<strong>{SECURITY}</strong>" in page
     assert "Lo aprueba la dirección" in page
@@ -387,13 +387,26 @@ def test_a_name_that_is_not_the_declared_one_is_rejected_in_plain_words(session,
 
     response = session.post(
         "/asistente/documentos-aprobar",
-        {"accion": "aprobar", "documento": "politica-seguridad", "approved_by": "ana@example.com"},
+        {"accion": "aprobar", "documento": "politica-seguridad", "approved_by": "Otra Persona"},
     )
 
     assert response.status_code == 422
     assert "no es la persona declarada" in response.text
     assert "firmante_direccion" not in response.text
     assert snapshot_of(approved) == before
+
+
+def test_approving_with_an_email_instead_of_a_name_is_rejected(session, approved):
+    fill_all(session)
+    session.post("/asistente/documentos-generar", {"accion": "generar"})
+
+    response = session.post(
+        "/asistente/documentos-aprobar",
+        {"accion": "aprobar", "documento": "politica-seguridad", "approved_by": "ana@example.com"},
+    )
+
+    assert response.status_code == 422
+    assert "Quién lo aprueba" in response.text
 
 
 def test_approving_without_a_name_marks_that_documents_field(session, approved):

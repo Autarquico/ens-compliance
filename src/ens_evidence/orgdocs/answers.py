@@ -366,8 +366,18 @@ def set_answer(store: WorkspaceStore, key: str, value: Any) -> None:
     Lanza ValueError si la clave no es una pregunta, si la forma no es la de su tipo o si el
     valor es de relleno. Un valor vacío deja la pregunta sin responder.
     """
-    templates = load_templates()
-    question = next((q for q in all_questions(templates) if q.id == key), None)
+    set_answers(store, {key: value})
+
+
+class AnswersRejected(ValueError):
+    """Respuestas rechazadas; `by_question` da el mensaje de cada pregunta."""
+
+    def __init__(self, by_question: dict[str, str]) -> None:
+        super().__init__("; ".join(by_question.values()))
+        self.by_question = by_question
+
+
+def _checked(question: Question | None, key: str, value: Any) -> Any:
     if question is None:
         raise ValueError(f"{key}: pregunta desconocida")
     problems: list[str] = []
@@ -376,13 +386,31 @@ def set_answer(store: WorkspaceStore, key: str, value: Any) -> None:
         problems.append(f"{key}: la respuesta está vacía o es de relleno")
     if problems:
         raise ValueError("; ".join(problems))
+    if isinstance(normalized, NotApplicable):
+        return {NOT_APPLICABLE: True, REASON: normalized.reason}
+    return normalized
+
+
+def set_answers(store: WorkspaceStore, changes: dict[str, Any]) -> None:
+    """Fija varias respuestas a la vez, conservando las demás: todas o ninguna.
+
+    Lanza AnswersRejected (un ValueError) con el mensaje de cada pregunta rechazada, sin escribir.
+    """
+    if not changes:
+        return
+    templates = load_templates()
+    questions = {q.id: q for q in all_questions(templates)}
+    checked: dict[str, Any] = {}
+    rejected: dict[str, str] = {}
+    for key, value in changes.items():
+        try:
+            checked[key] = _checked(questions.get(key), key, value)
+        except ValueError as exc:
+            rejected[key] = str(exc)
+    if rejected:
+        raise AnswersRejected(rejected)
     current = (
         read_answers(store) if store.exists(ANSWERS_KEY) else yaml.safe_load(skeleton(templates))
     )
-    answers = dict(current or {})
-    answers[key] = (
-        {NOT_APPLICABLE: True, REASON: normalized.reason}
-        if isinstance(normalized, NotApplicable)
-        else normalized
-    )
+    answers = {**(current or {}), **checked}
     store.write_text(ANSWERS_KEY, yaml.safe_dump(answers, allow_unicode=True, sort_keys=False))

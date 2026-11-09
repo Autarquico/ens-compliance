@@ -67,11 +67,11 @@
 </div>
 {%- endmacro %}
 
-{# Campo "Lo aprueba": prellenado con la identidad; se puede editar. #}
-{% macro approver_field(default) -%}
+{# Campo "Lo aprueba": vacío; quien aprueba escribe su nombre. #}
+{% macro approver_field() -%}
 <div class="field">
-  <label for="f-approved_by">Lo aprueba<span class="hint">Tu nombre completo. Aparece en el expediente como quien aprueba. Puedes cambiarlo.</span></label>
-  <input type="text" id="f-approved_by" name="approved_by" value="{{ (values or {}).get('approved_by', default or '') }}" autocomplete="name"{% if (errors or {}).get('approved_by') %} aria-invalid="true" aria-describedby="err-approved_by"{% endif %}>
+  <label for="f-approved_by">Lo aprueba<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
+  <input type="text" id="f-approved_by" name="approved_by" value="{{ (values or {}).get('approved_by', '') }}" autocomplete="name"{% if (errors or {}).get('approved_by') %} aria-invalid="true" aria-describedby="err-approved_by"{% endif %}>
   {{ field_errors("approved_by") }}
 </div>
 {%- endmacro %}

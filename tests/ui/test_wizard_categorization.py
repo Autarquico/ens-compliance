@@ -66,14 +66,14 @@ def test_informacion_requires_both_fields(session, approved):
     assert 'id="err-description"' in response.text
 
 
-def test_valoraciones_lists_elements_with_prefilled_signer(session, approved):
+def test_valoraciones_lists_elements_with_an_empty_signer(session, approved):
     add_info(session)
 
     page = session.get("/asistente/valoraciones")
 
     assert 'name="rating~information~datos~C~level"' in page.text
     assert 'name="rating~service~svc-facturacion~D~justification"' in page.text
-    assert 'name="valued_by~information~datos" value="ana@example.com"' in page.text
+    assert 'name="valued_by~information~datos" value=""' in page.text
 
 
 def test_valoraciones_saves_ratings_and_signs_complete_elements(session, approved):

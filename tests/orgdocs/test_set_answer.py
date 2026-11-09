@@ -73,3 +73,22 @@ def test_set_answer_vacio_deja_la_pregunta_sin_responder(answered):
     set_answer(answered, "organizacion", "")
 
     assert read_answers(answered)["organizacion"] == ""
+
+
+def test_set_answers_writes_all_or_nothing(scoped):
+    from ens_evidence.orgdocs.answers import AnswersRejected, set_answers
+
+    before = read_answers(scoped) if scoped.exists("org/answers.yaml") else None
+    with pytest.raises(AnswersRejected) as rejected:
+        set_answers(scoped, {"organizacion": "Acme S.L.", "no_existe": "x"})
+    assert set(rejected.value.by_question) == {"no_existe"}
+    assert (read_answers(scoped) if scoped.exists("org/answers.yaml") else None) == before
+
+
+def test_set_answers_writes_every_change_at_once(scoped):
+    from ens_evidence.orgdocs.answers import set_answers
+
+    set_answers(scoped, {"organizacion": "Acme S.L.", "uso_equipos": ["Bloqueo a los 5 minutos"]})
+    answers = read_answers(scoped)
+    assert answers["organizacion"] == "Acme S.L."
+    assert answers["uso_equipos"] == ["Bloqueo a los 5 minutos"]

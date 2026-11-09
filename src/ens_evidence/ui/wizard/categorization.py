@@ -27,6 +27,7 @@ from ens_evidence.ui.wizard.base import (
     Step,
     StepInput,
     StepRejected,
+    declared_name,
     items,
     read_yaml,
     rejected_to_step,
@@ -158,6 +159,8 @@ def _valuations_due(step: StepInput, elements: list[dict], changes: list) -> lis
         )
         current = element["valuation"]
         if signer and complete and (not current or current["valued_by"] != signer):
+            field_name = f"valued_by~{element['kind']}~{element['id']}"
+            declared_name(signer, "Quién lo valora", field_name)
             due.append((element["kind"], element["id"], signer))
     return due
 
@@ -237,7 +240,7 @@ def _aprobacion_context(step: StepInput) -> Context:
 def _aprobacion_save(step: StepInput) -> None:
     if first(step.form, "accion") != "aprobar":
         return
-    by = required(step.form, {"approved_by": "Quién lo aprueba"})["approved_by"]
+    by = declared_name(first(step.form, "approved_by"), "Quién lo aprueba", "approved_by")
     try:
         approve_categorization(step.store, by, step.now)
     except ScopeNotApproved:

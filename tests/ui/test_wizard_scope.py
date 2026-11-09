@@ -197,9 +197,9 @@ def test_dependencias_adds_and_empty_form_is_noop(session, example_store):
     assert next(d for d in deps if d["id"] == "dep-x")["purpose"] == "SSH"
 
 
-def test_aprobacion_alcance_prefills_identity_and_approves(session, example_store):
+def test_aprobacion_alcance_leaves_the_name_empty_and_approves(session, example_store):
     page = session.get("/asistente/aprobacion-alcance")
-    assert 'value="ana@example.com"' in page.text
+    assert 'name="approved_by" value=""' in page.text
 
     response = session.post(
         "/asistente/aprobacion-alcance", {"approved_by": "Ana Ruiz", "accion": "aprobar"}

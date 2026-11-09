@@ -8,6 +8,7 @@ from typing import Any
 
 import yaml
 
+from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.ui.forms import Form, first
 from ens_evidence.ui.store import UiStore
 from ens_evidence.workspace import NotFound, NotText
@@ -92,3 +93,12 @@ def required(form: Form, names: dict[str, str]) -> dict[str, str]:
     if missing:
         raise StepRejected(missing)
     return values
+
+
+def declared_name(name: str, label: str, field_name: str) -> str:
+    """El nombre que alguien declara de sí mismo; `StepRejected` en `field_name` si no vale."""
+    if not name.strip():
+        raise StepRejected({field_name: [f"{label}: es obligatorio."]})
+    if errors := check_declared_name(name, label):
+        raise StepRejected({field_name: errors})
+    return name

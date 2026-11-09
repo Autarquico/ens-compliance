@@ -26,8 +26,9 @@ from ens_evidence.orgdocs import (
 from ens_evidence.orgdocs.answers import (
     NOT_APPLICABLE,
     REASON,
+    AnswersRejected,
     declared_people,
-    set_answer,
+    set_answers,
     squash,
 )
 from ens_evidence.orgdocs.approval import ROLE_QUESTION, required_role
@@ -44,7 +45,14 @@ from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.ui.forms import Form, first
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
-from ens_evidence.ui.wizard.base import Context, Step, StepInput, StepRejected, read_yaml
+from ens_evidence.ui.wizard.base import (
+    Context,
+    Step,
+    StepInput,
+    StepRejected,
+    declared_name,
+    read_yaml,
+)
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
 
 GROUP = "documentos"
@@ -445,31 +453,6 @@ def _same(new: Any, stored: Any) -> bool:
     return new == stored
 
 
-class _Scratch:
-    """Copia en memoria de `org/answers.yaml` para probar las respuestas antes de escribir."""
-
-    def __init__(self, text: str | None) -> None:
-        self._text = text
-
-    def exists(self, key: str) -> bool:
-        return self._text is not None
-
-    def read_text(self, key: str) -> str:
-        if self._text is None:
-            raise NotFound(key)
-        return self._text
-
-    def write_text(self, key: str, text: str) -> None:
-        self._text = text
-
-
-def _current_text(store: UiStore) -> str | None:
-    try:
-        return store.read_text(ANSWERS_KEY)
-    except (NotFound, NotText):
-        return None
-
-
 def _field_messages(question: Question, error: ValueError) -> list[str]:
     text = str(error).replace(f"{question.id}: ", "")
     return [_plain(part) for part in text.split("; ") if part]
@@ -485,17 +468,14 @@ def _block_save(block: Block, step: StepInput) -> None:
         new = _answer_from_form(question, step.form)
         if not _same(new, raw.get(question.id)):
             changes[question.id] = new
-    scratch = _Scratch(_current_text(step.store))
-    errors: dict[str, list[str]] = {}
-    for question_id, new in changes.items():
-        try:
-            set_answer(cast(WorkspaceStore, scratch), question_id, new)
-        except ValueError as exc:
-            errors[f"a~{question_id}"] = _field_messages(_questions()[question_id], exc)
-    if errors:
-        raise StepRejected(errors, ["Revisa las respuestas marcadas."])
-    for question_id, new in changes.items():
-        set_answer(cast(WorkspaceStore, step.store), question_id, new)
+    try:
+        set_answers(cast(WorkspaceStore, step.store), changes)
+    except AnswersRejected as exc:
+        errors = {
+            f"a~{question_id}": _field_messages(_questions()[question_id], ValueError(message))
+            for question_id, message in exc.by_question.items()
+        }
+        raise StepRejected(errors, ["Revisa las respuestas marcadas."]) from None
 
 
 def _block_done(block: Block, store: UiStore, now: datetime) -> bool:
@@ -621,7 +601,7 @@ def _approval_rows(step: StepInput) -> list[dict[str, Any]]:
                 **row,
                 "role_label": ROLE_LABELS[role] if role else None,
                 "signatory": _signatory(role, values),
-                "by": first(step.form, "approved_by") if posted == row["name"] else step.email,
+                "by": first(step.form, "approved_by") if posted == row["name"] else "",
                 "can_approve": status.state in (DocumentState.GENERATED, DocumentState.OBSOLETE),
                 "approval": {
                     "approved_by": approval.approved_by,
@@ -660,8 +640,7 @@ def _aprobar_save(step: StepInput) -> None:
     if name not in document_names():
         raise StepRejected(form_errors=["No reconocemos ese documento."])
     by = first(step.form, "approved_by")
-    if not by:
-        raise StepRejected({f"approved_by~{name}": ["Escribe quién lo aprueba."]})
+    declared_name(by, "Quién lo aprueba", f"approved_by~{name}")
     role = required_role(name, _report(step.store).values)
     if role is None:
         raise StepRejected(

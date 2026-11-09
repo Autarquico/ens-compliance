@@ -245,10 +245,10 @@ def test_cada_escritura_de_riesgos_deja_su_linea_de_auditoria(completed, caplog)
 # --- aprobación de los riesgos -----------------------------------------------------------------
 
 
-def test_aprobar_riesgos_lista_lo_que_falta_y_prellena_quien_aprueba(completed, example_store):
+def test_aprobar_riesgos_lista_lo_que_falta_y_deja_vacio_quien_aprueba(completed, example_store):
     page = completed.get("/asistente/aprobacion-riesgos").text
 
-    assert 'value="ana@example.com"' in page
+    assert 'name="approved_by" value=""' in page
     assert "Antes de aprobar" in page and " disabled" in page
     response = completed.post(
         "/asistente/aprobacion-riesgos", {"accion": "aprobar", "approved_by": "Marta Gil"}

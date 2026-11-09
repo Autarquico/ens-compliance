@@ -15,7 +15,7 @@
 <div class="notice notice-warn"><p><strong>Antes de aprobar, corrige esto:</strong></p><ul>{% for e in scope_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% endif %}
 <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
-  {{ m.approver_field(approver_default) }}
+  {{ m.approver_field() }}
   <div class="actions">
     <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if scope_errors %} disabled{% endif %}>Aprobar alcance</button>
     {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}

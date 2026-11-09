@@ -94,7 +94,6 @@ def _page(
         form_errors=form_errors or [],
         saved=saved,
         values=values,
-        approver_default=step_input.email,
     )
 
 

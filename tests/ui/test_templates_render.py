@@ -97,7 +97,6 @@ def _wizard(step: str, **extra):
         "form_errors": [],
         "saved": False,
         "values": {},
-        "approver_default": "ana@example.org",
         **extra,
     }
 

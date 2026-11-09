@@ -129,8 +129,8 @@
       <legend>Quién acepta el riesgo que queda</legend>
       <p class="hint">Solo hace falta si el riesgo que queda no es el mínimo de la escala o si decides aceptarlo. Si no, déjalo como está.</p>
       <div class="field">
-        <label for="f-accepted_by">Lo acepta</label>
-        <input type="text" id="f-accepted_by" name="accepted_by" value="{{ v.get('accepted_by', approver_default or '') }}" autocomplete="name"{% if errors.get("accepted_by") %} aria-invalid="true" aria-describedby="err-accepted_by"{% endif %}>
+        <label for="f-accepted_by">Lo acepta<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
+        <input type="text" id="f-accepted_by" name="accepted_by" value="{{ v.get('accepted_by', '') }}" autocomplete="name"{% if errors.get("accepted_by") %} aria-invalid="true" aria-describedby="err-accepted_by"{% endif %}>
         {{ m.field_errors("accepted_by") }}
       </div>
       <div class="field">
