@@ -750,6 +750,8 @@ extract_copias_package() {
   printf '%s\n' "$names" | grep -vxE 'copias/?|copias/(MANIFEST|config[.]json|compose[.]yaml|app[.]env|backups[.]yaml)' |
     grep -q . && die "El paquete contiene ficheros que no son del contrato; no se instala."
   [ -z "$(printf '%s\n' "$names" | grep -v '/$' | sort | uniq -d)" ] || die "El paquete repite ficheros; no se instala."
+  tar -tvzf "$package" | grep -q '^[^-d]' &&
+    die "El paquete contiene enlaces u otros tipos de fichero; no se instala."
   mkdir "$dest"
   tar -xzf "$package" -C "$dest"
   [ -z "$(find "$dest" ! -type f ! -type d)" ] || die "El paquete contiene enlaces u otros tipos de fichero; no se instala."
@@ -789,6 +791,30 @@ for volume in doc["services"]["backrest"]["volumes"]:
 '
 }
 
+# Usuario inicial de Backrest (invariante: nunca arranca publicado sin usuario con contraseña).
+# $1 es el bcrypt en base64 (formato de config.proto); lee config.json por stdin y lo escribe por stdout.
+add_backrest_user() {
+  in_app python -I -c '
+import json
+import re
+import sys
+
+if not re.fullmatch(r"JDJ[A-Za-z0-9+/]{77}", sys.argv[1]):
+    sys.exit("el hash bcrypt del usuario de Backrest no tiene el formato esperado")
+config = json.load(sys.stdin)
+config["auth"] = {"disabled": False, "users": [{"name": "admin", "passwordBcrypt": sys.argv[1]}]}
+sys.stdout.write(json.dumps(config, indent=2, sort_keys=True, ensure_ascii=False) + "\n")
+' "$1"
+}
+
+# bcrypt (en base64, como lo guarda Backrest) de la contraseña de stdin, con la imagen de Caddy de la release.
+backrest_password_hash() {
+  image=$(sed -n 's/^    image: \(caddy:.*\)$/\1/p' "$REL/compose.yaml")
+  [ -n "$image" ] || die "No se encuentra la imagen de caddy en $REL/compose.yaml."
+  docker run --rm -i --network none --read-only --cap-drop ALL --cap-add NET_BIND_SERVICE \
+    --security-opt no-new-privileges:true "$image" caddy hash-password | tr -d '\n' | base64 | tr -d '\n'
+}
+
 # Solo `repositories` con id y sin claves de credencial (la config del conector no lleva secretos).
 validate_copias_fragment() {
   in_app python -I -c '
@@ -803,8 +829,8 @@ if not isinstance(repos, list) or not repos:
     sys.exit("backups.yaml del paquete: solo se admite repositories (lista no vacía)")
 secret = re.compile(r"password|secret|token|credential|access_?key", re.IGNORECASE)
 for repo in repos:
-    if not isinstance(repo, dict) or not re.fullmatch(r"[a-z0-9_-]+", str(repo.get("id", ""))):
-        sys.exit("backups.yaml del paquete: cada repositorio necesita un id [a-z0-9_-]+")
+    if not isinstance(repo, dict) or not re.fullmatch(r"[a-z][a-z0-9_]{1,30}", str(repo.get("id", ""))):
+        sys.exit("backups.yaml del paquete: cada repositorio necesita un id [a-z][a-z0-9_]{1,30}")
     if any(secret.search(str(key)) for key in repo):
         sys.exit("backups.yaml del paquete: no puede llevar credenciales")
 '
@@ -883,10 +909,19 @@ kit_copias_enable() {
   [ "$has_config" = 0 ] || [ "$replace" = 1 ] ||
     die "Backrest ya tiene configuración (con su usuario). Para sustituirla por la del paquete usa --replace-config (la anterior queda como config.json.prev en su volumen)."
 
-  # Instalación. config.json solo llega al volumen por stdin; app.env solo a deploy/.env (600).
-  in_backrest_config 'set -eu; umask 077
+  # La contraseña solo vive en esta variable: va al hash por stdin y se muestra al final, una vez.
+  backrest_password=$(head -c 48 /dev/urandom | base64 | tr -d '=+/\n' | cut -c1-32)
+  [ "${#backrest_password}" -eq 32 ] || die "No se pudo generar la contraseña de Backrest."
+  password_hash=$(printf '%s\n' "$backrest_password" | backrest_password_hash) ||
+    die "No se pudo calcular el bcrypt de la contraseña de Backrest."
+
+  # Instalación. config.json (con el usuario inicial) solo llega al volumen por stdin; app.env solo a deploy/.env (600).
+  add_backrest_user "$password_hash" <"$pkg/config.json" |
+    in_backrest_config 'set -eu; umask 077
+    cat >/config/config.json.new
+    [ -s /config/config.json.new ] || { rm -f /config/config.json.new; exit 1; }
     [ ! -e /config/config.json ] || mv /config/config.json /config/config.json.prev
-    cat >/config/config.json.new && mv /config/config.json.new /config/config.json' <"$pkg/config.json" ||
+    mv /config/config.json.new /config/config.json' ||
     die "No se pudo escribir la configuración de Backrest en su volumen."
   ensure_env_file
   merge_copias_env "$pkg/app.env"
@@ -915,10 +950,11 @@ kit_copias_enable() {
   wait_healthy caddy || die "caddy no está sano; revisa: docker compose -p $PROJECT logs caddy"
   recreate_service app
   info ""
-  info "Copias activadas. AHORA, antes de nada más (docs/runbooks/kit-copias.md, sección 2):"
-  info "  1. Abre https://$COPIAS_HOST (pasa por Access) y crea el usuario de Backrest."
-  info "     Hasta entonces Backrest no pide contraseña a quien llegue a esa URL."
-  info "  2. Borra el paquete $package: lleva las claves de escritura."
+  info "Copias activadas. Backrest ya pide usuario y contraseña (docs/runbooks/kit-copias.md, sección 2):"
+  info "  Usuario:    admin"
+  info "  Contraseña: $backrest_password"
+  info "  Se muestra solo ahora y no se guarda en ningún sitio: pásala a tu gestor de contraseñas."
+  info "  Borra el paquete $package: lleva las claves de escritura."
 }
 
 kit_copias_disable() {

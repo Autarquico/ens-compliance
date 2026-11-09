@@ -39,7 +39,7 @@ persona (sección 3).
   quita `Cookie` y `Cf-Access-*`.
 - Caddy no valida el JWT de Access en este host. Si la aplicación de Access
   falta o su política está mal, lo único que protege es el usuario de Backrest
-  (sección 2, paso 5).
+  (`admin`, que crea `box.sh` al activar; sección 2, paso 5).
 
 ## 2. Alta
 
@@ -67,24 +67,28 @@ escritura: trátalo como un secreto.
    `box.sh` rechaza el paquete si trae algo que no sea de los cinco ficheros, o si
    un sha256 del `MANIFEST` no coincide, antes de tocar nada. Luego:
    `config.json` entra por stdin en el volumen `backrest-config` (modo 600, dueño
-   10001); `app.env` se funde en `deploy/.env`; `backups.yaml` se funde en
+   10001, ya con el usuario `admin`); `app.env` se funde en `deploy/.env`; `backups.yaml` se funde en
    `connectors/backups.yaml` del workspace; `compose.yaml` se instala (tras
    validar que solo toca los volúmenes de `backrest`, de host, en `:ro` bajo
    `/source/`) en `deploy/kit/copias/`. Recrea `backrest`, `caddy` y `app`. Nada
-   de eso imprime valores.
+   de eso imprime valores, salvo la contraseña de `admin` (ver el paso 5).
 4. **Borra el paquete.** `rm` o `shred`; el de `/herramientas` no se guarda en la app.
-5. **Primer acceso: ahora.** El `config.json` generado no trae usuario: hasta que
-   crees uno, cualquiera que llegue a `https://copias.example.org` (pasa por
-   Access) entra sin contraseña. Ábrelo justo después de activar y crea el
-   usuario (contraseña larga, en el gestor de contraseñas).
+5. **Contraseña de Backrest: anótala ahora.** El paquete no trae usuario: antes de
+   escribir `config.json`, `box.sh` genera una contraseña aleatoria, calcula su
+   bcrypt con la imagen de Caddy de la release (sin red) e inyecta el usuario
+   `admin` con la autenticación activada. Backrest nunca arranca publicado sin
+   usuario. Al terminar, `box.sh` muestra la contraseña **una sola vez** en la
+   terminal; no la escribe en ningún fichero ni en los registros. Guárdala en el
+   gestor de contraseñas. Si la pierdes, repite `kit enable copias --replace-config`
+   con el mismo paquete (genera otra).
 6. **Comprobar.** `deploy/box.sh status`; en Backrest, lanza el plan una vez.
    En la siguiente vuelta del scheduler la app lee el repositorio con las
    credenciales de lectura y `--no-lock`.
 
 Repetir `kit enable` sobre una caja con Backrest ya configurado exige
 `--replace-config`: sustituye `config.json` (la anterior queda como
-`config.json.prev` dentro del volumen) y **borra el usuario de Backrest**, así
-que repite el paso 5.
+`config.json.prev` dentro del volumen) y **sustituye el usuario de Backrest**: `box.sh`
+genera otra contraseña y la muestra de nuevo (paso 5).
 
 `config.json.prev` (y `config.json.pre-update`, que Backrest deja al migrar la
 configuración) llevan claves de escritura. `box.sh` los borra en cuanto
@@ -172,8 +176,8 @@ release nueva, no editando el clon.
   4.3, con `restic key list`); después actualiza la contraseña en Backrest y
   `ENS_BACKUPS_<ID>_RESTIC_PASSWORD` en `deploy/.env`. Esta operación no se ha
   ejecutado: pruébala primero en un repositorio de prueba.
-- **Todo a la vez** (paquete nuevo): `kit enable copias --replace-config`; hay
-  que volver a crear el usuario de Backrest.
+- **Todo a la vez** (paquete nuevo): `kit enable copias --replace-config`; `box.sh`
+  genera una contraseña nueva para `admin` y la muestra una vez.
 - Tras rotar, borra `config.json.prev` y `config.json.pre-update` del volumen si quedaron (`kit enable` ya los borra cuando Backrest arranca sano).
 
 ## 7. Desactivar

@@ -10,6 +10,7 @@ es alcanzable por la red de Docker), con la misma imagen que Backrest.
 """
 
 # ruff: noqa: F401, F811  (fixtures de la caja importadas de test_integration)
+import base64
 import hashlib
 import io
 import json
@@ -191,12 +192,24 @@ def build_package(s3, directory):
 
 
 @pytest.fixture(scope="module")
-def enabled(box, ui_env_with_copias_host, s3, tmp_path_factory):
+def enable_result(box, ui_env_with_copias_host, s3, tmp_path_factory):
     path, files = build_package(s3, tmp_path_factory.mktemp("paquete"))
     result = box.sh("kit", "enable", "copias", str(path))
     assert result.returncode == 0, result.stdout + result.stderr
     run(["docker", "network", "connect", f"{box.project}_copias", s3.server], check=True)
-    return files
+    return result, files
+
+
+@pytest.fixture(scope="module")
+def enabled(enable_result):
+    return enable_result[1]
+
+
+@pytest.fixture(scope="module")
+def backrest_password(enable_result):
+    found = re.search(r"^  Contraseña: (\S{32})$", enable_result[0].stdout, re.MULTILINE)
+    assert found, "box.sh no muestra la contraseña inicial de Backrest"
+    return found.group(1)
 
 
 def wait_for_snapshot(s3, minutes=5):
@@ -226,6 +239,72 @@ def test_backrest_arranca_con_el_config_json_del_paquete_y_no_deja_restos_de_cla
     )
     assert "config.json.prev" not in listing.stdout
     assert "config.json.pre-update" not in listing.stdout
+
+
+def installed_config(box):
+    shown = run(
+        ["docker", "run", "--rm", "-v", f"{box.project}_backrest-config:/c", "alpine:3"]
+        + ["cat", "/c/config.json"]
+    )
+    assert shown.returncode == 0, shown.stderr
+    return shown.stdout
+
+
+def backrest_rpc(box, method, body, *, password=None):
+    """Una llamada a Backrest por la red interna; devuelve (código HTTP, cuerpo)."""
+    headers = ["--header", "Content-Type: application/json"]
+    if password:
+        token = base64.b64encode(f"admin:{password}".encode()).decode()
+        headers += ["--header", f"Authorization: Basic {token}"]
+    command = (
+        ["docker", "run", "--rm", "--network", f"{box.project}_copias-net", "alpine:3"]
+        + ["wget", "-S", "-q", "-O-", *headers, "--post-data", body]
+        + [f"http://backrest:9898/{method}"]
+    )
+    deadline = time.monotonic() + 60
+    while True:  # Backrest tarda unos segundos en escuchar tras arrancar
+        shown = run(command)
+        code = re.search(r"HTTP/1\.\d (\d{3})", shown.stderr)
+        if code or time.monotonic() > deadline:
+            break
+        time.sleep(3)
+    assert code, shown.stderr
+    return code.group(1), shown.stdout
+
+
+def test_el_config_json_instalado_lleva_el_usuario_inicial_con_bcrypt(
+    box, enabled, backrest_password
+):
+    text = installed_config(box)
+    auth = json.loads(text)["auth"]
+
+    assert (
+        auth.get("disabled", False) is False
+    )  # Backrest reescribe el JSON sin los valores por defecto
+    assert auth["users"][0]["name"] == "admin"
+    hashed = base64.b64decode(auth["users"][0]["passwordBcrypt"]).decode()
+    assert re.fullmatch(r"\$2[aby]\$\d\d\$\S{53}", hashed)
+    assert backrest_password not in text
+
+
+def test_backrest_publicado_exige_la_contrasena_mostrada(box, enabled, backrest_password):
+    anonymous, _ = backrest_rpc(box, "v1.Backrest/GetConfig", "{}")
+    wrong, _ = backrest_rpc(box, "v1.Backrest/GetConfig", "{}", password="x" * 32)
+    right, _ = backrest_rpc(box, "v1.Backrest/GetConfig", "{}", password=backrest_password)
+
+    assert (anonymous, wrong, right) == ("401", "401", "200")
+
+
+def test_la_contrasena_de_backrest_solo_sale_por_la_terminal(box, enable_result, backrest_password):
+    result, _ = enable_result
+    assert result.stdout.count(backrest_password) == 1
+    assert backrest_password not in result.stderr
+    for path in (box.clone / "deploy").rglob("*"):
+        if path.is_file():
+            assert backrest_password not in path.read_text(errors="ignore"), path
+    for service in ("backrest", "caddy", "app"):
+        logs = run(["docker", "logs", box.container(service)])
+        assert backrest_password not in logs.stdout + logs.stderr, service
 
 
 def test_backrest_crea_el_repositorio_en_minio_con_bloqueo_y_hace_una_copia(box, s3, snapshots):

@@ -1,7 +1,9 @@
 """Contrato de la caja que se comprueba sin Docker: compose, Caddyfile, Dockerfile y box.sh."""
 
+import base64
 import hashlib
 import io
+import json
 import os
 import re
 import shutil
@@ -693,14 +695,14 @@ def shell_function(name):
 
 def embedded_python(function):
     """El programa Python que `function` pasa a `in_app python -I -c '...'`."""
-    found = re.search(r"-c '\n(.*?)'\n", shell_function(function), re.DOTALL)
+    found = re.search(r"-c '\n(.*?)\n'( \"\$1\")?\n", shell_function(function), re.DOTALL)
     assert found, function
     return found.group(1)
 
 
-def run_validator(function, stdin):
+def run_validator(function, stdin, *args):
     return subprocess.run(
-        [sys.executable, "-I", "-c", embedded_python(function)],
+        [sys.executable, "-I", "-c", embedded_python(function), *args],
         input=stdin,
         capture_output=True,
         text=True,
@@ -762,7 +764,7 @@ def test_el_override_no_puede_declarar_volumenes_ni_redes_de_nivel_superior():
 
 
 def test_el_fragmento_de_backups_acepta_repositorios_sin_secretos():
-    text = "repositories:\n  - id: caja-ovh\n    asset_id: a1\n    repository: s3:https://x/b\n"
+    text = "repositories:\n  - id: caja_ovh\n    asset_id: a1\n    repository: s3:https://x/b\n"
 
     assert run_validator("validate_copias_fragment", text).returncode == 0
 
@@ -779,6 +781,55 @@ def test_el_fragmento_de_backups_acepta_repositorios_sin_secretos():
 )
 def test_el_fragmento_de_backups_rechaza_credenciales_y_formas_ajenas(text):
     assert run_validator("validate_copias_fragment", text).returncode != 0
+
+
+@pytest.mark.parametrize("identifier", ["1-x", "con-guion", "Caja", "a", "x" * 32])
+def test_el_fragmento_de_backups_rechaza_ids_que_el_conector_rechaza(identifier):
+    text = f"repositories:\n  - {{id: {identifier}}}\n"
+
+    assert run_validator("validate_copias_fragment", text).returncode != 0
+
+
+BCRYPT_B64 = base64.b64encode(b"$2a$14$" + b"a" * 53).decode()
+
+
+def test_el_usuario_inicial_de_backrest_se_inyecta_con_el_bcrypt_y_auth_activada():
+    config = json.dumps({"auth": {"disabled": True}, "repos": []})
+
+    result = run_validator("add_backrest_user", config, BCRYPT_B64)
+
+    assert result.returncode == 0, result.stderr
+    auth = json.loads(result.stdout)["auth"]
+    assert auth == {
+        "disabled": False,
+        "users": [{"name": "admin", "passwordBcrypt": BCRYPT_B64}],
+    }
+
+
+@pytest.mark.parametrize("value", ["", "texto-plano", "$2a$14$" + "a" * 53, BCRYPT_B64[:-1]])
+def test_el_usuario_inicial_de_backrest_rechaza_un_hash_que_no_es_bcrypt_en_base64(value):
+    result = run_validator("add_backrest_user", "{}", value)
+
+    assert result.returncode != 0
+    assert result.stdout == ""
+
+
+def test_la_contrasena_inicial_de_backrest_solo_va_a_stdin_del_hash_y_a_la_terminal():
+    kit = BOX_SH.read_text(encoding="utf-8").partition("# --- kit de herramientas")[2]
+    uses = [
+        line.strip()
+        for line in kit.splitlines()
+        if "backrest_password" in line.replace("backrest_password_hash", "")
+    ]
+
+    assert len(uses) == 4, uses
+    assert uses[0].startswith("backrest_password=$(head -c 48 /dev/urandom")
+    assert uses[1].startswith('[ "${#backrest_password}" -eq 32 ]')
+    assert uses[2].startswith(
+        "password_hash=$(printf '%s\\n' \"$backrest_password\" | backrest_password_hash)"
+    )
+    assert uses[3].startswith('info "  Contraseña: $backrest_password"')
+    assert "--plaintext" not in kit
 
 
 FILES = ("config.json", "compose.yaml", "app.env", "backups.yaml")
@@ -851,6 +902,24 @@ def test_un_manifest_con_otra_version_o_sin_una_linea_se_rechaza(tmp_path):
     lines = ["version: 2"] + [f"{'0' * 64}  copias/{n}" for n in FILES]
     assert verify_package(tmp_path, build_package(tmp_path, manifest=lines)).returncode != 0
     assert good.exists()
+
+
+def test_un_miembro_que_no_es_fichero_ni_directorio_se_rechaza_antes_de_extraer(tmp_path):
+    package = tmp_path / "fifo.tar.gz"
+    with tarfile.open(package, "w:gz") as archive:
+        for name in (*FILES, "MANIFEST"):
+            info = tarfile.TarInfo(f"copias/{name}")
+            if name == "app.env":
+                info.type = tarfile.FIFOTYPE
+            else:
+                info.size = 1
+            archive.addfile(info, None if info.type == tarfile.FIFOTYPE else io.BytesIO(b"x"))
+
+    result = verify_package(tmp_path, package)
+
+    assert result.returncode != 0
+    assert "tipos de fichero" in result.stderr
+    assert not (tmp_path / "out").exists()
 
 
 def test_un_enlace_simbolico_en_el_paquete_se_rechaza(tmp_path):
