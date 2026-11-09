@@ -17,16 +17,13 @@ from starlette.routing import BaseRoute, Route
 from ens_evidence.assessment.dossier import (
     DossierRejected,
     TransitionRejected,
-    build_snapshot,
-    current_inputs,
     dossier_status,
+    generate_dossier,
     record_transition,
-    render_snapshot_md,
     scan_transitions,
 )
 from ens_evidence.assessment.dossier.derived import has_markdown
 from ens_evidence.assessment.dossier.model import DossierSnapshot, SectionState
-from ens_evidence.assessment.dossier.package import PackageRejected, save_package
 from ens_evidence.assessment.dossier.status import incomplete_sections
 from ens_evidence.assessment.dossier.store import (
     ASSESSMENTS_PREFIX,
@@ -35,11 +32,8 @@ from ens_evidence.assessment.dossier.store import (
     DossierUnreadable,
     list_dossiers,
     load_snapshot,
-    save_markdown,
-    save_snapshot,
 )
 from ens_evidence.categorization import CategorizationNotCurrent
-from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.incidents.privacy import check_declared_name
 from ens_evidence.matrix.messages import role_label
 from ens_evidence.models.dossier import CorrectiveMeasure
@@ -314,9 +308,7 @@ def descargar(request: Request) -> Response:
 def generate(store: UiStore, now: datetime) -> str:
     """Lo mismo que `assessment dossier generate`; devuelve el id."""
     try:
-        snapshot = build_snapshot(
-            store, current_inputs(now), checks=StoredCheckResults(reference_now=now)
-        )
+        generated = generate_dossier(store, now)
     except ScopeNotApproved:
         raise Rejected("Antes de generar el expediente hay que aprobar el alcance.") from None
     except CategorizationNotCurrent:
@@ -325,19 +317,13 @@ def generate(store: UiStore, now: datetime) -> str:
         ) from None
     except DossierRejected as exc:
         raise Rejected("No se genera el expediente:", *exc.errors) from None
-    try:
-        dossier = save_snapshot(store, snapshot)
     except AlreadyExists:
         raise Rejected(
             "Ya existe un expediente con ese contenido y ese instante; vuelve a intentarlo."
         ) from None
-    save_markdown(store, dossier, render_snapshot_md(snapshot))
-    if snapshot.category is not Category.BASICA:
-        try:
-            save_package(store, dossier, snapshot)
-        except PackageRejected as exc:
-            raise Rejected("El paquete por medida no se ha guardado:", *exc.errors) from None
-    return dossier
+    if generated.package_errors:
+        raise Rejected("El paquete por medida no se ha guardado:", *generated.package_errors)
+    return generated.dossier
 
 
 def _by(form: Form, action: str) -> dict[str, str]:

@@ -37,10 +37,9 @@ from ens_evidence.assessment import (
 )
 from ens_evidence.assessment.dossier import (
     TransitionRejected,
-    build_snapshot,
-    current_inputs,
     dossier_status,
     entries,
+    generate_dossier,
     record_transition,
     render_snapshot_md,
     scan_transitions,
@@ -74,7 +73,6 @@ from ens_evidence.assessment.dossier.store import (
     list_dossiers,
     load_snapshot,
     save_markdown,
-    save_snapshot,
 )
 from ens_evidence.assessment.dossier.verification import package_required, verification_problems
 from ens_evidence.assessment.render import counted
@@ -3506,32 +3504,26 @@ def dossier_generate(ctx: typer.Context) -> None:
     store = open_workspace(ctx)
     now = clock()
     try:
-        snapshot = build_snapshot(
-            store, current_inputs(now), checks=StoredCheckResults(reference_now=now)
-        )
+        generated = generate_dossier(store, now)
     except CategorizationNotCurrent as exc:
         raise report_missing_context(exc) from None
     except DossierRejected as exc:
         raise dossier_rejected("No se genera el expediente:", exc.errors) from None
-    try:
-        dossier = save_snapshot(store, snapshot)
     except AlreadyExists:
         raise fail(
             "Ya existe un expediente con ese contenido y ese instante; reintenta.", 1
         ) from None
-    save_markdown(store, dossier, render_snapshot_md(snapshot))
+    dossier, snapshot = generated.dossier, generated.snapshot
     typer.echo(f"Expediente {dossier} generado ({category_name(snapshot.category)}).")
     typer.echo(snapshot.commitment)
     print_notice(snapshot)
+    if generated.package_errors:
+        typer.echo(
+            f"El paquete por medida no se ha guardado: ejecuta `dossier package {dossier}`.",
+            err=True,
+        )
+        raise dossier_rejected("Paquete rechazado:", list(generated.package_errors)) from None
     if snapshot.category is not Category.BASICA:
-        try:
-            save_package(store, dossier, snapshot)
-        except PackageRejected as exc:
-            typer.echo(
-                f"El paquete por medida no se ha guardado: ejecuta `dossier package {dossier}`.",
-                err=True,
-            )
-            raise dossier_rejected("Paquete rechazado:", exc.errors) from None
         typer.echo("Paquete por medida guardado.")
     print_caveats(snapshot, DossierState.GENERATED)
     typer.echo(dossier_step(dossier, snapshot, DossierState.GENERATED))
