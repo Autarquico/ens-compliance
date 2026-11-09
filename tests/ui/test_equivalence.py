@@ -402,7 +402,7 @@ def approver_names() -> dict[str, str]:
 def web_script_until_review(session: Session, client, token: str, guide=no_guide) -> None:
     """Alcance, categorización BÁSICA, riesgos, aplicabilidad y documentos, y la matriz abierta."""
     store = client.app.state.store
-    guide("alcance vacío")
+    guide("alcance sembrado sin aprobar")
     ui_script(session, BASIC_LEVELS)
     guide("categorización aprobada")
     post_ok(session, "/asistente/riesgos-metodologia", METHODOLOGY)

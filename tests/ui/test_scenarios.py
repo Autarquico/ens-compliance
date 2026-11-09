@@ -205,7 +205,7 @@ def test_en_cada_estado_intermedio_la_pagina_de_estado_enlaza_a_un_paso_que_resp
     for milestone in intermediate:
         assert milestone.url, milestone
         assert milestone.status == 200, milestone
-    assert intermediate[0].url == "/asistente/sistema"
+    assert intermediate[0].url == "/asistente/aprobacion-alcance"
     assert {m.url.split("/")[1] for m in intermediate} == {"asistente", "matriz", "expediente"}
     assert last.name == "expediente: declare" and last.label
 
