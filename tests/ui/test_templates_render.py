@@ -447,6 +447,7 @@ VIEW_CONTEXT = {
             {"label": "Matriz", "state": "todo"},
         ],
         "errors": [HOSTILE],
+        "earlier_phase_pending": True,
         "blockers": [
             {"measure_id": "op.pl.1", "texts": ["Sin evidencia.", "Sin revisar."]},
             {"measure_id": None, "texts": [HOSTILE]},
@@ -781,7 +782,7 @@ def test_wizard_exposes_progress_and_editable_approver():
     context = {**CHROME, **_wizard("aprobacion-alcance", **WIZARD_EXTRA["aprobacion-alcance"])}
     html = env.get_template(WIZARD_TEMPLATES["aprobacion-alcance"]).render(**context)
     assert f"Paso 5 de {len(STEPS)}" in html
-    assert 'name="approved_by"' in html and 'value="ana@example.org"' in html
+    assert 'name="approved_by"' in html and 'value="ana@example.org"' not in html
     assert "Guardar" not in html
     assert "Aprobar alcance" in html
 

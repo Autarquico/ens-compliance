@@ -34,8 +34,8 @@
 {{ m.revision_humana() }}
 <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
   <div class="field">
-    <label for="f-approved_by">La firma<span class="hint">Tu nombre completo, como responsable de la seguridad. Aparece en el expediente como quien firma. Puedes cambiarlo.</span></label>
-    <input type="text" id="f-approved_by" name="approved_by" value="{{ (values or {}).get('approved_by', approver_default or '') }}" autocomplete="name"{% if errors.get('approved_by') %} aria-invalid="true" aria-describedby="err-approved_by"{% endif %}>
+    <label for="f-approved_by">La firma<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
+    <input type="text" id="f-approved_by" name="approved_by" value="{{ (values or {}).get('approved_by', '') }}" autocomplete="name"{% if errors.get('approved_by') %} aria-invalid="true" aria-describedby="err-approved_by"{% endif %}>
     {{ m.field_errors("approved_by") }}
   </div>
   <div class="actions">
