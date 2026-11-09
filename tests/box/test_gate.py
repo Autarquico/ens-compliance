@@ -876,19 +876,31 @@ def test_el_uso_de_box_sh_lista_el_restablecimiento_de_la_contrasena(clone_with_
     assert "kit copias reset-password" in result.stderr
 
 
-def test_restablecer_la_contrasena_sin_las_copias_activadas_falla_con_un_error_claro(
-    clone_with_docker_stub,
-):
-    root, env = clone_with_docker_stub
-
-    result = subprocess.run(
-        ["sh", str(root / "deploy" / "box.sh"), "kit", "copias", "reset-password"],
-        env=env,
-        capture_output=True,
-        text=True,
+def test_restablecer_la_contrasena_sin_las_copias_activadas_falla_con_un_error_claro(tmp_path):
+    stubs = "".join(
+        f"{name}() {{ :; }}\n"
+        for name in (
+            "require_tools",
+            "acquire_lock",
+            "check_secret_files",
+            "require_volume",
+            "use_current_release",
+        )
+    )
+    script = (
+        f"set -eu\nCOPIAS_OVERRIDE={tmp_path / 'no-existe.yaml'}\n"
+        + stubs
+        + "in_backrest_config() { echo llegó; }\n"
+        + shell_function("die")
+        + shell_function("kit_copias_reset_password")
+        + "kit_copias_reset_password\n"
     )
 
+    result = subprocess.run(["sh", "-c", script], capture_output=True, text=True)
+
     assert result.returncode != 0
+    assert "Las copias no están activadas" in result.stderr
+    assert "llegó" not in result.stdout
 
 
 FILES = ("config.json", "compose.yaml", "app.env", "backups.yaml")
