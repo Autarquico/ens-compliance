@@ -27,7 +27,7 @@ from ens_evidence.scope import ScopeNotApproved
 from ens_evidence.ui.forms import first
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
-from ens_evidence.ui.wizard.base import Context, Step, StepInput, StepRejected
+from ens_evidence.ui.wizard.base import Context, Step, StepInput, StepRejected, declared_name
 from ens_evidence.ui.wizard.risk import (
     CATEGORIZATION_NOT_CURRENT,
     MAX_LISTED_ERRORS,
@@ -332,9 +332,7 @@ def _aprobacion_context(step: StepInput) -> Context:
 def _aprobacion_save(step: StepInput) -> None:
     if first(step.form, "accion") != "aprobar":
         return
-    by = first(step.form, "approved_by")
-    if not by:
-        raise StepRejected({"approved_by": ["Quién la firma: es obligatorio."]})
+    by = declared_name(first(step.form, "approved_by"), "Quién la firma", "approved_by")
     try:
         approve_declaration(step.store, by, step.now)
     except ScopeNotApproved:

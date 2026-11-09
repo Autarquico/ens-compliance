@@ -1,7 +1,7 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m with context %}
 {% macro by_field(form) -%}
-<div class="field"><label for="f-by-{{ form }}">Quién lo registra<span class="hint">Tu nombre y apellidos, no tu correo. Se registra tal como lo declaras; no se comprueba.</span></label>
+<div class="field"><label for="f-by-{{ form }}">Quién lo registra<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
   <input type="text" id="f-by-{{ form }}" name="by" value="{{ values.get('by', '') }}" autocomplete="name"></div>
 {%- endmacro %}
 {% block content %}

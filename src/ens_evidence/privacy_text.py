@@ -221,7 +221,7 @@ def check_declared_name(name: str, label: str = "--by") -> list[str]:
     """Errores de `--by` (o del campo `label`): un nombre declarado no puede ser vacío, largo,
     un secreto ni un identificador personal (correo, DNI/NIE, IBAN, teléfono). Sin el valor."""
     if not name.strip():
-        return [f"{label}: indica quién registra (nombre declarado)"]
+        return [f"{label}: indica tu nombre completo."]
     errors = (
         [f"{label}: demasiado largo (máximo {NAME_MAX} caracteres)"] if len(name) > NAME_MAX else []
     )
