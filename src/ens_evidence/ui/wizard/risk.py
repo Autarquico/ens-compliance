@@ -1,6 +1,5 @@
 """Pasos de riesgos: metodología, registro de riesgos y acciones, y su aprobación."""
 
-import re
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import date, datetime
@@ -13,6 +12,7 @@ from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.model import Dimension, SecurityLevel
 from ens_evidence.categorization import CategorizationState, categorization_status
 from ens_evidence.models.enums import Role
+from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.risk import RiskApprovalRejected, RiskState, approve_risk, risk_status
 from ens_evidence.risk.edit import (
     RiskEditRejected,
@@ -35,6 +35,7 @@ from ens_evidence.risk.validate import validate_risk
 from ens_evidence.scope import ScopeNotApproved
 from ens_evidence.scope.inventory import SERVICES_KEY, SYSTEM_KEY
 from ens_evidence.ui.forms import first
+from ens_evidence.ui.plain import translate
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard.base import (
@@ -42,6 +43,7 @@ from ens_evidence.ui.wizard.base import (
     Step,
     StepInput,
     StepRejected,
+    declared_name,
     items,
     read_yaml,
     required,
@@ -75,29 +77,13 @@ ACTION_STATUS_LABELS = {
     ActionStatus.DONE: "Hecha",
     ActionStatus.CANCELLED: "Cancelada",
 }
-_PLAIN_REWRITES = (
-    (re.compile(r"\s*\((?:ens-evidence )?(?:scope|categorization|risk|applicability|controls)"
-                r"(?: [\w-]+)+\)"), ""),
-    (re.compile(r"(?:revísala y )?confírmala con `?applicability propose --confirm [\w.]+`?"),
-     "decídela otra vez con el botón de su ficha"),
-    (re.compile(r"; (?:créalo|crea las plantillas) con (?:ens-evidence )?risk init"),
-     "; adopta la metodología en el paso «Metodología»"),
-    (re.compile(r"; adóptala con adopted: true"), "; adóptala en el paso «Metodología»"),
-    (re.compile(r"; ejecuta controls init"),
-     "; vuelve a preparar las medidas en el paso «Aplicabilidad»"),
-    (re.compile(r"`chosen_reinforcements`"), "los refuerzos elegidos"),
-    (re.compile(r"`absent_assets`"), "la ausencia de activo"),
-    (re.compile(r"`compensation`"), "la compensación"),
-    (re.compile(r"^[\w/.-]+\.yaml › "), ""),
-)  # fmt: skip
 
 
 def plain_errors(errors: list[str]) -> list[str]:
     """Los motivos de una API de producto, sin órdenes de CLI ni nombres de fichero de cabecera."""
     plain = []
     for error in errors:
-        for pattern, replacement in _PLAIN_REWRITES:
-            error = pattern.sub(replacement, error)
+        error = translate(error)
         plain.append(error[:1].upper() + error[1:])
     return plain
 
@@ -335,6 +321,8 @@ def _acceptance(step: StepInput) -> dict[str, str]:
     errors = {}
     if not by:
         errors["accepted_by"] = ["Quién acepta el riesgo que queda: es obligatorio."]
+    elif name_errors := check_declared_name(by, "Quién acepta el riesgo que queda"):
+        errors["accepted_by"] = name_errors
     if role not in Role:
         errors["accepted_role"] = ["Elige con qué rol lo acepta."]
     if errors:
@@ -447,7 +435,7 @@ def _aprobacion_context(step: StepInput) -> Context:
 def _aprobacion_save(step: StepInput) -> None:
     if first(step.form, "accion") != "aprobar":
         return
-    by = required(step.form, {"approved_by": "Quién lo aprueba"})["approved_by"]
+    by = declared_name(first(step.form, "approved_by"), "Quién lo aprueba", "approved_by")
     try:
         approve_risk(step.store, by, step.now)
     except ScopeNotApproved:

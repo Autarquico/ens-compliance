@@ -55,9 +55,9 @@ def _read(store: WorkspaceStore, key: str) -> tuple[str, dict[str, Any]]:
     return header, raw
 
 
-def _checked(key: str, model: type[BaseModel], document: dict[str, Any]) -> None:
+def _checked[M: BaseModel](key: str, model: type[M], document: dict[str, Any]) -> M:
     try:
-        model.model_validate(document)
+        return model.model_validate(document)
     except ValidationError as exc:
         raise RiskEditRejected(describe_validation(key, exc, document)) from None
 
@@ -140,8 +140,7 @@ def add_risk(store: WorkspaceStore, fields: dict[str, Any], now: datetime) -> No
 
 def _check_against_scope(store: WorkspaceStore, risk: dict[str, Any], now: datetime) -> None:
     _, raw = _read(store, METHODOLOGY_KEY)
-    _checked(METHODOLOGY_KEY, Methodology, raw)
-    methodology = Methodology.model_validate(raw)
+    methodology = _checked(METHODOLOGY_KEY, Methodology, raw)
     inventory = load_inventory(store)
     if inventory.inventory is None:
         raise RiskEditRejected(inventory.errors)

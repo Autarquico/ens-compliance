@@ -11,6 +11,7 @@ from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.importer import import_manual
 from ens_evidence.evidence.layout import is_evidence_id
 from ens_evidence.incidents.privacy import check_declared_name
+from ens_evidence.scope.inventory import SYSTEM_KEY
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import (
     MAX_UPLOAD_BYTES,
@@ -26,7 +27,6 @@ from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard.base import read_yaml
 
 BY_LABEL = "Quién la aporta"
-SYSTEM_KEY = "scope/system.yaml"
 MAX_MEGABYTES = MAX_UPLOAD_BYTES // (1024 * 1024)
 
 

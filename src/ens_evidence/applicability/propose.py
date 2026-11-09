@@ -10,8 +10,8 @@ from ens_evidence.applicability.context import Context, load_context
 from ens_evidence.applicability.selection import is_own_proposal, proposal_text
 from ens_evidence.applicability.validate import (
     ApplicabilityRejected,
-    _measure_errors,
     load_checked_measures,
+    measure_errors,
 )
 from ens_evidence.catalog.controls import init_measures, save_measures
 from ens_evidence.models.enums import Applicability
@@ -158,7 +158,7 @@ def decide(
         raise ApplicabilityRejected(describe_validation(MEASURES_KEY, exc, raw)) from None
     assets_file, _ = load_assets(store)
     assets = assets_file.assets if assets_file else []
-    if errors := _measure_errors(decided, context, assets):
+    if errors := measure_errors(decided, context, assets):
         raise ApplicabilityRejected(errors)
     updated = [decided if m.id == measure_id else m for m in document.measures]
     save_measures(store, document.model_copy(update={"measures": updated}))
