@@ -2,12 +2,12 @@
 codename: ens-compliance
 title: "Kit: almacén de claves y secretos con OpenBao"
 type: task
-status: draft
+status: active
 priority: P1
 size: L
 issue: null
 prs: []
-related_issues: []
+related_issues: [67]
 depends_on: [kit-backups]
 supersedes: []
 related_specs: [toolkit-server]
