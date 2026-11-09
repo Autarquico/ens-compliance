@@ -442,9 +442,9 @@ VIEW_CONTEXT = {
         "next_step_url": "/asistente/sistema",
         "next_step_label": "Seguir con el asistente",
         "phases": [
-            {"label": "Alcance", "state": "done"},
-            {"label": "Riesgos", "state": "next"},
-            {"label": "Matriz", "state": "todo"},
+            {"key": "alcance", "label": "Alcance", "state": "done"},
+            {"key": "riesgos", "label": "Riesgos", "state": "next"},
+            {"key": "matriz", "label": "Matriz", "state": "todo"},
         ],
         "errors": [HOSTILE],
         "earlier_phase_pending": True,

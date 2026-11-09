@@ -21,7 +21,7 @@
       {%- elif p.state == "next" %}{{ m.icon("clock") }}<strong>{{ p.label }}</strong> <span class="muted">· Ahora</span>
       {%- else %}{{ m.icon("help") }}<span>{{ p.label }}</span> <span class="muted">· Pendiente</span>
       {%- endif %}
-      {%- if p.label == "Aplicabilidad" %}<br><span class="muted">La Declaración de Aplicabilidad es el documento que dice qué medidas del ENS te tocan; la firma una persona responsable.</span>{% endif %}
+      {%- if p.key == "aplicabilidad" %}<br><span class="muted">La Declaración de Aplicabilidad es el documento que dice qué medidas del ENS te tocan; la firma una persona responsable.</span>{% endif %}
     </li>
     {%- endfor %}
   </ol>

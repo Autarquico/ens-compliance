@@ -160,8 +160,9 @@ PHASES: tuple[Callable, ...] = (
     _scope, _categorization, _risk, _applicability, _documents, _matrix, _dossier, _preaudit,
 )  # fmt: skip
 PHASE_LABELS = (
-    "Alcance", "Categorización", "Riesgos", "Aplicabilidad", "Documentos", "Matriz",
-    "Expediente", "Pre-auditoría",
+    ("alcance", "Alcance"), ("categorizacion", "Categorización"), ("riesgos", "Riesgos"),
+    ("aplicabilidad", "Aplicabilidad"), ("documentos", "Documentos"), ("matriz", "Matriz"),
+    ("expediente", "Expediente"), ("preauditoria", "Pre-auditoría"),
 )  # fmt: skip
 
 
@@ -178,14 +179,14 @@ def progress(store: UiStore, now: datetime, status) -> tuple[list[dict], Phase |
     reached = list(phases(store, now, status))
     pending = reached[-1] if reached and not reached[-1].done else None
     rows = []
-    for index, label in enumerate(PHASE_LABELS):
+    for index, (key, label) in enumerate(PHASE_LABELS):
         if index < len(reached) and reached[index].done:
             state = "done"
         elif pending is not None and index == len(reached) - 1:
             state = "next"
         else:
             state = "todo"
-        rows.append({"label": label, "state": state})
+        rows.append({"key": key, "label": label, "state": state})
     return rows, pending
 
 
@@ -203,10 +204,8 @@ def estado(request: Request) -> Response:
     categorization = categorization_status(store, now)
     category = categorization.computation.category if categorization.computation else None
     rows, pending = progress(store, now, status)
-    labels = [r["label"] for r in rows]
-    before_applicability = (
-        rows[: labels.index("Aplicabilidad")] if "Aplicabilidad" in labels else []
-    )
+    keys = [r["key"] for r in rows]
+    before_applicability = rows[: keys.index("aplicabilidad")] if "aplicabilidad" in keys else []
     earlier_phase_pending = any(r["state"] == "next" for r in before_applicability)
     return render(
         request,

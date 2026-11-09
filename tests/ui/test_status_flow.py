@@ -126,7 +126,7 @@ def test_las_fases_posteriores_no_se_calculan_si_una_falta(monkeypatch, session)
         "PHASES",
         (stub("a", True, calls), stub("b", False, calls), stub("c", True, calls)),
     )
-    monkeypatch.setattr(status_view, "PHASE_LABELS", ("A", "B", "C"))
+    monkeypatch.setattr(status_view, "PHASE_LABELS", (("a", "A"), ("b", "B"), ("c", "C")))
 
     page = session.get("/").text
 
@@ -137,7 +137,7 @@ def test_las_fases_posteriores_no_se_calculan_si_una_falta(monkeypatch, session)
 def test_con_todo_hecho_no_hay_enlace_y_lo_dice(monkeypatch, session):
     calls: list[str] = []
     monkeypatch.setattr(status_view, "PHASES", (stub("a", True, calls),))
-    monkeypatch.setattr(status_view, "PHASE_LABELS", ("A",))
+    monkeypatch.setattr(status_view, "PHASE_LABELS", (("a", "A"),))
 
     assert next_step_of(session.get("/").text) == (None, FLOW_COMPLETE)
 
