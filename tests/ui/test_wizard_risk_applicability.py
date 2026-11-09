@@ -603,7 +603,7 @@ def test_un_correo_en_la_firma_de_la_declaracion_se_rechaza_y_no_escribe(complet
         {"accion": "aprobar", "approved_by": "marta@example.com"},
     )
 
-    assert response.status_code == 422 and "marta@example.com" not in response.text
+    assert response.status_code == 422 and "indica solo un nombre" in response.text
     assert declaration_status(example_store, NOW).state is DeclarationState.NOT_APPROVED
 
 
