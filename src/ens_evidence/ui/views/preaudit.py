@@ -87,10 +87,12 @@ DECISIONS = {
     DispositionState.DISMISSED: ("dismissed", "Descartado: explico el motivo"),
 }
 FIELD_WORDS = {
+    "--by:": "Quién lo hace:",
     "--evidence:": "La evidencia:",
     "--reason:": "El motivo:",
     "--decision:": "La decisión:",
 }
+BY_LABEL = "Quién lo hace"
 _COMMAND = re.compile(r"\s*\(?`(?:--|ens-evidence)[^`]*`\)?")
 _PREPARED_KEY = re.compile(rf"{re.escape(PREAUDITS_PREFIX)}/[^/]+/{re.escape(PREPARED_NAME)}")
 _SHA256 = re.compile(r"[0-9a-f]{64}")
@@ -284,7 +286,7 @@ def _page(
         shell_risk=SHELL_RISK,
         form_errors=form_errors or [],
         error_finding=error_finding,
-        values={"by": identity_of(request).email or "", **(values or {})},
+        values={"by": "", **(values or {})},
         saved=SAVED_TEXTS.get(saved or ""),
     )
 
@@ -323,7 +325,7 @@ def _declared_dossier(form: Form) -> str:
 
 def _author(form: Form) -> str:
     by = first(form, "by")
-    problems = check_declared_name(by) if by else ["Indica quién lo pide."]
+    problems = check_declared_name(by, BY_LABEL)
     if problems:
         raise Rejected(*map(plain, problems))
     return by

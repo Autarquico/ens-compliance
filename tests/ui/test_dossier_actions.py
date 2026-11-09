@@ -121,7 +121,8 @@ def test_la_pagina_ofrece_el_siguiente_paso_y_la_descarga(ui):
     assert "Expediente generado." not in page
     assert f'action="/expediente/{dossier}/self-assess"' in page
     assert f'action="/expediente/{dossier}/declare"' not in page
-    assert 'value="ana@example.com"' in page
+    assert 'name="by" value=""' in page
+    assert "ana@example.com" not in page.split('name="by"')[1].split(">")[0]
     assert f'href="/expediente/{dossier}/dossier.md"' in page
 
 
@@ -304,6 +305,20 @@ def test_faltan_datos_se_marca_el_campo_y_no_se_registra(ui, spy, action, data, 
 
     assert response.status_code == 422
     assert "es obligatorio" in response.text or "Elige uno" in response.text
+    assert spy.calls == []
+
+
+def test_un_correo_en_quien_se_rechaza_en_castellano_sin_by(ui, spy):
+    dossier = generated(ui)
+
+    response = ui.post(
+        f"/expediente/{dossier}/self-assess",
+        {"by": "ana@example.com", "role": "system_administrator"},
+    )
+
+    assert response.status_code == 422
+    assert "Quién lo registra" in response.text
+    assert "--by" not in response.text
     assert spy.calls == []
 
 

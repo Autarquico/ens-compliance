@@ -10,6 +10,7 @@ from starlette.routing import BaseRoute, Route
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.importer import import_manual
 from ens_evidence.evidence.layout import is_evidence_id
+from ens_evidence.incidents.privacy import check_declared_name
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import (
     MAX_UPLOAD_BYTES,
@@ -24,6 +25,7 @@ from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard.base import read_yaml
 
+BY_LABEL = "Quién la aporta"
 SYSTEM_KEY = "scope/system.yaml"
 MAX_MEGABYTES = MAX_UPLOAD_BYTES // (1024 * 1024)
 
@@ -68,7 +70,7 @@ def _form_page(
         **page_context(request, "evidencias", "Subir una evidencia"),
         assets=_scope_assets(store),
         max_megabytes=MAX_MEGABYTES,
-        by_default=(values or {}).get("by", identity_of(request).email),
+        by_default=(values or {}).get("by", ""),
         values=values or {},
         form_errors=form_errors or [],
     )
@@ -94,8 +96,7 @@ def _problems(fields: Form, content: bytes | None, assets: list[str], now: datet
         problems.append("Adjunta un fichero que no esté vacío.")
     if first(fields, "asset_id") not in assets:
         problems.append("Elige uno de los activos del alcance.")
-    if not first(fields, "by"):
-        problems.append("Indica quién aporta la evidencia.")
+    problems.extend(check_declared_name(first(fields, "by"), BY_LABEL))
     try:
         _collected_at(first(fields, "collected_on"), now)
     except ValueError:

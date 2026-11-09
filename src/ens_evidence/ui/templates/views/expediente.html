@@ -2,7 +2,7 @@
 {% import "_macros.html" as m with context %}
 {% macro by_field() -%}
 <div class="field">
-  <label for="f-by">Quién lo registra<span class="hint">Tu nombre completo. Queda en el expediente como autor del paso; no se comprueba. Puedes cambiarlo.</span></label>
+  <label for="f-by">Quién lo registra<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
   <input type="text" id="f-by" name="by" value="{{ values.by }}" autocomplete="name"{% if errors.get("by") %} aria-invalid="true" aria-describedby="err-by"{% endif %}>
   {{ m.field_errors("by") }}
 </div>

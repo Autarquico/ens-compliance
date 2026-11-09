@@ -143,13 +143,15 @@ def test_preparar_deja_una_peticion_pendiente_y_su_linea_de_auditoria(fresh, aud
     assert "En cola" in page and "Petición hecha" in page
 
 
-def test_la_pagina_ofrece_el_ultimo_expediente_y_prellena_quien(fresh):
+def test_la_pagina_ofrece_el_ultimo_expediente_y_deja_quien_vacio(fresh):
     ui, _, dossier = fresh
 
     page = ui.get("/preauditoria").text
 
     assert f'value="{dossier}" selected' in page
-    assert 'value="ana@example.com"' in page
+    assert 'name="by" value=""' in page
+    assert "@" not in page.split('name="by"')[1].split(">")[0]
+    assert "Tu nombre completo. Queda registrado como lo declaras." in page
 
 
 def test_con_una_peticion_viva_no_se_ofrece_otra_y_el_servidor_la_rechaza(fresh):
@@ -172,6 +174,19 @@ def test_un_nombre_con_un_secreto_no_crea_peticion(fresh):
     response = ui.post("/preauditoria/preparar", {"dossier": dossier, "by": "   "})
 
     assert response.status_code == 422
+    assert snapshot_of(store) == before
+
+
+def test_sin_nombre_o_con_un_correo_el_error_esta_en_castellano_sin_by(fresh):
+    ui, store, dossier = fresh
+    before = snapshot_of(store)
+
+    for by in ("", "ana@example.com"):
+        response = ui.post("/preauditoria/preparar", {"dossier": dossier, "by": by})
+
+        assert response.status_code == 422
+        assert "Quién lo hace" in response.text
+        assert "--by" not in response.text
     assert snapshot_of(store) == before
 
 

@@ -16,7 +16,7 @@
       {%- for a in assets %}<option value="{{ a }}"{% if values.get('asset_id') == a %} selected{% endif %}>{{ a }}</option>{% endfor %}
     </select>
     {% if not assets %}<p class="muted">El alcance todavía no incluye activos. <a href="/asistente/activos">Elígelos en el asistente</a>.</p>{% endif %}</div>
-  <div class="field"><label for="f-by">Quién la aporta<span class="hint">Tu nombre o correo. Se registra como lo declaras; puedes cambiarlo.</span></label>
+  <div class="field"><label for="f-by">Quién la aporta<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
     <input type="text" id="f-by" name="by" value="{{ by_default }}"></div>
   <div class="field"><label for="f-collected_on">Fecha a la que se refiere<span class="hint">Opcional, AAAA-MM-DD. Si la dejas vacía, es hoy.</span></label>
     <input type="text" id="f-collected_on" name="collected_on" value="{{ values.get('collected_on', '') }}" placeholder="2026-01-31"></div>

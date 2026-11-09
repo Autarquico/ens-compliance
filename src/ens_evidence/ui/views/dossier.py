@@ -40,6 +40,7 @@ from ens_evidence.assessment.dossier.store import (
 )
 from ens_evidence.categorization import CategorizationNotCurrent
 from ens_evidence.checks.source import StoredCheckResults
+from ens_evidence.incidents.privacy import check_declared_name
 from ens_evidence.matrix.messages import role_label
 from ens_evidence.models.dossier import CorrectiveMeasure
 from ens_evidence.models.enums import Category, DossierState, Role
@@ -108,6 +109,7 @@ REQUIRED = {
 }
 
 
+BY_LABEL = "Quién lo registra"
 STATE_WORDS = {
     "SELF_ASSESSED": "la autoevaluación",
     "ANALYZED": "el análisis",
@@ -267,7 +269,7 @@ def _page(
         **detail,
         form_errors=form_errors or [],
         errors=errors or {},
-        values={"by": identity_of(request).email, **(values or {})},
+        values={"by": "", **(values or {})},
         saved=SAVED_TEXTS.get(saved or ""),
     )
 
@@ -342,6 +344,8 @@ def _by(form: Form, action: str) -> dict[str, str]:
     values = {name: first(form, name) for name in REQUIRED[action]}
     missing = {name: [f"{label} es obligatorio."] for name, label in REQUIRED[action].items()
                if not values[name]}  # fmt: skip
+    if not missing and (problems := check_declared_name(values["by"], BY_LABEL)):
+        missing = {"by": problems}
     if missing:
         raise Rejected(*(m for messages in missing.values() for m in messages), errors=missing)
     return values
@@ -376,7 +380,7 @@ def _details(action: str, form: Form, values: dict[str, str]) -> tuple[Role, dic
 def plain_state(message: str) -> str:
     for token, words in STATE_WORDS.items():
         message = message.replace(token, words)
-    return message
+    return message.replace("--by", BY_LABEL)
 
 
 def transition(store: UiStore, now: datetime, dossier: str, action: str, form: Form) -> None:

@@ -49,14 +49,15 @@ def form(**overrides) -> dict:
     return {"asset_id": ASSET, "by": "Ana Ruiz", **overrides}
 
 
-def test_formulario_ofrece_solo_activos_del_alcance_y_prellena_el_by(web):
+def test_formulario_ofrece_solo_activos_del_alcance_y_deja_el_by_vacio(web):
     get, _ = web
 
     page = get("/evidencias/nueva").text
 
     assert f'<option value="{ASSET}"' in page
     assert "lap-personal" not in page
-    assert 'name="by" value="ana@example.com"' in page
+    assert 'name="by" value=""' in page
+    assert "o correo" not in page
     assert 'enctype="multipart/form-data"' in page
 
 
@@ -126,6 +127,19 @@ def test_sin_fichero_o_vacio_no_escribe(web, example_store):
 
     assert post(form(), file=None).status_code == 422
     assert post(form(), file=("vacio.txt", b"")).status_code == 422
+    assert snapshot_of(example_store) == before
+
+
+def test_sin_nombre_o_con_un_correo_no_escribe_y_el_error_no_menciona_by(web, example_store):
+    _, post = web
+    before = snapshot_of(example_store)
+
+    for by in ("", "ana@example.com"):
+        response = post(form(by=by), file=("acta.txt", b"contenido"))
+
+        assert response.status_code == 422
+        assert "Quién la aporta" in response.text
+        assert "--by" not in response.text
     assert snapshot_of(example_store) == before
 
 

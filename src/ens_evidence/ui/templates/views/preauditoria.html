@@ -1,8 +1,8 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m with context %}
-{% macro by_field(id, hint) -%}
+{% macro by_field(id) -%}
 <div class="field">
-  <label for="{{ id }}">Quién lo hace<span class="hint">{{ hint }}</span></label>
+  <label for="{{ id }}">Quién lo hace<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
   <input type="text" id="{{ id }}" name="by" value="{{ values.by }}" autocomplete="name">
 </div>
 {%- endmacro %}
@@ -38,7 +38,7 @@
       <label for="r-{{ f.id }}">Motivo<span class="hint">Obligatorio si lo descartas. No incluyas claves ni datos personales.</span></label>
       <textarea id="r-{{ f.id }}" name="reason">{% if own %}{{ values.get("reason", "") }}{% endif %}</textarea>
     </div>
-    {{ by_field("b-" ~ f.id, "Tu nombre completo. Queda en el registro; no se comprueba. Puedes cambiarlo.") }}
+    {{ by_field("b-" ~ f.id) }}
     <div class="actions"><button class="btn" type="submit">Registrar la decisión</button></div>
   </form>
   {% endif %}
@@ -84,7 +84,7 @@
   {% else %}
   <form method="post" action="/preauditoria/preparar" novalidate>
     <input type="hidden" name="dossier" value="{{ dossier_id }}">
-    {{ by_field("b-preparar", "Tu nombre completo. Queda en la petición; no se comprueba. Puedes cambiarlo.") }}
+    {{ by_field("b-preparar") }}
     <div class="actions"><button class="btn {{ 'btn-primary' if not prepared else '' }}" type="submit">{{ "Preparar de nuevo" if prepared else "Preparar" }}</button></div>
   </form>
   {% endif %}
@@ -125,7 +125,7 @@
     <div class="notice notice-warn" role="note"><p><strong>Aviso del destino.</strong> {{ shell_risk }}</p></div>
     <div class="field"><label><input type="checkbox" name="accept_shell_risk" value="1"> Acepto este riesgo.</label></div>
     {% endif %}
-    {{ by_field("b-enviar", "Tu nombre completo. Queda como quien consiente el envío; no se comprueba. Puedes cambiarlo.") }}
+    {{ by_field("b-enviar") }}
     <div class="actions"><button class="btn btn-primary" type="submit">Enviar</button></div>
   </form>
 </section>
