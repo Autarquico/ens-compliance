@@ -27,6 +27,8 @@ from .test_preaudit_actions import PREPARED_AT, consent
 from .test_preaudit_actions import audited as audited  # noqa: PLC0414
 from .test_preaudit_actions import prepared as prepared  # noqa: PLC0414
 from .test_preaudit_actions import stages as stages  # noqa: PLC0414
+from .test_tools import FORM as COPIAS_FORM
+from .test_tools import SENTINELS as COPIAS_SECRETS
 
 VIEWS = ["/", "/matriz", "/evidencias", "/expediente", "/preauditoria"]
 STEP_PATHS = [f"/asistente/{s.slug}" for s in STEPS]
@@ -549,6 +551,7 @@ NEW_POSTS = [
     ("/preauditoria/preparar", {"dossier": DOSSIER, "by": "Ana"}),
     ("/preauditoria/enviar", {"dossier": DOSSIER, "reviewed": "1", "by": "Ana"}),
     (f"/preauditoria/hallazgos/{FINDING}", {"decision": "dismissed", "reason": "x", "by": "Ana"}),
+    ("/herramientas/copias", COPIAS_FORM),
 ]
 BAD_ORIGINS = [
     {"Origin": "https://evil.example"},
@@ -575,3 +578,34 @@ def test_post_sin_origen_correcto_en_las_rutas_nuevas_es_403_y_no_escribe(
 
     assert snapshot_of(example_store) == before
     assert client.post(path, data=data, headers=headers_ok).status_code != 403
+
+
+# --- asistente de copias: rutas del host y secretos ---------------------------------------------
+
+
+@pytest.mark.parametrize(
+    "path",
+    [
+        "/",
+        "/proc",
+        "/proc/1/root",
+        "/sys",
+        "/dev",
+        "/var/run/docker.sock",
+        "/srv/../etc",
+        "..",
+        "/a:/b",
+    ],
+)
+def test_el_asistente_de_copias_rechaza_rutas_prohibidas_y_no_entrega_nada(
+    client, example_store, token, path
+):
+    before = snapshot_of(example_store)
+
+    response = post(client, token, "/herramientas/copias", COPIAS_FORM | {"host_paths": path})
+
+    assert response.status_code == 422
+    assert response.headers["content-type"].startswith("text/html")
+    assert "attachment" not in response.headers.get("content-disposition", "")
+    assert not any(s in response.text for s in COPIAS_SECRETS)
+    assert snapshot_of(example_store) == before

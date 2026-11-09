@@ -12,7 +12,7 @@ from ens_evidence.assessment.dossier import scan_transitions
 from ens_evidence.categorization import categorization_status
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.matrix import matrix_status
-from ens_evidence.models.enums import Category, DossierState
+from ens_evidence.models.enums import Category, CheckStatus, DossierState
 from ens_evidence.orgdocs import DocumentState, all_statuses
 from ens_evidence.preaudit.requests import request_prepare
 from ens_evidence.risk import RiskState, risk_status
@@ -265,3 +265,63 @@ def test_scheduler_run_ejecuta_las_peticiones_de_la_ui_sin_proveedores_reales(
     assert requests.__self__ is built["executor"]
     assert requests.__func__ is CycleExecutor.pending_requests
     assert requests(NOW) == [request.key]
+
+
+# --- docs/specs/kit-backups.md ----------------------------------------------------------------
+
+KIT_PAGES = ["/herramientas", "/herramientas/copias", "/matriz/mp.info.6", "/evidencias"]
+
+
+def test_los_secretos_del_asistente_se_entregan_una_vez_y_no_quedan_en_la_app(
+    session, example_store, caplog
+):
+    import json
+    import logging
+
+    from .test_tools import FORM, SENTINELS, members
+
+    caplog.set_level(logging.DEBUG)
+    before = snapshot_of(example_store)
+
+    response = session.post("/herramientas/copias", FORM)
+
+    assert response.status_code == 200
+    assert response.headers["cache-control"] == "no-store"
+    files = members(response.content)
+    repo_password = json.loads(files["copias/config.json"])["repos"][0]["password"]
+    secrets = (*SENTINELS, repo_password)
+    delivered = files["copias/config.json"] + files["copias/app.env"]
+    assert repo_password and all(s.encode() in delivered for s in SENTINELS[1:2] + SENTINELS[3:])
+    assert snapshot_of(example_store) == before  # workspace, evidencias y expediente intactos
+    stored = b"\n".join([*before.values(), *(k.encode() for k in before)])
+    assert not any(s.encode() in stored for s in secrets)
+    logged = "\n".join(f"{r.name} {r.getMessage()} {r.args!r}" for r in caplog.records)
+    assert not any(s in logged for s in secrets)
+    for path in KIT_PAGES:
+        page = session.get(path)
+        assert not any(s in page.text for s in secrets), path
+
+
+def test_una_copia_que_deja_de_hacerse_pone_la_tarjeta_en_rojo_y_dice_que_hay_problemas(
+    session, example_store
+):
+    from .test_tools import record
+
+    record(example_store, CheckStatus.FAIL)
+
+    html = session.get("/herramientas").text
+
+    assert "Con problemas" in html and 'class="badge tone-bad"' in html
+
+
+@pytest.mark.xfail(
+    strict=True,
+    reason="spec kit-backups, 'una copia que deja de hacerse se ve': la tarjeta en rojo debe "
+    "llevar el enlace al runbook y la plantilla herramientas.html no lo tiene",
+)
+def test_la_tarjeta_en_rojo_enlaza_al_runbook(session, example_store):
+    from .test_tools import record
+
+    record(example_store, CheckStatus.FAIL)
+
+    assert "kit-copias" in session.get("/herramientas").text
