@@ -63,13 +63,13 @@ def test_el_flujo_de_riesgos_por_cli_deja_un_analisis_valido(ens, store):
     assert plan["actions"][0]["status"] == "pending"
 
 
-def test_risk_add_con_valoracion_mal_formada_sale_con_1_y_no_escribe(ens, store):
+def test_risk_add_con_valoracion_mal_formada_es_un_error_de_uso_y_no_escribe(ens, store):
     adopt(ens)
     args = [a if a != "C=ALTO" else "ALTO" for a in RISK_ARGS]
 
     result = ens(*args)
 
-    assert result.exit_code == 1
+    assert result.exit_code == 2
     assert "dimensión=nivel" in result.output
     assert yaml.safe_load(store.read_text("risk/register.yaml"))["risks"] == []
 
@@ -133,6 +133,37 @@ def test_applicability_decide_registra_la_decision_o_explica_el_rechazo(ens, sto
     decided = next(m for m in measures if m["id"] == "op.ext.3")
     assert decided["applicability"] == "NOT_APPLICABLE"
     assert decided["justification"] == REASON
+
+
+def test_applicability_decide_con_compensacion_escribe_lo_mismo_que_la_api(ens, store):
+    from ens_evidence.applicability.propose import decide
+    from ens_evidence.categorization import approve_categorization
+    from ens_evidence.models.enums import Applicability
+    from ens_evidence.models.readiness import Compensation
+
+    _categorize(store)
+    approve_categorization(store, "Luis Pardo", NOW)
+    init_measures(store)
+    before = store.read_text("controls/measures.yaml")
+    comp = Compensation(
+        measures=["Revisión semanal por el responsable"],
+        replaces=["base"],
+        justification="La revisión semanal detecta lo mismo en menos tiempo.",
+    )
+
+    cli = ens(
+        "applicability", "decide", "op.pl.1", "--applicability", "APPLICABLE",
+        "--justification", REASON, "--compensation-measure", comp.measures[0],
+        "--compensation-replaces", "base", "--compensation-justification", comp.justification,
+    )  # fmt: skip
+    assert cli.exit_code == 0, cli.output
+    by_cli = store.read_text("controls/measures.yaml")
+
+    store.write_text("controls/measures.yaml", before)
+    decide(store, LATER, "op.pl.1", Applicability.APPLICABLE, REASON, compensation=comp)
+
+    assert store.read_text("controls/measures.yaml") == by_cli
+    assert "compensation" in by_cli
 
 
 def _categorize(store: LocalStore) -> None:

@@ -220,7 +220,7 @@ from ens_evidence.models.preaudit import (
     Ref,
     RefKind,
 )
-from ens_evidence.models.readiness import AbsentAssets
+from ens_evidence.models.readiness import AbsentAssets, Compensation
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
     AnswersInvalid,
@@ -1224,12 +1224,36 @@ def applicability_decide(
     absent_justification: Annotated[
         str | None, typer.Option("--absent-justification", help="Por qué no existe.")
     ] = None,
+    compensation_measures: Annotated[
+        list[str] | None,
+        typer.Option("--compensation-measure", help="Medida compensatoria (repetible)."),
+    ] = None,
+    compensation_replaces: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--compensation-replaces",
+            help="Obligación que sustituye: base o refuerzo, p. ej. R1 (repetible).",
+        ),
+    ] = None,
+    compensation_justification: Annotated[
+        str | None,
+        typer.Option("--compensation-justification", help="Por qué protegen igual o mejor."),
+    ] = None,
 ) -> None:
     """Registra la decisión humana sobre una medida. No aprueba nada."""
     try:
         absent = (
             AbsentAssets(asset_type=absent_type or "", justification=absent_justification or "")
             if absent_type or absent_justification
+            else None
+        )
+        compensation = (
+            Compensation(
+                measures=compensation_measures or [],
+                replaces=compensation_replaces or [],
+                justification=compensation_justification or "",
+            )
+            if compensation_measures or compensation_replaces or compensation_justification
             else None
         )
         decide(
@@ -1239,6 +1263,7 @@ def applicability_decide(
             applicability,
             justification,
             chosen_reinforcements=tuple(reinforcements or ()),
+            compensation=compensation,
             absent_assets=absent,
         )
     except ValidationError as exc:
@@ -1946,7 +1971,9 @@ def _valuation(items: list[str]) -> dict[str, str]:
     for item in items:
         dimension, separator, level = item.partition("=")
         if not separator:
-            raise RiskEditRejected([f"--valuation {item!r}: usa dimensión=nivel, p. ej. C=ALTO"])
+            raise typer.BadParameter(
+                f"{item!r}: usa dimensión=nivel, p. ej. C=ALTO", param_hint="--valuation"
+            )
         valuation[dimension.strip()] = level.strip()
     return valuation
 

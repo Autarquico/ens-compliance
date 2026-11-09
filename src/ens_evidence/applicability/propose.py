@@ -21,6 +21,21 @@ from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.sync import MEASURES_KEY
 from ens_evidence.workspace import WorkspaceStore
 
+MIN_REASON = 20
+GENERIC_REASONS = frozenset({"n/a", "na", "no aplica", "no", "ninguno", "ninguna", "-", "x"})
+
+
+def _own_reason_errors(applicability: Applicability, justification: str) -> list[str]:
+    text = justification.strip()
+    if applicability == Applicability.APPLICABLE:
+        return []
+    if len(text) < MIN_REASON or text.rstrip(".").lower() in GENERIC_REASONS:
+        return [
+            "Escribe una razón propia: por qué esta medida no tiene sentido en tu sistema "
+            f"(al menos {MIN_REASON} caracteres; «no aplica» no basta)."
+        ]
+    return []
+
 
 @dataclass
 class ProposalResult:
@@ -119,6 +134,8 @@ def decide(
     o `ApplicabilityRejected` con lo que `applicability validate` rechazaría para esa medida;
     en ese caso no escribe nada. Conserva la valoración, la revisión y las evidencias.
     """
+    if errors := _own_reason_errors(applicability, justification):
+        raise ApplicabilityRejected(errors)
     context = load_context(store, now)
     if not store.exists(MEASURES_KEY):
         init_measures(store)

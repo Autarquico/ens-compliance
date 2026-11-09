@@ -37,8 +37,6 @@ from ens_evidence.ui.wizard.risk import (
 )
 
 APPLIES, NOT_APPLICABLE, ABSENT = "applies", "not_applicable", "absent"
-MIN_REASON = 20
-GENERIC_REASONS = frozenset({"n/a", "na", "no aplica", "no", "ninguno", "ninguna", "-", "x"})
 STATE_REASONS = {
     "undecided": "Sin decidir",
     "reinforcement": "Falta elegir un refuerzo",
@@ -212,15 +210,6 @@ def _plan_decision(form_row: dict[str, Any], step: StepInput) -> dict[str, Any]:
     )
     if not justification:
         raise StepRejected(form_errors=["Explica tu decisión: la justificación es obligatoria."])
-    if choice != APPLIES and (
-        len(justification) < MIN_REASON or justification.rstrip(".").lower() in GENERIC_REASONS
-    ):
-        raise StepRejected(
-            form_errors=[
-                "Escribe una razón propia: por qué esta medida no tiene sentido en tu sistema "
-                f"(al menos {MIN_REASON} caracteres; «no aplica» no basta)."
-            ]
-        )
     arguments: dict[str, Any] = {
         "applicability": Applicability.APPLICABLE
         if choice == APPLIES

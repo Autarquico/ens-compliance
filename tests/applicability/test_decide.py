@@ -64,6 +64,16 @@ def test_decide_rechaza_una_justificacion_vacia(workspace):
         decide(workspace, LATER, OPTIONAL, Applicability.NOT_APPLICABLE, "  ")
 
 
+@pytest.mark.parametrize("reason", ["no aplica", "N/A.", "corto"])
+def test_decide_rechaza_una_justificacion_generica_al_excluir(workspace, reason):
+    before = workspace.read_text("controls/measures.yaml")
+
+    with pytest.raises(ApplicabilityRejected, match="razón propia"):
+        decide(workspace, LATER, OPTIONAL, Applicability.NOT_APPLICABLE, reason)
+
+    assert workspace.read_text("controls/measures.yaml") == before
+
+
 def test_decide_no_deja_excluir_una_exigida_sin_ausencia_de_activo(workspace):
     with pytest.raises(ApplicabilityRejected) as raised:
         decide(workspace, LATER, "org.1", Applicability.NOT_APPLICABLE, REASON)
