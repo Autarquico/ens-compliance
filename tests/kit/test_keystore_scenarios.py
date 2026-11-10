@@ -61,6 +61,7 @@ OP_EXP_10 = MatrixRowSpec(
 )
 REGISTER = CustodianRegister.model_validate(
     {
+        "asset_id": ASSET,
         "custodians": [
             {"name": name, "since": "2026-11-01T00:00:00+00:00"}
             for name in ("Ana Pérez", "Luis Gómez", "Marta Ruiz")
