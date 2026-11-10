@@ -102,7 +102,8 @@ def collect_token(client: KeystoreClient, now: datetime) -> Section:
     """`lookup-self`, renovación solo si TTL < periodo/2 y capacidades sobre rutas de valores."""
     lookup = _token_lookup(client)
     renewed = False
-    period, ttl = lookup["period_seconds"], lookup["ttl_seconds"]
+    period = lookup["period_seconds"] or lookup["creation_ttl_seconds"]
+    ttl = lookup["ttl_seconds"]
     if lookup["renewable"] and period and ttl is not None and ttl < period / 2:
         client.post("auth/token/renew-self", {})
         renewed = True
@@ -114,10 +115,12 @@ def collect_token(client: KeystoreClient, now: datetime) -> Section:
 def _token_lookup(client: KeystoreClient) -> dict[str, Any]:
     data = client.get("auth/token/lookup-self").data
     # OpenBao 2.7.2 no devuelve `period` en lookup-self (medido con un token del rol ens-app, que
-    # sí es periódico): su `creation_ttl` es el periodo. Con `period` presente manda `period`.
+    # sí es periódico): solo `creation_ttl`. Se guardan por separado para no llamar periodo a
+    # lo que no se midió; la renovación usa `period` y, sin él, `creation_ttl`.
     return {
         "policies": _strings(data.get("policies")),
-        "period_seconds": _int(data.get("period")) or _int(data.get("creation_ttl")),
+        "period_seconds": _int(data.get("period")),
+        "creation_ttl_seconds": _int(data.get("creation_ttl")),
         "ttl_seconds": _int(data.get("ttl")),
         "renewable": data.get("renewable") is True,
         "orphan": data.get("orphan") is True,

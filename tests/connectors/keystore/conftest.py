@@ -8,6 +8,7 @@ from .fake_openbao import NOW, TOKEN, FakeOpenBao
 
 REGISTER = CustodianRegister.model_validate(
     {
+        "asset_id": "openbao",
         "custodians": [
             {"name": "Ana Pérez", "since": "2026-11-01T00:00:00+00:00"},
             {"name": "Luis Gómez", "since": "2026-11-01T00:00:00+00:00"},

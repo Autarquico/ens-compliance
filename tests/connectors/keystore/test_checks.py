@@ -54,6 +54,7 @@ def test_sellado_es_fail_en_key_001_con_m_de_n_y_error_en_el_resto(api, run):
 
     unsealed = run(checks.unsealed)
     assert unsealed.status is FAIL and "hacen falta 2 de 3 custodios" in unsealed.reason
+    assert unsealed.reason_code == checks.SEALED_CODE
     for check in (
         checks.audit_enabled, checks.keys_rotated, checks.no_root_token, checks.app_token_scoped,
     ):  # fmt: skip

@@ -405,7 +405,8 @@ def lookup_without_period(**fields):
 def test_un_token_sin_periodo_ni_creation_ttl_da_fail():
     outcome = check_of(lookup_without_period(), checks.app_token_scoped)
 
-    assert outcome.status is CheckStatus.FAIL and "no tiene periodo" in outcome.reason
+    assert outcome.status is CheckStatus.FAIL
+    assert "no tiene periodo ni TTL de creación" in outcome.reason
 
 
 def test_un_token_sin_periodo_con_creation_ttl_mayor_que_el_limite_da_fail():
@@ -413,7 +414,8 @@ def test_un_token_sin_periodo_con_creation_ttl_mayor_que_el_limite_da_fail():
 
     outcome = check_of(api, checks.app_token_scoped)
 
-    assert outcome.status is CheckStatus.FAIL and "supera 72 h" in outcome.reason
+    assert outcome.status is CheckStatus.FAIL
+    assert "TTL de creación del token supera 72 h" in outcome.reason
 
 
 def test_un_token_no_periodico_con_creation_ttl_dentro_del_limite_da_pass_hoy():
@@ -426,6 +428,15 @@ def test_un_token_no_periodico_con_creation_ttl_dentro_del_limite_da_pass_hoy():
     outcome = check_of(api, checks.app_token_scoped)
 
     assert outcome.status is CheckStatus.PASS
+    assert "TTL de creación 72 h; OpenBao no expone el periodo" in outcome.reason
+    assert "periodo válido" not in outcome.reason and "periodo 72" not in outcome.reason
+
+
+def test_con_period_el_motivo_nombra_el_periodo():
+    outcome = check_of(FakeOpenBao(), checks.app_token_scoped)
+
+    assert outcome.status is CheckStatus.PASS
+    assert "periodo 72 h" in outcome.reason and "TTL de creación" not in outcome.reason
 
 
 # --- el registro de custodios es de un activo ------------------------------------------------

@@ -18,6 +18,7 @@ from ens_evidence.models.contracts import CheckResult, CollectionResult, transla
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 
 UNSEALED = "keystore.unsealed"
+SEALED_CODE = "keystore.sealed"
 AUDIT_ENABLED = "keystore.audit_enabled"
 KEYS_ROTATED = "keystore.keys_rotated"
 NO_ROOT_TOKEN = "keystore.no_root_token"
@@ -39,8 +40,8 @@ def _pass(reason: str) -> Outcome:
     return Outcome(CheckStatus.PASS, reason)
 
 
-def _fail(reason: str) -> Outcome:
-    return Outcome(CheckStatus.FAIL, reason)
+def _fail(reason: str, code: str | None = None) -> Outcome:
+    return Outcome(CheckStatus.FAIL, reason, code=code)
 
 
 def _unknown(reason: str) -> Outcome:
@@ -121,7 +122,9 @@ def _unsealed(result: CollectionResult, _: datetime) -> Outcome:
     if summary.get("sealed") is True:
         threshold, shares = _int(summary.get("t")), _int(summary.get("n"))
         quorum = f"{threshold} de {shares}" if threshold and shares else "M de N"
-        return _fail(f"OpenBao está sellado: hacen falta {quorum} custodios para desbloquearlo")
+        return _fail(
+            f"OpenBao está sellado: hacen falta {quorum} custodios para desbloquearlo", SEALED_CODE
+        )
     if summary.get("initialized") is True and summary.get("sealed") is False:
         return _pass("OpenBao está inicializado y desellado")
     return _unknown("seal-status no permite saber si está desellado")
@@ -224,20 +227,42 @@ def _app_token_scoped(result: CollectionResult, _: datetime) -> Outcome:
     if failures:
         return _fail("; ".join(failures))
     return _pass(
-        f"el token solo tiene {APP_POLICY}, periodo y TTL válidos, valores denegados "
-        "y la política es la de la release"
+        f"el token solo tiene {APP_POLICY}, {_bound_measured(summary)}, TTL válido, "
+        "valores denegados y la política es la de la release"
     )
+
+
+def _bound(summary: dict[str, Any]) -> tuple[str, int] | None:
+    """Lo que se midió como cota de vida del token: el periodo o, si no, el TTL de creación."""
+    period, creation = (
+        _int(summary.get("period_seconds")),
+        _int(summary.get("creation_ttl_seconds")),
+    )
+    if period:
+        return "periodo", period
+    if creation:
+        return "TTL de creación", creation
+    return None
+
+
+def _bound_measured(summary: dict[str, Any]) -> str:
+    label, seconds = _bound(summary) or ("", 0)
+    hours = f"{seconds / 3600:g} h"
+    if label == "periodo":
+        return f"periodo {hours}"
+    return f"TTL de creación {hours}; OpenBao no expone el periodo"
 
 
 def _token_failures(summary: dict[str, Any], limit_hours: int) -> list[str]:
     failures = []
     if summary.get("policies") != [APP_POLICY]:
         failures.append(f"las políticas del token no son exactamente [{APP_POLICY}]")
-    period, ttl = _int(summary.get("period_seconds")), _int(summary.get("ttl_seconds"))
-    if not period:
-        failures.append("el token no tiene periodo")
-    elif period > limit_hours * 3600:
-        failures.append(f"el periodo del token supera {limit_hours} h")
+    ttl = _int(summary.get("ttl_seconds"))
+    bound = _bound(summary)
+    if bound is None:
+        failures.append("el token no tiene periodo ni TTL de creación")
+    elif bound[1] > limit_hours * 3600:
+        failures.append(f"el {bound[0]} del token supera {limit_hours} h")
     if not ttl or ttl <= 0:
         failures.append("el TTL del token no es mayor que 0")
     capabilities = _dict(summary.get("capabilities"))

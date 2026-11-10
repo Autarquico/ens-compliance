@@ -338,5 +338,6 @@ def test_sin_period_en_lookup_self_el_periodo_es_creation_ttl_como_en_openbao_2_
 
     token = section(collect(), "token")["summary"]
 
-    assert token["period_seconds"] == 72 * 3600
+    assert token["period_seconds"] is None
+    assert token["creation_ttl_seconds"] == 72 * 3600
     assert token["renewed"] is True  # sin esto el token del kit caducaría a las 72 h
