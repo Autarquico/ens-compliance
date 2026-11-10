@@ -145,6 +145,7 @@ def kit_offer(store: UiStore, measure_id: str, applicable: bool) -> dict[str, An
         "covers_clauses": list(tool.covers_clauses),
         "partial_clauses": list(tool.partial_clauses),
         "not_covered_clauses": list(tool.not_covered_clauses),
+        "ram": tool.ram,
     }
 
 
