@@ -16,7 +16,6 @@ from ens_evidence.workspace import AlreadyExists, NotFound, WorkspaceError, Work
 from ens_evidence.yaml_unique import safe_load_unique
 
 CUSTODIANS_PREFIX = f"{EVIDENCE_ROOT}/key-custodians"
-KEYSTORE_ASSET_ID = "openbao"
 
 Name = Annotated[str, StringConstraints(strip_whitespace=True)]
 
@@ -78,8 +77,11 @@ def register_key(register_id: str) -> str:
     return f"{CUSTODIANS_PREFIX}/{register_id}.yaml"
 
 
-def record_custodians(store: WorkspaceStore, data: bytes, now: datetime) -> CustodianRegister:
-    """Valida, guarda sin sobrescribir y registra como evidencia manual.
+def record_custodians(
+    store: WorkspaceStore, data: bytes, now: datetime, *, asset_id: str
+) -> CustodianRegister:
+    """Valida, guarda sin sobrescribir y registra como evidencia manual del activo `asset_id`
+    (el del almacén de claves, el mismo que usa el conector `keystore`).
 
     `ValidationError` si los datos no valen; `CustodianRegisterError` si no se puede guardar.
     """
@@ -101,7 +103,7 @@ def record_custodians(store: WorkspaceStore, data: bytes, now: datetime) -> Cust
         import_manual(
             store,
             body,
-            asset_id=KEYSTORE_ASSET_ID,
+            asset_id=asset_id,
             submitted_by=register.review.reviewer,
             now=instant,
             collected_at=register.review.reviewed_at,

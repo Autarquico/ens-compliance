@@ -27,6 +27,8 @@ def test_allowed_prefixes_are_written(ui_store, store, prefix):
         "evidence/checks/a.json",
         "evidence/preaudits/runs/a.yaml",
         "evidence/backups/a.json",
+        "evidence/key-custodians-evil/a.yaml",
+        "evidence/key-custodians",
         "evidence/rawx/a",
         "./connectors/a.yaml",
         "scope/../connectors/a.yaml",
