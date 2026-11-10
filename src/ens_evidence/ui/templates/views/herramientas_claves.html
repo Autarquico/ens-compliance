@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<p><a href="/herramientas">Herramientas</a></p>
+<h1>Preparar el almacén de claves</h1>
+<p class="lead">Elige cuántos custodios tendrá y cuántos hacen falta para desbloquearlo, y descarga un paquete de instalación. El paquete no contiene secretos.</p>
+{{ m.revision_humana() }}
+<p>La protección de las claves (op.exp.10) la valora una persona; este asistente solo prepara la instalación. Consulta <a href="/matriz/op.exp.10">op.exp.10 en la matriz</a>.</p>
+{% if form_errors %}
+<div class="notice notice-bad" role="alert"><p><strong>No se ha generado el paquete.</strong> Revisa esto:</p>
+<ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+<aside class="notice notice-warn" role="note"><p><strong>Antes de generar: si se pierden más de N−M partes, los secretos son irrecuperables.</strong> El almacén se desbloquea con M de las N partes que reparte la terminal del servidor al inicializarlo. Con menos de M partes disponibles no hay forma de abrirlo, tampoco desde una copia de seguridad. Reparte cada parte a una persona distinta y guárdalas en sitios separados.</p></aside>
+<aside class="notice" role="note"><p>Las partes de desbloqueo nunca se teclean en esta web: el desbloqueo se hace solo por terminal. Al inicializar, usa una sesión de terminal directa y sin registro de lo escrito ni de lo mostrado, y cierra la ventana al terminar. La interfaz de OpenBao queda para administración.</p></aside>
+<section class="card" aria-labelledby="h-despues">
+  <h2 id="h-despues">Después de descargarlo</h2>
+  <ol>
+    <li>Copia el paquete al servidor y ejecuta: <code class="mono">{{ enable_command }}</code></li>
+    <li>Inicializa el almacén y reparte las partes que se muestran una sola vez en la terminal: <code class="mono">{{ init_command }}</code></li>
+  </ol>
+</section>
+<form method="post" action="/herramientas/claves" novalidate>
+  <div class="field"><label for="f-asset_id">Activo del almacén<span class="hint">Un activo de tipo aplicación de tu inventario que represente a OpenBao.</span></label>
+    <select id="f-asset_id" name="asset_id">
+      <option value="">Elige uno</option>
+      {%- for a in application_assets %}<option value="{{ a }}"{% if values.get('asset_id') == a %} selected{% endif %}>{{ a }}</option>{% endfor %}
+    </select>
+    {{ m.field_errors("asset_id") }}
+    {% if not application_assets %}<p class="muted">No hay activos de tipo aplicación. Añádelo en el <a href="/asistente/activos">paso de activos</a>.</p>{% endif %}</div>
+  {{ m.text_field("key_shares", "Partes de desbloqueo (N)", "Cuántas partes se reparten, entre 3 y 10. Una por custodio.") }}
+  {{ m.text_field("key_threshold", "Partes necesarias (M)", "Cuántas hacen falta para desbloquear, desde 2 y sin pasar de N.") }}
+  {{ m.text_field("max_key_age_days", "Antigüedad máxima de una clave (días)", "Pasado ese plazo sin rotar, la comprobación de rotación falla. Es tu política: fíjala tú.") }}
+  <div class="actions"><button class="btn btn-primary" type="submit">Generar y descargar el paquete</button></div>
+</form>
+{% endblock %}

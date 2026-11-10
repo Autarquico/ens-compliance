@@ -22,10 +22,10 @@
 
 {% if kit_offer %}
 <section class="card" aria-labelledby="h-kit">
-  <h2 id="h-kit">Una forma de empezar: el kit de copias</h2>
+  <h2 id="h-kit">Una forma de empezar: el kit de {{ kit_offer.name }}</h2>
   <p><strong>Qué cubre.</strong> {{ kit_offer.covers }}</p>
   <p><strong>Qué no cubre.</strong> {{ kit_offer.not_covers }}</p>
-  <p><a class="btn" href="{{ kit_offer.url }}">Preparar las copias</a></p>
+  <p><a class="btn" href="{{ kit_offer.url }}">{{ kit_offer.cta }}</a></p>
 </section>
 {% endif %}
 

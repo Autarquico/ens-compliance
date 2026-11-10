@@ -13,6 +13,7 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
 from ens_evidence.checks.store import scan_runs
+from ens_evidence.connectors.keystore.checks import UNSEALED
 from ens_evidence.kit.backups import (
     ALLOWED_VOLUMES,
     DEFAULT_MIN_CHECK_READ_DATA_PERCENT,
@@ -33,12 +34,15 @@ from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
 
 CONNECTOR = "backups"
+KEYSTORE_CONNECTOR = "keystore"
 MEASURES = ("mp.info.6",)
+KEYSTORE_MEASURES = ("op.exp.10",)
 STEP = "copias"
 ENABLE_COMMAND = "deploy/box.sh kit enable copias <fichero>"
 
 STATES = {
     "ok": ("ok", "Al día"),
+    "sealed": ("bad", "Sellado"),
     "problems": ("bad", "Con problemas"),
     "down": ("bad", "Caída"),
     "nodata": ("neutral", "Sin datos"),
@@ -91,19 +95,29 @@ class Rejected(Exception):
 # --- estado del kit (solo evidencia del workspace) -----------------------------------------------
 
 
-def kit_state(store: UiStore) -> dict[str, Any]:
-    """`ok`, `problems`, `down` o `nodata`, y la fecha de la última comprobación guardada."""
-    scan = scan_runs(store, CONNECTOR)
-    last = scan.last(CONNECTOR)
+def kit_state(store: UiStore, connector: str) -> dict[str, Any]:
+    """`ok`, `problems`, `down` o `nodata` (y `sealed` en claves), con la fecha de la última
+    comprobación guardada del conector."""
+    scan = scan_runs(store, connector)
+    last = scan.last(connector)
     if last is None:
-        key = "problems" if CONNECTOR in scan.unreadable else "nodata"
+        key = "problems" if connector in scan.unreadable else "nodata"
         return _state(key, None)
     run = last.run
+    if connector == KEYSTORE_CONNECTOR and _is_sealed(run.results):
+        return _state("sealed", run.finished_at)
     unanswered = {CheckStatus.ERROR, CheckStatus.UNKNOWN}
     if not run.complete or all(r.status in unanswered for r in run.results):
         return _state("down", run.finished_at)
     healthy = all(r.status is CheckStatus.PASS for r in run.results)
     return _state("ok" if healthy else "problems", run.finished_at)
+
+
+def _is_sealed(results: list[Any]) -> bool:
+    return any(
+        r.check_id == UNSEALED and r.status is CheckStatus.FAIL and "sellado" in (r.reason or "")
+        for r in results
+    )
 
 
 def _state(key: str, at: Any) -> dict[str, Any]:
@@ -118,9 +132,11 @@ def _state(key: str, at: Any) -> dict[str, Any]:
 
 def copias_offer(store: UiStore, measure_id: str) -> dict[str, Any] | None:
     """Propuesta del kit para una medida que apoya, mientras no haya evidencia de sus copias."""
-    if measure_id not in MEASURES or kit_state(store)["key"] != "nodata":
+    if measure_id not in MEASURES or kit_state(store, CONNECTOR)["key"] != "nodata":
         return None
     return {
+        "name": "copias",
+        "cta": "Preparar las copias",
         "url": "/herramientas/copias",
         "covers": (
             "Hace copias cifradas a un almacenamiento externo con bloqueo, y en cada recogida "
@@ -142,14 +158,16 @@ def panel(request: Request) -> Response:
         request,
         "views/herramientas.html",
         **page_context(request, "herramientas", "Herramientas"),
-        state=kit_state(request.app.state.store),
+        state=kit_state(request.app.state.store, CONNECTOR),
         measures=list(MEASURES),
-        open_url=_open_url(request),
+        open_url=_open_url(request.app.state.config.copias_host),
+        claves_state=kit_state(request.app.state.store, KEYSTORE_CONNECTOR),
+        claves_measures=list(KEYSTORE_MEASURES),
+        claves_open_url=_open_url(request.app.state.config.claves_host),
     )
 
 
-def _open_url(request: Request) -> str | None:
-    host = request.app.state.config.copias_host
+def _open_url(host: str | None) -> str | None:
     return f"https://{host}" if host else None
 
 
