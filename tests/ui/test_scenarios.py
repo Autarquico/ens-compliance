@@ -40,8 +40,13 @@ RUNBOOK = Path(__file__).resolve().parents[2] / "docs" / "runbooks" / "interfaz-
 GET_ROUTES = [
     "/", "/matriz", "/evidencias", "/expediente", "/preauditoria", "/asistente",
     *(f"/asistente/{s.slug}" for s in STEPS), "/static/ui.css",
+    "/herramientas", "/herramientas/claves", "/herramientas/claves/custodios",
 ]  # fmt: skip
-POST_ROUTES = [f"/asistente/{s.slug}" for s in STEPS]
+POST_ROUTES = [
+    *(f"/asistente/{s.slug}" for s in STEPS),
+    "/herramientas/claves",
+    "/herramientas/claves/custodios",
+]
 
 
 def unauthenticated_tokens(key, other_key) -> dict[str, str | None]:
@@ -320,3 +325,77 @@ def test_la_tarjeta_en_rojo_enlaza_al_runbook(session, example_store):
     record(example_store, CheckStatus.FAIL)
 
     assert 'href="/ayuda/kit-copias"' in session.get("/herramientas").text
+
+
+# --- docs/specs/kit-secrets.md ----------------------------------------------------------------
+
+KEY_PAGES = [
+    "/herramientas",
+    "/herramientas/claves",
+    "/herramientas/claves/custodios",
+    "/matriz/op.exp.10",
+    "/evidencias",
+]
+
+
+def test_el_paquete_de_claves_no_lleva_secretos_y_la_app_no_guarda_nada(
+    session, example_store, caplog
+):
+    import logging
+
+    from .test_tools_claves import FORM, members
+
+    caplog.set_level(logging.DEBUG)
+    before = snapshot_of(example_store)
+
+    response = session.post("/herramientas/claves", FORM)
+
+    assert response.status_code == 200
+    files = members(response.content)
+    delivered = b"\n".join(files.values()).lower()
+    assert not any(marker in delivered for marker in (b"hvs.", b"hvb.", b"root_token", b"unseal"))
+    assert snapshot_of(example_store) == before
+    logged = "\n".join(f"{r.name} {r.getMessage()} {r.args!r}" for r in caplog.records)
+    assert "hvs." not in logged and "hvb." not in logged
+    for path in KEY_PAGES:
+        assert "hvs." not in session.get(path).text, path
+
+
+def test_openbao_sellado_pone_la_tarjeta_de_claves_en_rojo_con_el_enlace_al_runbook(
+    session, example_store
+):
+    from .test_tools_claves import UNSEALED_SEALED, card, record
+
+    record(example_store, UNSEALED_SEALED)
+
+    html = card(session.get("/herramientas").text)
+
+    assert "Sellado" in html and 'class="badge tone-bad"' in html
+    assert 'href="/ayuda/kit-claves"' in html
+
+
+def test_con_openbao_sellado_op_exp_10_deja_de_proponer_el_kit_y_no_muestra_cumplimiento(
+    session, example_store
+):
+    from .test_tools_claves import UNSEALED_SEALED, record
+
+    record(example_store, UNSEALED_SEALED)
+
+    html = session.get("/matriz/op.exp.10").text
+
+    assert "Cumple" not in html and "Al día" not in html
+    assert "el kit de claves" not in html
+
+
+def test_openbao_instalado_sin_claves_ni_auditoria_no_sale_como_al_dia(session, example_store):
+    from ens_evidence.connectors.keystore import checks as keystore_checks
+
+    from .test_tools_claves import UNSEALED_OK, card, record
+
+    audit = (keystore_checks.AUDIT_ENABLED, CheckStatus.FAIL, "no hay ningún dispositivo")
+    keys = (keystore_checks.KEYS_ROTATED, CheckStatus.FAIL, "no hay claves gestionadas")
+    record(example_store, UNSEALED_OK, audit, keys)
+
+    html = card(session.get("/herramientas").text)
+
+    assert "Con problemas" in html and "Al día" not in html

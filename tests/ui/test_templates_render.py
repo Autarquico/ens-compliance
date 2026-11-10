@@ -62,6 +62,7 @@ VIEW_TEMPLATES = [
     "views/herramientas.html",
     "views/herramientas_copias.html",
     "views/herramientas_claves.html",
+    "views/herramientas_claves_custodios.html",
     "views/ayuda.html",
 ]
 # Solo se importa desde otras plantillas.
@@ -732,6 +733,26 @@ VIEW_CONTEXT = {
         "application_assets": [HOSTILE, "app-facturas"],
         "enable_command": "deploy/box.sh kit enable claves <paquete>",
         "init_command": "deploy/box.sh kit claves init",
+    },
+    "views/herramientas_claves_custodios.html": {
+        "values": {"asset_id": HOSTILE, "key_shares": HOSTILE, "reviewer": HOSTILE},
+        "errors": {"asset_id": [HOSTILE], "reviewer": [HOSTILE], "custodian_name_0": [HOSTILE]},
+        "form_errors": [HOSTILE],
+        "application_assets": [HOSTILE, "app-facturas"],
+        "rows": [0, 1],
+        "review_roles": [{"value": "security_officer", "label": HOSTILE}],
+        "current": {
+            "custodians": [{"name": HOSTILE, "since": "2026-11-01 00:00 UTC"}],
+            "key_shares": 5,
+            "key_threshold": 3,
+            "reviewer": HOSTILE,
+            "role": HOSTILE,
+            "reviewed_at": "2026-11-07 00:00 UTC",
+            "valid_until": "2027-11-07 00:00 UTC",
+        },
+        "unreadable_count": 1,
+        "mismatches": [HOSTILE],
+        "saved": True,
     },
     "views/ayuda.html": {
         "title": HOSTILE,

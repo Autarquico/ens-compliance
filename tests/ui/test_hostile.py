@@ -23,16 +23,19 @@ from .conftest import (
     snapshot_of,
     ui_client,
 )
+from .test_custody import FORM as CUSTODIOS_FORM
 from .test_preaudit_actions import PREPARED_AT, consent
 from .test_preaudit_actions import audited as audited  # noqa: PLC0414
 from .test_preaudit_actions import prepared as prepared  # noqa: PLC0414
 from .test_preaudit_actions import stages as stages  # noqa: PLC0414
 from .test_tools import FORM as COPIAS_FORM
 from .test_tools import SENTINELS as COPIAS_SECRETS
+from .test_tools_claves import FORM as CLAVES_FORM
 
 VIEWS = ["/", "/matriz", "/evidencias", "/expediente", "/preauditoria"]
 STEP_PATHS = [f"/asistente/{s.slug}" for s in STEPS]
-ALL_PAGES = [*VIEWS, "/asistente", *STEP_PATHS]
+KIT_PATHS = ["/herramientas", "/herramientas/claves", "/herramientas/claves/custodios"]
+ALL_PAGES = [*VIEWS, "/asistente", *STEP_PATHS, *KIT_PATHS]
 XSS = "<script>alert(1)</script>"
 IMG = '"><img src=x onerror=alert(2)>'
 SECURITY_HEADERS = (
@@ -403,7 +406,7 @@ def test_las_vistas_de_solo_lectura_nunca_llaman_a_escribir(
     for name in ("write_text", "write_bytes", "create_bytes"):
         monkeypatch.setattr(UiStore, name, lambda self, *a, _n=name, **k: calls.append(_n))
 
-    for path in [*VIEWS, "/asistente", *STEP_PATHS]:
+    for path in [*VIEWS, "/asistente", *STEP_PATHS, *KIT_PATHS]:
         client.get(path, headers=auth(token), follow_redirects=True)
 
     assert calls == []
@@ -552,6 +555,8 @@ NEW_POSTS = [
     ("/preauditoria/enviar", {"dossier": DOSSIER, "reviewed": "1", "by": "Ana"}),
     (f"/preauditoria/hallazgos/{FINDING}", {"decision": "dismissed", "reason": "x", "by": "Ana"}),
     ("/herramientas/copias", COPIAS_FORM),
+    ("/herramientas/claves", CLAVES_FORM),
+    ("/herramientas/claves/custodios", CUSTODIOS_FORM),
 ]
 BAD_ORIGINS = [
     {"Origin": "https://evil.example"},
@@ -609,3 +614,98 @@ def test_el_asistente_de_copias_rechaza_rutas_prohibidas_y_no_entrega_nada(
     assert "attachment" not in response.headers.get("content-disposition", "")
     assert not any(s in response.text for s in COPIAS_SECRETS)
     assert snapshot_of(example_store) == before
+
+
+# --- kit de claves: formularios hostiles ----------------------------------------------------------
+
+CUSTODIOS = "/herramientas/claves/custodios"
+
+
+def test_el_asistente_de_claves_escapa_lo_que_se_envia_y_no_entrega_nada(
+    client, example_store, token
+):
+    before = snapshot_of(example_store)
+
+    response = post(
+        client,
+        token,
+        "/herramientas/claves",
+        CLAVES_FORM | {"asset_id": XSS, "key_shares": IMG, "max_key_age_days": XSS},
+    )
+
+    assert response.status_code == 422
+    assert_escaped(response.text, "claves")
+    assert "attachment" not in response.headers.get("content-disposition", "")
+    assert snapshot_of(example_store) == before
+
+
+def test_el_asistente_de_claves_con_m_mayor_que_n_no_entrega_paquete(client, example_store, token):
+    before = snapshot_of(example_store)
+
+    response = post(
+        client,
+        token,
+        "/herramientas/claves",
+        CLAVES_FORM | {"key_shares": "3", "key_threshold": "4"},
+    )
+
+    assert response.status_code == 422
+    assert "attachment" not in response.headers.get("content-disposition", "")
+    assert snapshot_of(example_store) == before
+
+
+def test_los_custodios_escapan_lo_que_se_envia_y_no_escriben(client, example_store, token):
+    before = snapshot_of(example_store)
+    hostile = CUSTODIOS_FORM | {
+        "asset_id": XSS,
+        "key_shares": IMG,
+        "custodian_name_0": XSS,
+        "custodian_since_0": IMG,
+        "reviewer": IMG,
+        "role": XSS,
+        "reviewed_on": XSS,
+    }
+
+    response = post(client, token, CUSTODIOS, hostile)
+
+    assert response.status_code == 422
+    assert_escaped(response.text, "custodios")
+    assert snapshot_of(example_store) == before
+
+
+@pytest.mark.parametrize("field", ["custodian_name_1", "reviewer"])
+@pytest.mark.parametrize("name", ["ana@example.com", "12345678Z", "password: hunter2hunter2"])
+def test_custodios_con_email_dni_o_secreto_dan_422_sin_escribir_ni_repetir_el_dato(
+    client, example_store, token, field, name
+):
+    before = snapshot_of(example_store)
+
+    response = post(client, token, CUSTODIOS, CUSTODIOS_FORM | {field: name})
+
+    assert response.status_code == 422
+    assert name not in response.text.split('<form method="post"', 1)[1]
+    assert snapshot_of(example_store) == before
+
+
+def test_custodios_con_m_mayor_que_n_dan_422_sin_escribir(client, example_store, token):
+    before = snapshot_of(example_store)
+
+    response = post(
+        client, token, CUSTODIOS, CUSTODIOS_FORM | {"key_shares": "3", "key_threshold": "5"}
+    )
+
+    assert response.status_code == 422
+    assert snapshot_of(example_store) == before
+
+
+def test_mas_custodios_de_los_que_admite_el_formulario_no_se_cuelan(client, example_store, token):
+    from ens_evidence.kit.custody import latest_register
+
+    extra = {f"custodian_name_{i}": f"Persona {i}" for i in range(10, 40)}
+    extra |= {f"custodian_since_{i}": "2026-11-01" for i in range(10, 40)}
+
+    post(client, token, CUSTODIOS, CUSTODIOS_FORM | extra)
+
+    register, _ = latest_register(example_store, NOW)
+    assert register is not None
+    assert [c.name for c in register.custodians] == ["Ana Pérez", "Luis Gómez"]

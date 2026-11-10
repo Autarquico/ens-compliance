@@ -7,6 +7,7 @@ import pytest
 from .conftest import WRITE_HEADERS, auth, mint
 from .test_hostile import ALL_PAGES, STEP_PATHS
 
+EMAIL = "custodio.secreto@example.com"
 BODY_MARKER = "CUERPO-DE-FORMULARIO-SECRETO-7431"
 
 
@@ -73,3 +74,26 @@ def test_los_logs_no_llevan_las_claves_del_asistente_de_copias_ni_en_los_errores
 
     logged = all_logged_text(caplog)
     assert not any(secret in logged for secret in SENTINELS)
+
+
+def test_los_logs_no_llevan_nada_del_asistente_de_claves_ni_de_custodios(caplog, raw_client, token):
+    from .test_custody import FORM as CUSTODIOS_FORM
+    from .test_tools_claves import FORM as CLAVES_FORM
+
+    caplog.set_level(logging.DEBUG)
+    good = {**auth(token), **WRITE_HEADERS}
+    names = ("Ana Pérez", "Luis Gómez", "Marta Ruiz", EMAIL)
+
+    raw_client.post("/herramientas/claves", data=CLAVES_FORM, headers=good)
+    raw_client.post("/herramientas/claves", data=CLAVES_FORM | {"key_threshold": "9"}, headers=good)
+    raw_client.post("/herramientas/claves/custodios", data=CUSTODIOS_FORM, headers=good)
+    raw_client.post(
+        "/herramientas/claves/custodios",
+        data=CUSTODIOS_FORM | {"custodian_name_0": EMAIL},
+        headers=good,
+    )
+    raw_client.post("/herramientas/claves/custodios", data=CUSTODIOS_FORM, headers=auth(token))
+    raw_client.post("/herramientas/claves/custodios", data=CUSTODIOS_FORM, headers=WRITE_HEADERS)
+
+    logged = all_logged_text(caplog)
+    assert not any(name in logged for name in names)
