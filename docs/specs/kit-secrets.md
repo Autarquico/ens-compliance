@@ -6,13 +6,13 @@ status: active
 priority: P1
 size: L
 issue: null
-prs: []
+prs: [74]
 related_issues: [67]
 depends_on: [kit-backups]
 supersedes: []
 related_specs: [toolkit-server]
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # Kit: almacén de claves y secretos con OpenBao
