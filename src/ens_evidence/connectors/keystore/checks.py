@@ -18,7 +18,7 @@ from ens_evidence.models.contracts import CheckResult, CollectionResult, transla
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 
 UNSEALED = "keystore.unsealed"
-SEALED_CODE = "keystore.sealed"
+SEALED_CODE = "sealed"
 AUDIT_ENABLED = "keystore.audit_enabled"
 KEYS_ROTATED = "keystore.keys_rotated"
 NO_ROOT_TOKEN = "keystore.no_root_token"
