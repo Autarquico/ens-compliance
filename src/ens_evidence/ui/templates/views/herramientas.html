@@ -31,7 +31,7 @@
       "sealed": "Sellado: hacen falta M de N custodios para desbloquearlo. Mientras siga sellado nadie puede leer los secretos.",
       "down": "La app no ha podido leer el almacén. Comprueba que el servicio está en marcha y que el token de la app sigue vigente.",
       "problems": "Alguna comprobación ha fallado: auditoría, rotación de claves, token raíz, permisos del token o registro de custodios."} %}
-    {% if claves_state.key in claves_hints %}<p>{{ claves_hints[claves_state.key] }} <a href="/ayuda/kit-claves{% if claves_state.key == 'sealed' %}#desbloqueo{% endif %}">Qué hacer: runbook de las claves</a>.</p>{% endif %}
+    {% if claves_state.key in claves_hints %}<p>{{ claves_hints[claves_state.key] }} <a href="/ayuda/kit-claves">Qué hacer: runbook de las claves</a>.</p>{% endif %}
     <p>Apoya las medidas: {% for measure in claves_measures %}<a class="mono" href="/matriz/{{ measure }}">{{ measure }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. Las partes de desbloqueo nunca se teclean en la web.</p>
     <div class="actions">
       {% if claves_open_url %}<a class="btn btn-primary" href="{{ claves_open_url }}">Abrir</a>

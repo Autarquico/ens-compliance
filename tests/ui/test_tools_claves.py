@@ -87,7 +87,7 @@ def test_sellado_sale_en_rojo_con_la_frase_y_el_enlace_al_runbook(session, examp
 
     assert "tone-bad" in html and ">Sellado<" in html
     assert "hacen falta M de N custodios para desbloquearlo" in tail(html)
-    assert 'href="/ayuda/kit-claves#desbloqueo"' in html
+    assert 'href="/ayuda/kit-claves"' in html
 
 
 def test_desellado_y_sano_dice_al_dia(session, example_store):
