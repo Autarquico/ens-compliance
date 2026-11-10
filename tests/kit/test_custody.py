@@ -97,3 +97,21 @@ def test_devuelve_el_mas_reciente_y_lista_ilegibles(store):
 
     assert register is not None and register.key_shares == 5
     assert unreadable == [f"{CUSTODIANS_PREFIX}/roto.yaml"]
+
+
+def test_el_registro_es_de_un_activo(store):
+    record_custodians(store, declaration(), NOW, asset_id=ASSET)
+
+    assert latest_register(store, NOW, asset_id=ASSET)[0] is not None
+    assert latest_register(store, NOW, asset_id="app-otra")[0] is None
+
+
+def test_el_error_de_validacion_no_repite_los_nombres(store):
+    bad = declaration(key_shares=0)
+
+    with pytest.raises(ValidationError) as caught:
+        record_custodians(store, bad, NOW, asset_id=ASSET)
+
+    assert "Ana Pérez" not in str(caught.value)
+    assert "Luis Gómez" not in str(caught.value)
+    assert caught.value.errors()[0]["loc"] == ("key_shares",)

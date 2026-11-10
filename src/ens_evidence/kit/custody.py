@@ -4,7 +4,15 @@ from datetime import UTC, datetime
 from typing import Annotated, Self
 
 import yaml
-from pydantic import AwareDatetime, Field, StringConstraints, field_validator, model_validator
+from pydantic import (
+    AwareDatetime,
+    Field,
+    StringConstraints,
+    ValidationError,
+    field_validator,
+    model_validator,
+)
+from pydantic_core import InitErrorDetails
 
 from ens_evidence.backup.records import dump
 from ens_evidence.evidence import import_manual
@@ -61,6 +69,7 @@ class CustodyReview(Strict):
 class CustodianRegister(Strict):
     """N y M son los declarados; de las partes no se guarda nada (ni orden ni huella)."""
 
+    asset_id: str = Field(min_length=1)
     custodians: list[Custodian] = Field(min_length=1)
     key_shares: int = Field(ge=1, strict=True)
     key_threshold: int = Field(ge=1, strict=True)
@@ -71,6 +80,15 @@ class CustodianRegister(Strict):
         if self.key_threshold > self.key_shares:
             raise ValueError("key_threshold no puede superar key_shares")
         return self
+
+
+def _without_input(exc: ValidationError) -> ValidationError:
+    """El mismo error sin los valores recibidos: `str()` no repite nombres de custodios."""
+    details = [
+        InitErrorDetails(type=e["type"], loc=e["loc"], input=None, ctx=e.get("ctx", {}))
+        for e in exc.errors(include_url=False)
+    ]
+    return ValidationError.from_exception_data(exc.title, details)
 
 
 def register_key(register_id: str) -> str:
@@ -89,7 +107,12 @@ def record_custodians(
         loaded = safe_load_unique(data)
     except yaml.YAMLError:
         raise CustodianRegisterError("el fichero no es YAML válido") from None
-    register = CustodianRegister.model_validate(loaded)
+    if isinstance(loaded, dict):
+        loaded = {**loaded, "asset_id": asset_id}
+    try:
+        register = CustodianRegister.model_validate(loaded)
+    except ValidationError as exc:
+        raise _without_input(exc) from None
     if register.review.reviewed_at > now:
         raise CustodianRegisterError("review.reviewed_at está en el futuro")
     instant = now.astimezone(UTC)
@@ -117,9 +140,10 @@ def record_custodians(
 
 
 def latest_register(
-    store: WorkspaceStore, now: datetime
+    store: WorkspaceStore, now: datetime, asset_id: str | None = None
 ) -> tuple[CustodianRegister | None, list[str]]:
-    """El registro vigente revisado más recientemente y las claves ilegibles."""
+    """El registro vigente revisado más recientemente (del activo `asset_id`, si se indica)
+    y las claves ilegibles."""
     registers: list[CustodianRegister] = []
     unreadable: list[str] = []
     for key in store.list(CUSTODIANS_PREFIX):
@@ -131,6 +155,11 @@ def latest_register(
             )
         except (ValueError, yaml.YAMLError, NotFound):
             unreadable.append(key)
-    current = [r for r in registers if r.review.reviewed_at <= now < r.review.valid_until]
+    current = [
+        r
+        for r in registers
+        if (asset_id is None or r.asset_id == asset_id)
+        and r.review.reviewed_at <= now < r.review.valid_until
+    ]
     latest = max(current, key=lambda r: r.review.reviewed_at, default=None)
     return latest, unreadable
