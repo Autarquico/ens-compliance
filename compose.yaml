@@ -24,7 +24,8 @@ services:
       ENS_HEARTBEAT_FILE: /tmp/scheduler-heartbeat
     volumes:
       - data:/data
-    networks: [backend]
+    # claves-app: interna; solo la alcanza openbao (perfil claves). Sin el perfil, queda vacía.
+    networks: [backend, claves-app]
     logging: *logging
     healthcheck:
       # El latido (ENS_HEARTBEAT_FILE) lo renueva el bucle del scheduler en cada vuelta y,
@@ -119,12 +120,13 @@ services:
     security_opt: ["no-new-privileges:true"]
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-    networks: [edge, agent, ui-net, copias-net]
+    networks: [edge, agent, ui-net, copias-net, claves-net]
     environment:
       # Los nombres de host salen de deploy/ui.env y deploy/agent.env (los lee box.sh); sin ellos, `.invalid`.
       ENS_UI_HOST: ${ENS_UI_HOST:-ui.invalid}
       ENS_AGENT_HOST: ${ENS_AGENT_HOST:-agent.invalid}
       ENS_COPIAS_HOST: ${ENS_COPIAS_HOST:-copias.invalid}
+      ENS_CLAVES_HOST: ${ENS_CLAVES_HOST:-claves.invalid}
     logging: *logging
     healthcheck:
       # Toda ruta da 403, así que se sondea la API de administración (solo en localhost).
@@ -158,7 +160,32 @@ services:
       - backrest-config:/config
       - backrest-data:/data
       - data:/source/caja:ro
+      # Vacíos si el kit de claves no está activado. Mismo UID que openbao (10001), solo lectura.
+      - openbao-data:/source/claves:ro
+      - openbao-audit:/source/claves-auditoria:ro
     networks: [copias-net, copias]
+    logging: *logging
+
+  openbao:
+    # Kit de claves (spec kit-secrets, ADR 0019). OpenBao 2.7.2 (MPL-2.0), variante distroless: sin
+    # shell ni healthcheck (K11); estar sellado tras un reinicio es lo esperado, así que box.sh solo
+    # comprueba que corre y el estado lo da el conector. deploy/box.sh kit enable claves copia el HCL
+    # a una ruta estable del host (ENS_CLAVES_CONFIG).
+    profiles: [claves]
+    image: ghcr.io/openbao/openbao-distroless:2.7.2@sha256:67406e08c6eecae98c7a10f7326515489468f90386f4f2214b2a0498f22c3aa6
+    command: [server, -config=/openbao/config/config.hcl]
+    # Mismo UID que app y backrest: backrest lee los volúmenes en :ro. Nadie más los monta.
+    user: "10001:10001"
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ${ENS_CLAVES_CONFIG:-/dev/null}:/openbao/config/config.hcl:ro
+      - openbao-data:/openbao/data
+      - openbao-audit:/openbao/audit
+    networks: [claves-net, claves-app]
     logging: *logging
 
   cloudflared:
@@ -188,7 +215,8 @@ services:
 #   ui          ui-net:  interna, sin salida a Internet; solo la alcanza caddy (perfil ui).
 #   backrest    copias-net: interna, solo la alcanza caddy (perfil copias); copias: salida a Internet
 #               hacia el destino S3 (Compose no filtra por destino; ver docs/runbooks/kit-copias.md).
-#   caddy       edge + agent + ui-net + copias-net: todas internas, sin salida a Internet; escucha en :8080.
+#   openbao     claves-net (caddy) + claves-app (app): internas, sin salida a Internet (perfil claves).
+#   caddy       edge + agent + ui-net + copias-net + claves-net: todas internas, sin salida a Internet; escucha en :8080.
 #   cloudflared edge + tunnel: llega a caddy:8080 y sale hacia Cloudflare.
 networks:
   backend: {}
@@ -200,6 +228,10 @@ networks:
     internal: true
   copias-net:
     internal: true
+  claves-net:
+    internal: true
+  claves-app:
+    internal: true
   copias: {}
   tunnel: {}
 
@@ -210,3 +242,7 @@ volumes:
     name: ${ENS_BOX_PROJECT:-ens-box}_backrest-config
   backrest-data:
     name: ${ENS_BOX_PROJECT:-ens-box}_backrest-data
+  openbao-data:
+    name: ${ENS_BOX_PROJECT:-ens-box}_openbao-data
+  openbao-audit:
+    name: ${ENS_BOX_PROJECT:-ens-box}_openbao-audit
