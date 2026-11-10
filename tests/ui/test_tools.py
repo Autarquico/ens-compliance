@@ -17,12 +17,14 @@ from ens_evidence.applicability import approve_declaration, propose_applicabilit
 from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.checks.store import record_run
 from ens_evidence.connectors.backups import checks as backups_checks
+from ens_evidence.kit.registry import KIT_TOOLS
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.config import COPIAS_HOST_ENV, UiConfigError, load_ui_config
 from ens_evidence.ui.views.help import RUNBOOKS_DIR, parse_markdown
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
+from ens_evidence.ui.views.tools import STATES
 
 from .conftest import NOW, ORIGIN, Session, auth, jwks_for, snapshot_of, ui_client
 
@@ -98,8 +100,10 @@ def test_panel_sin_evidencia_dice_sin_datos_y_propone_el_asistente(session):
 
     assert response.status_code == 200
     assert "Sin datos" in response.text
-    assert 'href="/herramientas/copias"' in response.text
+    assert 'href="/herramientas/copias"' in response.text and ">Añadir las copias<" in response.text
     assert "mp.info.6" in response.text
+    assert "Aún no está desplegado" in response.text
+    assert "Preparar las copias" not in response.text
 
 
 def test_panel_con_evidencia_al_dia_muestra_la_fecha(session, example_store):
@@ -132,12 +136,36 @@ def test_panel_distingue_con_problemas_de_caida(session, example_store, statuses
 
 def test_panel_abre_backrest_en_el_host_configurado(config, example_store, key, token):
     deployed = Session(
-        ui_client(replace(config, copias_host="copias.example.org"), example_store, key), token
+        ui_client(replace(config, kit_hosts={"copias": "copias.example.org"}), example_store, key),
+        token,
     )
 
     html = deployed.get("/herramientas").text
 
     assert 'href="https://copias.example.org"' in html and ">Abrir<" in html
+    assert ">Preparar otro paquete<" in html and ">Añadir las copias<" not in html
+
+
+def test_panel_muestra_la_ram_medida_de_cada_herramienta(session):
+    text = tail(session.get("/herramientas").text)
+
+    for tool in KIT_TOOLS:
+        assert tool.ram is not None
+        assert f"≈{tool.ram.mib} MiB (medido el {tool.ram.measured_on}, " in text
+        assert tool.ram.conditions in text
+
+
+def test_panel_dibuja_una_tarjeta_por_herramienta_en_orden_del_registro(session):
+    html = session.get("/herramientas").text
+
+    positions = [html.index(f'id="h-{tool.id}"') for tool in KIT_TOOLS]
+    assert positions == sorted(positions)
+    assert all(tool.name in html for tool in KIT_TOOLS)
+
+
+@pytest.mark.parametrize("tool", KIT_TOOLS, ids=lambda t: t.id)
+def test_las_pistas_de_cada_herramienta_son_estados_conocidos(tool):
+    assert set(tool.hints) <= set(STATES)
 
 
 def test_la_navegacion_enlaza_herramientas(session):
@@ -151,8 +179,8 @@ def test_copias_host_se_lee_del_entorno():
         "ENS_UI_ACCESS_TEAM_DOMAIN": "acme.cloudflareaccess.com",
         "ENS_UI_ACCESS_JWKS_FILE": "/x",
     }
-    assert load_ui_config(base).copias_host is None
-    assert load_ui_config({**base, COPIAS_HOST_ENV: "Copias.Example.org"}).copias_host == (
+    assert load_ui_config(base).kit_hosts.get("copias") is None
+    assert load_ui_config({**base, COPIAS_HOST_ENV: "Copias.Example.org"}).kit_hosts["copias"] == (
         "copias.example.org"
     )
     with pytest.raises(UiConfigError) as caught:
@@ -318,6 +346,10 @@ def test_ficha_de_mp_info_6_propone_el_kit_mientras_no_haya_evidencia(web):
 
     assert "kit de copias" in html and "Qué no cubre" in html
     assert "prueba de restauración" in tail(html) and 'href="/herramientas/copias"' in html
+    assert ">Añadir las copias<" in html
+    assert "mp.info.6.1</span>: cubierta en parte" in html
+    assert "mp.info.6.2</span>: no cubierta" in html and "mp.info.6.r1.1" in html
+    assert "≈13 MiB" in tail(html)
 
 
 def test_ficha_de_mp_info_6_no_propone_el_kit_con_evidencia(web, signed):

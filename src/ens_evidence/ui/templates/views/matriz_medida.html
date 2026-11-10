@@ -23,8 +23,17 @@
 {% if kit_offer %}
 <section class="card" aria-labelledby="h-kit">
   <h2 id="h-kit">Una forma de empezar: el kit de {{ kit_offer.name }}</h2>
+  <p>Herramienta: {{ kit_offer.tool_name }}.</p>
   <p><strong>Qué cubre.</strong> {{ kit_offer.covers }}</p>
   <p><strong>Qué no cubre.</strong> {{ kit_offer.not_covers }}</p>
+  {% if kit_offer.covers_clauses or kit_offer.partial_clauses or kit_offer.not_covered_clauses %}
+  <ul>
+    {%- for c in kit_offer.covers_clauses %}<li><span class="mono">{{ c }}</span>: cubierta.</li>{% endfor %}
+    {%- for c in kit_offer.partial_clauses %}<li><span class="mono">{{ c }}</span>: cubierta en parte.</li>{% endfor %}
+    {%- for c in kit_offer.not_covered_clauses %}<li><span class="mono">{{ c }}</span>: no cubierta.</li>{% endfor %}
+  </ul>
+  {% endif %}
+  <p class="muted">{% if kit_offer.ram %}Memoria: ≈{{ kit_offer.ram.mib }} MiB (medido el {{ kit_offer.ram.measured_on }}, {{ kit_offer.ram.conditions }}).{% else %}RAM sin medir.{% endif %}</p>
   <p><a class="btn" href="{{ kit_offer.url }}">{{ kit_offer.cta }}</a></p>
 </section>
 {% endif %}
