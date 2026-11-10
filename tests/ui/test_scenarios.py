@@ -1,6 +1,7 @@
 """Un test por escenario de docs/specs/web-ui-base.md y de docs/specs/web-ui-flujo.md."""
 
 import re
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -375,29 +376,87 @@ def test_openbao_sellado_pone_la_tarjeta_de_claves_en_rojo_con_el_enlace_al_runb
     assert 'href="/ayuda/kit-claves"' in html
 
 
-def test_con_openbao_sellado_op_exp_10_pierde_la_evidencia_vigente_del_kit(session, example_store):
-    from .test_tools_claves import UNSEALED_OK, UNSEALED_SEALED, record
+def test_con_openbao_sellado_op_exp_10_pierde_la_evidencia_vigente_del_kit(
+    session, raw_client, token, example_store
+):
+    from ens_evidence.checks.model import CheckInput, StoredCheckRun
+    from ens_evidence.checks.store import record_run
+    from ens_evidence.evidence.importer import import_collected
+    from ens_evidence.evidence.layout import sha256_hex
+    from ens_evidence.matrix.evidence import manifest_sha256
+    from ens_evidence.matrix.links import add_link
+    from ens_evidence.matrix.model import CheckLink
+    from ens_evidence.models.contracts import CheckResult, CollectionResult, CollectionStatus
+    from ens_evidence.scope import scope_status
 
-    ficha = "/matriz/op.exp.10"
-    enlace = {"kind": "check", "target": "keystore.unsealed", "covers": "base"}
-    record(example_store, UNSEALED_OK)
-    session.get("/matriz")
-    r = session.post(f"{ficha}/enlazar", enlace)
-    print(
-        "GET",
-        session.get(ficha).status_code,
-        session.get("/matriz").status_code,
-        "op.exp.10" in session.get("/matriz").text,
+    from .conftest import NOW
+    from .test_tools_claves import SEALED
+
+    def row_of_the_link() -> str:
+        text = re.sub(r"\s+", " ", re.sub(r"<[^>]+>", " ", session.get("/matriz/op.exp.10").text))
+        return text.split("check keystore.unsealed", 1)[1].split("Quitar enlace", 1)[0]
+
+    def record_unsealed(seq: int, status: CheckStatus, reason: str, evidence) -> None:
+        finished = NOW - timedelta(hours=3 - seq)
+        record_run(
+            example_store,
+            StoredCheckRun(
+                seq=seq,
+                connector="keystore",
+                engine_version="1",
+                started_at=finished - timedelta(minutes=5),
+                finished_at=finished,
+                complete=True,
+                scope_fingerprint=scope_status(example_store).fingerprint,
+                config_sha256=sha256_hex(example_store.read_bytes("connectors/keystore.yaml")),
+                inputs=[
+                    CheckInput(evidence_id=evidence.id, manifest_sha256=manifest_sha256(evidence))
+                ],
+                results=[
+                    CheckResult(
+                        check_id="keystore.unsealed",
+                        asset_id="app-facturas",
+                        status=status,
+                        evaluated_at=finished,
+                        evidence_ids=[evidence.id],
+                        reason=reason,
+                    )
+                ],
+            ),
+            NOW,
+        )
+
+    flows.web_script_until_review(session, raw_client, token)
+    example_store.write_text(
+        "connectors/keystore.yaml", "asset_id: app-facturas\nmax_key_age_days: 365\n"
     )
-    print("POST", r.status_code, re.sub(r"<[^>]+>", " ", r.text)[:800])
-    vigente = session.get(ficha).text
+    evidence = import_collected(
+        example_store,
+        CollectionResult(
+            source="keystore",
+            collector="keystore",
+            collected_at=NOW - timedelta(hours=4),
+            asset_id="app-facturas",
+            data={"sealed": False},
+            collection_status=CollectionStatus.SUCCESS,
+        ),
+        collector_version="1",
+        now=NOW - timedelta(hours=4),
+    )
+    add_link(
+        example_store,
+        NOW,
+        "op.exp.10",
+        CheckLink(check_id="keystore.unsealed", covers=["op.exp.10.1"]),
+    )
 
-    record(example_store, UNSEALED_SEALED)
-    sellado = session.get(ficha).text
+    record_unsealed(1, CheckStatus.PASS, "OpenBao está inicializado y desellado", evidence)
+    assert row_of_the_link().strip().endswith("Cuenta")
 
-    print("VIGENTE", re.sub(r"<[^>]+>", " ", vigente)[-1500:])
-    print("SELLADO", re.sub(r"<[^>]+>", " ", sellado)[-1500:])
-    assert 0
+    record_unsealed(2, CheckStatus.FAIL, SEALED, evidence)
+    assert row_of_the_link().strip().endswith("No cuenta todavía")
+    sealed_page = session.get("/matriz/op.exp.10").text
+    assert "Cumple" not in sealed_page and "el kit de claves" not in sealed_page
 
 
 def test_openbao_instalado_sin_claves_ni_auditoria_no_sale_como_al_dia(session, example_store):
