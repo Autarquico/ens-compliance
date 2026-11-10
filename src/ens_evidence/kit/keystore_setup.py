@@ -15,6 +15,7 @@ import argparse
 import json
 import secrets
 import sys
+import time
 import urllib.error
 import urllib.request
 from collections.abc import Callable
@@ -33,6 +34,8 @@ ADMIN_USER = "admin"
 CONFIRMATION = "ENTIENDO"
 CLEAR_SCREEN = "\x1b[2J\x1b[H"
 TIMEOUT_SECONDS = 15
+ACTIVE_WAIT_SECONDS = 30
+ACTIVE_POLL_SECONDS = 0.5
 RUNBOOK_HINT = "Consulta el runbook kit-claves (recuperación si init se corta)."
 
 WARNING = (
@@ -171,6 +174,20 @@ def _submit_shares(client: Client, term: Terminal, threshold: int) -> None:
     raise SetupError("el almacén sigue sellado; comprueba las partes e inténtalo de nuevo")
 
 
+def _wait_until_active(client: Client) -> None:
+    """Tras desbloquear, el nodo raft tarda un instante en ser el activo: hasta entonces la API
+    responde 500 a casi todo (medido con OpenBao 2.7.2). `sys/health` da 200 solo si es activo."""
+    deadline = time.monotonic() + ACTIVE_WAIT_SECONDS
+    while True:
+        try:
+            client.request("GET", "sys/health")
+            return
+        except ApiError:
+            if time.monotonic() > deadline:
+                raise SetupError("el almacén se desbloqueó pero no llegó a estar activo") from None
+        time.sleep(ACTIVE_POLL_SECONDS)
+
+
 def run_unseal(client: Client, term: Terminal) -> None:
     status = _seal_status(client)
     if not status.get("initialized"):
@@ -255,6 +272,7 @@ def run_init(
         _show_shares(term, shares)
         term.write(f"Ahora introduce {config.threshold} partes para desbloquear.\n")
         _submit_shares(client, term, config.threshold)
+        _wait_until_active(client)
         result = _configure(client, root, policies)
         _revoke_root(client, root)
     except SetupError as exc:

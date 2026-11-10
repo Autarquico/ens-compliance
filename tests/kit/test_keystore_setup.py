@@ -20,11 +20,14 @@ class FakeBao:
         self.calls: list[tuple[str, str, dict]] = []
         self.root_revoked = False
         self.created_orphan = True
+        self.health_codes: list[int] = []  # respuestas previas de sys/health (500 = aún no activo)
 
     def handle(self, method, path, body, token):
         self.calls.append((method, path, body))
         if path == "sys/seal-status":
             return 200, {"initialized": self.initialized, "sealed": self.sealed, "t": 2, "n": 3}
+        if path == "sys/health":
+            return (self.health_codes.pop(0), {}) if self.health_codes else (200, {})
         if path == "sys/init":
             self.initialized = self.sealed = True
             return 200, {"keys": SHARES, "root_token": ROOT}
@@ -283,3 +286,27 @@ def test_politicas_se_leen_de_un_directorio(package):
 
     assert set(policies) == {"ens-app-metadata", "claves-admin"}
     assert "kv/metadata" in policies["claves-admin"]
+
+
+def test_espera_a_que_el_nodo_sea_activo_antes_de_configurar(bao, package, monkeypatch):
+    # OpenBao 2.7.2 real: justo tras desbloquear, la API da 500 hasta que raft elige activo
+    monkeypatch.setattr(setup, "ACTIVE_POLL_SECONDS", 0)
+    bao.health_codes = [500, 429, 500]
+
+    assert run_init(bao, package, good_script()) == 0
+
+    sequence = [p for _, p in paths(bao)]
+    assert sequence.count("sys/health") == 4
+    assert sequence.index("sys/health") < sequence.index("sys/audit")
+
+
+def test_si_el_nodo_no_llega_a_ser_activo_no_configura_nada(bao, package, monkeypatch):
+    monkeypatch.setattr(setup, "ACTIVE_POLL_SECONDS", 0)
+    monkeypatch.setattr(setup, "ACTIVE_WAIT_SECONDS", 0)
+    bao.health_codes = [500] * 50
+    script = good_script()
+
+    assert run_init(bao, package, script) == 1
+
+    assert "no llegó a estar activo" in script.text and "kit-claves" in script.text
+    assert "sys/audit" not in [p for _, p in paths(bao)]
