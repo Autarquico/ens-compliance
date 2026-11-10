@@ -5,13 +5,9 @@ Nada se escribe en disco ni en el workspace: los secretos solo viven en los byte
 El formato de `config.json` es el de Backrest v1.14.1 (`proto/v1/config.proto`).
 """
 
-import gzip
-import hashlib
-import io
 import json
 import re
 import secrets
-import tarfile
 from datetime import datetime
 from pathlib import PurePosixPath
 from typing import Annotated, Self
@@ -30,18 +26,22 @@ from pydantic import (
 )
 
 from ens_evidence.connectors.backups.config import RepositoryId
+from ens_evidence.kit.bundle import pack
 
-MANIFEST_VERSION = 1
 # Versión del formato de config.json de Backrest v1.14.1 (nº de migraciones en
 # internal/config/migrations: 001…006); una menor haría que Backrest migre en el arranque.
 BACKREST_CONFIG_VERSION = 6
 # Volúmenes con nombre del compose de la caja que se pueden copiar. Los volúmenes de
 # configuración y datos de Backrest quedan fuera: el primero guarda secretos.
-ALLOWED_VOLUMES = frozenset({"data"})
+ALLOWED_VOLUMES = frozenset({"data", "claves", "claves-auditoria"})
 SOURCE_ROOT = "/source"
 # compose.yaml de la caja ya monta `data` en `:ro` en /source/caja; el paquete no lo vuelve a montar
 # (box.sh rechaza que el override toque /source/caja).
-VOLUME_MOUNTS = {"data": f"{SOURCE_ROOT}/caja"}
+VOLUME_MOUNTS = {
+    "data": f"{SOURCE_ROOT}/caja",
+    "claves": f"{SOURCE_ROOT}/claves",
+    "claves-auditoria": f"{SOURCE_ROOT}/claves-auditoria",
+}
 _FORBIDDEN_TREES = ("/proc", "/sys", "/dev")
 _DOCKER_SOCKETS = ("/var/run/docker.sock", "/run/docker.sock")
 _SECRET_CHARS = re.compile(r"[A-Za-z0-9/+=_.\-]{8,256}")
@@ -296,32 +296,11 @@ def _yaml(data: dict) -> str:
     return yaml.safe_dump(data, sort_keys=False, allow_unicode=True)
 
 
-def _manifest(files: dict[str, bytes]) -> bytes:
-    lines = [f"version: {MANIFEST_VERSION}"]
-    lines += [f"{hashlib.sha256(body).hexdigest()}  {name}" for name, body in files.items()]
-    return ("\n".join(lines) + "\n").encode()
-
-
 _PRIVATE = ("copias/config.json", "copias/app.env")
 
 
 def _pack(files: dict[str, bytes], now: datetime) -> bytes:
-    mtime = int(now.timestamp())
-    files = {**files, "copias/MANIFEST": _manifest(files)}
-    raw = io.BytesIO()
-    with (
-        gzip.GzipFile(fileobj=raw, mode="wb", filename="", mtime=mtime, compresslevel=9) as gz,
-        tarfile.open(fileobj=gz, mode="w", format=tarfile.GNU_FORMAT) as tar,
-    ):
-        for name, body in files.items():
-            info = tarfile.TarInfo(name)
-            info.size = len(body)
-            info.mtime = mtime
-            info.mode = 0o600 if name in _PRIVATE else 0o644
-            info.uid = info.gid = 0
-            info.uname = info.gname = ""
-            tar.addfile(info, io.BytesIO(body))
-    return raw.getvalue()
+    return pack(files, now, root="copias", private=_PRIVATE)
 
 
 def _checked(now: datetime) -> None:
