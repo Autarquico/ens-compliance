@@ -18,7 +18,7 @@ from starlette.routing import BaseRoute, Route
 from ens_evidence.ui.pages import error_page, page_context, render
 
 RUNBOOKS_DIR = Path(__file__).resolve().parent.parent / "runbooks"
-RUNBOOKS = frozenset({"kit-copias", "restauracion-de-evidencias"})
+RUNBOOKS = frozenset({"kit-copias", "kit-claves", "restauracion-de-evidencias"})
 
 _HEADING = re.compile(r"(#{1,6}) (.+)")
 _BULLET = re.compile(r"- (.*)")
@@ -126,7 +126,7 @@ def _runbook(name: str) -> dict[str, Any]:
 
 def runbook(request: Request) -> Response:
     name = request.path_params["name"]
-    if name not in RUNBOOKS:
+    if name not in RUNBOOKS or not (RUNBOOKS_DIR / f"{name}.md").is_file():
         return error_page(request, 404)
     doc = _runbook(name)
     return render(
