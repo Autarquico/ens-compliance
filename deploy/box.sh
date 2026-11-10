@@ -3,7 +3,7 @@
 #
 #   deploy/box.sh install <vX.Y.Z>
 #   deploy/box.sh update [--no-backup] [--seal-ok] <vX.Y.Z>
-#   deploy/box.sh rollback
+#   deploy/box.sh rollback [--seal-ok]
 #   deploy/box.sh restart [app|caddy|cloudflared|agent|ui]
 #   deploy/box.sh status
 #   deploy/box.sh kit enable copias [--replace-config] <paquete.tar.gz>
@@ -107,7 +107,7 @@ trap 'cleanup; release_lock' EXIT
 trap 'exit 130' INT TERM
 
 usage() {
-  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] [--seal-ok] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared|agent|ui|backrest] | status | kit enable copias [--replace-config] <paquete> | kit disable copias | kit copias reset-password | kit enable claves <paquete> | kit disable claves | kit claves init | kit claves unseal"
+  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] [--seal-ok] <vX.Y.Z> | rollback [--seal-ok] | restart [app|caddy|cloudflared|agent|ui|backrest] | status | kit enable copias [--replace-config] <paquete> | kit disable copias | kit copias reset-password | kit enable claves <paquete> | kit disable claves | kit claves init | kit claves unseal"
 }
 
 # --- comprobaciones ------------------------------------------------------------------------
@@ -238,7 +238,6 @@ dc() {
   COMPOSE_PROFILES=$profiles ENS_ENV_FILE=$ENV_FILE ENS_TUNNEL_ENV_FILE=$TUNNEL_ENV_FILE \
     ENS_AGENT_ENV_FILE=$AGENT_ENV_FILE ENS_UI_ENV_FILE=$UI_ENV_FILE \
     ENS_UI_HOST=$UI_HOST ENS_AGENT_HOST=$AGENT_HOST ENS_COPIAS_HOST=$COPIAS_HOST \
-    ENS_CLAVES_HOST=$CLAVES_HOST ENS_CLAVES_CONFIG=$claves_config \
     ENS_CLAVES_HOST=$CLAVES_HOST ENS_CLAVES_CONFIG=$claves_config \
     docker compose -p "$PROJECT" -f "$REL/compose.yaml" --project-directory "$REL" "$@"
 }
@@ -643,6 +642,10 @@ cmd_update() {
 }
 
 cmd_rollback() {
+  seal_ok=0
+  case ${1:-} in
+    --seal-ok) seal_ok=1; shift ;;
+  esac
   [ $# -eq 0 ] || usage
   require_tools
   acquire_lock
@@ -661,6 +664,8 @@ cmd_rollback() {
     die "La imagen local $(image_ref "$target") no es la registrada; no se revierte sola."
   use_release "$commit" "$compose_sha" "$caddyfile_sha"
   export ENS_VERSION="$target"
+  # K12: si la release de destino cambia la configuración de OpenBao, `up` lo recrearía y sellaría.
+  ! openbao_would_recreate "$target" || confirm_seal_loss "$seal_ok"
   info "Volviendo a $target (los datos no se tocan)..."
   dc up -d --no-build
   stop_orphan_services
@@ -1176,10 +1181,9 @@ if not ok:
 '
 }
 
-# keystore.yaml: configuración del conector, sin credenciales y apuntando al OpenBao de la caja.
+# keystore.yaml: configuración del conector, solo las claves admitidas (ninguna es una credencial) y apuntando al OpenBao de la caja.
 validate_claves_fragment() {
   in_app python -I -c '
-import re
 import sys
 
 import yaml
@@ -1190,8 +1194,6 @@ if not isinstance(doc, dict) or not {"asset_id", "address", "max_key_age_days"} 
     sys.exit("keystore.yaml del paquete: claves no admitidas o faltan asset_id, address y max_key_age_days")
 if doc["address"] != "http://openbao:8200":
     sys.exit("keystore.yaml del paquete: address debe ser http://openbao:8200")
-if re.search(r"token|password|secret", " ".join(doc), re.IGNORECASE):
-    sys.exit("keystore.yaml del paquete: no puede llevar credenciales")
 '
 }
 

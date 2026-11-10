@@ -90,6 +90,7 @@ def test_usage_lista_los_comandos_de_claves(clone_with_docker_stub):
         "kit claves init",
         "kit claves unseal",
         "update [--no-backup] [--seal-ok]",
+        "rollback [--seal-ok]",
     ):
         assert command in result.stderr
 
@@ -158,6 +159,11 @@ def test_el_override_de_copias_sigue_aceptando_otros_montajes():
 def test_el_fragmento_del_conector_no_admite_credenciales_ni_otra_direccion():
     good = "asset_id: caja\naddress: http://openbao:8200\nmax_key_age_days: 365\n"
     assert run_validator("validate_claves_fragment", good).returncode == 0
+    # render_bundle emite max_token_period_hours: el e2e lo vio rechazado por contener "token"
+    assert (
+        run_validator("validate_claves_fragment", good + "max_token_period_hours: 72\n").returncode
+        == 0
+    )
     for bad in (
         good.replace("openbao:8200", "evil.example:8200"),
         good + "token: x\n",
@@ -436,6 +442,22 @@ def test_update_acepta_seal_ok_y_pregunta_antes_de_construir_o_tocar_nada():
     assert update.index("openbao_would_recreate") < update.index("build_image")
     assert update.index("openbao_would_recreate") < update.index("dc up")
     assert 'confirm_seal_loss "$seal_ok"' in update
+
+
+def test_rollback_acepta_seal_ok_y_pregunta_antes_de_levantar_nada():
+    rollback = shell_function("cmd_rollback")
+
+    assert "--seal-ok) seal_ok=1" in rollback
+    assert rollback.index("openbao_would_recreate") < rollback.index("dc up")
+    assert rollback.index("use_release") < rollback.index("openbao_would_recreate")
+    assert 'confirm_seal_loss "$seal_ok"' in rollback
+
+
+def test_restart_no_puede_recrear_openbao():
+    # `restart openbao` no existe y recrea con --no-deps: ningún restart toca OpenBao (K12)
+    restart = shell_function("cmd_restart")
+
+    assert "openbao" not in restart
 
 
 def run_confirm(flag, stdin_text="", tty=False):
