@@ -88,7 +88,8 @@ KIT_TOOLS: tuple[KitTool, ...] = (
             mib=13,
             measured_on="2026-11-10",
             image=COPIAS_IMAGE,
-            conditions="en reposo, sin copia en curso, Docker Desktop arm64",
+            conditions="en reposo, sin repositorio conectado ni copia en curso, Docker Desktop"
+            " arm64",
         ),
     ),
     KitTool(
