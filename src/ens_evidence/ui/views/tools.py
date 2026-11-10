@@ -13,7 +13,7 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
 from ens_evidence.checks.store import scan_runs
-from ens_evidence.connectors.keystore.checks import UNSEALED
+from ens_evidence.connectors.keystore.checks import SEALED_CODE, UNSEALED
 from ens_evidence.kit.backups import (
     ALLOWED_VOLUMES,
     DEFAULT_MIN_CHECK_READ_DATA_PERCENT,
@@ -115,7 +115,7 @@ def kit_state(store: UiStore, connector: str) -> dict[str, Any]:
 
 def _is_sealed(results: list[Any]) -> bool:
     return any(
-        r.check_id == UNSEALED and r.status is CheckStatus.FAIL and "sellado" in (r.reason or "")
+        r.check_id == UNSEALED and r.status is CheckStatus.FAIL and r.reason_code == SEALED_CODE
         for r in results
     )
 

@@ -1,5 +1,6 @@
 """Un test por escenario de docs/specs/web-ui-base.md y de docs/specs/web-ui-flujo.md."""
 
+import re
 from pathlib import Path
 
 import pytest
@@ -374,17 +375,29 @@ def test_openbao_sellado_pone_la_tarjeta_de_claves_en_rojo_con_el_enlace_al_runb
     assert 'href="/ayuda/kit-claves"' in html
 
 
-def test_con_openbao_sellado_op_exp_10_deja_de_proponer_el_kit_y_no_muestra_cumplimiento(
-    session, example_store
-):
-    from .test_tools_claves import UNSEALED_SEALED, record
+def test_con_openbao_sellado_op_exp_10_pierde_la_evidencia_vigente_del_kit(session, example_store):
+    from .test_tools_claves import UNSEALED_OK, UNSEALED_SEALED, record
+
+    ficha = "/matriz/op.exp.10"
+    enlace = {"kind": "check", "target": "keystore.unsealed", "covers": "base"}
+    record(example_store, UNSEALED_OK)
+    session.get("/matriz")
+    r = session.post(f"{ficha}/enlazar", enlace)
+    print(
+        "GET",
+        session.get(ficha).status_code,
+        session.get("/matriz").status_code,
+        "op.exp.10" in session.get("/matriz").text,
+    )
+    print("POST", r.status_code, re.sub(r"<[^>]+>", " ", r.text)[:800])
+    vigente = session.get(ficha).text
 
     record(example_store, UNSEALED_SEALED)
+    sellado = session.get(ficha).text
 
-    html = session.get("/matriz/op.exp.10").text
-
-    assert "Cumple" not in html and "Al día" not in html
-    assert "el kit de claves" not in html
+    print("VIGENTE", re.sub(r"<[^>]+>", " ", vigente)[-1500:])
+    print("SELLADO", re.sub(r"<[^>]+>", " ", sellado)[-1500:])
+    assert 0
 
 
 def test_openbao_instalado_sin_claves_ni_auditoria_no_sale_como_al_dia(session, example_store):

@@ -30,7 +30,7 @@ FORM = {
 SEALED = "OpenBao está sellado: hacen falta 3 de 5 custodios para desbloquearlo"
 
 
-def record(store, *results: tuple[str, CheckStatus, str], complete: bool = True) -> None:
+def record(store, *results: tuple, complete: bool = True) -> None:
     run = StoredCheckRun(
         seq=1,
         connector="keystore",
@@ -49,15 +49,16 @@ def record(store, *results: tuple[str, CheckStatus, str], complete: bool = True)
                 evaluated_at=NOW - timedelta(hours=1),
                 evidence_ids=["EV-20261108-aaaaaaaa"],
                 reason=reason,
+                reason_code=code[0] if code else None,
             )
-            for check_id, status, reason in results
+            for check_id, status, reason, *code in results
         ],
     )
     record_run(store, run, NOW)
 
 
 UNSEALED_OK = (keystore_checks.UNSEALED, CheckStatus.PASS, "OpenBao está inicializado y desellado")
-UNSEALED_SEALED = (keystore_checks.UNSEALED, CheckStatus.FAIL, SEALED)
+UNSEALED_SEALED = (keystore_checks.UNSEALED, CheckStatus.FAIL, SEALED, keystore_checks.SEALED_CODE)
 AUDIT_FAIL = (keystore_checks.AUDIT_ENABLED, CheckStatus.FAIL, "sin dispositivo de auditoría")
 
 
@@ -88,6 +89,24 @@ def test_sellado_sale_en_rojo_con_la_frase_y_el_enlace_al_runbook(session, examp
     assert "tone-bad" in html and ">Sellado<" in html
     assert "hacen falta M de N custodios para desbloquearlo" in tail(html)
     assert 'href="/ayuda/kit-claves"' in html
+
+
+def test_sellado_se_reconoce_por_el_codigo_y_no_por_la_frase(session, example_store):
+    record(
+        example_store,
+        (
+            keystore_checks.UNSEALED,
+            CheckStatus.FAIL,
+            "texto reescrito",
+            keystore_checks.SEALED_CODE,
+        ),
+    )
+    assert "Sellado" in card(session.get("/herramientas").text)
+
+
+def test_fail_de_key_001_sin_el_codigo_de_sellado_no_es_sellado(session, example_store):
+    record(example_store, (keystore_checks.UNSEALED, CheckStatus.FAIL, "OpenBao sellado y roto"))
+    assert "Sellado" not in card(session.get("/herramientas").text)
 
 
 def test_desellado_y_sano_dice_al_dia(session, example_store):

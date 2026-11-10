@@ -36,6 +36,7 @@ STEP = "claves-custodios"
 MAX_CUSTODIANS = 10
 ROWS = range(MAX_CUSTODIANS)
 DATE_HINT = "Usa el formato AAAA-MM-DD."
+THRESHOLD_MESSAGE = "M no puede ser mayor que N."
 NUMBER_HINT = "Escribe un número entero, sin signo ni decimales."
 
 
@@ -103,10 +104,10 @@ def _page(
 ) -> Response:
     store: UiStore = request.app.state.store
     now = request.app.state.clock()
-    register, unreadable = latest_register(store, now)
     seal_asset, seal = _latest_seal(store)
     assets = _application_assets(store)
     default_asset = seal_asset if seal_asset in assets else ""
+    register, unreadable = latest_register(store, now, asset_id=default_asset or None)
     return render(
         request,
         "views/herramientas_claves_custodios.html",
@@ -150,7 +151,7 @@ def _day(text: str) -> datetime | None:
 
 
 def _declaration(
-    form: Form, assets: list[str]
+    form: Form, assets: list[str], now: datetime
 ) -> tuple[dict[str, Any] | None, dict[str, list[str]]]:
     errors: dict[str, list[str]] = {}
 
@@ -183,6 +184,9 @@ def _declaration(
         custodians.append({"name": name, "since": since_at})
     if not custodians:
         fail("custodian_name_0", "Indica al menos un custodio.")
+    reviewed_at = date("reviewed_on")
+    if reviewed_at is not None and reviewed_at > now:
+        fail("reviewed_on", "La fecha de la revisión no puede ser futura.")
     declaration = {
         "custodians": custodians,
         "key_shares": number("key_shares"),
@@ -190,7 +194,7 @@ def _declaration(
         "review": {
             "reviewer": first(form, "reviewer"),
             "role": first(form, "role"),
-            "reviewed_at": date("reviewed_on"),
+            "reviewed_at": reviewed_at,
             "valid_until": date("valid_until_on"),
         },
     }
@@ -210,8 +214,10 @@ def _validation_errors(exc: ValidationError) -> tuple[dict[str, list[str]], list
             field = "reviewer"
         elif loc[:2] == ("review", "role"):
             field, message = "role", "Elige uno de los roles."
-        elif loc[:2] == ("review", "valid_until") or item["type"] == "value_error":
-            field = "valid_until_on"
+        elif loc == () and item["type"] == "value_error":
+            field, message = "key_threshold", THRESHOLD_MESSAGE
+        elif loc[:2] == ("review", "valid_until") or loc == ("review",):
+            field, message = "valid_until_on", "Debe ser posterior a la fecha de la revisión."
         elif loc[:1] in (("key_shares",), ("key_threshold",)):
             field = str(loc[0])
             message = "Debe ser un número mayor que 0." if "mayor" not in message else message
@@ -231,7 +237,7 @@ async def guardar(request: Request) -> Response:
         return error_page(request, 400, "No se ha entendido el formulario.")
     store: UiStore = request.app.state.store.recording()
     now, email = request.app.state.clock(), identity_of(request).email
-    declaration, errors = _declaration(form, _application_assets(store))
+    declaration, errors = _declaration(form, _application_assets(store), now)
     general: list[str] = []
     if declaration is not None:
         try:

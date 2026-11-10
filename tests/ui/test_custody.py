@@ -84,6 +84,32 @@ def test_umbral_mayor_que_partes_da_422(session):
     assert session.post(URL, {**FORM, "key_shares": "2", "key_threshold": "3"}).status_code == 422
 
 
+def test_umbral_mayor_que_partes_se_marca_en_m_y_no_en_vale_hasta(session):
+    html = session.post(URL, {**FORM, "key_shares": "2", "key_threshold": "3"}).text
+
+    assert "M no puede ser mayor que N." in html
+    assert 'id="f-key_threshold"' in html and 'aria-describedby="err-key_threshold"' in html
+    assert 'aria-describedby="err-valid_until_on"' not in html
+    assert "no puede superar" not in html
+
+
+def test_vale_hasta_anterior_a_la_revision_se_marca_en_vale_hasta(session):
+    html = session.post(URL, {**FORM, "valid_until_on": "2026-11-01"}).text
+
+    assert "Debe ser posterior a la fecha de la revisión." in html
+    assert 'aria-describedby="err-valid_until_on"' in html
+
+
+def test_revision_futura_se_marca_en_la_fecha_de_revision(session):
+    response = session.post(
+        URL, {**FORM, "reviewed_on": "2030-01-01", "valid_until_on": "2031-01-01"}
+    )
+
+    assert response.status_code == 422
+    assert "La fecha de la revisión no puede ser futura." in response.text
+    assert "reviewed_at" not in response.text
+
+
 def test_activo_fuera_del_inventario_da_422(session):
     assert session.post(URL, {**FORM, "asset_id": "no-existe"}).status_code == 422
 
