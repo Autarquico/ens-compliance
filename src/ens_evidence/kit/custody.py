@@ -140,10 +140,10 @@ def record_custodians(
 
 
 def latest_register(
-    store: WorkspaceStore, now: datetime, asset_id: str | None = None
+    store: WorkspaceStore, now: datetime, asset_id: str
 ) -> tuple[CustodianRegister | None, list[str]]:
-    """El registro vigente revisado más recientemente (del activo `asset_id`, si se indica)
-    y las claves ilegibles."""
+    """El registro vigente revisado más recientemente del activo `asset_id` y las claves
+    ilegibles."""
     registers: list[CustodianRegister] = []
     unreadable: list[str] = []
     for key in store.list(CUSTODIANS_PREFIX):
@@ -158,8 +158,7 @@ def latest_register(
     current = [
         r
         for r in registers
-        if (asset_id is None or r.asset_id == asset_id)
-        and r.review.reviewed_at <= now < r.review.valid_until
+        if r.asset_id == asset_id and r.review.reviewed_at <= now < r.review.valid_until
     ]
     latest = max(current, key=lambda r: r.review.reviewed_at, default=None)
     return latest, unreadable

@@ -47,6 +47,10 @@ def _application_assets(store: UiStore) -> list[str]:
     return sorted(a.id for a in assets.assets if a.type is AssetType.APPLICATION)
 
 
+def _only(assets: list[str]) -> str:
+    return assets[0] if len(assets) == 1 else ""
+
+
 def _latest_seal(store: UiStore) -> tuple[str | None, dict[str, Any] | None]:
     """El activo y el `seal-status` (n y t) de la última ejecución del conector, si se leen."""
     manifests = [m for m in list_manifests(store).manifests if m.source == KEYSTORE_SOURCE]
@@ -106,8 +110,8 @@ def _page(
     now = request.app.state.clock()
     seal_asset, seal = _latest_seal(store)
     assets = _application_assets(store)
-    default_asset = seal_asset if seal_asset in assets else ""
-    register, unreadable = latest_register(store, now, asset_id=default_asset or None)
+    default_asset = seal_asset if seal_asset in assets else _only(assets)
+    register, unreadable = latest_register(store, now, default_asset)
     return render(
         request,
         "views/herramientas_claves_custodios.html",

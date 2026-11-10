@@ -57,7 +57,7 @@ class KeystoreConnector(Connector):
             raise WorkspaceError(
                 f"asset_id: debe ser un activo application del inventario ({config.asset_id})."
             )
-        register, unreadable = latest_register(store, self._clock())
+        register, unreadable = latest_register(store, self._clock(), config.asset_id)
         return KeystoreRun(**config.model_dump(), custody=register, unreadable_registers=unreadable)
 
     def collect(self, config: BaseModel) -> CollectionResult:

@@ -118,7 +118,7 @@ def test_guarda_el_registro_y_la_evidencia_manual_del_activo(session, example_st
     response = session.post(URL, FORM)
 
     assert response.status_code == 303 and response.headers["location"] == f"{URL}?guardado=1"
-    register, _ = latest_register(example_store, NOW)
+    register, _ = latest_register(example_store, NOW, "app-facturas")
     assert register is not None and register.key_threshold == 3
     manifests = [example_store.read_text(k) for k in example_store.list("evidence/manifests")]
     assert len(manifests) == 1

@@ -454,12 +454,6 @@ OTHER_APP = """
 """
 
 
-@pytest.mark.xfail(
-    reason="`latest_register` no filtra por activo: el registro de custodios de un almacén "
-    "se lee también para otro activo application (el registro no guarda a qué activo "
-    "pertenece; solo su evidencia manual lo sabe)",
-    strict=True,
-)
 def test_el_registro_de_custodios_de_un_activo_no_se_usa_para_otro(tmp_path):
     store = LocalStore(tmp_path / "ws")
     for name in ("assets", "services", "dependencies", "system"):

@@ -306,7 +306,7 @@ def test_prepare_exige_un_activo_application_y_lee_los_custodios(monkeypatch):
         ]
     )
     monkeypatch.setattr(module, "load_assets", lambda store: (assets, []))
-    monkeypatch.setattr(module, "latest_register", lambda store, now: (REGISTER, ["x"]))
+    monkeypatch.setattr(module, "latest_register", lambda store, now, asset_id: (REGISTER, ["x"]))
     connector = KeystoreConnector(clock=lambda: NOW, env={})
 
     run = connector.prepare(KeystoreConfig(asset_id="openbao", max_key_age_days=90), object())

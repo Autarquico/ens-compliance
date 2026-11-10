@@ -44,7 +44,7 @@ def test_guarda_el_registro_y_la_evidencia_manual(store):
     record_custodians(store, declaration(), NOW, asset_id=ASSET)
 
     assert len(store.list(CUSTODIANS_PREFIX)) == 1
-    register, unreadable = latest_register(store, NOW)
+    register, unreadable = latest_register(store, NOW, ASSET)
     assert register is not None and register.key_threshold == 2 and unreadable == []
     manifests = [store.read_text(k) for k in store.list("evidence/manifests")]
     assert len(manifests) == 1 and f"asset_id: {ASSET}" in manifests[0]
@@ -81,7 +81,7 @@ def test_rechaza_revision_en_el_futuro(store):
 
 def test_sin_registro_vigente_devuelve_none(store):
     record_custodians(store, declaration(), NOW, asset_id=ASSET)
-    assert latest_register(store, NOW + timedelta(days=400))[0] is None
+    assert latest_register(store, NOW + timedelta(days=400), ASSET)[0] is None
 
 
 def test_devuelve_el_mas_reciente_y_lista_ilegibles(store):
@@ -93,7 +93,7 @@ def test_devuelve_el_mas_reciente_y_lista_ilegibles(store):
     )
     store.create_bytes(f"{CUSTODIANS_PREFIX}/roto.yaml", b"{{{")
 
-    register, unreadable = latest_register(store, NOW + timedelta(days=1))
+    register, unreadable = latest_register(store, NOW + timedelta(days=1), ASSET)
 
     assert register is not None and register.key_shares == 5
     assert unreadable == [f"{CUSTODIANS_PREFIX}/roto.yaml"]

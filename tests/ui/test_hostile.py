@@ -706,6 +706,6 @@ def test_mas_custodios_de_los_que_admite_el_formulario_no_se_cuelan(client, exam
 
     post(client, token, CUSTODIOS, CUSTODIOS_FORM | extra)
 
-    register, _ = latest_register(example_store, NOW)
+    register, _ = latest_register(example_store, NOW, CUSTODIOS_FORM["asset_id"])
     assert register is not None
     assert [c.name for c in register.custodians] == ["Ana Pérez", "Luis Gómez"]
