@@ -35,6 +35,7 @@ from .fake_openbao import (
 EXAMPLE_SCOPE = Path(__file__).resolve().parents[3] / "examples" / "workspace" / "scope"
 CANARY = "CANARIO-DE-VALOR-HOSTIL"
 GOOD_REGISTER = {
+    "asset_id": "openbao",
     "custodians": [{"name": "Ana Pérez", "since": "2026-11-01T00:00:00+00:00"}],
     "key_shares": 3,
     "key_threshold": 2,
