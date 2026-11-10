@@ -3,7 +3,7 @@
 import os
 import re
 from collections.abc import Mapping
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from pathlib import Path
 from urllib.parse import urlsplit
 
@@ -27,8 +27,7 @@ class UiConfig:
     access_aud: str
     team_domain: str
     jwks_file: Path
-    copias_host: str | None = None
-    claves_host: str | None = None
+    kit_hosts: dict[str, str | None] = field(default_factory=dict)
 
     @property
     def issuer(self) -> str:
@@ -42,8 +41,10 @@ def load_ui_config(env: Mapping[str, str] | None = None) -> UiConfig:
         access_aud=_required(env, AUD_ENV),
         team_domain=_team_domain(_required(env, TEAM_DOMAIN_ENV)),
         jwks_file=Path(_required(env, JWKS_FILE_ENV)).expanduser(),
-        copias_host=_optional_host(env, COPIAS_HOST_ENV),
-        claves_host=_optional_host(env, CLAVES_HOST_ENV),
+        kit_hosts={
+            "copias": _optional_host(env, COPIAS_HOST_ENV),
+            "claves": _optional_host(env, CLAVES_HOST_ENV),
+        },
     )
 
 

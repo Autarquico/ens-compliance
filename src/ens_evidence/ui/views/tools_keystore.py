@@ -18,7 +18,6 @@ from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, render
 from ens_evidence.ui.store import UiStore
-from ens_evidence.ui.views.tools import KEYSTORE_CONNECTOR, KEYSTORE_MEASURES, kit_state
 
 STEP = "claves"
 ENABLE_COMMAND = "deploy/box.sh kit enable claves <paquete>"
@@ -31,32 +30,6 @@ RANGE_TEXT = {
     "max_key_age_days": "Debe ser mayor que 0.",
 }
 GENERIC = "Revisa este campo."
-
-
-def keystore_offer(store: UiStore, measure_id: str) -> dict[str, Any] | None:
-    """Propuesta del kit para op.exp.10, mientras no haya evidencia de su almacén de claves."""
-    if measure_id not in KEYSTORE_MEASURES or (
-        kit_state(store, KEYSTORE_CONNECTOR)["key"] != "nodata"
-    ):
-        return None
-    return {
-        "name": "claves",
-        "cta": "Preparar las claves",
-        "url": "/herramientas/claves",
-        "covers": (
-            "Custodia cifrada de claves y secretos, con auditoría de accesos, control de acceso "
-            "por políticas, inventario de claves, rotación según la política que fijes y "
-            "desbloqueo por quórum de custodios. Es una parte de op.exp.10.1; en cada recogida "
-            "se comprueba que el almacén está desbloqueado, auditado y con las claves rotadas."
-        ),
-        "not_covers": (
-            "No cubre op.exp.10.2 ni op.exp.10.3: OpenBao vive en el mismo servidor que la "
-            "explotación, así que no hay aislamiento de medios. Tampoco la R1 (algoritmos y "
-            "parámetros autorizados por el CCN): la valora una persona con el inventario de "
-            "tipos de clave. No cubre las claves que queden fuera de OpenBao, ni decide que la "
-            "medida esté cubierta: eso lo valora una persona."
-        ),
-    }
 
 
 def _application_assets(store: UiStore) -> list[str]:
