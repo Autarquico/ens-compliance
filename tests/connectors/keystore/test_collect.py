@@ -327,3 +327,16 @@ def _next(replies, request):
 
     status, body = next(replies)
     return httpx.Response(status, json=body)
+
+
+def test_sin_period_en_lookup_self_el_periodo_es_creation_ttl_como_en_openbao_2_7_2(api, collect):
+    real = {k: v for k, v in APP_LOOKUP.items() if k != "period"}
+    real |= {"creation_ttl": 72 * 3600, "ttl": 10 * 3600}
+    replies = iter([(200, {"data": real}), (200, {"data": {**real, "ttl": 72 * 3600}})])
+    api.set("GET", "auth/token/lookup-self", lambda r: _next(replies, r))
+    api.set("POST", "auth/token/renew-self", (200, {"auth": {"lease_duration": 259200}}))
+
+    token = section(collect(), "token")["summary"]
+
+    assert token["period_seconds"] == 72 * 3600
+    assert token["renewed"] is True  # sin esto el token del kit caducaría a las 72 h

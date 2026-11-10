@@ -113,9 +113,11 @@ def collect_token(client: KeystoreClient, now: datetime) -> Section:
 
 def _token_lookup(client: KeystoreClient) -> dict[str, Any]:
     data = client.get("auth/token/lookup-self").data
+    # OpenBao 2.7.2 no devuelve `period` en lookup-self (medido con un token del rol ens-app, que
+    # sí es periódico): su `creation_ttl` es el periodo. Con `period` presente manda `period`.
     return {
         "policies": _strings(data.get("policies")),
-        "period_seconds": _int(data.get("period")),
+        "period_seconds": _int(data.get("period")) or _int(data.get("creation_ttl")),
         "ttl_seconds": _int(data.get("ttl")),
         "renewable": data.get("renewable") is True,
         "orphan": data.get("orphan") is True,
