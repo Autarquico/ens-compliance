@@ -126,6 +126,10 @@
 			header_up Cookie "(^|;\s*)CF_[A-Za-z_]+=[^;]*;?\s*" "$1"
 			header_up -Cf-Access-*
 			header_up -X-Forwarded-*
+			# Vaultwarden limita login y /admin y registra por X-Real-IP (IP_HEADER por defecto): la fija
+			# la caja con la IP que escribe Cloudflare, nunca el cliente. Sin Cf-Connecting-Ip queda vacía
+			# y Vaultwarden usa la IP del vecino (Caddy).
+			header_up X-Real-IP {http.request.header.Cf-Connecting-Ip}
 			transport http {
 				dial_timeout 3s
 				response_header_timeout 30s

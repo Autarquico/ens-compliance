@@ -111,6 +111,8 @@ def test_caddy_enruta_contrasenas_por_host_antes_del_403_final_y_sin_cookies_de_
     assert "header_up -Cf-Access-*" in block and "header_up -X-Forwarded-*" in block
     # solo se quitan las cookies CF_*; VW_ADMIN y las del cliente web pasan
     assert "header_up -Cookie" not in block and "CF_" in block
+    # la IP que Vaultwarden limita y registra la fija la caja (Cloudflare), no el cliente
+    assert "header_up X-Real-IP {http.request.header.Cf-Connecting-Ip}" in block
     assert text.index("handle @contrasenas {") < text.index("\n\thandle {\n")
     assert 'respond "Forbidden" 403' in text[text.index("\n\thandle {\n") :]
 

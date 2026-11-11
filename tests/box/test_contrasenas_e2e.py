@@ -269,6 +269,40 @@ def test_alta_no_se_repite_ni_cambia_el_token_vigente(contrasenas_box, alta):
     assert "alta ABIERTA" in status.stdout + status.stderr
 
 
+def via_caddy(box, method, path, **kwargs):
+    headers = {"Host": HOST, **kwargs.pop("headers", {})}
+    return http(
+        box, f"{box.project}_contrasenas-net", "caddy:8080", method, path, headers=headers, **kwargs
+    )
+
+
+def test_el_cliente_no_elige_la_ip_con_la_que_vaultwarden_limita_y_registra(
+    contrasenas_box, alta
+):
+    box = contrasenas_box
+    cloudflare = {"Cf-Connecting-Ip": "198.51.100.7"}
+    attempt = {"username": "nadie%40example.test", "password": "x", "grant_type": "password"}
+    attempt |= {"scope": "api%20offline_access", "client_id": "web", "deviceType": "9", "deviceName": "e2e"}
+    statuses = [
+        via_caddy(
+            box,
+            "POST",
+            "/identity/connect/token",
+            form=attempt | {"deviceIdentifier": str(uuid.uuid4())},
+            headers={**cloudflare, "X-Real-IP": f"203.0.113.{n}"},
+        )[0]
+        for n in range(1, 16)
+    ]
+    assert 429 in statuses, statuses  # rotar X-Real-IP no esquiva el límite (burst por defecto: 10)
+
+    forged = via_caddy(box, "POST", "/admin", form={"token": "no"}, headers={"X-Real-IP": "192.0.2.99"})
+    assert forged[0] == 401
+    logs = run(["docker", "logs", box.container("vaultwarden")])
+    log = logs.stdout + logs.stderr
+    assert "198.51.100.7" in log
+    assert "203.0.113." not in log and "192.0.2.99" not in log
+
+
 # --- usuarios reales ------------------------------------------------------------------------
 
 
