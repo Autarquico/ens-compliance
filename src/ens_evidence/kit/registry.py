@@ -190,10 +190,11 @@ KIT_TOOLS: tuple[KitTool, ...] = (
             ),
         },
         ram=MeasuredRam(
-            mib=30,
+            mib=81,
             measured_on="2026-11-11",
             image=CONTRASENAS_IMAGE,
-            conditions="en reposo, con una base pequeña, Docker Desktop arm64, sin el exportador",
+            conditions="Vaultwarden (30 MiB) y su exportador (51 MiB) en reposo, base de prueba con"
+            " tres usuarios, Docker Desktop arm64",
         ),
     ),
 )
