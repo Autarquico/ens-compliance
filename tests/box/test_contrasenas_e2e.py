@@ -443,7 +443,8 @@ def test_los_permisos_efectivos_de_las_salidas_los_lee_backrest_y_la_app(contras
     assert listing.returncode == 0, listing.stderr
     assert "db-" in listing.stdout and "rsa_key" in listing.stdout, listing.stdout
     for line in listing.stdout.splitlines()[1:]:
-        assert line.split()[0] == "-rw-------" and line.split()[2] == UID, line
+        mode = "drwx------" if line.split()[-1].startswith("extras-") else "-rw-------"
+        assert line.split()[0] == mode and line.split()[2] == UID, line
     # backrest: UID 10001, volumen :ro
     assert (
         volume_run(
