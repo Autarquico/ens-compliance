@@ -114,29 +114,23 @@ panel quede desactivado y las cuentas sigan entrando.
 
 ## Copias y restauración
 
-- La instantánea (`db-<fecha>.sqlite3` y `rsa_key.pem`, modo 600, UID 10001) se
-  publica en `contrasenas-snapshot` en cada vuelta, solo si `integrity_check` da
-  ok; se conserva la última buena. Backrest (también UID 10001) la monta en
-  `/source/contrasenas`, en solo lectura. El check «instantánea reciente» falla
-  si la última buena es antigua.
-- **Pendiente:** el asistente de copias todavía no ofrece `contrasenas` como origen
-  (`ALLOWED_VOLUMES` de `kit/backups.py`). Hasta entonces, añade `/source/contrasenas` al
-  plan en la interfaz de Backrest (no verificado).
-- **No entran** en la instantánea los adjuntos, los sends ni `config.json` de
-  Vaultwarden. Los adjuntos y sends son ficheros cifrados de los usuarios en
-  `vaultwarden-data`; si se usan, se pierden con la instantánea sola. Decisión: la
-  instantánea cubre lo imprescindible para volver a entrar (cuentas, cofres y la
-  clave de firma de sesiones); no se monta `vaultwarden-data` en Backrest porque
-  contiene la base viva en WAL, que no se copia de forma coherente. No uses
-  adjuntos ni sends con este kit hasta cubrirlos.
+- La instantánea se publica en `contrasenas-snapshot` en cada vuelta, solo si
+  `integrity_check` da ok, con modo 600 (directorios 700) y UID 10001: `db-<fecha>.sqlite3`,
+  `rsa_key.pem`, y `extras-<fecha>/` con `attachments/`, `sends/` y `config.json` si
+  existen. `db-<fecha>.sqlite3` se publica el último: sin él, la instantánea no cuenta.
+  Se conserva la última buena. Un enlace simbólico o más de 100 000 ficheros o 10 GiB
+  de adjuntos y sends hacen fallar la instantánea (el check avisa), no se copia a medias.
+  Backrest (también UID 10001) la monta en `/source/contrasenas`, en solo lectura. El
+  check «instantánea reciente» falla si la última buena es antigua.
+- En el asistente de copias, marca el origen `contrasenas` (monta `/source/contrasenas`).
 - Restauración (en un VPS nuevo o sobre un volumen vacío): restaura la copia de
   Backrest de `/source/contrasenas` (procedimiento de la sección 4 de
-  [kit-copias](kit-copias.md)), copia `db-<fecha>.sqlite3` como `db.sqlite3` y
-  `rsa_key.pem` en el volumen `vaultwarden-data` (con el contenedor parado) y
+  [kit-copias](kit-copias.md)), copia `db-<fecha>.sqlite3` como `db.sqlite3`,
+  `rsa_key.pem` y el contenido de `extras-<fecha>/` en el volumen `vaultwarden-data` (con el contenedor parado) y
   arranca el perfil. Prueba hecha (2026-11-11): instantánea copiada a un volumen
   vacío, Vaultwarden nuevo arrancado sobre él y login correcto de una cuenta
   existente. **No verificado:** restaurar desde Backrest en un VPS nuevo, los
-  adjuntos y que sin `rsa_key.pem` solo se invaliden las sesiones. Registra tu prueba
+  adjuntos y sends restaurados y que sin `rsa_key.pem` solo se invaliden las sesiones. Registra tu prueba
   (fecha, quién, resultado) como prueba de restauración
   ([restauración de evidencias](restauracion-de-evidencias.md)).
 
