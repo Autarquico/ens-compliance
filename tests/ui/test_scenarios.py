@@ -1,4 +1,3 @@
-# ruff: noqa: F811  (los tests reciben por nombre las fixtures `web` y `signed` de test_tools)
 """Un test por escenario de docs/specs/web-ui-base.md y de docs/specs/web-ui-flujo.md."""
 
 import re
@@ -37,7 +36,6 @@ from .conftest import (
     ui_client,
 )
 from .test_equivalence import fingerprints, run_cli, ui_script
-from .test_tools import signed, web  # noqa: F401  (fixtures reutilizadas)
 
 web_flow = flows.web_flow  # la fixture de sesión: el flujo se recorre una vez para todos
 
@@ -522,34 +520,8 @@ def test_la_ficha_propone_la_herramienta_con_sus_clausulas_y_el_boton_al_asisten
         assert f'href="{tool.wizard_url}">{tool.cta}</a>' in offer, measure_id
 
 
-def test_una_medida_no_aplicable_no_propone_la_herramienta(
-    web,
-    signed,
-    monkeypatch,
-):
-    # Las dos medidas del kit son obligatorias en todos los niveles y la declaración no deja
-    # excluirlas (no están en absent_asset_types.yaml), así que la ficha n.a. se prueba con una
-    # medida que la declaración sí dejó fuera, apoyada en el registro por esta herramienta.
-    from applicability.helpers import measures_by_id
-
-    from ens_evidence.kit.registry import KIT_TOOLS
-    from ens_evidence.models.enums import Applicability
-    from ens_evidence.ui.views import tools
-
-    excluded = next(
-        m
-        for m, v in measures_by_id(signed).items()
-        if v.applicability is Applicability.NOT_APPLICABLE
-    )
-    copias = replace(KIT_TOOLS[0], measures=(excluded,))
-    monkeypatch.setattr(
-        tools, "tool_for", lambda measure_id: copias if measure_id == excluded else None
-    )
-
-    page = web.get(f"/matriz/{excluded}")
-
-    assert page.status_code == 200
-    assert 'id="h-kit"' not in page.text
+# Una medida n.a. no recibe propuesta: se prueba en test_tools.py sobre kit_offer; hoy ninguna
+# medida del kit admite n.a. (son obligatorias en todos los niveles): no hay ficha que pintar.
 
 
 def test_con_copias_con_evidencia_y_claves_sin_datos_solo_op_exp_10_propone(web, signed):

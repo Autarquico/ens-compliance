@@ -9,24 +9,19 @@ from datetime import timedelta
 from pathlib import Path
 
 import pytest
-from applicability.helpers import LATER, decide_all_undetermined, prepared_workspace, uniform
-from matrix.helpers import SIGNED_AT
-from starlette.testclient import TestClient
 
-from ens_evidence.applicability import approve_declaration, propose_applicability
 from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.checks.store import record_run
 from ens_evidence.connectors.backups import checks as backups_checks
 from ens_evidence.kit.registry import KIT_TOOLS
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus
-from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.config import COPIAS_HOST_ENV, UiConfigError, load_ui_config
+from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views.help import RUNBOOKS_DIR, parse_markdown
-from ens_evidence.ui.views.matrix import MATRIX_ROUTES
-from ens_evidence.ui.views.tools import STATES
+from ens_evidence.ui.views.tools import STATES, kit_offer
 
-from .conftest import NOW, ORIGIN, Session, auth, jwks_for, snapshot_of, ui_client
+from .conftest import NOW, ORIGIN, Session, auth, snapshot_of, ui_client
 
 SHA = "a" * 64
 WRITE_KEY = "WRITEKEY-sentinel-0001"
@@ -326,21 +321,6 @@ def test_el_post_no_acepta_get_de_descarga(session):
 # --- matriz --------------------------------------------------------------------------------------
 
 
-@pytest.fixture
-def signed(tmp_path):
-    store = prepared_workspace(tmp_path / "signed", uniform("MEDIO"))
-    propose_applicability(store, LATER)
-    decide_all_undetermined(store)
-    approve_declaration(store, "Luis Pardo", SIGNED_AT)
-    return store
-
-
-@pytest.fixture
-def web(config, signed, key, token) -> Session:
-    app = create_ui_app(config, signed, lambda: NOW, lambda: jwks_for(key), routes=MATRIX_ROUTES)
-    return Session(TestClient(app, base_url=ORIGIN), token)
-
-
 def test_ficha_de_mp_info_6_propone_el_kit_mientras_no_haya_evidencia(web):
     html = web.get("/matriz/mp.info.6").text
 
@@ -458,3 +438,16 @@ def test_el_runbook_de_restauracion_servido_es_el_de_docs(session):
     assert (
         session.get("/ayuda/kit-copias").text.count('href="/ayuda/restauracion-de-evidencias"') >= 1
     )
+
+
+# --- propuesta del kit en la ficha (kit_offer) ---------------------------------------------------
+
+
+def test_una_medida_no_aplicable_no_recibe_propuesta_del_kit(signed):
+    assert kit_offer(UiStore(signed), "mp.info.6", applicable=False) is None
+
+
+def test_una_medida_aplicable_sin_evidencia_del_conector_recibe_la_propuesta(signed):
+    offer = kit_offer(UiStore(signed), "mp.info.6", applicable=True)
+
+    assert offer is not None and offer["name"] == "copias"

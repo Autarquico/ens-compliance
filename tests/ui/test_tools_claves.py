@@ -18,7 +18,7 @@ from ens_evidence.ui.config import CLAVES_HOST_ENV, load_ui_config
 from ens_evidence.ui.views import help as help_view
 
 from .conftest import NOW, ORIGIN, Session, snapshot_of, ui_client
-from .test_tools import signed, tail, web  # noqa: F401  (fixtures reutilizadas)
+from .test_tools import tail
 
 SHA = "a" * 64
 FORM = {
@@ -241,7 +241,7 @@ def test_post_con_otro_origin_se_rechaza(raw_client, token):
 # --- matriz --------------------------------------------------------------------------------------
 
 
-def test_op_exp_10_propone_el_kit_sin_evidencia_y_sin_prometer_cumplimiento(web):  # noqa: F811
+def test_op_exp_10_propone_el_kit_sin_evidencia_y_sin_prometer_cumplimiento(web):
     html = web.get("/matriz/op.exp.10").text
     text = tail(html)
 
@@ -251,13 +251,13 @@ def test_op_exp_10_propone_el_kit_sin_evidencia_y_sin_prometer_cumplimiento(web)
     assert not re.search(r"certific|garantiza el cumplimiento|cumple el ENS", html, re.I)
 
 
-def test_op_exp_10_no_propone_el_kit_con_evidencia(web, signed):  # noqa: F811
+def test_op_exp_10_no_propone_el_kit_con_evidencia(web, signed):
     record(signed, UNSEALED_OK)
 
     assert "el kit de claves" not in web.get("/matriz/op.exp.10").text
 
 
-def test_mp_info_6_sigue_proponiendo_copias_y_no_claves(web):  # noqa: F811
+def test_mp_info_6_sigue_proponiendo_copias_y_no_claves(web):
     html = web.get("/matriz/mp.info.6").text
 
     assert "kit de copias" in html and "kit de claves" not in html
