@@ -6,13 +6,13 @@ status: active
 priority: P1
 size: M
 issue: null
-prs: []
+prs: [75]
 related_issues: [68]
 depends_on: [kit-backups, kit-secrets]
 supersedes: []
 related_specs: [toolkit-server]
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-11
 ---
 
 # Kit: panel de acceso a las herramientas
