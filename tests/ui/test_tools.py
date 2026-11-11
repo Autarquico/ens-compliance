@@ -387,7 +387,7 @@ def test_retencion_menor_que_el_bloqueo_no_se_rechaza(session):
 RUNBOOK_SOURCE = Path(__file__).resolve().parents[2] / "docs" / "runbooks" / "kit-copias.md"
 
 
-@pytest.mark.parametrize("name", ["kit-copias", "kit-claves"])
+@pytest.mark.parametrize("name", ["kit-copias", "kit-claves", "kit-contrasenas"])
 def test_el_runbook_servido_es_el_de_docs(name):
     source = RUNBOOK_SOURCE.with_name(f"{name}.md")
     assert (RUNBOOKS_DIR / f"{name}.md").read_bytes() == source.read_bytes()
