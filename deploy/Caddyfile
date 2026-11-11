@@ -8,9 +8,12 @@
 #     propio token. La UI de OpenBao se autentica con la cabecera X-Vault-Token (guardada en el
 #     navegador), no con cookies: la cookie de Access no pasa. Las partes de desbloqueo no se
 #     teclean aquí (Cloudflare termina TLS): solo por terminal.
+#   - ENS_CONTRASENAS_HOST: la interfaz de Vaultwarden (vaultwarden:80), también detrás de Access; además
+#     cada persona tiene su cuenta. Las cookies de Cloudflare no pasan a Vaultwarden; las suyas (VW_ADMIN del panel) sí. Los
+#     clientes nativos de Bitwarden (extensión, móvil) quizá no pasen Access: sin verificar.
 #   - ENS_AGENT_HOST: cinco POST del protocolo TLS de osquery hacia el servidor de agentes.
 # Un host desconocido o vacío, y todo lo demás, responde 403 y queda en el log.
-# Escucha en :8080 dentro de las redes internas `edge`, `agent`, `ui-net`, `copias-net` y `claves-net`; ningún puerto se publica en el host.
+# Escucha en :8080 dentro de las redes internas `edge`, `agent`, `ui-net`, `copias-net`, `claves-net` y `contrasenas-net`; ningún puerto se publica en el host.
 {
 	auto_https off
 	admin localhost:2019
@@ -37,6 +40,7 @@
 	}
 	@copias host {$ENS_COPIAS_HOST:copias.invalid}
 	@claves host {$ENS_CLAVES_HOST:claves.invalid}
+	@contrasenas host {$ENS_CONTRASENAS_HOST:contrasenas.invalid}
 	@small_agent {
 		method POST
 		path /agent/enroll /agent/config /agent/distributed/read
@@ -102,6 +106,24 @@
 		reverse_proxy openbao:8200 {
 			# OpenBao usa X-Vault-Token, no cookies ni la identidad de Access.
 			header_up -Cookie
+			header_up -Cf-Access-*
+			header_up -X-Forwarded-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle @contrasenas {
+		# Los adjuntos van cifrados y pueden pesar más que el resto de cuerpos de la caja.
+		request_body {
+			max_size 10MB
+		}
+		reverse_proxy vaultwarden:80 {
+			# El panel /admin guarda su sesión en la cookie VW_ADMIN: solo se quitan las de Cloudflare
+			# (CF_Authorization...), no todas. Authorization (clientes y web vault) pasa.
+			header_up Cookie "(^|;\s*)CF_[A-Za-z_]+=[^;]*;?\s*" "$1"
 			header_up -Cf-Access-*
 			header_up -X-Forwarded-*
 			transport http {
