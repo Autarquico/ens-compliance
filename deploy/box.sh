@@ -1622,6 +1622,7 @@ kit_contrasenas_alta() {
 
   # admin.env primero y alta.yaml después: sin override el token no entra en ningún contenedor.
   chmod 700 "$ROOT/deploy/kit" "$CONTRASENAS_DIR"
+  rm -f "$CONTRASENAS_ADMIN_ENV.new" "$CONTRASENAS_ALTA.new"
   (umask 077 && printf "ADMIN_TOKEN='%s'\n" "$phc" >"$CONTRASENAS_ADMIN_ENV.new")
   chmod 600 "$CONTRASENAS_ADMIN_ENV.new"
   mv "$CONTRASENAS_ADMIN_ENV.new" "$CONTRASENAS_ADMIN_ENV"
@@ -1749,7 +1750,7 @@ cmd_kit() {
         *) usage ;;
       esac
       ;;
-    *) die "Herramienta del kit desconocida: $tool (copias, claves o contrasenas)." ;;
+    *) die "Herramienta del kit desconocida: $tool (copias o claves) ni contrasenas." ;;
   esac
 }
 
