@@ -1,0 +1,35 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<p><a href="/herramientas">Herramientas</a></p>
+<h1>Preparar las contraseñas del equipo</h1>
+<p class="lead">Indica el activo del gestor, tras cuántos días sin entrar una cuenta cuenta como inactiva y el nombre con el que se abrirá, y descarga un paquete de instalación. El paquete no contiene secretos.</p>
+{{ m.revision_humana() }}
+<p>La gestión de las credenciales (op.acc.6) la valora una persona; este asistente solo prepara la instalación. Consulta <a href="/matriz/op.acc.6">op.acc.6 en la matriz</a>.</p>
+{% if form_errors %}
+<div class="notice notice-bad" role="alert"><p><strong>No se ha generado el paquete.</strong> Revisa esto:</p>
+<ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+<aside class="notice" role="note"><p>Qué mira la herramienta: el segundo factor y la inactividad de las cuentas del propio gestor. Detectar una cuenta inactiva no la suspende: eso lo haces tú. No mide cada cuánto se cambian las contraseñas de tus sistemas ni su complejidad, y la app no lee los cofres.</p></aside>
+<section class="card" aria-labelledby="h-despues">
+  <h2 id="h-despues">Después de descargarlo</h2>
+  <ol>
+    <li>Copia el paquete al servidor y ejecuta: <code class="mono">{{ enable_command }}</code></li>
+    <li>Escribe en <code class="mono">deploy/ui.env</code> el nombre que has indicado aquí: <code class="mono">{{ host_setting }}=&lt;nombre&gt;</code>. El paquete no lo lleva.</li>
+    <li>Da de alta las cuentas del equipo: <code class="mono">{{ setup_command }}</code></li>
+    <li>Cuando todas estén dadas de alta, cierra el alta: <code class="mono">{{ close_command }}</code></li>
+  </ol>
+</section>
+<form method="post" action="/herramientas/contrasenas" novalidate>
+  <div class="field"><label for="f-asset_id">Activo del gestor<span class="hint">Un activo de tipo aplicación de tu inventario que represente a Vaultwarden.</span></label>
+    <select id="f-asset_id" name="asset_id">
+      <option value="">Elige uno</option>
+      {%- for a in application_assets %}<option value="{{ a }}"{% if values.get('asset_id') == a %} selected{% endif %}>{{ a }}</option>{% endfor %}
+    </select>
+    {{ m.field_errors("asset_id") }}
+    {% if not application_assets %}<p class="muted">No hay activos de tipo aplicación. Añádelo en el <a href="/asistente/activos">paso de activos</a>.</p>{% endif %}</div>
+  {{ m.text_field("inactive_days", "Días sin entrar para dar una cuenta por inactiva", "Sale de la política de tu organización: pon el plazo que ya has fijado allí. Pasado ese plazo sin actividad, la comprobación falla.") }}
+  {{ m.text_field("host", "Nombre con el que se abrirá el gestor", "Un dominio como contrasenas.example.com, sin https://. Es el que pondrás en deploy/ui.env.") }}
+  <div class="actions"><button class="btn btn-primary" type="submit">Generar y descargar el paquete</button></div>
+</form>
+{% endblock %}
