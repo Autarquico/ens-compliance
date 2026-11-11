@@ -13,6 +13,7 @@ TEAM_DOMAIN_ENV = "ENS_UI_ACCESS_TEAM_DOMAIN"
 JWKS_FILE_ENV = "ENS_UI_ACCESS_JWKS_FILE"
 COPIAS_HOST_ENV = "ENS_COPIAS_HOST"
 CLAVES_HOST_ENV = "ENS_CLAVES_HOST"
+CONTRASENAS_HOST_ENV = "ENS_CONTRASENAS_HOST"
 
 _HOST = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 
@@ -44,6 +45,7 @@ def load_ui_config(env: Mapping[str, str] | None = None) -> UiConfig:
         kit_hosts={
             "copias": _optional_host(env, COPIAS_HOST_ENV),
             "claves": _optional_host(env, CLAVES_HOST_ENV),
+            "contrasenas": _optional_host(env, CONTRASENAS_HOST_ENV),
         },
     )
 
