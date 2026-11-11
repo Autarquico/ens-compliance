@@ -140,7 +140,12 @@ def test_el_asistente_explica_el_alcance_y_da_los_comandos(session):
     assert "ENS_CONTRASENAS_HOST=" in html and "deploy/ui.env" in html
     assert "deploy/box.sh kit contrasenas alta" in html
     assert "deploy/box.sh kit contrasenas cerrar-alta" in html
-    assert html.index("kit contrasenas alta") < html.index("kit contrasenas cerrar-alta")
+    assert html.index("ENS_CONTRASENAS_HOST=") < html.index("kit enable contrasenas")
+    assert html.index("kit enable contrasenas") < html.index("kit contrasenas alta")
+    assert html.index("kit contrasenas alta") < html.index("/admin") < html.index("cerrar-alta")
+    assert "una sola vez" in html and "primer propietario" in html
+    assert "cuando todas estén dadas de alta" not in html.lower()
+    assert 'href="/ayuda/kit-contrasenas"' in html
     assert "no la suspende" in html and "no lee los cofres" in html
     assert "política de tu organización" in html
     assert 'value="app-facturas"' in html

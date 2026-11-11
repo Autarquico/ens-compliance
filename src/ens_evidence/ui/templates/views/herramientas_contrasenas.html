@@ -14,10 +14,11 @@
 <section class="card" aria-labelledby="h-despues">
   <h2 id="h-despues">Después de descargarlo</h2>
   <ol>
+    <li>Escribe en <code class="mono">deploy/ui.env</code> el nombre que has indicado aquí: <code class="mono">{{ host_setting }}=&lt;nombre&gt;</code> (el paquete no lo lleva), y crea el hostname del túnel y la aplicación de Access para ese nombre. Los pasos están en <a href="/ayuda/kit-contrasenas">la guía del kit</a>.</li>
     <li>Copia el paquete al servidor y ejecuta: <code class="mono">{{ enable_command }}</code></li>
-    <li>Escribe en <code class="mono">deploy/ui.env</code> el nombre que has indicado aquí: <code class="mono">{{ host_setting }}=&lt;nombre&gt;</code>. El paquete no lo lleva.</li>
-    <li>Da de alta las cuentas del equipo: <code class="mono">{{ setup_command }}</code></li>
-    <li>Cuando todas estén dadas de alta, cierra el alta: <code class="mono">{{ close_command }}</code></li>
+    <li>Abre el alta (muestra un token una sola vez): <code class="mono">{{ setup_command }}</code></li>
+    <li>Entra en <code class="mono">https://&lt;nombre&gt;/admin</code>, invita al primer propietario y espera a que se registre. Cómo se registra y cómo sigue el resto del equipo está en <a href="/ayuda/kit-contrasenas">la guía del kit</a>.</li>
+    <li>Cierra el alta en cuanto se haya registrado: <code class="mono">{{ close_command }}</code> Las invitaciones siguientes las hace el propietario de la organización.</li>
   </ol>
 </section>
 <form method="post" action="/herramientas/contrasenas" novalidate>
