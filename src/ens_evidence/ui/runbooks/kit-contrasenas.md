@@ -66,9 +66,13 @@ suspende la cuenta. La conformidad la decide una persona.
    comando falla, no muestra ningún token: ejecuta `cerrar-alta` y repítelo. Con
    un alta ya abierta, `alta` se niega a repetirse; si perdiste el token, cierra
    y vuelve a abrir.
-5. Entra en `https://<ENS_CONTRASENAS_HOST>/admin` con el token, invita por correo
+5. Entra en `https://<ENS_CONTRASENAS_HOST>/admin` con el token e invita por correo
    al primer propietario (sin SMTP no se envía nada: la invitación queda
-   registrada) y pídele que cree su cuenta en la web.
+   registrada). Pídele que abra `https://<ENS_CONTRASENAS_HOST>` y pulse «Crear
+   cuenta» con ese mismo correo. Si la web no se lo ofrece o falla, no cierres el
+   alta: no hay otro camino probado en el navegador. Mira
+   `docker compose -p ens-box logs vaultwarden` y, si no se resuelve, repite la
+   invitación desde `/admin`.
 6. Cuando se haya registrado, **cierra el alta**:
 
    ```bash
@@ -84,8 +88,13 @@ suspende la cuenta. La conformidad la decide una persona.
    Seguridad > Verificación en dos pasos). Sin eso el check falla.
 
 Verificado con Vaultwarden real (2026-11-11, datos ficticios): invitar desde el
-panel, registrar por la API de identidad, activar TOTP, cerrar el alta y que el
-panel quede desactivado y las cuentas sigan entrando.
+panel, registrar por la API de identidad (los dos pasos `register/send-verification-email`
+y `register/finish`, los mismos que llama la web), activar TOTP, cerrar el alta y que el
+panel quede desactivado y las cuentas sigan entrando. Con `SIGNUPS_ALLOWED=false` y sin
+SMTP, `send-verification-email` responde 400 a un correo no invitado y 200 con el
+token a uno invitado, y `/api/config` anuncia `disableUserRegistration: false`, así que
+la web no oculta «Crear cuenta». **No verificado:** el clic en un navegador real, que
+nadie ha hecho; hazlo con un correo de prueba antes del alta real.
 
 ## Invitar a más personas
 
@@ -93,8 +102,7 @@ panel quede desactivado y las cuentas sigan entrando.
 - Con el alta cerrada, el panel no existe. Un propietario de organización puede
   invitar desde la web de Vaultwarden, pero **no está verificado** que el
   propietario pueda crear la organización e invitar con `SIGNUPS_ALLOWED=false` sin
-  pasar por el panel, ni que la web ofrezca «Crear cuenta» a quien solo tiene una
-  invitación sin correo. Pruébalo con una cuenta de prueba antes de depender de
+  pasar por el panel. Pruébalo con una cuenta de prueba antes de depender de
   ello; si no funciona, abre un alta, invita y ciérrala.
 - Quien se va: bórralo desde `/admin` con el alta abierta. Un usuario inactivo
   sigue figurando hasta entonces y el check lo mide.
