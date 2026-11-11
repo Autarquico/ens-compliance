@@ -690,9 +690,9 @@ VIEW_CONTEXT = {
             "url": "/herramientas/copias",
             "covers": HOSTILE,
             "not_covers": HOSTILE,
-            "covers_clauses": [HOSTILE],
-            "partial_clauses": ["mp.info.6.1"],
-            "not_covered_clauses": ["mp.info.6.2"],
+            "covers_clauses": [{"id": "mp.info.6.9", "text": HOSTILE}],
+            "partial_clauses": [{"id": "mp.info.6.1", "text": "Texto oficial"}],
+            "not_covered_clauses": [{"id": "mp.info.6.2", "text": None}],
             "ram": {
                 "mib": 13,
                 "measured_on": "2026-11-10",

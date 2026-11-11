@@ -198,6 +198,15 @@ def _obligations(status: RowStatus) -> list[dict]:
     ]
 
 
+def _clause_texts(status: RowStatus) -> dict[str, str]:
+    return {
+        clause.id: clause.text
+        for obligation in status.row.spec.obligations
+        for clause in obligation.clauses
+        if clause.id
+    }
+
+
 def _units(status: RowStatus) -> list[str]:
     return [u for o in status.row.spec.obligations for u in o.units]
 
@@ -310,7 +319,7 @@ def _detail_page(
         evidence_offers=_evidence_offers(store, now) if selected else [],
         units=_units(status),
         blockers=_blockers(status),
-        kit_offer=kit_offer(store, measure_id, selected),
+        kit_offer=kit_offer(store, measure_id, selected, _clause_texts(status)),
         last_review=_last_review(status),
         owner_roles=[{"value": r.value, "label": ROLE_LABELS[r]} for r in Role],
         review_roles=[{"value": r.value, "label": ROLE_LABELS[r]} for r in REVIEW_ROLES],

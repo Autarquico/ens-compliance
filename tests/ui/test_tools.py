@@ -13,7 +13,7 @@ import pytest
 from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.checks.store import record_run
 from ens_evidence.connectors.backups import checks as backups_checks
-from ens_evidence.kit.registry import KIT_TOOLS
+from ens_evidence.kit.registry import KIT_TOOLS, tool_for
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus
 from ens_evidence.ui.config import COPIAS_HOST_ENV, UiConfigError, load_ui_config
@@ -451,3 +451,32 @@ def test_una_medida_aplicable_sin_evidencia_del_conector_recibe_la_propuesta(sig
     offer = kit_offer(UiStore(signed), "mp.info.6", applicable=True)
 
     assert offer is not None and offer["name"] == "copias"
+
+
+def test_la_propuesta_resuelve_el_texto_de_cada_clausula_y_deja_el_id_si_no_lo_hay(signed):
+    offer = kit_offer(UiStore(signed), "mp.info.6", True, {"mp.info.6.1": "Texto oficial"})
+
+    assert offer is not None
+    assert offer["partial_clauses"] == [{"id": "mp.info.6.1", "text": "Texto oficial"}]
+    assert {"id": "mp.info.6.2", "text": None} in offer["not_covered_clauses"]
+
+
+def assert_kit_clauses_have_text(html: str, measure_id: str) -> None:
+    """Cada cláusula del kit sale con su id y un texto que es el del catálogo (el mismo que la
+    tabla «Qué pide la medida» de la ficha), no uno escrito aparte."""
+    from html import unescape
+
+    tool = tool_for(measure_id)
+    ids = [*tool.covers_clauses, *tool.partial_clauses, *tool.not_covered_clauses]
+    section = html.split('id="h-kit"')[1].split("</section>")[0]
+    table = html.split('id="h-clausulas"')[1]
+    assert ids
+    for clause_id in ids:
+        pattern = rf'<li><span class="mono">{re.escape(clause_id)}</span>: [^.<]+\. (.+?)</li>'
+        item = re.search(pattern, section, re.DOTALL)
+        assert item, clause_id
+        assert unescape(item.group(1)) in unescape(table), clause_id
+
+
+def test_la_ficha_de_mp_info_6_enseña_el_texto_de_cada_clausula_del_kit(web):
+    assert_kit_clauses_have_text(web.get("/matriz/mp.info.6").text, "mp.info.6")

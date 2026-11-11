@@ -5,6 +5,7 @@ ejecución de checks del conector `backups`, y el paquete (con las claves) se de
 como descarga. Nada de lo que contiene se guarda ni se audita; solo el hecho.
 """
 
+from collections.abc import Mapping
 from typing import Any
 
 from pydantic import SecretStr, ValidationError
@@ -129,9 +130,20 @@ def _state(key: str, at: Any) -> dict[str, Any]:
     }
 
 
-def kit_offer(store: UiStore, measure_id: str, applicable: bool) -> dict[str, Any] | None:
+def kit_offer(
+    store: UiStore,
+    measure_id: str,
+    applicable: bool,
+    clause_texts: Mapping[str, str] | None = None,
+) -> dict[str, Any] | None:
     """Propuesta del kit para una medida aplicable que apoya, mientras su conector no tenga
-    evidencia."""
+    evidencia. `clause_texts` (id de cláusula -> texto oficial) viene del catálogo que ya
+    carga la ficha; una cláusula sin texto se enseña solo con su id."""
+    texts = clause_texts or {}
+
+    def clauses(ids: tuple[str, ...]) -> list[dict[str, str | None]]:
+        return [{"id": i, "text": texts.get(i)} for i in ids]
+
     tool = tool_for(measure_id)
     if tool is None or not applicable or kit_state(store, tool.connector)["key"] != "nodata":
         return None
@@ -142,9 +154,9 @@ def kit_offer(store: UiStore, measure_id: str, applicable: bool) -> dict[str, An
         "url": tool.wizard_url,
         "covers": tool.covers,
         "not_covers": tool.not_covers,
-        "covers_clauses": list(tool.covers_clauses),
-        "partial_clauses": list(tool.partial_clauses),
-        "not_covered_clauses": list(tool.not_covered_clauses),
+        "covers_clauses": clauses(tool.covers_clauses),
+        "partial_clauses": clauses(tool.partial_clauses),
+        "not_covered_clauses": clauses(tool.not_covered_clauses),
         "ram": tool.ram,
     }
 

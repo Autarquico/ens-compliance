@@ -28,9 +28,9 @@
   <p><strong>Qué no cubre.</strong> {{ kit_offer.not_covers }}</p>
   {% if kit_offer.covers_clauses or kit_offer.partial_clauses or kit_offer.not_covered_clauses %}
   <ul>
-    {%- for c in kit_offer.covers_clauses %}<li><span class="mono">{{ c }}</span>: cubierta.</li>{% endfor %}
-    {%- for c in kit_offer.partial_clauses %}<li><span class="mono">{{ c }}</span>: cubierta en parte.</li>{% endfor %}
-    {%- for c in kit_offer.not_covered_clauses %}<li><span class="mono">{{ c }}</span>: no cubierta.</li>{% endfor %}
+    {%- for c in kit_offer.covers_clauses %}<li><span class="mono">{{ c.id }}</span>: cubierta.{% if c.text %} {{ c.text }}{% endif %}</li>{% endfor %}
+    {%- for c in kit_offer.partial_clauses %}<li><span class="mono">{{ c.id }}</span>: cubierta en parte.{% if c.text %} {{ c.text }}{% endif %}</li>{% endfor %}
+    {%- for c in kit_offer.not_covered_clauses %}<li><span class="mono">{{ c.id }}</span>: no cubierta.{% if c.text %} {{ c.text }}{% endif %}</li>{% endfor %}
   </ul>
   {% endif %}
   <p class="muted">{% if kit_offer.ram %}Memoria: ≈{{ kit_offer.ram.mib }} MiB (medido el {{ kit_offer.ram.measured_on }}, {{ kit_offer.ram.conditions }}).{% else %}RAM sin medir.{% endif %}</p>

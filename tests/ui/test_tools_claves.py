@@ -18,7 +18,7 @@ from ens_evidence.ui.config import CLAVES_HOST_ENV, load_ui_config
 from ens_evidence.ui.views import help as help_view
 
 from .conftest import NOW, ORIGIN, Session, snapshot_of, ui_client
-from .test_tools import tail
+from .test_tools import assert_kit_clauses_have_text, tail
 
 SHA = "a" * 64
 FORM = {
@@ -249,6 +249,10 @@ def test_op_exp_10_propone_el_kit_sin_evidencia_y_sin_prometer_cumplimiento(web)
     assert "op.exp.10.2" in text and "op.exp.10.3" in text and "R1" in text
     assert ">Añadir las claves<" in html and "cubierta en parte" in html
     assert not re.search(r"certific|garantiza el cumplimiento|cumple el ENS", html, re.I)
+
+
+def test_la_ficha_de_op_exp_10_enseña_el_texto_de_cada_clausula_del_kit(web):
+    assert_kit_clauses_have_text(web.get("/matriz/op.exp.10").text, "op.exp.10")
 
 
 def test_op_exp_10_no_propone_el_kit_con_evidencia(web, signed):
