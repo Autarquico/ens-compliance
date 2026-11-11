@@ -23,6 +23,8 @@ from ens_evidence.connectors.google_workspace import checks as workspace
 from ens_evidence.connectors.google_workspace.config import GoogleWorkspaceConfig
 from ens_evidence.connectors.keystore import checks as keystore
 from ens_evidence.connectors.keystore.config import KeystoreConfig
+from ens_evidence.connectors.passwords import checks as passwords
+from ens_evidence.connectors.passwords.config import PasswordsConfig
 from ens_evidence.connectors.restic import checks as restic
 from ens_evidence.connectors.restic.config import ResticConfig
 from ens_evidence.endpoint.config import CONFIG_NAME as ENDPOINT
@@ -39,6 +41,7 @@ CONFIG_MODELS: Mapping[str, type[BaseModel]] = MappingProxyType(
         "restic": ResticConfig,
         "backups": BackupsConfig,
         "keystore": KeystoreConfig,
+        "passwords": PasswordsConfig,
         ENDPOINT: EndpointConfig,
     }
 )
@@ -70,6 +73,9 @@ CHECK_FUNCTIONS: Mapping[str, CheckFunction] = MappingProxyType(
         keystore.NO_ROOT_TOKEN: keystore.no_root_token,
         keystore.APP_TOKEN_SCOPED: keystore.app_token_scoped,
         keystore.CUSTODIANS_REGISTERED: keystore.custodians_registered,
+        passwords.SECOND_FACTOR: passwords.second_factor,
+        passwords.NO_INACTIVE: passwords.no_inactive_accounts,
+        passwords.SNAPSHOT_RECENT: passwords.snapshot_recent,
     }
 )
 

@@ -37,6 +37,7 @@ cloudflare = "ens_evidence.connectors.cloudflare:CloudflareConnector"
 github = "ens_evidence.connectors.github:GitHubConnector"
 google-workspace = "ens_evidence.connectors.google_workspace:GoogleWorkspaceConnector"
 keystore = "ens_evidence.connectors.keystore:KeystoreConnector"
+passwords = "ens_evidence.connectors.passwords:PasswordsConnector"
 restic = "ens_evidence.connectors.restic:ResticConnector"
 
 [dependency-groups]
