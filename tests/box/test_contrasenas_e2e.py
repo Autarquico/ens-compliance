@@ -276,13 +276,16 @@ def via_caddy(box, method, path, **kwargs):
     )
 
 
-def test_el_cliente_no_elige_la_ip_con_la_que_vaultwarden_limita_y_registra(
-    contrasenas_box, alta
-):
+def test_el_cliente_no_elige_la_ip_con_la_que_vaultwarden_limita_y_registra(contrasenas_box, alta):
     box = contrasenas_box
     cloudflare = {"Cf-Connecting-Ip": "198.51.100.7"}
     attempt = {"username": "nadie%40example.test", "password": "x", "grant_type": "password"}
-    attempt |= {"scope": "api%20offline_access", "client_id": "web", "deviceType": "9", "deviceName": "e2e"}
+    attempt |= {
+        "scope": "api%20offline_access",
+        "client_id": "web",
+        "deviceType": "9",
+        "deviceName": "e2e",
+    }
     statuses = [
         via_caddy(
             box,
@@ -295,7 +298,9 @@ def test_el_cliente_no_elige_la_ip_con_la_que_vaultwarden_limita_y_registra(
     ]
     assert 429 in statuses, statuses  # rotar X-Real-IP no esquiva el límite (burst por defecto: 10)
 
-    forged = via_caddy(box, "POST", "/admin", form={"token": "no"}, headers={"X-Real-IP": "192.0.2.99"})
+    forged = via_caddy(
+        box, "POST", "/admin", form={"token": "no"}, headers={"X-Real-IP": "192.0.2.99"}
+    )
     assert forged[0] == 401
     logs = run(["docker", "logs", box.container("vaultwarden")])
     log = logs.stdout + logs.stderr
