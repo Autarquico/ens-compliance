@@ -297,6 +297,78 @@ def test_snapshot_failure_without_any_good_one_has_no_date(dirs, monkeypatch):
     assert result.snapshot_ok is False and result.last_good_snapshot_at is None
 
 
+def _fill_extras(data: Path) -> None:
+    (data / "attachments" / "uuid1").mkdir(parents=True)
+    (data / "attachments" / "uuid1" / "f.bin").write_bytes(b"cifrado")
+    (data / "sends" / "s1").mkdir(parents=True)
+    (data / "sends" / "s1" / "g.bin").write_bytes(b"send")
+    (data / "config.json").write_text('{"x": 1}')
+
+
+def _extras(dirs) -> Path:
+    return dirs[2] / "extras-20261111T120000Z"
+
+
+def test_snapshot_carries_attachments_sends_and_config_with_private_modes(dirs):
+    build(dirs[0], populate)
+    _fill_extras(dirs[0])
+    assert run(dirs).snapshot_ok is True
+    extras = _extras(dirs)
+    assert (extras / "attachments" / "uuid1" / "f.bin").read_bytes() == b"cifrado"
+    assert (extras / "sends" / "s1" / "g.bin").read_bytes() == b"send"
+    assert (extras / "config.json").read_text() == '{"x": 1}'
+    assert (extras / "attachments").stat().st_mode & 0o777 == 0o700
+    assert (extras / "config.json").stat().st_mode & 0o777 == 0o600
+    assert (extras / "sends" / "s1" / "g.bin").stat().st_mode & 0o777 == 0o600
+    assert not [p for p in dirs[2].iterdir() if p.name.startswith(".")]
+
+
+def test_snapshot_without_extras_still_succeeds(dirs):
+    build(dirs[0], populate)
+    assert run(dirs).snapshot_ok is True
+
+
+def test_new_snapshot_replaces_previous_extras(dirs):
+    build(dirs[0], populate)
+    _fill_extras(dirs[0])
+    run(dirs)
+    run(dirs, NOW + timedelta(minutes=15))
+    assert [p.name for p in dirs[2].glob("extras-*")] == ["extras-20261111T121500Z"]
+
+
+@pytest.mark.parametrize("victim", ["attachments", "attachments/uuid1/f.bin", "config.json"])
+def test_symlink_in_extras_fails_the_snapshot_and_keeps_the_previous_one(dirs, victim):
+    build(dirs[0], populate)
+    _fill_extras(dirs[0])
+    run(dirs)
+    outside = dirs[0].parent / "fuera"
+    outside.mkdir()
+    (outside / "f").write_text("x")
+    target = dirs[0] / victim
+    if target.is_dir() and not target.is_symlink():
+        import shutil
+
+        shutil.rmtree(target)
+    else:
+        target.unlink()
+    target.symlink_to(outside if victim == "attachments" else outside / "f")
+    result = run(dirs, NOW + timedelta(minutes=15))
+    assert result.snapshot_ok is False and result.last_good_snapshot_at == NOW
+    assert [p.name for p in dirs[2].glob("db-*")] == ["db-20261111T120000Z.sqlite3"]
+    assert [p.name for p in dirs[2].glob("extras-*")] == ["extras-20261111T120000Z"]
+    assert not [p for p in dirs[2].iterdir() if p.name.startswith(".")]
+    assert len(result.users) == 5
+
+
+def test_extras_over_the_cap_fail_loudly_instead_of_truncating(dirs, monkeypatch):
+    build(dirs[0], populate)
+    _fill_extras(dirs[0])
+    monkeypatch.setattr(passwords_export, "MAX_EXTRA_FILES", 2)
+    result = run(dirs)
+    assert result.snapshot_ok is False and result.last_good_snapshot_at is None
+    assert not list(dirs[2].glob("db-*")) and not list(dirs[2].glob("extras-*"))
+
+
 def base_export(**overrides) -> dict:
     user = {
         "id": ANA,

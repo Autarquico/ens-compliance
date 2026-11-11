@@ -33,6 +33,12 @@ FORMAT_VERSION = 1
 SNAPSHOT_PREFIX = "db-"
 SNAPSHOT_SUFFIX = ".sqlite3"
 SNAPSHOT_STAMP = "%Y%m%dT%H%M%SZ"
+EXTRAS_PREFIX = "extras-"
+EXTRA_TREES = ("attachments", "sends")
+EXTRA_FILES = ("config.json",)
+# Tope duro: pasarlo hace fallar la instantánea (snapshot_ok false); nunca copia a medias.
+MAX_EXTRA_FILES = 100_000
+MAX_EXTRA_BYTES = 10 * 1024**3
 KNOWN_MIGRATIONS = frozenset({"20261007120000"})  # Vaultwarden 1.37.5, verificada en T0
 SECOND_FACTOR_TYPES = frozenset({0, 1, 2, 3, 4, 6, 7})  # 5 recordar, 8 recuperación, >=1000 no
 
@@ -219,32 +225,98 @@ def _publish_copy(source: Path, target: Path) -> None:
         tmp.unlink(missing_ok=True)
 
 
+def _copy_extra_file(source: Path, target: Path, budget: list[int]) -> None:
+    if source.is_symlink() or not source.is_file():
+        raise PasswordsExportError("la instantánea solo admite ficheros y directorios normales")
+    budget[0] += 1
+    budget[1] += source.stat().st_size
+    if budget[0] > MAX_EXTRA_FILES or budget[1] > MAX_EXTRA_BYTES:
+        raise PasswordsExportError(
+            "adjuntos, sends y configuración superan el tope de la instantánea"
+        )
+    shutil.copyfile(source, target)
+    target.chmod(0o600)
+    _fsync_file(target)
+
+
+def _copy_extra_tree(source: Path, target: Path, budget: list[int]) -> None:
+    if source.is_symlink() or not source.is_dir():
+        raise PasswordsExportError("la instantánea solo admite ficheros y directorios normales")
+    target.mkdir(mode=0o700)
+    for entry in sorted(source.iterdir()):
+        if entry.is_symlink():
+            raise PasswordsExportError("la instantánea no admite enlaces simbólicos")
+        if entry.is_dir():
+            _copy_extra_tree(entry, target / entry.name, budget)
+        else:
+            _copy_extra_file(entry, target / entry.name, budget)
+    target.chmod(0o700)
+
+
+def _stage_extras(data_dir: Path, stage: Path) -> None:
+    """Copia lo que una restauración necesita además de la base; lo que no exista se omite."""
+    stage.mkdir(mode=0o700)
+    budget = [0, 0]
+    for name in EXTRA_TREES:
+        source = data_dir / name
+        if source.is_symlink() or source.exists():
+            _copy_extra_tree(source, stage / name, budget)
+    for name in EXTRA_FILES:
+        source = data_dir / name
+        if source.is_symlink() or source.exists():
+            _copy_extra_file(source, stage / name, budget)
+
+
+def _extras_dir(snapshot_dir: Path, stamp: str) -> Path:
+    return snapshot_dir / f"{EXTRAS_PREFIX}{stamp}"
+
+
 def _take_snapshot(
     conn: sqlite3.Connection, data_dir: Path, snapshot_dir: Path, now: datetime
 ) -> None:
+    """Publica `db-<fecha>.sqlite3` el último: es la marca de instantánea completa.
+
+    Antes quedan listos `extras-<fecha>/` (adjuntos, sends, config.json) y las `rsa_key*`.
+    Si algo falla no se publica la marca y las anteriores siguen intactas.
+    """
     snapshot_dir.mkdir(parents=True, exist_ok=True)
+    stamp = now.astimezone(UTC).strftime(SNAPSHOT_STAMP)
     tmp = snapshot_dir / f".{DB_FILE}.{os.getpid()}.tmp"
+    stage = snapshot_dir / f".extras.{os.getpid()}.tmp"
+    extras = _extras_dir(snapshot_dir, stamp)
+    final = snapshot_dir / f"{SNAPSHOT_PREFIX}{stamp}{SNAPSHOT_SUFFIX}"
     tmp.unlink(missing_ok=True)
-    final = (
-        snapshot_dir
-        / f"{SNAPSHOT_PREFIX}{now.astimezone(UTC).strftime(SNAPSHOT_STAMP)}{SNAPSHOT_SUFFIX}"
-    )
+    shutil.rmtree(stage, ignore_errors=True)
+    published_extras = False
     try:
         conn.execute("VACUUM INTO ?", (str(tmp),))
         if not _integrity_ok(tmp):
             raise PasswordsExportError("la instantánea no pasa integrity_check")
         tmp.chmod(0o600)
         _fsync_file(tmp)
+        _stage_extras(data_dir, stage)
+        for key in sorted(data_dir.glob("rsa_key*")):
+            if key.is_file() and not key.is_symlink():
+                _publish_copy(key, snapshot_dir / key.name)
+        shutil.rmtree(extras, ignore_errors=True)
+        os.replace(stage, extras)
+        published_extras = True
+        _fsync_dir(snapshot_dir)
         os.replace(tmp, final)
+    except BaseException:
+        if published_extras and not final.exists():
+            shutil.rmtree(extras, ignore_errors=True)
+        raise
     finally:
         tmp.unlink(missing_ok=True)
-    for key in sorted(data_dir.glob("rsa_key*")):
-        if key.is_file() and not key.is_symlink():
-            _publish_copy(key, snapshot_dir / key.name)
+        shutil.rmtree(stage, ignore_errors=True)
     _fsync_dir(snapshot_dir)
     for _, old in _snapshots(snapshot_dir):
         if old != final:
             old.unlink(missing_ok=True)
+    for leftover in snapshot_dir.glob(f"{EXTRAS_PREFIX}*"):
+        if leftover != extras:
+            shutil.rmtree(leftover, ignore_errors=True)
 
 
 # --- publicación --------------------------------------------------------------------------
