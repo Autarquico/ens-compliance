@@ -275,29 +275,38 @@ def _send_file_path(send_uuid: str, data: object) -> Path | None:
         file_id = json.loads(data)["id"]  # type: ignore[arg-type]
     except (TypeError, ValueError, KeyError):
         return None
-    if not isinstance(file_id, str) or not file_id:
+    return _relative_path("sends", send_uuid, file_id)
+
+
+def _relative_path(*parts: object) -> Path | None:
+    """Une nombres que vienen de la base; `None` si alguno no es un nombre simple de fichero."""
+    if not all(
+        isinstance(part, str) and part not in ("", ".", "..") and not re.search(r"[/\\\x00]", part)
+        for part in parts
+    ):
         return None
-    return Path(send_uuid) / file_id
+    return Path(*parts)  # type: ignore[arg-type]
 
 
 def _referenced_extras(db_copy: Path) -> list[Path | None]:
     """Rutas relativas a `data_dir` de los ficheros que la base capturada da por existentes.
 
-    `None` marca una fila de send de fichero cuya ruta no se puede deducir.
+    `None` marca una fila cuya ruta no se puede deducir o no es un nombre simple: cuenta como falta.
     """
     conn = sqlite3.connect(f"{db_copy.resolve().as_uri()}?mode=ro", uri=True)
     try:
-        paths: list[Path | None] = [
-            Path("attachments") / cipher_uuid / attachment_id
+        paths = [
+            _relative_path("attachments", cipher_uuid, attachment_id)
             for cipher_uuid, attachment_id in conn.execute(
                 "SELECT cipher_uuid, id FROM attachments"
             )
         ]
-        for send_uuid, data in conn.execute(
-            "SELECT uuid, data FROM sends WHERE atype = ?", (SEND_TYPE_FILE,)
-        ):
-            send_path = _send_file_path(send_uuid, data)
-            paths.append(None if send_path is None else Path("sends") / send_path)
+        paths += [
+            _send_file_path(send_uuid, data)
+            for send_uuid, data in conn.execute(
+                "SELECT uuid, data FROM sends WHERE atype = ?", (SEND_TYPE_FILE,)
+            )
+        ]
         return paths
     finally:
         conn.close()

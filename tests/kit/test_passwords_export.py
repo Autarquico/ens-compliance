@@ -536,3 +536,19 @@ def test_extra_file_without_a_row_is_not_an_error(dirs):
     _fill_extras(dirs[0])
     assert run(dirs).snapshot_ok is True
     assert (_extras(dirs) / "attachments" / "uuid1" / "f.bin").is_file()
+
+
+@pytest.mark.parametrize(
+    ("cipher", "file_id"),
+    [("uuid1", "/etc/hosts"), ("uuid1", "../../outside"), ("..", "f.bin"), ("uuid1", "a/b")],
+)
+def test_db_path_that_is_not_a_plain_name_counts_as_missing(tmp_path, cipher, file_id):
+    db = tmp_path / "copy.sqlite3"
+    build(tmp_path, lambda d: (populate(d), d.attachment(cipher, file_id)))
+    (tmp_path / "db.sqlite3").rename(db)
+    (tmp_path / "outside").write_text("x")
+    stage = tmp_path / "stage" / "s"
+    (stage / "attachments" / "uuid1" / "a").mkdir(parents=True)
+    (stage / "attachments" / "uuid1" / "a" / "b").write_text("x")
+    with pytest.raises(PasswordsExportError, match=r"^faltan 1 ficheros"):
+        passwords_export._check_extras_cover_db(db, stage)
