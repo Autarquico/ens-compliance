@@ -614,6 +614,11 @@ def test_kit_enable_instala_cada_fichero_en_su_sitio_y_sin_secretos_fuera(
 
     assert result.returncode == 0, result.stdout + result.stderr
     assert SECRET not in result.stdout + result.stderr
+    # la caja recién instalada no tiene Declaración vigente: el enlace a mp.info.6 queda por hacer
+    assert "Sin enlazar" in result.stdout
+    assert "ens-evidence matrix link mp.info.6 --check backups.backup_005_restore_test" in (
+        result.stdout
+    )
     kit = box.clone / "deploy" / "kit" / "copias"
     assert sorted(p.name for p in kit.iterdir()) == ["MANIFEST", "compose.yaml"]
     env = (box.clone / "deploy" / ".env").read_text()

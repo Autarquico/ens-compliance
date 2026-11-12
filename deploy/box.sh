@@ -865,6 +865,32 @@ os.replace(temporary, path)
 '
 }
 
+# Enlaza los checks backups.* con las cláusulas de mp.info.6 (como `matrix link`; no declara
+# cumplimiento). Sale con 1 si algo queda sin enlazar y lista los comandos para hacerlo a mano.
+link_copias_checks() {
+  in_app python -I -c '
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+from ens_evidence.connectors.backups import link_backups_checks
+from ens_evidence.connectors.backups.links import manual_commands
+from ens_evidence.workspace import LocalStore
+
+outcome = link_backups_checks(LocalStore(Path("/data/workspace")), datetime.now(UTC))
+for check, covers in outcome.linked:
+    print("  enlazado a mp.info.6:", check, "(" + ", ".join(covers) + ")")
+if outcome.skipped:
+    print("  Sin enlazar:")
+    for reason in outcome.skipped:
+        print("   -", reason)
+    print("  Cuando la Declaración esté vigente y la matriz iniciada, enlázalos a mano:")
+    for command in manual_commands():
+        print("   ", command)
+    sys.exit(1)
+'
+}
+
 # app.env: una o más líneas ENS_BACKUPS_<ID>_...=valor (las líneas en blanco se ignoran). No muestra valores.
 validate_copias_env() {
   [ "$(grep -c . "$1")" -gt 0 ] || die "app.env del paquete está vacío."
@@ -953,6 +979,8 @@ kit_copias_enable() {
   fi
   wait_healthy caddy || die "caddy no está sano; revisa: docker compose -p $PROJECT logs caddy"
   recreate_service app
+  info ""
+  link_copias_checks || warn "Los checks de copias no quedaron enlazados a mp.info.6 (arriba, qué falta y cómo hacerlo)."
   info ""
   info "Copias activadas. Backrest ya pide usuario y contraseña (docs/runbooks/kit-copias.md, sección 2):"
   info "  Usuario:    admin"

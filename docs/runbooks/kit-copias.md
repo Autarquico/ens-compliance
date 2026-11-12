@@ -72,6 +72,14 @@ escritura: trátalo como un secreto.
    validar que solo toca los volúmenes de `backrest`, de host, en `:ro` bajo
    `/source/`) en `deploy/kit/copias/`. Recrea `backrest`, `caddy` y `app`. Nada
    de eso imprime valores, salvo la contraseña de `admin` (ver el paso 5).
+   Al final enlaza los checks `backups.*` con las cláusulas de mp.info.6 que miden
+   (`mp.info.6.1` para copia reciente, repositorio accesible e integridad;
+   `mp.info.6.r1.1` para la prueba de restauración si la Declaración la exige),
+   igual que `matrix link`: declara qué cubre cada check, no que se cumpla.
+   Necesita la Declaración de Aplicabilidad vigente y `matrix init` hecho; si no,
+   lo avisa con los comandos `ens-evidence matrix link mp.info.6 --check … --covers …`
+   para ejecutarlos cuando estén. BACKUP-006 (copia en otro lugar) no se enlaza:
+   el kit no la configura.
 4. **Borra el paquete.** `rm` o `shred`; el de `/herramientas` no se guarda en la app.
 5. **Contraseña de Backrest: anótala ahora.** El paquete no trae usuario: antes de
    escribir `config.json`, `box.sh` genera una contraseña aleatoria, calcula su
@@ -101,21 +109,68 @@ restaura la anterior desde `config.json.prev` y lo conserva, como conserva
 
 ## 3. Primera prueba de restauración
 
-mp.info.6 no se evidencia sin una prueba hecha por una persona.
+mp.info.6 no se evidencia sin una prueba hecha por una persona, y esa prueba
+solo cuenta si la herramienta ha comparado lo restaurado con el original.
 
-1. En Backrest, elige una copia, Restore, y como destino una carpeta dentro de
+1. En Backrest, elige una copia, Restore, **una carpeta concreta** (la que vas a
+   comparar; ficheros que no hayan cambiado desde la copia, porque cualquier
+   diferencia invalida la prueba) y como destino una carpeta dentro de
    `/data` (el único sitio escribible del contenedor), p. ej. `/data/prueba`.
-2. Comprueba el resultado desde el host y compáralo con el original:
+2. Pasa lo restaurado al volumen `data`, junto a la app, fuera del workspace, y
+   mira dónde ha quedado la carpeta (Backrest puede dejar la ruta de origen
+   completa por debajo de `/data/prueba`):
 
    ```bash
-   docker run --rm -v ens-box_backrest-data:/d:ro alpine:3 sh -c 'cd /d/prueba && find . -type f | head && sha256sum <un-fichero>'
-   docker run --rm --user 10001 -v ens-box_data:/d:ro alpine:3 sha256sum /d/<mismo-fichero>
+   docker run --rm --user 10001 -v ens-box_backrest-data:/b:ro -v ens-box_data:/d alpine:3 \
+     sh -c 'mkdir -p /d/prueba-restauracion && cp -a /b/prueba /d/prueba-restauracion/restaurado && find /d/prueba-restauracion/restaurado | head'
    ```
 
-3. Borra la prueba: `docker run --rm --user 10001 -v ens-box_backrest-data:/d alpine:3 rm -rf /d/prueba`.
-4. Regístrala como prueba de restauración (revisión humana) según el
-   [runbook de restauración](restauracion-de-evidencias.md). Repítela con la
-   periodicidad de la política de copias.
+3. Escribe la declaración (`prueba.yaml`) **tú, con tu nombre**: la herramienta
+   no rellena el revisor. Sin `restore_id` (lo genera la orden). `performed_at`
+   es cuándo restauraste; `backup.snapshot_id` es el id completo (64
+   caracteres) de la copia restaurada, el que muestra Backrest o
+   `restic snapshots`; `system` es el id del activo del inventario.
+
+   ```yaml
+   test_id: RT-2026-01
+   system: <id del activo>
+   performed_at: 2026-10-15T10:00:00+00:00
+   isolated_target: true
+   backup: { snapshot_id: <64 caracteres> }
+   result: { restored: true, integrity_verified: true, application_started: not_applicable,
+             application_justification: Solo se restauran ficheros }
+   review:
+     approved: true
+     reviewer: <nombre y apellidos de quien lo declara>
+     role: security_officer
+     reviewed_at: 2026-10-15T11:00:00+00:00
+     valid_until: 2027-01-15T11:00:00+00:00
+   ```
+
+4. Regístrala. La orden compara `--restored` con `--original` fichero a fichero
+   (sha256); si coinciden registra la restauración como verificada y tu
+   declaración como evidencia manual; si no, deja la restauración como NO
+   verificada, lista las diferencias y no crea la prueba (BACKUP-005 no pasa):
+
+   ```bash
+   ens() { docker compose -p ens-box exec -T app ens-evidence "$@"; }
+   docker compose -p ens-box exec -T app sh -c 'cat > /data/prueba-restauracion/prueba.yaml' < prueba.yaml
+   ens backup restore-test record-kit /data/prueba-restauracion/prueba.yaml --repository <id en backups.yaml> \
+     --restored /data/prueba-restauracion/restaurado/<carpeta> --original /data/<la misma carpeta en la caja>
+   ```
+
+   Las dos carpetas deben ser distintas y no estar una dentro de la otra. En la
+   siguiente recogida, BACKUP-005 es PASS si además el snapshot sigue en el
+   repositorio y la revisión está vigente. El revisor es declarado, no se
+   autentica. Este recorrido está probado con restic real y un repositorio local
+   (`tests/connectors/backups/test_kit_restore_record.py`); la copia entre volúmenes de
+   arriba no se ha ejecutado con un Backrest real.
+5. Borra la prueba:
+   `docker run --rm --user 10001 -v ens-box_data:/d alpine:3 rm -rf /d/prueba-restauracion` y
+   `docker run --rm --user 10001 -v ens-box_backrest-data:/d alpine:3 rm -rf /d/prueba`.
+   Repítela con la periodicidad de la política de copias. Para restaurar a mano
+   sin registrar nada, ver el
+   [runbook de restauración](restauracion-de-evidencias.md).
 
 ## 4. Restaurar el VPS entero en una máquina nueva
 
@@ -136,7 +191,7 @@ contraseña y unas credenciales de lectura.
      --tmpfs /cache:uid=10001 -e XDG_CACHE_HOME=/cache --env-file restore.env \
      -v ens-box_data:/restore --entrypoint /bin/restic \
      ghcr.io/garethgeorge/backrest:v1.14.1-scratch@sha256:<el digest de compose.yaml> \
-     -r s3:https://<endpoint>/<bucket>/<ruta> restore latest:/source/caja --target /restore
+     -r s3:https://<endpoint>/<bucket>/<ruta> restore latest:/source/caja --target /restore --no-lock
    ```
 
 4. `deploy/box.sh restart app` y `deploy/box.sh status`.
