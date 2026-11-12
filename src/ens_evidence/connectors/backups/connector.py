@@ -131,6 +131,18 @@ class BackupsConnector(Connector):
             "sections": {name: s.model_dump(mode="json") for name, s in collected.items()},
         }
 
+    def repository_id(self, repository: RepositoryConfig) -> str:
+        """Id restic del repositorio, para atar un registro suyo; `BackupError` si no se lee."""
+        try:
+            found = sections.read_repository(self._execute(repository))
+        except sections.CollectionFailed as exc:
+            raise BackupError(str(exc)) from None
+        except ResticUnavailable as exc:
+            raise BackupError(f"restic no disponible ({exc.kind})") from None
+        if found is None:
+            raise BackupError(f"el repositorio {repository.id} no existe todavía")
+        return found
+
     def _execute(self, repository: RepositoryConfig) -> Executor:
         if self._executor is not None:
             return self._executor(repository)
