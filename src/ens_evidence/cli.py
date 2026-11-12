@@ -8,7 +8,6 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime, tzinfo
 from enum import StrEnum
-from importlib.resources import files
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -316,7 +315,8 @@ from ens_evidence.scope.edit import (
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.models import AssetType, Deployment
 from ens_evidence.scope.secrets import find_secrets
-from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SCOPE_KEYS, synced_keys
+from ens_evidence.scope.skeleton import create_scope_skeleton, write_if_absent
+from ens_evidence.scope.sync import SCOPE_KEYS, synced_keys
 from ens_evidence.ui.cli import ui_app
 from ens_evidence.workspace import (
     AlreadyExists,
@@ -410,17 +410,6 @@ SettingsOption = Annotated[
         help="Fichero de ajustes (por defecto ~/.config/ens-evidence/settings.yaml).",
     ),
 ]
-
-SCOPE_SKELETON = {
-    "scope/assets.yaml": "# Un activo por elemento; ver scope/questionnaire.md.\nassets: []\n",
-    "scope/services.yaml": "services: []\n",
-    "scope/dependencies.yaml": "dependencies: []\n",
-    "scope/system.yaml": (
-        "# Rellena nombre, descripción y los activos y servicios incluidos o excluidos.\n"
-        'name: ""\ndescription: ""\n'
-        "included_assets: []\nincluded_services: []\nexclusions: []\n"
-    ),
-}
 
 
 def fail(message: str, code: int = 2) -> typer.Exit:
@@ -522,9 +511,7 @@ def init(
         write_settings(settings_path, path, s3_bucket, s3_prefix, s3_endpoint, s3_region)
         typer.echo(f"Ajustes creados: {settings_path}")
     store = open_store(load_settings(settings_path))
-    template = files("ens_evidence").joinpath("templates/questionnaire.md").read_text("utf-8")
-    skeleton = {**SCOPE_SKELETON, QUESTIONNAIRE_KEY: template}
-    created = [key for key, text in skeleton.items() if write_if_absent(store, key, text)]
+    created = create_scope_skeleton(store)
     for key in created:
         typer.echo(f"Creado: {key}")
     if not created:
@@ -558,13 +545,6 @@ def write_settings(
     except SettingsError:
         settings_path.unlink(missing_ok=True)
         raise
-
-
-def write_if_absent(store: WorkspaceStore, key: str, text: str) -> bool:
-    if store.exists(key):
-        return False
-    store.write_text(key, text)
-    return True
 
 
 def differing_keys(source: WorkspaceStore, target: WorkspaceStore, keys: list[str]) -> list[str]:
