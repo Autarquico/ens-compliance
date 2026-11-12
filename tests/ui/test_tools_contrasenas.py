@@ -145,6 +145,8 @@ def test_el_asistente_explica_el_alcance_y_da_los_comandos(session):
     assert html.index("kit contrasenas alta") < html.index("/admin") < html.index("cerrar-alta")
     assert "una sola vez" in html and "primer propietario" in html
     assert "cuando todas estén dadas de alta" not in html.lower()
+    assert "las invitaciones siguientes las hace" not in html.lower()
+    assert "abrir otro alta" in html
     assert 'href="/ayuda/kit-contrasenas"' in html
     assert "no la suspende" in html and "no lee los cofres" in html
     assert "política de tu organización" in html
