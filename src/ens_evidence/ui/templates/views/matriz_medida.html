@@ -20,6 +20,15 @@
 </section>
 {% endif %}
 
+{% if kit_offer %}
+<section class="card" aria-labelledby="h-kit">
+  <h2 id="h-kit">Una forma de empezar: el kit de copias</h2>
+  <p><strong>Qué cubre.</strong> {{ kit_offer.covers }}</p>
+  <p><strong>Qué no cubre.</strong> {{ kit_offer.not_covers }}</p>
+  <p><a class="btn" href="{{ kit_offer.url }}">Preparar las copias</a></p>
+</section>
+{% endif %}
+
 <section aria-labelledby="h-clausulas">
   <h2 id="h-clausulas">Qué pide la medida</h2>
   {% if not obligations %}<p class="muted">Esta medida no aplica. No tiene cláusulas que cubrir.</p>{% endif %}

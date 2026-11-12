@@ -1,0 +1,3 @@
+# Lo genera deploy/box.sh kit enable copias <paquete>: no se versiona.
+*
+!.gitignore

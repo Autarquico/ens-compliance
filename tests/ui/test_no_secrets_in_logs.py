@@ -55,3 +55,21 @@ def test_los_logs_no_llevan_jwt_cabeceras_de_access_ni_cuerpos(caplog, traffic, 
     assert token.split(".")[2] not in logged
     assert "cf-access" not in logged.lower()
     assert BODY_MARKER not in logged
+
+
+def test_los_logs_no_llevan_las_claves_del_asistente_de_copias_ni_en_los_errores(
+    caplog, raw_client, token
+):
+    from .test_tools import FORM, SENTINELS
+
+    caplog.set_level(logging.DEBUG)
+    good = {**auth(token), **WRITE_HEADERS}
+
+    raw_client.post("/herramientas/copias", data=FORM, headers=good)
+    raw_client.post("/herramientas/copias", data=FORM | {"host_paths": "/proc"}, headers=good)
+    raw_client.post("/herramientas/copias", data=FORM | {"retention_days": "x"}, headers=good)
+    raw_client.post("/herramientas/copias", data=FORM, headers=auth(token))
+    raw_client.post("/herramientas/copias", data=FORM, headers=WRITE_HEADERS)
+
+    logged = all_logged_text(caplog)
+    assert not any(secret in logged for secret in SENTINELS)

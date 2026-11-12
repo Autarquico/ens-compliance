@@ -6,11 +6,13 @@ lleva ese prefijo o esas etiquetas; nunca se toca la caja real (`ens-box`).
 """
 
 import hashlib
+import io
 import json
 import os
 import secrets
 import shutil
 import subprocess
+import tarfile
 import time
 from dataclasses import dataclass
 from pathlib import Path
@@ -161,9 +163,19 @@ def box(tmp_path_factory):
     ).stdout.split()
     if owned:
         run(["docker", "rm", "-f", *owned])
-    for network in ("backend", "edge", "tunnel"):
+    for network in (
+        "backend",
+        "edge",
+        "tunnel",
+        "agent",
+        "ui-net",
+        "copias-net",
+        "copias-salida",
+        "copias",
+    ):
         run(["docker", "network", "rm", f"{project}_{network}"])
-    run(["docker", "volume", "rm", "-f", f"{project}_data"])
+    for volume in ("data", "backrest-config", "backrest-data"):
+        run(["docker", "volume", "rm", "-f", f"{project}_{volume}"])
     run(["docker", "rmi", "-f", *[f"ens-evidence:{tag}" for tag in tags.values()]])
 
 
@@ -520,3 +532,243 @@ def test_dos_operaciones_a_la_vez_la_segunda_se_niega_sin_cambiar_nada(box, inst
     assert registry["current"]["tag"] == following
     assert registry["previous"]["tag"] == labeled
     assert registry["attempt"] is None
+
+
+# --- kit de copias: `box.sh kit enable|disable copias` con Backrest de verdad -----------------
+
+COPIAS_HOST = "copias.test.example"
+SECRET = "SECRETO-NO-DEBE-SALIR-123"
+BACKREST_IMAGE = next(
+    line.split("image:")[1].strip()
+    for line in (REPO / "compose.yaml").read_text(encoding="utf-8").splitlines()
+    if "ghcr.io/garethgeorge/backrest" in line
+)
+CONFIG_JSON = json.dumps(
+    {
+        "modno": 1,
+        "version": 4,
+        "instance": "ens-test",
+        "repos": [
+            {
+                "id": "r1",
+                "guid": "ab" * 32,
+                "uri": "s3:https://s3.inexistente.invalid/b/r1",
+                "password": SECRET,
+            }
+        ],
+        "auth": {"disabled": True},
+    }
+)
+MOUNT_FILES = ("config.json", "compose.yaml", "app.env", "backups.yaml")
+
+
+def copias_package(directory, host_dir, *, config=CONFIG_JSON, tamper=False):
+    contents = {
+        "config.json": config,
+        "compose.yaml": (
+            f"services:\n  backrest:\n    volumes:\n      - {host_dir}:/source/docs:ro\n"
+        ),
+        "app.env": (
+            f"ENS_BACKUPS_R1_RESTIC_PASSWORD={SECRET}\nENS_BACKUPS_R1_AWS_ACCESS_KEY_ID=lectura\n"
+        ),
+        "backups.yaml": (
+            "repositories:\n  - id: r1\n    asset_id: a1\n    repository: s3:https://x/b\n"
+        ),
+    }
+    manifest = ["version: 1"] + [
+        f"{hashlib.sha256(contents[n].encode()).hexdigest()}  copias/{n}" for n in MOUNT_FILES
+    ]
+    if tamper:
+        contents["app.env"] += "ENS_BACKUPS_R1_EXTRA=1\n"
+    contents["MANIFEST"] = "\n".join(manifest) + "\n"
+    path = directory / ("tampered.tar.gz" if tamper else "paquete.tar.gz")
+    with tarfile.open(path, "w:gz") as archive:
+        for name, text in contents.items():
+            data = text.encode()
+            info = tarfile.TarInfo(f"copias/{name}")
+            info.size = len(data)
+            archive.addfile(info, io.BytesIO(data))
+    return path
+
+
+@pytest.fixture(scope="module")
+def ui_env_with_copias_host(box, installed):
+    ui_env = box.clone / "deploy" / "ui.env"
+    ui_env.write_text(
+        "ENS_UI_HOST=ui.test.example\nENS_UI_ORIGIN=https://ui.test.example\n"
+        f"ENS_UI_ACCESS_AUD=x\nENS_UI_ACCESS_TEAM_DOMAIN=x.example\nENS_COPIAS_HOST={COPIAS_HOST}\n"
+        "ENS_UI_ACCESS_JWKS_FILE=/data/state/ui/access-jwks.json\n"
+    )
+    ui_env.chmod(0o600)
+    yield ui_env
+
+
+def test_kit_enable_rechaza_un_paquete_alterado_sin_tocar_nada(
+    box, ui_env_with_copias_host, tmp_path
+):
+    package = copias_package(tmp_path, tmp_path, tamper=True)
+
+    result = box.sh("kit", "enable", "copias", str(package))
+
+    assert result.returncode != 0
+    assert "sha256" in result.stderr
+    assert run(["docker", "volume", "inspect", f"{box.project}_backrest-config"]).returncode != 0
+    assert not (box.clone / "deploy" / "kit" / "copias" / "compose.yaml").exists()
+
+
+def test_kit_enable_instala_cada_fichero_en_su_sitio_y_sin_secretos_fuera(
+    box, ui_env_with_copias_host, tmp_path
+):
+    docs = tmp_path / "docs"
+    docs.mkdir()
+    (docs / "a.txt").write_text("hola")
+    package = copias_package(tmp_path, docs)
+
+    result = box.sh("kit", "enable", "copias", str(package))
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert SECRET not in result.stdout + result.stderr
+    # la caja recién instalada no tiene Declaración vigente: el enlace a mp.info.6 queda por hacer
+    assert "Sin enlazar" in result.stdout
+    assert "ens-evidence matrix link mp.info.6 --check backups.backup_005_restore_test" in (
+        result.stdout
+    )
+    kit = box.clone / "deploy" / "kit" / "copias"
+    assert sorted(p.name for p in kit.iterdir()) == ["MANIFEST", "compose.yaml", "destino.conf"]
+    assert (kit / "destino.conf").read_text().splitlines() == [
+        "acl destino_host dstdomain s3.inexistente.invalid",
+        "acl destino_puerto port 443",
+    ]
+    env = (box.clone / "deploy" / ".env").read_text()
+    assert f"ENS_BACKUPS_R1_RESTIC_PASSWORD={SECRET}" in env
+    assert (box.clone / "deploy" / ".env").stat().st_mode & 0o777 == 0o600
+    # Fuera del volumen de Backrest y de deploy/.env, el secreto solo está en el paquete.
+    leaks = run(["grep", "-rl", "--exclude-dir=tests", SECRET, str(box.clone)]).stdout.split()
+    assert sorted(leaks) == [str(box.clone / "deploy" / ".env")]
+    assert not list(kit.glob("*.new"))
+
+    config = box.in_volume(box.tags["good"], "cat /data/workspace/connectors/backups.yaml")
+    assert "id: r1" in config.stdout and SECRET not in config.stdout
+    mode = run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "-v",
+            f"{box.project}_backrest-config:/c",
+            "--entrypoint",
+            "/bin/sh",
+            "alpine:3",
+            "-c",
+            "stat -c '%u %a' /c /c/config.json",
+        ]
+    )
+    assert mode.stdout.split() == [UID, "700", UID, "600"], mode.stdout + mode.stderr
+
+
+def test_backrest_corre_endurecido_con_data_solo_lectura_y_su_montaje_elegido(
+    box, ui_env_with_copias_host
+):
+    mounts = json.loads(box.inspect("backrest", "{{json .Mounts}}"))
+    by_target = {m["Destination"]: m for m in mounts}
+
+    assert by_target["/source/caja"]["RW"] is False
+    assert by_target["/source/docs"]["RW"] is False
+    assert by_target["/config"]["RW"] and by_target["/data"]["RW"]
+    assert box.inspect("backrest", "{{.Config.User}}") == "10001:10001"
+    assert box.inspect("backrest", "{{.HostConfig.ReadonlyRootfs}}") == "true"
+    assert box.inspect("backrest", "{{json .HostConfig.CapDrop}}") == '["ALL"]'
+    assert box.inspect("backrest", "{{json .HostConfig.PortBindings}}") in ("{}", "null")
+
+
+def test_con_el_uid_de_la_app_backrest_lee_data_y_con_otro_no(box, ui_env_with_copias_host):
+    """`/data` es 0700 de 10001: sin ese UID no se lee ni sin privilegios añadidos."""
+
+    def list_data(user):
+        return run(
+            ["docker", "run", "--rm", "--network", "none", "--user", user, "--cap-drop", "ALL"]
+            + ["-v", f"{box.volume}:/source/caja:ro", "alpine:3", "ls", "/source/caja"]
+        )
+
+    assert "settings.yaml" in list_data("10001:10001").stdout
+    other = list_data("10002:10002")
+    assert other.returncode != 0 and "denied" in other.stderr.lower()
+
+
+def test_caddy_publica_backrest_en_su_host_y_el_resto_sigue_en_403(box, ui_env_with_copias_host):
+    caddy_image = box.inspect("caddy", "{{.Config.Image}}")
+
+    def get(host, *headers):
+        return run(
+            ["docker", "run", "--rm", "--network", f"{box.project}_copias-net", caddy_image]
+            + ["wget", "-S", "-O", "/dev/null", "--header", f"Host: {host}"]
+            + [x for h in headers for x in ("--header", h)]
+            + ["http://caddy:8080/"]
+        )
+
+    assert "200 OK" in get(COPIAS_HOST).stderr
+    assert "403" in get("otro.test.example").stderr
+    assert "403" in get("copias.invalid").stderr
+
+
+def test_kit_enable_repetido_exige_replace_config_y_borra_la_anterior_si_arranca_sano(
+    box, ui_env_with_copias_host, tmp_path
+):
+    package = copias_package(tmp_path, tmp_path)
+
+    refused = box.sh("kit", "enable", "copias", str(package))
+    assert refused.returncode != 0 and "--replace-config" in refused.stderr
+
+    replaced = box.sh("kit", "enable", "copias", "--replace-config", str(package))
+    assert replaced.returncode == 0, replaced.stdout + replaced.stderr
+    listing = run(
+        ["docker", "run", "--rm", "-v", f"{box.project}_backrest-config:/c", "alpine:3", "ls", "/c"]
+    )
+    assert "config.json.prev" not in listing.stdout, (
+        "Backrest sano: los restos con claves se borran"
+    )
+    assert "config.json" in listing.stdout
+
+
+def test_kit_enable_con_una_config_que_backrest_no_acepta_restaura_la_anterior_y_la_conserva(
+    box, ui_env_with_copias_host, tmp_path
+):
+    broken = copias_package(
+        tmp_path, tmp_path, config=CONFIG_JSON.replace('"version": 4', '"version": 0')
+    )
+    before = run(
+        ["docker", "run", "--rm", "-v", f"{box.project}_backrest-config:/c", "alpine:3"]
+        + ["sh", "-c", "sha256sum < /c/config.json"]
+    ).stdout
+
+    result = box.sh("kit", "enable", "copias", "--replace-config", str(broken))
+
+    assert result.returncode != 0
+    assert "restaurado la anterior" in result.stderr
+    after = run(
+        ["docker", "run", "--rm", "-v", f"{box.project}_backrest-config:/c", "alpine:3"]
+        + ["sh", "-c", "sha256sum < /c/config.json; ls /c"]
+    ).stdout
+    assert after.startswith(before)
+    assert "config.json.prev" in after
+
+
+def test_kit_disable_para_backrest_sin_borrar_volumenes_ni_secretos(box, ui_env_with_copias_host):
+    result = box.sh("kit", "disable", "copias")
+
+    assert result.returncode == 0, result.stdout + result.stderr
+    assert not (box.clone / "deploy" / "kit" / "copias" / "compose.yaml").exists()
+    owned = run(
+        ["docker", "ps", "-aq", "--filter", f"label=com.docker.compose.project={box.project}"]
+        + ["--filter", "label=com.docker.compose.service=backrest"]
+    )
+    assert owned.stdout.split() == []
+    proxy = run(
+        ["docker", "ps", "-aq", "--filter", f"label=com.docker.compose.project={box.project}"]
+        + ["--filter", "label=com.docker.compose.service=copias-proxy"]
+    )
+    assert proxy.stdout.split() == []
+    assert not (box.clone / "deploy" / "kit" / "copias" / "destino.conf").exists()
+    for volume in ("backrest-config", "backrest-data"):
+        assert run(["docker", "volume", "inspect", f"{box.project}_{volume}"]).returncode == 0
+    assert box.sh("kit", "disable", "copias").returncode != 0

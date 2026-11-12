@@ -90,7 +90,7 @@ def _positive_int(raw: Any) -> int | None:
     return raw if isinstance(raw, int) and not isinstance(raw, bool) and raw > 0 else None
 
 
-def _repository_id(result: CollectionResult) -> str | None:
+def repository_id(result: CollectionResult) -> str | None:
     value = result.data.get("repository_id")
     return value if isinstance(value, str) and value else None
 
@@ -155,7 +155,7 @@ def _threshold(result: CollectionResult, name: str) -> int | Outcome:
     return value if value is not None else _unknown(f"umbral {name} ausente o inválido")
 
 
-def _evaluate(
+def evaluate(
     check_id: str,
     result: CollectionResult,
     evidence_id: str,
@@ -206,6 +206,12 @@ def _recent(result: CollectionResult, evaluated_at: datetime) -> Outcome:
             "hay snapshots en el repositorio, pero ninguno está citado por un backup completado "
             "de este repositorio (ver foreign_snapshots)"
         )
+    return _latest_snapshot_outcome(counted, limit, evaluated_at)
+
+
+def _latest_snapshot_outcome(
+    counted: list[dict[str, Any]], limit: int, evaluated_at: datetime
+) -> Outcome:
     latest = _latest(counted, "time")
     if isinstance(latest, Outcome):
         return latest
@@ -214,6 +220,23 @@ def _recent(result: CollectionResult, evaluated_at: datetime) -> Outcome:
         return _unknown("el último snapshot tiene fecha futura")
     detail = f"último snapshot de hace {_hours(age)} (máximo {limit} h)"
     return _pass(detail) if age <= timedelta(hours=limit) else _fail(detail)
+
+
+def recent_any_snapshot(result: CollectionResult, evaluated_at: datetime) -> Outcome:
+    """Como `_recent`, pero cuenta todo snapshot del repositorio, sin exigir un run citado:
+    los repositorios que escribe otra herramienta (Backrest) no dejan registros de runs."""
+    limit = _threshold(result, "max_backup_age_hours")
+    if isinstance(limit, Outcome):
+        return limit
+    snapshots, problem = _section(result, "snapshots")
+    if problem:
+        return problem
+    assert snapshots is not None
+    if snapshots.get("summary", {}).get("repository_exists") is False:
+        return _fail("el repositorio no existe: no hay snapshots")
+    if not _items(snapshots):
+        return _fail("el repositorio no tiene ningún snapshot")
+    return _latest_snapshot_outcome(_items(snapshots), limit, evaluated_at)
 
 
 def _no_errors(result: CollectionResult, evaluated_at: datetime) -> Outcome:
@@ -413,26 +436,24 @@ def _offsite(result: CollectionResult, evaluated_at: datetime) -> Outcome:
 def backup_001_recent(
     result: CollectionResult, evidence_id: str, evaluated_at: datetime
 ) -> list[CheckResult]:
-    return _evaluate(RECENT, result, evidence_id, evaluated_at, _repository_id(result), _recent)
+    return evaluate(RECENT, result, evidence_id, evaluated_at, repository_id(result), _recent)
 
 
 def backup_002_no_errors(
     result: CollectionResult, evidence_id: str, evaluated_at: datetime
 ) -> list[CheckResult]:
-    return _evaluate(
-        NO_ERRORS, result, evidence_id, evaluated_at, _repository_id(result), _no_errors
-    )
+    return evaluate(NO_ERRORS, result, evidence_id, evaluated_at, repository_id(result), _no_errors)
 
 
 def backup_003_repository_accessible(
     result: CollectionResult, evidence_id: str, evaluated_at: datetime
 ) -> list[CheckResult]:
-    return _evaluate(
+    return evaluate(
         REPOSITORY_ACCESSIBLE,
         result,
         evidence_id,
         evaluated_at,
-        _repository_id(result),
+        repository_id(result),
         _accessible,
     )
 
@@ -440,16 +461,14 @@ def backup_003_repository_accessible(
 def backup_004_integrity(
     result: CollectionResult, evidence_id: str, evaluated_at: datetime
 ) -> list[CheckResult]:
-    return _evaluate(
-        INTEGRITY, result, evidence_id, evaluated_at, _repository_id(result), _integrity
-    )
+    return evaluate(INTEGRITY, result, evidence_id, evaluated_at, repository_id(result), _integrity)
 
 
 def backup_005_restore_test(
     result: CollectionResult, evidence_id: str, evaluated_at: datetime
 ) -> list[CheckResult]:
     """El sujeto es el `test_id` del último restore test, el mismo que evalúa el check."""
-    return _evaluate(
+    return evaluate(
         RESTORE_TEST,
         result,
         evidence_id,
@@ -462,7 +481,7 @@ def backup_005_restore_test(
 def backup_006_offsite(
     result: CollectionResult, evidence_id: str, evaluated_at: datetime
 ) -> list[CheckResult]:
-    return _evaluate(OFFSITE, result, evidence_id, evaluated_at, _repository_id(result), _offsite)
+    return evaluate(OFFSITE, result, evidence_id, evaluated_at, repository_id(result), _offsite)
 
 
 def _restore_test_subject(result: CollectionResult) -> str | None:
@@ -471,7 +490,7 @@ def _restore_test_subject(result: CollectionResult) -> str | None:
     latest = _latest(tests, "performed_at") if tests else None
     if isinstance(latest, dict) and isinstance(latest.get("test_id"), str):
         return latest["test_id"]
-    return _repository_id(result)
+    return repository_id(result)
 
 
 ALL_CHECKS = (

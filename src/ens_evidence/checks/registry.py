@@ -13,6 +13,8 @@ from types import MappingProxyType
 from pydantic import BaseModel
 
 from ens_evidence.checks.catalog import CHECKS
+from ens_evidence.connectors.backups import checks as backups
+from ens_evidence.connectors.backups.config import BackupsConfig
 from ens_evidence.connectors.cloudflare import checks as cloudflare
 from ens_evidence.connectors.cloudflare.config import CloudflareConfig
 from ens_evidence.connectors.github import checks as github
@@ -33,6 +35,7 @@ CONFIG_MODELS: Mapping[str, type[BaseModel]] = MappingProxyType(
         "cloudflare": CloudflareConfig,
         "google-workspace": GoogleWorkspaceConfig,
         "restic": ResticConfig,
+        "backups": BackupsConfig,
         ENDPOINT: EndpointConfig,
     }
 )
@@ -53,6 +56,11 @@ CHECK_FUNCTIONS: Mapping[str, CheckFunction] = MappingProxyType(
         restic.INTEGRITY: restic.backup_004_integrity,
         restic.RESTORE_TEST: restic.backup_005_restore_test,
         restic.OFFSITE: restic.backup_006_offsite,
+        backups.RECENT: backups.backup_001_recent,
+        backups.REPOSITORY_ACCESSIBLE: backups.backup_003_repository_accessible,
+        backups.INTEGRITY: backups.backup_004_integrity,
+        backups.RESTORE_TEST: backups.backup_005_restore_test,
+        backups.OFFSITE: backups.backup_006_offsite,
     }
 )
 

@@ -32,6 +32,7 @@ ui = [
 ens-evidence = "ens_evidence.cli:app"
 
 [project.entry-points."ens_evidence.connectors"]
+backups = "ens_evidence.connectors.backups:BackupsConnector"
 cloudflare = "ens_evidence.connectors.cloudflare:CloudflareConnector"
 github = "ens_evidence.connectors.github:GitHubConnector"
 google-workspace = "ens_evidence.connectors.google_workspace:GoogleWorkspaceConnector"

@@ -94,6 +94,7 @@ from ens_evidence.backup import (
     parse_s3_repository,
     prepare_restic,
     record_restore_test,
+    record_verified_restore_test,
     restore_recorded,
     run_check,
     run_configured_backup,
@@ -126,7 +127,8 @@ from ens_evidence.checks.engine import CONFIG_INVALID, ConnectorOutcome, Outcome
 from ens_evidence.checks.inputs import NO_EVIDENCE
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.checks.store import scan_runs
-from ens_evidence.connectors.config import connector_config_key
+from ens_evidence.connectors.backups import BackupsConfig, BackupsConnector
+from ens_evidence.connectors.config import connector_config_key, load_connector_config
 from ens_evidence.connectors.registry import ConnectorLoadError, ConnectorRegistry
 from ens_evidence.endpoint.bundle import BundleTargetError, write_bundle
 from ens_evidence.endpoint.evaluate import evaluate_workspace
@@ -1592,6 +1594,49 @@ def backup_restore_test_record(
         raise fail(f"No se registra el restore test: {exc}") from None
     typer.echo(
         f"Restore test {record.test_id} registrado y guardado como evidencia manual.\n"
+        "El revisor es declarado; no se autentica."
+    )
+
+
+@restore_test_app.command("record-kit")
+@handled
+def backup_restore_test_record_kit(
+    ctx: typer.Context,
+    file: Annotated[Path, typer.Argument(help="Fichero YAML con la declaración, sin restore_id.")],
+    repository: Annotated[str, typer.Option(help="Id del repositorio en connectors/backups.yaml.")],
+    restored: Annotated[Path, typer.Option(help="Carpeta restaurada (Backrest o restic).")],
+    original: Annotated[Path, typer.Option(help="Carpeta original con la que se compara.")],
+) -> None:
+    """Registra una prueba de restauración hecha con Backrest (kit de copias).
+
+    Compara `--restored` con `--original` (sha256 por fichero); solo si coinciden registra la
+    restauración como verificada y la prueba declarada, que lleva a BACKUP-005. El revisor lo
+    escribe la persona en el fichero; no se autentica ni se rellena.
+    """
+    try:
+        data = file.read_bytes()
+    except OSError:
+        raise fail("No se puede leer el fichero indicado.") from None
+    store = open_workspace(ctx)
+    config = load_connector_config(store, "backups", BackupsConfig)
+    chosen = next((r for r in config.repositories if r.id == repository), None)
+    if chosen is None:
+        known = ", ".join(r.id for r in config.repositories)
+        raise fail(f"No hay un repositorio «{repository}» en connectors/backups.yaml ({known}).")
+    try:
+        repository_id = BackupsConnector.from_settings(resolved_settings(ctx)).repository_id(chosen)
+        record = record_verified_restore_test(
+            store, repository_id, data, restored, original, datetime.now(UTC)
+        )
+    except ValidationError as exc:
+        typer.echo("No se registra el restore test:", err=True)
+        print_errors(describe_validation("restore-test record-kit", exc))
+        raise typer.Exit(1) from None
+    except BackupError as exc:
+        raise fail(f"No se registra el restore test: {exc}", 1) from None
+    typer.echo(
+        f"Lo restaurado coincide con el original. Restore test {record.test_id} registrado "
+        f"(restauración {record.restore_id}) y guardado como evidencia manual.\n"
         "El revisor es declarado; no se autentica."
     )
 

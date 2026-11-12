@@ -119,11 +119,12 @@ services:
     security_opt: ["no-new-privileges:true"]
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-    networks: [edge, agent, ui-net]
+    networks: [edge, agent, ui-net, copias-net]
     environment:
       # Los nombres de host salen de deploy/ui.env y deploy/agent.env (los lee box.sh); sin ellos, `.invalid`.
       ENS_UI_HOST: ${ENS_UI_HOST:-ui.invalid}
       ENS_AGENT_HOST: ${ENS_AGENT_HOST:-agent.invalid}
+      ENS_COPIAS_HOST: ${ENS_COPIAS_HOST:-copias.invalid}
     logging: *logging
     healthcheck:
       # Toda ruta da 403, así que se sondea la API de administración (solo en localhost).
@@ -132,6 +133,62 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  backrest:
+    # Kit de copias (ADR 0019, spec kit-backups). Backrest v1.14.1, variante scratch (sin shell ni
+    # curl: no admite healthcheck; box.sh solo comprueba que corre). deploy/box.sh kit enable
+    # copias <paquete> añade deploy/kit/copias/compose.yaml con los montajes :ro elegidos.
+    profiles: [copias]
+    image: ghcr.io/garethgeorge/backrest:v1.14.1-scratch@sha256:2f5accac8df1dd625c73d43feb36437dd8e9ef582f8687c53d275bcb8aca0d10
+    # El volumen `data` es 0700 de 10001: con otro UID no se podría leer ni con group_add. Es el
+    # mismo UID sin capacidades, con `data` montado :ro y sin compartir volúmenes de escritura.
+    user: "10001:10001"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,mode=700
+      - /cache:uid=10001,mode=700
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      # El restic de la imagen; sin esto Backrest intentaría descargar uno en un sistema de solo lectura.
+      BACKREST_RESTIC_COMMAND: /bin/restic
+      # Sin salida directa: restic (transporte de Go) sale solo por copias-proxy, que solo admite el destino S3.
+      HTTPS_PROXY: http://copias-proxy:3128
+      https_proxy: http://copias-proxy:3128
+      NO_PROXY: localhost,127.0.0.1
+      no_proxy: localhost,127.0.0.1
+    volumes:
+      # backrest-config guarda las credenciales de escritura (config.json): ningún otro servicio lo monta.
+      - backrest-config:/config
+      - backrest-data:/data
+      - data:/source/caja:ro
+    networks: [copias-net, copias-salida]
+    depends_on: [copias-proxy]
+    logging: *logging
+
+  copias-proxy:
+    # Proxy de salida de Backrest (ADR 0019, spec kit-backups): Squid, solo CONNECT al host:puerto del
+    # destino S3 (deploy/copias-proxy.conf + destino.conf que genera `kit enable copias`); todo lo demás, 403.
+    # Imagen chiselled de Canonical (sin shell: sin healthcheck; box.sh solo comprueba que corre).
+    profiles: [copias]
+    image: ubuntu/squid:7.2-26.04_edge@sha256:6a252a42875d08bbb9dae4ab70a041afd4f8b530eaa0226102d1816309eef8b5
+    entrypoint: ["/usr/sbin/squid-gnutls", "-N", "-f", "/etc/squid/proxy.conf"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/log/squid
+      - /var/run/squid
+      - /var/spool/squid
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./deploy/copias-proxy.conf:/etc/squid/proxy.conf:ro
+      # Lo escribe `kit enable copias` desde el destino del paquete (ENS_COPIAS_DESTINO_CONF); sin secretos.
+      - ${ENS_COPIAS_DESTINO_CONF:-/dev/null}:/etc/squid/destino.conf:ro
+    networks: [copias-salida, copias]
+    logging: *logging
 
   cloudflared:
     profiles: [tunnel]
@@ -158,7 +215,11 @@ services:
 #   app         backend: sin entrada; salida a Internet (conectores y R2).
 #   agent       agent:   interna, sin salida a Internet; solo la alcanza caddy (perfil agents).
 #   ui          ui-net:  interna, sin salida a Internet; solo la alcanza caddy (perfil ui).
-#   caddy       edge + agent + ui-net: todas internas, sin salida a Internet; escucha en :8080.
+#   backrest    copias-net + copias-salida: ambas internas, sin salida a Internet (perfil copias);
+#               copias-net la alcanza caddy; copias-salida solo llega a copias-proxy.
+#   copias-proxy copias-salida + copias: proxy CONNECT que solo admite el host:puerto del destino S3
+#               (deploy/copias-proxy.conf); la única salida a Internet del kit, filtrada por destino.
+#   caddy       edge + agent + ui-net + copias-net: todas internas, sin salida a Internet; escucha en :8080.
 #   cloudflared edge + tunnel: llega a caddy:8080 y sale hacia Cloudflare.
 networks:
   backend: {}
@@ -168,8 +229,17 @@ networks:
     internal: true
   edge:
     internal: true
+  copias-net:
+    internal: true
+  copias-salida:
+    internal: true
+  copias: {}
   tunnel: {}
 
 volumes:
   data:
     name: ${ENS_BOX_PROJECT:-ens-box}_data
+  backrest-config:
+    name: ${ENS_BOX_PROJECT:-ens-box}_backrest-config
+  backrest-data:
+    name: ${ENS_BOX_PROJECT:-ens-box}_backrest-data
