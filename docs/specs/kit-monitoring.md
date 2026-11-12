@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P2
 size: L
-issue: null
+issue: 72
 prs: []
 related_issues: [72]
 depends_on: [kit-access-panel]

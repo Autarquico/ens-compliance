@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: "UI web: el flujo completo, de los riesgos a la pre-auditoría"
 type: task
-status: active
+status: shipped
 priority: P1
 size: XL
 issue: null
