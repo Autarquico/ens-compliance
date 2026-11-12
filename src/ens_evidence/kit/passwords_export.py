@@ -7,6 +7,7 @@ Los errores no incluyen valores de la base.
 """
 
 import contextlib
+import json
 import os
 import re
 import shutil
@@ -40,6 +41,7 @@ EXTRA_FILES = ("config.json",)
 MAX_EXTRA_FILES = 100_000
 MAX_EXTRA_BYTES = 10 * 1024**3
 KNOWN_MIGRATIONS = frozenset({"20261007120000"})  # Vaultwarden 1.37.5, verificada en T0
+SEND_TYPE_FILE = 1  # SendType::File en Vaultwarden 1.37.5
 SECOND_FACTOR_TYPES = frozenset({0, 1, 2, 3, 4, 6, 7})  # 5 recordar, 8 recuperación, >=1000 no
 
 
@@ -267,6 +269,54 @@ def _stage_extras(data_dir: Path, stage: Path) -> None:
             _copy_extra_file(source, stage / name, budget)
 
 
+def _send_file_path(send_uuid: str, data: object) -> Path | None:
+    """`sends/<send_uuid>/<file_id>`; `file_id` es el `id` del JSON de `sends.data` (1.37.5)."""
+    try:
+        file_id = json.loads(data)["id"]  # type: ignore[arg-type]
+    except (TypeError, ValueError, KeyError):
+        return None
+    if not isinstance(file_id, str) or not file_id:
+        return None
+    return Path(send_uuid) / file_id
+
+
+def _referenced_extras(db_copy: Path) -> list[Path | None]:
+    """Rutas relativas a `data_dir` de los ficheros que la base capturada da por existentes.
+
+    `None` marca una fila de send de fichero cuya ruta no se puede deducir.
+    """
+    conn = sqlite3.connect(f"{db_copy.resolve().as_uri()}?mode=ro", uri=True)
+    try:
+        paths: list[Path | None] = [
+            Path("attachments") / cipher_uuid / attachment_id
+            for cipher_uuid, attachment_id in conn.execute(
+                "SELECT cipher_uuid, id FROM attachments"
+            )
+        ]
+        for send_uuid, data in conn.execute(
+            "SELECT uuid, data FROM sends WHERE atype = ?", (SEND_TYPE_FILE,)
+        ):
+            send_path = _send_file_path(send_uuid, data)
+            paths.append(None if send_path is None else Path("sends") / send_path)
+        return paths
+    finally:
+        conn.close()
+
+
+def _check_extras_cover_db(db_copy: Path, stage: Path) -> None:
+    """Falla si la base capturada referencia ficheros que no llegaron al stage (borrados en medio).
+
+    Ficheros de más en el stage no son error: llegaron después de la captura.
+    """
+    missing = sum(
+        1 for rel in _referenced_extras(db_copy) if rel is None or not (stage / rel).is_file()
+    )
+    if missing:
+        raise PasswordsExportError(
+            f"faltan {missing} ficheros de adjuntos o sends referenciados por la base capturada"
+        )
+
+
 def _extras_dir(snapshot_dir: Path, stamp: str) -> Path:
     return snapshot_dir / f"{EXTRAS_PREFIX}{stamp}"
 
@@ -295,6 +345,7 @@ def _take_snapshot(
         tmp.chmod(0o600)
         _fsync_file(tmp)
         _stage_extras(data_dir, stage)
+        _check_extras_cover_db(tmp, stage)
         for key in sorted(data_dir.glob("rsa_key*")):
             if key.is_file() and not key.is_symlink():
                 _publish_copy(key, snapshot_dir / key.name)

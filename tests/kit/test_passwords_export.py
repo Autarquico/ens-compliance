@@ -36,6 +36,12 @@ CREATE TABLE devices (
   uuid TEXT NOT NULL, created_at DATETIME NOT NULL, updated_at DATETIME NOT NULL,
   user_uuid TEXT NOT NULL, name TEXT NOT NULL, atype INTEGER NOT NULL,
   refresh_token TEXT NOT NULL, PRIMARY KEY (uuid, user_uuid));
+CREATE TABLE attachments (
+  id TEXT NOT NULL PRIMARY KEY, cipher_uuid TEXT NOT NULL, file_name TEXT NOT NULL,
+  file_size BIGINT NOT NULL, akey TEXT);
+CREATE TABLE sends (
+  uuid TEXT NOT NULL PRIMARY KEY, user_uuid TEXT, organization_uuid TEXT, name TEXT NOT NULL,
+  notes TEXT, atype INTEGER NOT NULL, data TEXT NOT NULL, akey TEXT NOT NULL);
 """
 ANA, BEA, CARLOS, DIANA, EVA = (f"00000000-0000-4000-8000-00000000000{n}" for n in range(1, 6))
 SECRET = "refresh-token-ficticio"
@@ -85,6 +91,18 @@ class Db:
         self.conn.execute(
             "INSERT INTO devices VALUES (?,?,?,?,?,0,?)",
             (f"{user_id}-{name}", updated, updated, user_id, name, SECRET),
+        )
+
+    def attachment(self, cipher_uuid, attachment_id):
+        self.conn.execute(
+            "INSERT INTO attachments VALUES (?,?,?,?,NULL)",
+            (attachment_id, cipher_uuid, "f", 7),
+        )
+
+    def send(self, send_uuid, file_id, atype=1):
+        data = json.dumps({"id": file_id, "size": 4, "fileName": "x"})
+        self.conn.execute(
+            "INSERT INTO sends VALUES (?,NULL,NULL,'s',NULL,?,?,'k')", (send_uuid, atype, data)
         )
 
     def done(self):
@@ -462,3 +480,59 @@ def test_cli_one_shot_and_failure_exit_code(dirs):
     assert done.exit_code == 0, done.output
     assert len(published((data, out, snap))["users"]) == 5
     assert runner.invoke(app, [*args, "--every", "0m"]).exit_code == 2
+
+
+def _referenced_extras_db(db):
+    db.attachment("uuid1", "f.bin")
+    db.send("s1", "g.bin")
+    db.send("s2", "ausente", atype=0)  # un send de texto no tiene fichero
+
+
+def _delete_after_vacuum(monkeypatch, data: Path, relative: str) -> None:
+    real = passwords_export._stage_extras
+
+    def stage_after_delete(data_dir, stage):
+        (data / relative).unlink()
+        real(data_dir, stage)
+
+    monkeypatch.setattr(passwords_export, "_stage_extras", stage_after_delete)
+
+
+def test_referenced_attachment_and_send_files_present_is_ok(dirs):
+    build(dirs[0], lambda db: (populate(db), _referenced_extras_db(db)))
+    _fill_extras(dirs[0])
+    assert run(dirs).snapshot_ok is True
+
+
+@pytest.mark.parametrize("victim", ["attachments/uuid1/f.bin", "sends/s1/g.bin"])
+def test_file_deleted_between_vacuum_and_copy_keeps_the_previous_snapshot(
+    dirs, monkeypatch, victim
+):
+    build(dirs[0], lambda db: (populate(db), _referenced_extras_db(db)))
+    _fill_extras(dirs[0])
+    run(dirs)
+    _delete_after_vacuum(monkeypatch, dirs[0], victim)
+    result = run(dirs, NOW + timedelta(minutes=15))
+    assert result.snapshot_ok is False and result.last_good_snapshot_at == NOW
+    assert [p.name for p in dirs[2].glob("db-*")] == ["db-20261111T120000Z.sqlite3"]
+    assert [p.name for p in dirs[2].glob("extras-*")] == ["extras-20261111T120000Z"]
+    assert (_extras(dirs) / victim).is_file()
+    assert not [p for p in dirs[2].iterdir() if p.name.startswith(".")]
+
+
+def test_missing_referenced_file_error_only_counts(dirs, tmp_path):
+    db = tmp_path / "copy.sqlite3"
+    build(tmp_path, lambda d: (populate(d), _referenced_extras_db(d)))
+    (tmp_path / "db.sqlite3").rename(db)
+    stage = tmp_path / "stage"
+    stage.mkdir()
+    with pytest.raises(PasswordsExportError, match=r"^faltan 2 ficheros") as info:
+        passwords_export._check_extras_cover_db(db, stage)
+    assert "uuid1" not in str(info.value) and "g.bin" not in str(info.value)
+
+
+def test_extra_file_without_a_row_is_not_an_error(dirs):
+    build(dirs[0], populate)
+    _fill_extras(dirs[0])
+    assert run(dirs).snapshot_ok is True
+    assert (_extras(dirs) / "attachments" / "uuid1" / "f.bin").is_file()
