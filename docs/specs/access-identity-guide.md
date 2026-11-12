@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P2
 size: M
-issue: null
+issue: 77
 prs: []
 related_issues: [77]
 depends_on: [collector-cloudflare]

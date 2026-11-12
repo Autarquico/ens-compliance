@@ -5,7 +5,7 @@ type: epic
 status: active
 priority: P1
 size: XL
-issue: null
+issue: 65
 prs: []
 related_issues: [65]
 depends_on: [box-packaging, installer, web-ui-flujo]
