@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P2
 size: M
-issue: null
+issue: 69
 prs: [76]
 related_issues: [69]
 depends_on: [kit-backups]
