@@ -11,6 +11,7 @@
 <!-- pm-sync:done-this-week -->
 - #26 Banco de defectos sembrados
 - #56 Ajuste del audit pack hasta el umbral de v0.1
+- #63 UI web: el flujo completo, de los riesgos a la pre-auditoría
 - #70 Kit: identidad y doble factor (Authentik o Keycloak)
 <!-- /pm-sync:done-this-week -->
 
@@ -21,7 +22,6 @@
 <!-- pm-sync:in-progress -->
 - #28 Servidor osquery embebido
 - #57 Reservada nueva y dev ampliado para el umbral de v0.1
-- #63 UI web: el flujo completo, de los riesgos a la pre-auditoría
 - #66 Kit: copias de seguridad con restic y Backrest
 - #67 Kit: almacén de claves y secretos con OpenBao
 - #68 Kit: panel de acceso a las herramientas
