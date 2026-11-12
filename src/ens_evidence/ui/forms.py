@@ -61,13 +61,26 @@ def first(form: Form, name: str) -> str:
     return values[0].strip() if values else ""
 
 
+def _is_plain_filename(name: str | None) -> bool:
+    """Sin separadores, sin rutas absolutas o de unidad, sin `.`/`..` y sin NUL."""
+    if not name:
+        return True
+    return not (
+        "\x00" in name
+        or "/" in name
+        or "\\" in name
+        or name in (".", "..")
+        or (len(name) > 1 and name[1] == ":")
+    )
+
+
 class UploadTooLarge(FormTooLarge):
     """El fichero o el cuerpo supera el tope de la subida."""
 
 
 @dataclass(frozen=True)
 class Upload:
-    """Los campos de texto y el contenido del único fichero; el nombre del fichero se descarta."""
+    """Los campos de texto y el contenido del único fichero; el nombre se valida y se descarta."""
 
     fields: Form
     content: bytes | None
@@ -108,6 +121,8 @@ async def read_upload(request: Request, max_bytes: int = MAX_UPLOAD_BYTES) -> Up
         if not isinstance(value, UploadFile):
             fields.setdefault(name, []).append(value)
             continue
+        if not _is_plain_filename(value.filename):
+            raise FormInvalid
         content = await value.read(max_bytes + 1)
         if len(content) > max_bytes:
             raise UploadTooLarge

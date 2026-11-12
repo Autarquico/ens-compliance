@@ -30,6 +30,7 @@ from ens_evidence.scope.inventory import (
     SYSTEM_KEY,
 )
 from ens_evidence.scope.models import REQUIRED_FIELDS
+from ens_evidence.scope.skeleton import create_scope_skeleton
 from ens_evidence.ui.forms import first
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
@@ -108,6 +109,8 @@ def _sistema_context(step: StepInput) -> Context:
 
 def _sistema_save(step: StepInput) -> None:
     values = required(step.form, {"name": "El nombre del sistema", "description": "La descripción"})
+    if not step.store.exists(SYSTEM_KEY):
+        create_scope_skeleton(step.store)
     with rejected_to_step(ScopeEditRejected):
         set_system(step.store, values["name"], values["description"], step.now)
 
