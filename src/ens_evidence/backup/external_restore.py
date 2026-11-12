@@ -29,10 +29,22 @@ MAX_LISTED_MISMATCHES = 20
 _CHUNK = 1024 * 1024
 
 
+def _unreadable(error: OSError) -> None:
+    raise BackupError(f"no se puede recorrer {error.filename}: {error.strerror}")
+
+
 def inventory_of_tree(root: Path) -> dict[str, str]:
-    """`{ruta relativa: sha256}` de los ficheros normales; lo que no lo es consta como tal."""
+    """`{ruta relativa: sha256}` de los ficheros normales; lo que no lo es consta como tal.
+
+    Un enlace a directorio consta como `no-regular` (no se sigue) y una carpeta que no se
+    puede leer para el inventario: callarla daría por buena una restauración incompleta.
+    """
     found: dict[str, str] = {}
-    for directory, _dirs, names in os.walk(root, followlinks=False):
+    for directory, dirs, names in os.walk(root, followlinks=False, onerror=_unreadable):
+        for name in dirs:
+            path = Path(directory) / name
+            if path.is_symlink():
+                found[path.relative_to(root).as_posix()] = "no-regular"
         for name in names:
             path = Path(directory) / name
             key = path.relative_to(root).as_posix()
