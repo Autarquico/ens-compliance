@@ -219,8 +219,8 @@ def test_result_log_without_data_list_is_a_bad_request(world, caplog):
     assert LAPTOP_UUID not in caplog.text
 
 
-def distinct_batch(minor: str):
-    return [snapshot_event("os_version", [{**OS_VERSION_ROW, "minor": minor}])]
+def distinct_batch(minor: str, unix=NOW):
+    return [snapshot_event("os_version", [{**OS_VERSION_ROW, "minor": minor}], unix=unix)]
 
 
 def other_query_event():
@@ -272,9 +272,56 @@ def test_a_new_batch_is_stored_once_the_interval_has_passed(world):
     node_key = world.enroll()
     send(world, node_key, distinct_batch("1"))
 
-    world.clock.advance(hours=5, minutes=56)
-    send(world, node_key, distinct_batch("2"))
+    world.clock.advance(hours=6)
+    send(world, node_key, distinct_batch("2", unix=NOW + timedelta(hours=6)))
     assert len(manifests(world)) == 2
+
+
+def test_a_snapshot_brought_forward_by_the_splay_is_stored(world, caplog):
+    node_key = world.enroll()
+    send(world, node_key, distinct_batch("1"))
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    world.clock.advance(hours=5, minutes=25)
+    send(world, node_key, distinct_batch("2", unix=NOW + timedelta(hours=5, minutes=25)))
+
+    assert len(manifests(world)) == 2
+    assert "outcome=throttled" not in caplog.text
+
+
+def test_after_a_late_delivery_the_next_snapshot_on_schedule_is_stored(world, caplog):
+    node_key = world.enroll()
+    world.clock.advance(hours=2)
+    send(world, node_key, distinct_batch("1"))  # generado a NOW, entregado tras un corte
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    world.clock.advance(hours=4)
+    send(world, node_key, distinct_batch("2", unix=NOW + timedelta(hours=6)))
+
+    assert len(manifests(world)) == 2
+    assert "outcome=throttled" not in caplog.text
+
+
+def test_a_snapshot_older_than_the_stored_one_is_throttled(world, caplog):
+    node_key = world.enroll()
+    send(world, node_key, distinct_batch("1"))
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    send(world, node_key, distinct_batch("0", unix=NOW - timedelta(hours=6)))
+
+    assert len(manifests(world)) == 1
+    assert caplog.text.count("outcome=throttled") == 1
+
+
+def test_invented_generation_times_store_at_most_three_per_interval(world, caplog):
+    node_key = world.enroll()
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    for n in range(6):
+        send(world, node_key, distinct_batch(str(n), unix=NOW - timedelta(days=10 - n)))
+
+    assert len(manifests(world)) == 3
+    assert caplog.text.count("outcome=throttled") == 3
 
 
 def test_a_batch_refused_with_503_does_not_use_the_interval(world):

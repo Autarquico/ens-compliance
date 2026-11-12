@@ -73,11 +73,30 @@ class RunStatus:
     hosts: tuple[HostRun, ...]
 
 
+@dataclass(frozen=True)
+class ResultBound:
+    """Cota de snapshots programados por consulta y equipo.
+
+    `spacing` separa snapshots por su hora de generación (deduplica reentregas y tolera el splay);
+    `max_receipts` por `window` de recepción acota a un equipo que inventa horas de generación.
+    """
+
+    spacing: timedelta
+    window: timedelta
+    max_receipts: int
+
+
+@dataclass(frozen=True)
+class _ResultSlot:
+    collected_at: datetime
+    received: tuple[datetime, ...]
+
+
 class AgentState:
     def __init__(self, state_dir: Path | None = None) -> None:
         self._root = (state_dir or resolve_state_dir()) / AGENT_DIR
         self._written: dict[str, tuple[datetime, str | None]] = {}
-        self._results: dict[tuple[str, str], datetime] = {}
+        self._results: dict[tuple[str, str], _ResultSlot] = {}
         self._guard = threading.Lock()
 
     # --- último contacto -------------------------------------------------------------------
@@ -113,21 +132,39 @@ class AgentState:
     # --- cota de resultados programados ----------------------------------------------------
 
     def result_slot_free(
-        self, asset_id: str, query_id: str, now: datetime, spacing: timedelta
+        self,
+        asset_id: str,
+        query_id: str,
+        collected_at: datetime,
+        now: datetime,
+        bound: ResultBound,
     ) -> bool:
-        """`True` si el activo no ha entregado un snapshot de esa consulta en el último `spacing`.
+        """`True` si el snapshot es al menos `bound.spacing` más nuevo que el último guardado de esa
+        consulta y equipo, y el equipo no ha agotado sus entregas en la ventana de recepción.
 
-        Solo en memoria: reiniciar el servicio reabre la ventana, a lo sumo un snapshot por
-        consulta y equipo.
+        Solo en memoria: reiniciar el servicio reabre la cota una vez por consulta y equipo.
         """
         with self._guard:
-            last = self._results.get((asset_id, query_id))
-        return last is None or now - last >= spacing
+            slot = self._results.get((asset_id, query_id))
+        if slot is None:
+            return True
+        recent = [at for at in slot.received if now - at < bound.window]
+        newer = collected_at - slot.collected_at >= bound.spacing
+        return newer and len(recent) < bound.max_receipts
 
-    def record_results(self, asset_id: str, query_ids: Iterable[str], now: datetime) -> None:
+    def record_result(
+        self,
+        asset_id: str,
+        query_id: str,
+        collected_at: datetime,
+        now: datetime,
+        bound: ResultBound,
+    ) -> None:
         with self._guard:
-            for query_id in query_ids:
-                self._results[(asset_id, query_id)] = now
+            slot = self._results.get((asset_id, query_id))
+            received = slot.received if slot else ()
+            recent = tuple(at for at in received if now - at < bound.window)
+            self._results[(asset_id, query_id)] = _ResultSlot(collected_at, (*recent, now))
 
     # --- consultas en vivo -----------------------------------------------------------------
 

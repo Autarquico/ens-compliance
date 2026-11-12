@@ -26,7 +26,7 @@ from ens_evidence.agent.results import (
     write_result,
 )
 from ens_evidence.agent.secrets import AgentSecrets
-from ens_evidence.agent.state import AgentState
+from ens_evidence.agent.state import AgentState, ResultBound
 from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.endpoint.config import CONFIG_NAME, EndpointConfig
 from ens_evidence.endpoint.package import CLOCK_SKEW
@@ -35,8 +35,15 @@ from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 
 MAX_HOSTNAME_CHARS = 255
 KNOWN_PLATFORMS = frozenset({"darwin", "linux"})
-# Un snapshot por consulta del paquete y equipo por intervalo de schedule; lo que sobra se descarta.
-MIN_RESULT_SPACING = timedelta(seconds=SCHEDULE_INTERVAL_SECONDS) - CLOCK_SKEW
+# osquery desplaza cada intervalo hasta un 10 % (`--schedule_splay_percent`, 10 por defecto).
+SCHEDULE_SPLAY = 0.10
+# Un snapshot por consulta del paquete y equipo por intervalo de schedule, contado por su hora
+# de generación; tres entregas por intervalo de recepción dejan pasar las atrasadas tras un corte.
+RESULT_BOUND = ResultBound(
+    spacing=timedelta(seconds=SCHEDULE_INTERVAL_SECONDS * (1 - SCHEDULE_SPLAY)) - CLOCK_SKEW,
+    window=timedelta(seconds=SCHEDULE_INTERVAL_SECONDS),
+    max_receipts=3,
+)
 
 
 class NodeInvalid(Exception):
@@ -160,7 +167,7 @@ class AgentService:
         return Reply({"node_invalid": False}, node)
 
     def _store_snapshots(self, node: Node, events: list[Any]) -> bool:
-        """`False` si algún snapshot se descarta: su consulta ya se entregó este intervalo."""
+        """`False` si algún snapshot se descarta por la cota (`RESULT_BOUND`)."""
         now = self._now()
         snapshots = snapshots_from_events(
             events, host_identifier=node.host_identifier, platform=node.platform, now=now
@@ -171,12 +178,17 @@ class AgentService:
             fresh = [
                 s
                 for s in snapshots
-                if self._state.result_slot_free(node.asset_id, s.query_id, now, MIN_RESULT_SPACING)
+                if self._state.result_slot_free(
+                    node.asset_id, s.query_id, s.collected_at, now, RESULT_BOUND
+                )
             ]
             if fresh:
                 result = scheduled_result(node.asset_id, node.host_identifier, fresh)
                 write_result(self._store, result, now=now)
-                self._state.record_results(node.asset_id, [s.query_id for s in fresh], now)
+                for s in fresh:
+                    self._state.record_result(
+                        node.asset_id, s.query_id, s.collected_at, now, RESULT_BOUND
+                    )
         return len(fresh) == len(snapshots)
 
     def _store_answer(self, node: Node, run_id: str, rows: Any, status: Any) -> None:

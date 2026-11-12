@@ -17,12 +17,12 @@
 {
 	auto_https off
 	admin localhost:2019
-	# Conexiones lentas sin credenciales no deben retener plazas del agente: la cabecera y el
-	# cuerpo (hasta 10 MB) tienen plazo, y Caddy completa el cuerpo antes de abrir el upstream.
+	# La cabecera tiene plazo y una conexión ociosa se cierra. El cuerpo no: el plazo sería para
+	# todo :8080 y cortaría subidas lentas legítimas (UI, Backrest, Vaultwarden). Al agente lo
+	# protege `request_buffers`: Caddy completa el cuerpo antes de ocupar una plaza de uvicorn.
 	servers {
 		timeouts {
 			read_header 10s
-			read_body 60s
 			idle 1m
 		}
 	}

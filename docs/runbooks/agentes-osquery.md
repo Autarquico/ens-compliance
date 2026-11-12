@@ -120,9 +120,11 @@ El equipo la recoge en su siguiente sondeo distribuido y el resultado queda
 como evidencia, visible con `query show`.
 
 El servidor guarda como máximo un snapshot por consulta del paquete y equipo
-cada 6 h (menos 5 min), de modo que los POST separados que osquery envía por
-consulta (splay, `logger_tls_period`) se guardan todos; un snapshot repetido
-responde 200 y se descarta (`outcome=throttled` en el log). Las consultas en vivo no están sujetas a esta
+cada 6 h según la hora en que osquery lo generó (con margen para el splay del
+10 % y 5 min de desfase), y como mucho 3 entregas por consulta y equipo cada
+6 h. Los POST separados que osquery envía por consulta y los atrasados tras un
+corte se guardan; un snapshot repetido o más viejo que el guardado responde
+200 y se descarta (`outcome=throttled` en el log). Las consultas en vivo no están sujetas a esta
 cota. Las peticiones autenticadas registran `asset=<activo> host=<hash>`.
 
 ## 4. Revocar un equipo

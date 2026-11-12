@@ -70,11 +70,15 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   reintenta; **no hay spool ni drenador**. Los reintentos se deduplican por sha.
 - `log_type=status` se descarta con 200.
 - Cota de almacenamiento: un snapshot por consulta del paquete y equipo por
-  intervalo de schedule (6 h menos el desfase de reloj de 5 min), porque
-  osquery entrega cada consulta en POST distintos; los repetidos se descartan
-  con 200 y de un lote mixto se guardan los no vistos. La cota es en memoria. Caddy aplica `read_header`,
-  `read_body` e `idle` y completa el cuerpo (`request_buffers`) antes de
-  abrir el upstream.
+  intervalo de schedule, contado por su hora de generación (6 h menos el 10 %
+  de splay de osquery y el desfase de reloj de 5 min), porque osquery entrega
+  cada consulta en POST distintos y reentrega tras un corte. Como esa hora la
+  pone el equipo, además como mucho 3 entregas por consulta y equipo cada 6 h
+  de recepción. Lo que sobra se descarta con 200 y de un lote mixto se guarda
+  lo que cabe. La cota es en memoria. Caddy aplica `read_header` e `idle`
+  (sin plazo de cuerpo: sería para todo `:8080` y cortaría subidas lentas de
+  la UI y del kit) y completa el cuerpo (`request_buffers`) antes de abrir el
+  upstream.
 - Solo se aceptan snapshots de consultas del paquete, filtrados por plataforma
   y por la lista blanca de columnas.
 - Config servida desde el paquete del repo, SQL byte a byte, en modo snapshot
