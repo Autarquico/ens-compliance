@@ -457,15 +457,21 @@ def test_una_subida_mayor_que_el_limite_se_rechaza_y_no_escribe_nada(client, exa
         "/abs/secreto.txt",
         "carpeta/sub/secreto.txt",
         "%2e%2e/secreto.txt",
-        "secreto" + "a" * 300 + ".txt",
     ],
 )
-def test_el_nombre_con_rutas_se_descarta_y_no_llega_al_workspace(
-    client, example_store, token, name
-):
-    before = set(snapshot_of(example_store))
+def test_el_nombre_con_rutas_se_rechaza_y_no_escribe(client, example_store, token, name):
+    before = snapshot_of(example_store)
 
     response = upload(client, token, name=name)
+
+    assert response.status_code == 400
+    assert snapshot_of(example_store) == before
+
+
+def test_un_nombre_larguisimo_se_descarta_y_no_llega_al_workspace(client, example_store, token):
+    before = set(snapshot_of(example_store))
+
+    response = upload(client, token, name="secreto" + "a" * 300 + ".txt")
 
     assert response.status_code == 303
     created = set(snapshot_of(example_store)) - before

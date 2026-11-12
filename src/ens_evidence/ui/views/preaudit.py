@@ -213,14 +213,15 @@ def _evidence_options(store: UiStore) -> list[dict[str, str]]:
     ]
 
 
-def _latest_run(store: UiStore, now: datetime) -> dict[str, Any]:
+def _latest_run(store: UiStore, now: datetime, dossier: str | None) -> dict[str, Any]:
     scan, view = scan_runs(store, now=now), findings_view(store, now)
     empty = {"generated_at": NO_DATE, "layers": {}, "judgment": [], "deterministic": []}
     if scan.problems or view.problems:
         return {**empty, "layers": {"Registro de pre-auditorías": "ERROR"}}
-    if not scan.records:
+    runs = [r.record for r in scan.records if r.record.run.dossier == dossier]
+    if not runs:
         return empty
-    record = scan.records[-1].record
+    record = runs[-1]
     options = _evidence_options(store)
     rows = [_finding_row(f, view, options) for f in record.findings]
     layer_of = {f.id: f.layer for f in record.findings}
@@ -268,7 +269,7 @@ def _page(
         has_live_request=live,
         prepared=prepared,
         can_consent=bool(prepared and prepared["intact"] and not live),
-        **_latest_run(store, now),
+        **_latest_run(store, now, chosen),
         redaction_limit=REDACTION_LIMIT,
         shell_risk=SHELL_RISK,
         form_errors=form_errors or [],

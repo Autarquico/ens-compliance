@@ -4,7 +4,7 @@ import yaml
 from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.ui.wizard import STEPS
 
-from .conftest import NOW, snapshot_of
+from .conftest import NOW, Session, snapshot_of, ui_client
 
 TOKEN = "ghp_" + "A1b2C3d4E5" * 4
 LAPTOP = {
@@ -51,6 +51,26 @@ def test_sistema_saves_and_redirects(session, example_store):
     assert response.headers["location"] == "/asistente/sistema?guardado=1"
     assert system(example_store)["name"] == "Mi sistema"
     assert "Guardado" in session.get(response.headers["location"]).text
+
+
+def test_primer_guardado_en_un_workspace_vacio_crea_el_esqueleto_de_init(
+    store, config, key, token, tmp_path
+):
+    from ens_evidence.scope.skeleton import create_scope_skeleton
+    from ens_evidence.workspace import LocalStore
+
+    reference = LocalStore(tmp_path / "init")
+    (tmp_path / "init").mkdir()
+    create_scope_skeleton(reference)
+    assert store.list("") == []
+    fresh = Session(ui_client(config, store, key), token)
+
+    response = fresh.post("/asistente/sistema", {"name": "Mi sistema", "description": "Todo"})
+
+    assert response.status_code == 303
+    assert set(store.list("")) == set(reference.list(""))
+    assert system(store)["name"] == "Mi sistema"
+    assert store.read_text("scope/assets.yaml") == reference.read_text("scope/assets.yaml")
 
 
 def test_sistema_errors_rerender_without_writing(session, example_store):
