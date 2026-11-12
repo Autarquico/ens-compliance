@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P1
 size: L
-issue: null
+issue: 62
 prs: []
 related_issues: [62]
 depends_on: [osquery-server]

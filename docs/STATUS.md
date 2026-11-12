@@ -9,17 +9,9 @@
 ## Done esta semana
 
 <!-- pm-sync:done-this-week -->
-- #14 Informes y scheduling
-- #17 Categorización, riesgos y aplicabilidad
-- #20 Matriz de cumplimiento por medida
-- #21 Plantillas de documentación organizativa
-- #22 Procedimiento y registro de incidentes
-- #23 Motor de checks y regla de preparación
-- #24 Generación del expediente y sus estados
-- #25 Pre-auditoría y audit pack
 - #26 Banco de defectos sembrados
-- #27 Caja mínima en Docker Compose
 - #56 Ajuste del audit pack hasta el umbral de v0.1
+- #70 Kit: identidad y doble factor (Authentik o Keycloak)
 <!-- /pm-sync:done-this-week -->
 
 ---
@@ -27,7 +19,13 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-_(nada)_
+- #28 Servidor osquery embebido
+- #57 Reservada nueva y dev ampliado para el umbral de v0.1
+- #63 UI web: el flujo completo, de los riesgos a la pre-auditoría
+- #66 Kit: copias de seguridad con restic y Backrest
+- #67 Kit: almacén de claves y secretos con OpenBao
+- #68 Kit: panel de acceso a las herramientas
+- #69 Kit: gestor de contraseñas del equipo con Vaultwarden
 <!-- /pm-sync:in-progress -->
 
 ---
