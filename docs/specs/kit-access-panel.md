@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: "Kit: panel de acceso a las herramientas"
 type: task
-status: active
+status: shipped
 priority: P1
 size: M
 issue: 68
@@ -12,7 +12,7 @@ depends_on: [kit-backups, kit-secrets]
 supersedes: []
 related_specs: [toolkit-server]
 created: 2026-11-09
-updated: 2026-11-11
+updated: 2026-11-12
 ---
 
 # Kit: panel de acceso a las herramientas

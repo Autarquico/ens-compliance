@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: "Kit: copias de seguridad con restic y Backrest"
 type: task
-status: active
+status: shipped
 priority: P1
 size: L
 issue: 66
@@ -12,7 +12,7 @@ depends_on: [box-packaging, collector-restic, web-ui-flujo]
 supersedes: []
 related_specs: [toolkit-server, installer]
 created: 2026-11-09
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 # Kit: copias de seguridad con restic y Backrest

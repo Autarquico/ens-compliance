@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: "Kit: almacén de claves y secretos con OpenBao"
 type: task
-status: active
+status: shipped
 priority: P1
 size: L
 issue: 67
@@ -12,7 +12,7 @@ depends_on: [kit-backups]
 supersedes: []
 related_specs: [toolkit-server]
 created: 2026-11-09
-updated: 2026-11-10
+updated: 2026-11-12
 ---
 
 # Kit: almacén de claves y secretos con OpenBao
