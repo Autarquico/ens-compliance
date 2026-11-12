@@ -13,12 +13,18 @@ from types import MappingProxyType
 from pydantic import BaseModel
 
 from ens_evidence.checks.catalog import CHECKS
+from ens_evidence.connectors.backups import checks as backups
+from ens_evidence.connectors.backups.config import BackupsConfig
 from ens_evidence.connectors.cloudflare import checks as cloudflare
 from ens_evidence.connectors.cloudflare.config import CloudflareConfig
 from ens_evidence.connectors.github import checks as github
 from ens_evidence.connectors.github.config import GitHubConfig
 from ens_evidence.connectors.google_workspace import checks as workspace
 from ens_evidence.connectors.google_workspace.config import GoogleWorkspaceConfig
+from ens_evidence.connectors.keystore import checks as keystore
+from ens_evidence.connectors.keystore.config import KeystoreConfig
+from ens_evidence.connectors.passwords import checks as passwords
+from ens_evidence.connectors.passwords.config import PasswordsConfig
 from ens_evidence.connectors.restic import checks as restic
 from ens_evidence.connectors.restic.config import ResticConfig
 from ens_evidence.endpoint.config import CONFIG_NAME as ENDPOINT
@@ -33,6 +39,9 @@ CONFIG_MODELS: Mapping[str, type[BaseModel]] = MappingProxyType(
         "cloudflare": CloudflareConfig,
         "google-workspace": GoogleWorkspaceConfig,
         "restic": ResticConfig,
+        "backups": BackupsConfig,
+        "keystore": KeystoreConfig,
+        "passwords": PasswordsConfig,
         ENDPOINT: EndpointConfig,
     }
 )
@@ -53,6 +62,20 @@ CHECK_FUNCTIONS: Mapping[str, CheckFunction] = MappingProxyType(
         restic.INTEGRITY: restic.backup_004_integrity,
         restic.RESTORE_TEST: restic.backup_005_restore_test,
         restic.OFFSITE: restic.backup_006_offsite,
+        backups.RECENT: backups.backup_001_recent,
+        backups.REPOSITORY_ACCESSIBLE: backups.backup_003_repository_accessible,
+        backups.INTEGRITY: backups.backup_004_integrity,
+        backups.RESTORE_TEST: backups.backup_005_restore_test,
+        backups.OFFSITE: backups.backup_006_offsite,
+        keystore.UNSEALED: keystore.unsealed,
+        keystore.AUDIT_ENABLED: keystore.audit_enabled,
+        keystore.KEYS_ROTATED: keystore.keys_rotated,
+        keystore.NO_ROOT_TOKEN: keystore.no_root_token,
+        keystore.APP_TOKEN_SCOPED: keystore.app_token_scoped,
+        keystore.CUSTODIANS_REGISTERED: keystore.custodians_registered,
+        passwords.SECOND_FACTOR: passwords.second_factor,
+        passwords.NO_INACTIVE: passwords.no_inactive_accounts,
+        passwords.SNAPSHOT_RECENT: passwords.snapshot_recent,
     }
 )
 

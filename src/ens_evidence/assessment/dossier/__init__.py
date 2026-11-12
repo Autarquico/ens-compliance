@@ -8,6 +8,7 @@ from ens_evidence.assessment.dossier.build import (
     drift_projection,
 )
 from ens_evidence.assessment.dossier.drift import DriftReport, rebuild_and_diff
+from ens_evidence.assessment.dossier.generate import GeneratedDossier, generate_dossier
 from ens_evidence.assessment.dossier.render import (
     DossierView,
     TransitionEntry,
@@ -25,9 +26,11 @@ from ens_evidence.assessment.dossier.transitions import (
 )
 
 __all__ = [
+    "GeneratedDossier",
     "DossierRejected",
     "DossierStatus",
     "DossierView",
+    "generate_dossier",
     "DriftReport",
     "TransitionEntry",
     "TransitionRejected",

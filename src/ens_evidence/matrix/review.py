@@ -10,7 +10,7 @@ from dataclasses import dataclass
 from datetime import datetime, timedelta
 
 from ens_evidence.matrix.documents import OrgDocumentSource, documents_snapshot
-from ens_evidence.matrix.evaluate import covered_units, link_supports, uncovered_units
+from ens_evidence.matrix.evaluate import Uncovered, covered_units, link_supports, uncovered_units
 from ens_evidence.matrix.evidence import LinkSupport
 from ens_evidence.matrix.fingerprint import links_sha256
 from ens_evidence.matrix.links import (
@@ -76,6 +76,8 @@ class ReviewPlan:
     record: MeasureReviewRecord | ApplicabilityReview | None
     simulated: bool = False
     incident_history: bool = False
+    uncovered: tuple[Uncovered, ...] = ()
+    """Impide darla por favorable; su texto (`uncovered_message`) va en `problems`."""
 
 
 def parse_assessment(text: str | None) -> MeasureAssessment | None:
@@ -175,11 +177,14 @@ def _reviewed_obligations(
     return reviewed
 
 
-def _missing(row: MatrixRowSpec, supports: Iterable[LinkSupport]) -> list[str]:
-    return [
-        f"{'cláusula' if u.is_clause else 'obligación'} sin cubrir: {u.unit} ({u.obligation})"
-        for u in uncovered_units(row, covered_units(supports))
-    ]
+def _missing(row: MatrixRowSpec, supports: Iterable[LinkSupport]) -> list[Uncovered]:
+    return uncovered_units(row, covered_units(supports))
+
+
+def uncovered_message(gap: Uncovered) -> str:
+    return (
+        f"{'cláusula' if gap.is_clause else 'obligación'} sin cubrir: {gap.unit} ({gap.obligation})"
+    )
 
 
 def _before_sources(supports: Iterable[LinkSupport], reviewed_at: datetime | None) -> list[str]:
@@ -206,7 +211,7 @@ def _source_policy_step(measure_id: str, supports: list[LinkSupport]) -> list[st
 def _problems(
     entry: MatrixEntry,
     assessment: MeasureAssessment | None,
-    missing: list[str],
+    missing: list[Uncovered],
     late_sources: list[str],
 ) -> list[str]:
     problems: list[str] = []
@@ -215,7 +220,7 @@ def _problems(
     if entry.owner is None:
         problems.append("falta el responsable (matrix set --owner NOMBRE --owner-role ROL).")
     if assessment is MeasureAssessment.COMPLIANT:
-        problems += [*missing, *late_sources]
+        problems += [*map(uncovered_message, missing), *late_sources]
     return problems
 
 
@@ -261,7 +266,8 @@ def prepare_review(
     )
     missing = _missing(row, supports) if selected else []
     problems = _problems(entry, verdict, missing, _before_sources(supports, at))
-    if missing and verdict is MeasureAssessment.COMPLIANT:
+    blocking_gaps = missing if verdict is MeasureAssessment.COMPLIANT else []
+    if blocking_gaps:
         problems += _source_policy_step(measure_id, supports)
     notes = tuple(f"{link_label(s.link)}: {blocker_text(b)}" for s in supports for b in s.blockers)
     covering = _covering(row, supports)
@@ -278,6 +284,7 @@ def prepare_review(
             None,
             simulated=simulated,
             incident_history=from_register,
+            uncovered=tuple(blocking_gaps),
         )
 
     reviewed_at = at or now

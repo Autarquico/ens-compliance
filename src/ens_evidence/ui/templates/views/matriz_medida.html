@@ -1,0 +1,158 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<p><a href="/matriz">Matriz de medidas</a></p>
+<h1><span class="mono">{{ measure_id }}</span> {{ title }}</h1>
+<p>{{ m.badge(applicability, show_code=False) }} {{ m.badge(assessment, show_code=False) }}</p>
+{{ m.revision_humana() }}
+{% if form_errors %}
+<div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
+<ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul>
+{% if uncovered %}<p>Cláusulas sin cubrir:</p><ul>{% for u in uncovered %}<li class="mono">{{ u }}</li>{% endfor %}</ul>{% endif %}</div>
+{% elif saved %}
+<p class="saved" role="status">Guardado</p>
+{% endif %}
+
+{% if blockers %}
+<section class="card" aria-labelledby="h-bloqueos">
+  <h2 id="h-bloqueos">Qué falta</h2>
+  <ul>{% for b in blockers %}<li>{{ b }}</li>{% endfor %}</ul>
+</section>
+{% endif %}
+
+{% if kit_offer %}
+<section class="card" aria-labelledby="h-kit">
+  <h2 id="h-kit">Una forma de empezar: el kit de {{ kit_offer.name }}</h2>
+  <p>Herramienta: {{ kit_offer.tool_name }}.</p>
+  <p><strong>Qué cubre.</strong> {{ kit_offer.covers }}</p>
+  <p><strong>Qué no cubre.</strong> {{ kit_offer.not_covers }}</p>
+  {% if kit_offer.covers_clauses or kit_offer.partial_clauses or kit_offer.not_covered_clauses %}
+  <ul>
+    {%- for c in kit_offer.covers_clauses %}<li><span class="mono">{{ c.id }}</span>: cubierta.{% if c.text %} {{ c.text }}{% endif %}</li>{% endfor %}
+    {%- for c in kit_offer.partial_clauses %}<li><span class="mono">{{ c.id }}</span>: cubierta en parte.{% if c.text %} {{ c.text }}{% endif %}</li>{% endfor %}
+    {%- for c in kit_offer.not_covered_clauses %}<li><span class="mono">{{ c.id }}</span>: no cubierta.{% if c.text %} {{ c.text }}{% endif %}</li>{% endfor %}
+  </ul>
+  {% endif %}
+  <p class="muted">{% if kit_offer.ram %}Memoria: ≈{{ kit_offer.ram.mib }} MiB (medido el {{ kit_offer.ram.measured_on }}, {{ kit_offer.ram.conditions }}).{% else %}RAM sin medir.{% endif %}</p>
+  <p><a class="btn" href="{{ kit_offer.url }}">{{ kit_offer.cta }}</a></p>
+</section>
+{% endif %}
+
+<section aria-labelledby="h-clausulas">
+  <h2 id="h-clausulas">Qué pide la medida</h2>
+  {% if not obligations %}<p class="muted">Esta medida no aplica. No tiene cláusulas que cubrir.</p>{% endif %}
+  {% for o in obligations %}
+  <h3>{{ o.title }}</h3>
+  {% if o.compensating %}<p class="muted">Se compensa con: {{ o.compensating | join("; ") }}.</p>{% endif %}
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col" class="id">Cláusula</th><th scope="col">Texto</th><th scope="col">Fuentes que la cubren</th></tr></thead>
+    <tbody>
+    {%- for c in o.clauses %}
+    <tr>
+      <th scope="row" class="id">{{ c.label }}</th>
+      <td>{{ c.text }}</td>
+      <td>{% if c.sources %}{{ c.sources | join(", ") }}{% else %}<span class="muted">Sin fuente que cuente</span>{% endif %}</td>
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+  {% endfor %}
+</section>
+
+<section aria-labelledby="h-responsable">
+  <h2 id="h-responsable">Responsable</h2>
+  <p>{% if owner %}{{ owner.name }} · {{ owner.role }}{% else %}<span class="muted">Sin responsable.</span>{% endif %}
+  · {% if every_days %}Se revisa cada {{ every_days }} días.{% else %}<span class="muted">Sin periodicidad.</span>{% endif %}</p>
+  <form method="post" action="/matriz/{{ measure_id }}/responsable" novalidate>
+    <div class="field"><label for="f-owner_name">Nombre del responsable</label>
+      <input type="text" id="f-owner_name" name="owner_name" value="{{ values.get('owner_name', owner.name if owner else '') }}" autocomplete="name"></div>
+    <div class="field"><label for="f-owner_role">Rol</label>
+      <select id="f-owner_role" name="owner_role">
+        {%- for r in owner_roles %}<option value="{{ r.value }}"{% if values.get('owner_role') == r.value %} selected{% endif %}>{{ r.label }}</option>{% endfor %}
+      </select></div>
+    <div class="field"><label for="f-every">Cada cuántos días se revisa<span class="hint">De 1 a {{ max_days }}.</span></label>
+      <input type="text" inputmode="numeric" id="f-every" name="every" value="{{ values.get('every', every_days or '') }}"></div>
+    <div class="actions"><button class="btn btn-primary" type="submit">Guardar responsable</button></div>
+  </form>
+</section>
+
+{% if selected %}
+<section aria-labelledby="h-enlaces">
+  <h2 id="h-enlaces">Documentos y evidencias enlazados</h2>
+  {% if links %}
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Fuente</th><th scope="col">Cubre</th><th scope="col">Ahora</th><th scope="col"><span class="sr-only">Acción</span></th></tr></thead>
+    <tbody>
+    {%- for l in links %}
+    <tr>
+      <th scope="row">{{ l.label }}</th>
+      <td class="mono">{{ l.covers | join(", ") }}</td>
+      <td>{% if l.counts %}Cuenta{% else %}No cuenta todavía{% endif %}</td>
+      <td><form method="post" action="/matriz/{{ measure_id }}/desenlazar">
+        <input type="hidden" name="kind" value="{{ l.kind }}"><input type="hidden" name="target" value="{{ l.target }}">
+        <button class="btn" type="submit">Quitar enlace</button></form></td>
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">Todavía no hay nada enlazado.</p>{% endif %}
+  <p class="muted">Enlazar es declarar qué cláusulas cubre una fuente. La revisión de una persona lo confirma.</p>
+
+  <h3>Enlazar un documento</h3>
+  {% for d in document_offers %}
+  <form method="post" action="/matriz/{{ measure_id }}/enlazar">
+    <input type="hidden" name="kind" value="document"><input type="hidden" name="target" value="{{ d.name }}">
+    <fieldset class="checks"><legend>{{ d.name }} · cláusulas que cubre según su ficha</legend>
+      {%- for u in units %}
+      <div class="check"><input type="checkbox" id="doc-{{ loop.index }}-{{ d.name }}" name="covers" value="{{ u }}"{% if u in d.covers %} checked{% endif %}><label for="doc-{{ loop.index }}-{{ d.name }}"><span class="mono">{{ u }}</span></label></div>
+      {%- endfor %}
+    </fieldset>
+    <div class="actions"><button class="btn" type="submit">Enlazar {{ d.name }}</button></div>
+  </form>
+  {% else %}<p class="muted">Ningún documento aprobado cubre cláusulas de esta medida.</p>{% endfor %}
+
+  <h3>Enlazar una evidencia</h3>
+  {% if evidence_offers %}
+  <form method="post" action="/matriz/{{ measure_id }}/enlazar">
+    <input type="hidden" name="kind" value="evidence">
+    <div class="field"><label for="f-target">Evidencia</label>
+      <select id="f-target" name="target">
+        {%- for e in evidence_offers %}<option value="{{ e.id }}">{{ e.id }} · {{ e.asset_id }} · {{ e.collected_at }}{% if e.expired %} · caducada{% endif %}</option>{% endfor %}
+      </select></div>
+    <fieldset class="checks"><legend>Cláusulas que cubre</legend>
+      {%- for u in units %}
+      <div class="check"><input type="checkbox" id="ev-{{ loop.index }}" name="covers" value="{{ u }}"><label for="ev-{{ loop.index }}"><span class="mono">{{ u }}</span></label></div>
+      {%- endfor %}
+    </fieldset>
+    <div class="actions"><button class="btn" type="submit">Enlazar evidencia</button></div>
+  </form>
+  {% else %}<p class="muted">No hay evidencias manuales. <a href="/evidencias/nueva">Sube una</a>.</p>{% endif %}
+</section>
+{% endif %}
+
+<section aria-labelledby="h-revision">
+  <h2 id="h-revision">Revisión</h2>
+  {% if last_review %}
+  <p>Última revisión: {{ last_review.by }} ({{ last_review.role }}), {{ last_review.at }}. Vale hasta {{ last_review.valid_until }}.</p>
+  <p>{{ last_review.conclusion }}</p>
+  {% else %}<p class="muted">Nadie ha revisado esta medida.</p>{% endif %}
+  <form method="post" action="/matriz/{{ measure_id }}/revisar" novalidate>
+    <div class="field"><label for="f-by">Quién revisa<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
+      <input type="text" id="f-by" name="by" value="{{ by_default }}" autocomplete="name"></div>
+    <div class="field"><label for="f-role">Rol</label>
+      <select id="f-role" name="role">
+        {%- for r in review_roles %}<option value="{{ r.value }}"{% if values.get('role') == r.value %} selected{% endif %}>{{ r.label }}</option>{% endfor %}
+      </select></div>
+    {% if selected %}
+    <div class="field"><label for="f-assessment">Valoración</label>
+      <select id="f-assessment" name="assessment">
+        {%- for a in assessments %}<option value="{{ a.value }}"{% if values.get('assessment') == a.value %} selected{% endif %}>{{ a.label }}</option>{% endfor %}
+      </select></div>
+    {% else %}<p class="muted">La medida no aplica: la revisión solo confirma esa decisión, sin valoración.</p>{% endif %}
+    <div class="field"><label for="f-conclusion">Conclusión<span class="hint">Qué has comprobado y por qué llegas a esa valoración.</span></label>
+      <textarea id="f-conclusion" name="conclusion">{{ values.get('conclusion', '') }}</textarea></div>
+    <div class="actions"><button class="btn btn-primary" type="submit">Registrar revisión</button></div>
+  </form>
+</section>
+<p class="muted">Datos de {{ generated_at }}.</p>
+{% endblock %}

@@ -6,9 +6,10 @@ from dataclasses import dataclass
 
 from ens_evidence.backup.errors import BackupError
 
-PASSWORD_VAR = "ENS_BACKUP_RESTIC_PASSWORD"
-ACCESS_KEY_VAR = "ENS_BACKUP_AWS_ACCESS_KEY_ID"
-SECRET_KEY_VAR = "ENS_BACKUP_AWS_SECRET_ACCESS_KEY"
+DEFAULT_PREFIX = "ENS_BACKUP_"
+PASSWORD_VAR = f"{DEFAULT_PREFIX}RESTIC_PASSWORD"
+ACCESS_KEY_VAR = f"{DEFAULT_PREFIX}AWS_ACCESS_KEY_ID"
+SECRET_KEY_VAR = f"{DEFAULT_PREFIX}AWS_SECRET_ACCESS_KEY"
 _WORKSPACE_ACCESS_KEY_VAR = "AWS_ACCESS_KEY_ID"
 _WORKSPACE_SECRET_KEY_VAR = "AWS_SECRET_ACCESS_KEY"
 _DEFAULT_PATH = "/usr/local/bin:/usr/bin:/bin"
@@ -24,20 +25,26 @@ class BackupSecrets:
         return [v for v in (self.password, self.access_key_id, self.secret_access_key) if v]
 
 
-def load_secrets(repository: str, env: Mapping[str, str] | None = None) -> BackupSecrets:
-    """Lee los secretos de `ENS_BACKUP_*`; rechaza los que comparte con el workspace."""
+def load_secrets(
+    repository: str, env: Mapping[str, str] | None = None, prefix: str = DEFAULT_PREFIX
+) -> BackupSecrets:
+    """Lee los secretos de `<prefix>*` (por defecto `ENS_BACKUP_*`); rechaza los que comparte
+    con el workspace."""
     env = os.environ if env is None else env
-    password = env.get(PASSWORD_VAR)
+    password_var = f"{prefix}RESTIC_PASSWORD"
+    access_var = f"{prefix}AWS_ACCESS_KEY_ID"
+    secret_var = f"{prefix}AWS_SECRET_ACCESS_KEY"
+    password = env.get(password_var)
     if not password:
-        raise BackupError(f"falta la variable de entorno {PASSWORD_VAR}")
-    access_key, secret_key = env.get(ACCESS_KEY_VAR) or None, env.get(SECRET_KEY_VAR) or None
+        raise BackupError(f"falta la variable de entorno {password_var}")
+    access_key, secret_key = env.get(access_var) or None, env.get(secret_var) or None
     if (access_key is None) != (secret_key is None):
-        raise BackupError(f"{ACCESS_KEY_VAR} y {SECRET_KEY_VAR} se indican juntas o ninguna")
+        raise BackupError(f"{access_var} y {secret_var} se indican juntas o ninguna")
     if repository.startswith("s3:") and access_key is None:
-        raise BackupError(f"un repositorio s3 necesita {ACCESS_KEY_VAR} y {SECRET_KEY_VAR}")
+        raise BackupError(f"un repositorio s3 necesita {access_var} y {secret_var}")
     shared = [
-        (ACCESS_KEY_VAR, access_key, env.get(_WORKSPACE_ACCESS_KEY_VAR)),
-        (SECRET_KEY_VAR, secret_key, env.get(_WORKSPACE_SECRET_KEY_VAR)),
+        (access_var, access_key, env.get(_WORKSPACE_ACCESS_KEY_VAR)),
+        (secret_var, secret_key, env.get(_WORKSPACE_SECRET_KEY_VAR)),
     ]
     for name, value, workspace_value in shared:
         if value is not None and value == workspace_value:

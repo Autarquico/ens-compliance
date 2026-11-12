@@ -97,7 +97,7 @@ el ajuste (`settings.yaml`) ni en la imagen.
 La interfaz nunca es pública. Si la publicas, entra solo por un túnel y detrás
 de Cloudflare Access.
 
-En v0.1 no hay interfaz. Caddy contesta 403 a cualquier ruta y lo deja en el
+Sin `deploy/ui.env` no hay interfaz. Caddy contesta 403 a cualquier ruta y lo deja en el
 log, sin query string ni cabeceras. Publicar la caja ahora sirve para dejar el
 camino listo y comprobar que no se ve nada desde fuera.
 
@@ -157,6 +157,8 @@ en cualquiera de ellos da 415.
    valor se genera con `openssl rand -base64 32` y deben ser distintos:
    `ENS_AGENT_ENROLL_KEY` y `ENS_AGENT_NODE_KEY_SECRET`. El servicio no lee
    `deploy/.env`.
+   Añade `ENS_AGENT_HOST` (p. ej. `agents.example.org`, sin esquema): Caddy
+   solo enruta los agentes a ese nombre de host.
 2. Con `deploy/agent.env` presente, `box.sh` activa el perfil `agents`:
    `deploy/box.sh restart agent` (o `update`) lo arranca y `restart caddy`
    aplica la nueva red.
@@ -181,6 +183,14 @@ cuerpo comprimido; Caddy lo rechaza con 415) y `--tls_secret_always` (el
 servidor no lo contempla).
 
 Nada de esto se ha verificado con Docker ni con Cloudflare reales.
+
+## 4.2 Interfaz web (perfil `ui`)
+
+Con `deploy/ui.env` presente, `box.sh` activa el servicio `ui`, que Caddy
+enruta por nombre de host y que autentica Cloudflare Access (con MFA en su
+política). Despliegue, comprobación del acceso, certificados, rollback y
+recuperación: `docs/runbooks/interfaz-web.md`. Los agentes también se enrutan
+por host: `ENS_AGENT_HOST` en `deploy/agent.env`.
 
 ## 5. Inscribir la caja como activo del alcance
 
@@ -377,8 +387,9 @@ docker compose -p ens-box exec app stat -c %y /tmp/scheduler-heartbeat
 | Servicio | Red | Entrada | Salida a Internet |
 |---|---|---|---|
 | `app` | `backend` | Ninguna | Sí: APIs de los conectores (GitHub, Cloudflare, Google) y R2 |
-| `caddy` | `edge` y `agent` (internas) | Solo desde `cloudflared` | No |
+| `caddy` | `edge`, `agent` y `ui-net` (internas) | Solo desde `cloudflared` | No |
 | `agent` (perfil `agents`) | `agent` (interna) | Solo desde `caddy` | No |
+| `ui` (perfil `ui`) | `ui-net` (interna) | Solo desde `caddy` | No |
 | `cloudflared` (perfil `tunnel`) | `edge` y `tunnel` | Ninguna | Sí: hacia Cloudflare |
 
 Ningún servicio publica puertos en el host. En `docker compose ps`, la columna

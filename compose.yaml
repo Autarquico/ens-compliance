@@ -24,7 +24,11 @@ services:
       ENS_HEARTBEAT_FILE: /tmp/scheduler-heartbeat
     volumes:
       - data:/data
-    networks: [backend]
+      # Solo el export de usuarios, en solo lectura (kit de contraseñas). Vacío sin el kit. La app
+      # nunca monta vaultwarden-data ni alcanza contrasenas-net.
+      - contrasenas-export:/run/kit/contrasenas:ro
+    # claves-app: interna; solo la alcanza openbao (perfil claves). Sin el perfil, queda vacía.
+    networks: [backend, claves-app]
     logging: *logging
     healthcheck:
       # El latido (ENS_HEARTBEAT_FILE) lo renueva el bucle del scheduler en cada vuelta y,
@@ -73,6 +77,34 @@ services:
       retries: 3
       start_period: 20s
 
+  ui:
+    profiles: [ui]
+    image: ens-evidence:${ENS_VERSION:?usa deploy/box.sh}
+    command: [ens-evidence, ui, serve, --host, 0.0.0.0, --port, "8000"]
+    init: true
+    restart: unless-stopped
+    # Solo deploy/ui.env: la interfaz no recibe las credenciales de los conectores (deploy/.env).
+    env_file: ${ENS_UI_ENV_FILE:-deploy/ui.env}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - data:/data
+    networks: [ui-net]
+    logging: *logging
+    healthcheck:
+      # La imagen no trae curl ni wget; /healthz solo se sondea en 127.0.0.1; Caddy responde 403 en el host de la UI.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   caddy:
     image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
     restart: unless-stopped
@@ -91,7 +123,14 @@ services:
     security_opt: ["no-new-privileges:true"]
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-    networks: [edge, agent]
+    networks: [edge, agent, ui-net, copias-net, claves-net, contrasenas-net]
+    environment:
+      # Los nombres de host salen de deploy/ui.env y deploy/agent.env (los lee box.sh); sin ellos, `.invalid`.
+      ENS_UI_HOST: ${ENS_UI_HOST:-ui.invalid}
+      ENS_AGENT_HOST: ${ENS_AGENT_HOST:-agent.invalid}
+      ENS_COPIAS_HOST: ${ENS_COPIAS_HOST:-copias.invalid}
+      ENS_CLAVES_HOST: ${ENS_CLAVES_HOST:-claves.invalid}
+      ENS_CONTRASENAS_HOST: ${ENS_CONTRASENAS_HOST:-contrasenas.invalid}
     logging: *logging
     healthcheck:
       # Toda ruta da 403, así que se sondea la API de administración (solo en localhost).
@@ -100,6 +139,157 @@ services:
       timeout: 5s
       retries: 3
       start_period: 10s
+
+  backrest:
+    # Kit de copias (ADR 0019, spec kit-backups). Backrest v1.14.1, variante scratch (sin shell ni
+    # curl: no admite healthcheck; box.sh solo comprueba que corre). deploy/box.sh kit enable
+    # copias <paquete> añade deploy/kit/copias/compose.yaml con los montajes :ro elegidos.
+    profiles: [copias]
+    image: ghcr.io/garethgeorge/backrest:v1.14.1-scratch@sha256:2f5accac8df1dd625c73d43feb36437dd8e9ef582f8687c53d275bcb8aca0d10
+    # El volumen `data` es 0700 de 10001: con otro UID no se podría leer ni con group_add. Es el
+    # mismo UID sin capacidades, con `data` montado :ro y sin compartir volúmenes de escritura.
+    user: "10001:10001"
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp:uid=10001,mode=700
+      - /cache:uid=10001,mode=700
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      # El restic de la imagen; sin esto Backrest intentaría descargar uno en un sistema de solo lectura.
+      BACKREST_RESTIC_COMMAND: /bin/restic
+      # Sin salida directa: restic (transporte de Go) sale solo por copias-proxy, que solo admite el destino S3.
+      HTTPS_PROXY: http://copias-proxy:3128
+      https_proxy: http://copias-proxy:3128
+      NO_PROXY: localhost,127.0.0.1
+      no_proxy: localhost,127.0.0.1
+    volumes:
+      # backrest-config guarda las credenciales de escritura (config.json): ningún otro servicio lo monta.
+      - backrest-config:/config
+      - backrest-data:/data
+      - data:/source/caja:ro
+      # Vacíos si el kit de claves no está activado. Mismo UID que openbao (10001), solo lectura.
+      - openbao-data:/source/claves:ro
+      - openbao-audit:/source/claves-auditoria:ro
+      # Vacío si el kit de contraseñas no está activado. Instantánea de la base y rsa_key* (0600 del
+      # mismo UID 10001 que el exportador). Adjuntos y sends no entran: docs/runbooks/kit-contrasenas.md.
+      - contrasenas-snapshot:/source/contrasenas:ro
+    networks: [copias-net, copias-salida]
+    depends_on: [copias-proxy]
+    logging: *logging
+
+  copias-proxy:
+    # Proxy de salida de Backrest (ADR 0019, spec kit-backups): Squid, solo CONNECT al host:puerto del
+    # destino S3 (deploy/copias-proxy.conf + destino.conf que genera `kit enable copias`); todo lo demás, 403.
+    # Imagen chiselled de Canonical (sin shell: sin healthcheck; box.sh solo comprueba que corre).
+    profiles: [copias]
+    image: ubuntu/squid:7.2-26.04_edge@sha256:6a252a42875d08bbb9dae4ab70a041afd4f8b530eaa0226102d1816309eef8b5
+    entrypoint: ["/usr/sbin/squid-gnutls", "-N", "-f", "/etc/squid/proxy.conf"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/log/squid
+      - /var/run/squid
+      - /var/spool/squid
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./deploy/copias-proxy.conf:/etc/squid/proxy.conf:ro
+      # Lo escribe `kit enable copias` desde el destino del paquete (ENS_COPIAS_DESTINO_CONF); sin secretos.
+      - ${ENS_COPIAS_DESTINO_CONF:-/dev/null}:/etc/squid/destino.conf:ro
+    networks: [copias-salida, copias]
+    logging: *logging
+
+  openbao:
+    # Kit de claves (spec kit-secrets, ADR 0019). OpenBao 2.7.2 (MPL-2.0), variante distroless: sin
+    # shell ni healthcheck (K11); estar sellado tras un reinicio es lo esperado, así que box.sh solo
+    # comprueba que corre y el estado lo da el conector. deploy/box.sh kit enable claves copia el HCL
+    # a una ruta estable del host (ENS_CLAVES_CONFIG).
+    profiles: [claves]
+    image: ghcr.io/openbao/openbao-distroless:2.7.2@sha256:67406e08c6eecae98c7a10f7326515489468f90386f4f2214b2a0498f22c3aa6
+    command: [server, -config=/openbao/config/config.hcl]
+    # Mismo UID que app y backrest: backrest lee los volúmenes en :ro. Nadie más los monta.
+    user: "10001:10001"
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ${ENS_CLAVES_CONFIG:-/dev/null}:/openbao/config/config.hcl:ro
+      - openbao-data:/openbao/data
+      - openbao-audit:/openbao/audit
+    networks: [claves-net, claves-app]
+    logging: *logging
+
+  vaultwarden:
+    # Kit de contraseñas (spec kit-passwords, ADR 0019). Vaultwarden 1.37.5 (AGPL-3.0). Corre como
+    # root del contenedor pero sin una sola capacidad (CapEff=0, verificado) y sin Internet: red
+    # interna con caddy como único vecino. Sin ADMIN_TOKEN salvo durante el alta (deploy/box.sh kit
+    # contrasenas alta añade deploy/kit/contrasenas/alta.yaml; cerrar-alta lo retira).
+    profiles: [contrasenas]
+    image: vaultwarden/server:1.37.5-alpine@sha256:bbe684a02d6b0db54256ff88eac9754f4519284a7b26314afc241fd7d0918191
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DOMAIN: https://${ENS_CONTRASENAS_HOST:-contrasenas.invalid}
+      SIGNUPS_ALLOWED: "false"
+      INVITATIONS_ALLOWED: "true"
+      DISABLE_ICON_DOWNLOAD: "true"
+    volumes:
+      - vaultwarden-data:/data
+    networks: [contrasenas-net]
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  contrasenas-export:
+    # Exportador del kit de contraseñas: lee la base de Vaultwarden en solo lectura y publica el
+    # recuento de usuarios (sin emails ni cofres) y una instantánea. Sin red, sin el env_file ni el
+    # volumen de la app. El UID 10001 es el de backrest, que lee la instantánea 0600.
+    profiles: [contrasenas]
+    image: ens-evidence:${ENS_VERSION:?usa deploy/box.sh}
+    command:
+      - ens-evidence
+      - kit
+      - contrasenas
+      - export
+      - --data
+      - /source
+      - --out
+      - /export
+      - --snapshot
+      - /snapshot
+      - --every
+      - 15m
+    init: true
+    user: "10001:10001"
+    restart: unless-stopped
+    network_mode: none
+    read_only: true
+    # /data: la imagen declara VOLUME /data; el tmpfs evita un volumen anónimo por contenedor.
+    tmpfs:
+      - /tmp
+      - /data:uid=10001,mode=700
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      vaultwarden:
+        condition: service_healthy
+    volumes:
+      - vaultwarden-data:/source:ro
+      - contrasenas-export:/export
+      - contrasenas-snapshot:/snapshot
+    logging: *logging
 
   cloudflared:
     profiles: [tunnel]
@@ -125,16 +315,51 @@ services:
 # Salidas de red:
 #   app         backend: sin entrada; salida a Internet (conectores y R2).
 #   agent       agent:   interna, sin salida a Internet; solo la alcanza caddy (perfil agents).
-#   caddy       edge + agent: ambas internas, sin salida a Internet; escucha en :8080.
+#   ui          ui-net:  interna, sin salida a Internet; solo la alcanza caddy (perfil ui).
+#   backrest    copias-net + copias-salida: ambas internas, sin salida a Internet (perfil copias);
+#               copias-net la alcanza caddy; copias-salida solo llega a copias-proxy.
+#   copias-proxy copias-salida + copias: proxy CONNECT que solo admite el host:puerto del destino S3
+#               (deploy/copias-proxy.conf); la única salida a Internet del kit, filtrada por destino.
+#   openbao     claves-net (caddy) + claves-app (app): internas, sin salida a Internet (perfil claves).
+#   vaultwarden contrasenas-net (caddy): interna, sin salida a Internet (perfil contrasenas).
+#   contrasenas-export  network_mode none: sin red.
+#   caddy       edge + agent + ui-net + copias-net + claves-net + contrasenas-net: todas internas, sin salida a Internet; escucha en :8080.
 #   cloudflared edge + tunnel: llega a caddy:8080 y sale hacia Cloudflare.
 networks:
   backend: {}
   agent:
     internal: true
+  ui-net:
+    internal: true
   edge:
     internal: true
+  copias-net:
+    internal: true
+  claves-net:
+    internal: true
+  claves-app:
+    internal: true
+  contrasenas-net:
+    internal: true
+  copias-salida:
+    internal: true
+  copias: {}
   tunnel: {}
 
 volumes:
   data:
     name: ${ENS_BOX_PROJECT:-ens-box}_data
+  backrest-config:
+    name: ${ENS_BOX_PROJECT:-ens-box}_backrest-config
+  backrest-data:
+    name: ${ENS_BOX_PROJECT:-ens-box}_backrest-data
+  openbao-data:
+    name: ${ENS_BOX_PROJECT:-ens-box}_openbao-data
+  openbao-audit:
+    name: ${ENS_BOX_PROJECT:-ens-box}_openbao-audit
+  vaultwarden-data:
+    name: ${ENS_BOX_PROJECT:-ens-box}_vaultwarden-data
+  contrasenas-export:
+    name: ${ENS_BOX_PROJECT:-ens-box}_contrasenas-export
+  contrasenas-snapshot:
+    name: ${ENS_BOX_PROJECT:-ens-box}_contrasenas-snapshot

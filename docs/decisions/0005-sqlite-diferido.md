@@ -20,3 +20,5 @@ La UI de v0.2 necesitará estado (usuarios, respuestas del asistente).
 - v0.1 no tiene servidor de base de datos ni migraciones.
 - Al llegar SQLite habrá que definir la importación desde los ficheros de
   v0.1.
+
+Actualización (2026-11-08): la UI no usa SQLite en su primer tramo; ver [0021](0021-interfaz-web.md).

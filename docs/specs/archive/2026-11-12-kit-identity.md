@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: "Kit: identidad y doble factor (Authentik o Keycloak)"
 type: task
-status: active
+status: abandoned
 priority: P2
 size: L
 issue: null
@@ -12,7 +12,9 @@ depends_on: [kit-backups]
 supersedes: []
 related_specs: [toolkit-server]
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-12
+abandoned_at: 2026-11-12
+abandoned_reason: "Decisión del usuario 2026-11-12: sin IdP propio en la caja. Authentik (~712 MiB) o Keycloak (~525 MiB) pesan más que el resto del kit junto y solo apoyan op.acc.6 en lo que federa contra ellos. La web y el kit ya van detrás de Cloudflare Access; el doble factor lo pone el proveedor que la pyme ya tiene (Workspace o M365). Sustituida por access-identity-guide."
 ---
 
 # Kit: identidad y doble factor (Authentik o Keycloak)

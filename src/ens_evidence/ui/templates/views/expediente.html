@@ -1,0 +1,109 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% macro by_field() -%}
+<div class="field">
+  <label for="f-by">Quién lo registra<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
+  <input type="text" id="f-by" name="by" value="{{ values.by }}" autocomplete="name"{% if errors.get("by") %} aria-invalid="true" aria-describedby="err-by"{% endif %}>
+  {{ m.field_errors("by") }}
+</div>
+{%- endmacro %}
+{% block content %}
+<h1>Expediente</h1>
+<p class="lead">El expediente reúne los documentos de la autoevaluación. Cada uno indica de dónde salen sus datos y cuándo se generó.</p>
+{{ m.revision_humana() }}
+{% if saved and not form_errors %}<div class="notice notice-ok" role="status"><p>{{ saved }}</p></div>{% endif %}
+{% if form_errors %}
+<div class="notice notice-warn" role="alert"><p><strong>No se ha guardado.</strong></p><ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+<dl class="facts">
+  <dt>Estado</dt><dd>{{ m.badge(dossier_state) }}</dd>
+  {% if dossier_id %}<dt>Expediente</dt><dd class="mono">{{ dossier_id }}</dd>{% endif %}
+  {% if category %}<dt>Categoría</dt><dd class="mono">{{ category }}</dd>{% endif %}
+  <dt>Generado</dt><dd class="mono">{{ generated_at }}</dd>
+  {% if declared %}<dt>Declarado por</dt><dd>{{ declared.by }} <span class="muted">· {{ declared.at }}</span></dd>{% endif %}
+</dl>
+<form method="post" action="/expediente/generar" class="actions">
+  <button class="btn {{ 'btn-primary' if not dossier_id else '' }}" type="submit">{{ "Generar un expediente nuevo" if dossier_id else "Generar el expediente" }}</button>
+  {% if can_download %}<a class="btn" href="/expediente/{{ dossier_id }}/dossier.md" download>Descargar dossier.md</a>{% endif %}
+</form>
+{% if not dossier_id %}
+<p class="muted">Generar el expediente congela el estado actual del workspace. Hace falta el alcance aprobado y la categorización vigente.</p>
+{% endif %}
+{% if stale %}
+<div class="notice notice-warn"><p><strong>Este expediente ya no describe el estado actual.</strong> Genera uno nuevo antes de seguir.</p>
+{% if drift_lines %}<ul>{% for l in drift_lines %}<li>{{ l }}</li>{% endfor %}</ul>{% endif %}</div>
+{% endif %}
+{% if integrity %}
+<div class="notice notice-warn"><p><strong>Hay problemas de integridad.</strong> No se admiten más pasos hasta restaurarlo desde la copia.</p><ul>{% for p in integrity %}<li>{{ p }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if readiness_notice %}<div class="notice notice-warn"><p>{{ readiness_notice }}</p></div>{% endif %}
+{% if incomplete %}
+<div class="notice notice-warn"><p><strong>Secciones incompletas:</strong> {{ incomplete | join("; ") }}.</p></div>
+{% endif %}
+{% if dossier_id %}
+<section class="section" aria-labelledby="h-sig">
+  <h2 id="h-sig">Siguiente paso</h2>
+  <p>{{ next_text }}</p>
+  {% if blocked %}<div class="notice notice-warn"><p><strong>Ahora no se puede declarar:</strong></p><ul>{% for b in blocked %}<li>{{ b }}</li>{% endfor %}</ul></div>{% endif %}
+  {% if action == "self-assess" %}
+  <form method="post" action="/expediente/{{ dossier_id }}/self-assess" novalidate>
+    {{ by_field() }}
+    <div class="field">
+      <label for="f-role">Rol</label>
+      <select id="f-role" name="role"{% if errors.get("role") %} aria-invalid="true" aria-describedby="err-role"{% endif %}>
+        {%- for value, label in self_assess_roles.items() %}
+        <option value="{{ value }}"{% if values.get("role") == value %} selected{% endif %}>{{ label }}</option>
+        {%- endfor %}
+      </select>
+      {{ m.field_errors("role") }}
+    </div>
+    <p class="muted">Cada medida de la matriz necesita una revisión de una persona antes de registrar la autoevaluación.</p>
+    <div class="actions"><button class="btn btn-primary" type="submit">Registrar la autoevaluación</button></div>
+  </form>
+  {% elif action == "analyze" %}
+  <form method="post" action="/expediente/{{ dossier_id }}/analyze" novalidate>
+    {{ by_field() }}
+    {{ m.text_field("conclusion", "Conclusiones del análisis", "Lo que concluye el responsable de la seguridad.", True) }}
+    {{ m.text_field("elevated_to", "Elevado a", "Persona del responsable del sistema a quien se elevan las conclusiones.") }}
+    {{ m.text_field("corrective_measures", "Medidas correctoras", "Opcional. Una por línea, dirigidas al responsable del sistema.", True) }}
+    <div class="field"><label><input type="checkbox" name="elevated" value="1"{% if values.get("elevated") %} checked{% endif %}> He elevado las conclusiones al responsable del sistema. La herramienta no envía comunicaciones.</label></div>
+    <div class="field"><label><input type="checkbox" name="manual_judgment_review" value="1"{% if values.get("manual_judgment_review") %} checked{% endif %}> Una persona ha revisado el juicio manual pendiente (medidas organizativas). Sin esto no se podrá declarar.</label></div>
+    <div class="actions"><button class="btn btn-primary" type="submit">Registrar el análisis</button></div>
+  </form>
+  {% elif action == "declare" %}
+  <form method="post" action="/expediente/{{ dossier_id }}/declare" novalidate>
+    {{ by_field() }}
+    {{ m.text_field("evidence", "Evidencia de la declaración", "Opcional. El identificador (EV-…) del documento firmado, ya subido como evidencia. Solo se comprueba su integridad; la firma y el formato los revisa una persona.") }}
+    {% if incomplete %}<div class="field"><label><input type="checkbox" name="acknowledge_incomplete" value="1"{% if values.get("acknowledge_incomplete") %} checked{% endif %}> Reconozco que declaro sobre un expediente con secciones incompletas. Quedan listadas en el registro.</label></div>{% endif %}
+    <p class="muted">Es un acto de la organización: la herramienta solo lo registra.</p>
+    <div class="actions"><button class="btn btn-primary" type="submit">Registrar la declaración</button></div>
+  </form>
+  {% endif %}
+</section>
+{% if transitions %}
+<section class="section" aria-labelledby="h-hist">
+  <h2 id="h-hist">Pasos registrados</h2>
+  <div class="table-wrap"><table>
+    <caption>Quién hizo cada paso y cuándo. Los nombres son declarados, no autenticados.</caption>
+    <thead><tr><th scope="col">Paso</th><th scope="col">Persona</th><th scope="col">Rol</th><th scope="col">Cuándo</th></tr></thead>
+    <tbody>
+    {%- for t in transitions %}
+    <tr><td>{{ m.badge(t.state) }}</td><td>{{ t.actor }}</td><td>{{ t.role }}</td><td class="mono">{{ t.at }}</td></tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+{% endif %}
+<div class="table-wrap"><table>
+  <caption>{{ sections | length }} documentos</caption>
+  <thead><tr><th scope="col">Documento</th><th scope="col">Fichero</th><th scope="col">Estado</th><th scope="col">Generado</th><th scope="col">Huella</th></tr></thead>
+  <tbody>
+  {%- for s in sections %}
+  <tr><th scope="row">{{ s.title }}</th><td class="id">{{ s.file }}</td><td>{{ s.state_label }}</td><td class="mono">{{ s.generated_at }}</td><td class="mono">{{ s.fingerprint[:12] if s.fingerprint else "—" }}</td></tr>
+  {%- else %}
+  <tr><td colspan="5" class="muted">Todavía no se ha generado el expediente.</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

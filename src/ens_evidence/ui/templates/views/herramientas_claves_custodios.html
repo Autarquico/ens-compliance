@@ -1,0 +1,55 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<p><a href="/herramientas/claves">Preparar el almacén de claves</a></p>
+<h1>Custodios del almacén de claves</h1>
+<p class="lead">Declara quiénes guardan las partes de desbloqueo y desde cuándo, y quién lo ha revisado. Es una revisión humana: queda registrada como la declaras.</p>
+{{ m.revision_humana() }}
+<aside class="notice" role="note"><p>La herramienta no guarda las partes de desbloqueo, ni su número ni su huella. Solo se registran los nombres que escribas, las fechas y los valores de N y M que declares.</p></aside>
+{% if saved %}<p class="saved" role="status">Guardado</p>{% endif %}
+{% if unreadable_count %}<div class="notice notice-warn" role="note"><p>Hay {{ unreadable_count }} registro(s) de custodios que no se pueden leer; no se tienen en cuenta.</p></div>{% endif %}
+{% for w in mismatches %}<div class="notice notice-warn" role="alert"><p><strong>{{ w }}</strong> Revisa el registro o el almacén: la última comprobación de OpenBao manda sobre lo que se declara.</p></div>{% endfor %}
+{% if current %}
+<section class="card" aria-labelledby="h-vigente">
+  <h2 id="h-vigente">Registro vigente</h2>
+  <p>{{ current.key_threshold }} de {{ current.key_shares }} partes para desbloquear. Revisado por {{ current.reviewer }} ({{ current.role }}) el {{ current.reviewed_at }}; vale hasta {{ current.valid_until }}.</p>
+  <ul>{% for c in current.custodians %}<li>{{ c.name }}, desde {{ c.since }}</li>{% endfor %}</ul>
+</section>
+{% else %}
+<p class="muted">Todavía no hay un registro vigente.</p>
+{% endif %}
+{% if form_errors %}
+<div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
+<ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+<form method="post" action="/herramientas/claves/custodios" novalidate>
+  <div class="field"><label for="f-asset_id">Activo del almacén<span class="hint">El activo de tipo aplicación que representa a OpenBao.</span></label>
+    <select id="f-asset_id" name="asset_id">
+      <option value="">Elige uno</option>
+      {%- for a in application_assets %}<option value="{{ a }}"{% if values.get('asset_id') == a %} selected{% endif %}>{{ a }}</option>{% endfor %}
+    </select>
+    {{ m.field_errors("asset_id") }}
+    {% if not application_assets %}<p class="muted">No hay activos de tipo aplicación. Añádelo en el <a href="/asistente/activos">paso de activos</a>.</p>{% endif %}</div>
+  {{ m.text_field("key_shares", "Partes de desbloqueo (N)", "Cuántas partes se repartieron.") }}
+  {{ m.text_field("key_threshold", "Partes necesarias (M)", "Cuántas hacen falta para desbloquear.") }}
+  <fieldset class="checks">
+    <legend>Custodios<span class="hint">Una fila por custodio; deja vacías las que sobren. Nombre completo y fecha desde la que custodia (AAAA-MM-DD).</span></legend>
+    {%- for i in rows %}
+    {{ m.text_field("custodian_name_" ~ i, "Custodio " ~ (i + 1), "Nombre completo.") }}
+    {{ m.text_field("custodian_since_" ~ i, "Desde (custodio " ~ (i + 1) ~ ")", "AAAA-MM-DD.") }}
+    {%- endfor %}
+  </fieldset>
+  <h2>Revisión</h2>
+  <div class="field"><label for="f-reviewer">Quién revisa<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
+    <input type="text" id="f-reviewer" name="reviewer" value="{{ values.get('reviewer', '') }}" autocomplete="off"{% if errors.get('reviewer') %} aria-invalid="true" aria-describedby="err-reviewer"{% endif %}>
+    {{ m.field_errors("reviewer") }}</div>
+  <div class="field"><label for="f-role">Rol</label>
+    <select id="f-role" name="role">
+      {%- for r in review_roles %}<option value="{{ r.value }}"{% if values.get('role') == r.value %} selected{% endif %}>{{ r.label }}</option>{% endfor %}
+    </select>
+    {{ m.field_errors("role") }}</div>
+  {{ m.text_field("reviewed_on", "Fecha de la revisión", "AAAA-MM-DD; no puede ser futura.") }}
+  {{ m.text_field("valid_until_on", "Vale hasta", "AAAA-MM-DD; posterior a la revisión.") }}
+  <div class="actions"><button class="btn btn-primary" type="submit">Registrar la revisión</button><a class="btn btn-ghost" href="/herramientas/claves">Cancelar</a></div>
+</form>
+{% endblock %}

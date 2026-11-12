@@ -170,7 +170,8 @@ Cada fase es usable por sí sola.
   servidor osquery embebido y agentes; conector Microsoft 365; guías de
   servicios externos; revisión de las plantillas por un auditor ENS; landing
   mínima; kit de herramientas en el VPS con la primera ola (copias,
-  claves, contraseñas, identidad y antimalware).
+  claves, contraseñas y antimalware) y la guía de Access con el proveedor de
+  identidad de la pyme).
 - **v0.3 y siguientes.** Perfil de detección (wazuh-manager sin cabeza +
   VictoriaLogs + panel de seguridad); incidentes; bundle offline y releases
   firmadas; paquetes de agente por sistema operativo; landing completa; más
@@ -262,7 +263,7 @@ almacén de claves, se lo da también. Spec: `docs/specs/toolkit-server.md`.
   con avisos. La monitorización es operación: un verde no cumple ninguna
   medida.
 - **Primera ola (v0.2):** restic + Backrest (mp.info.6), OpenBao (op.exp.10),
-  Vaultwarden (apoyo parcial a op.acc.6), Authentik o Keycloak (op.acc.6) y
+  Vaultwarden (apoyo parcial a op.acc.6) y
   antimalware (op.exp.6: ClamAV en Linux, nativo evidenciado por osquery en
   Windows y macOS).
 - **El servidor no guarda sus propios rescates:** las copias van a S3 con
@@ -408,5 +409,3 @@ Cada escenario indica la versión en la que debe cumplirse.
     decididos (Anthropic y OpenAI).
   - Ollama u otro servidor local mediante el `base_url` del cliente
     OpenAI-compatible: sin verificar.
-  - Identidad del kit: Authentik o Keycloak (RAM, mantenimiento, OIDC para la
-    propia app).

@@ -25,6 +25,7 @@ from ens_evidence.orgdocs.template import (
     LoadedTemplate,
     Question,
     all_questions,
+    load_templates,
 )
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
 from ens_evidence.yaml_unique import safe_load_unique
@@ -357,3 +358,59 @@ def skeleton(templates: list[LoadedTemplate] | tuple[LoadedTemplate, ...]) -> st
         empty = '""' if question.type is AnswerType.TEXT else "[]"
         lines += [f"{question.id}: {empty}", ""]
     return "\n".join(lines)
+
+
+def set_answer(store: WorkspaceStore, key: str, value: Any) -> None:
+    """Fija la respuesta de una pregunta, conservando las demás; crea el fichero si falta.
+
+    Lanza ValueError si la clave no es una pregunta, si la forma no es la de su tipo o si el
+    valor es de relleno. Un valor vacío deja la pregunta sin responder.
+    """
+    set_answers(store, {key: value})
+
+
+class AnswersRejected(ValueError):
+    """Respuestas rechazadas; `by_question` da el mensaje de cada pregunta."""
+
+    def __init__(self, by_question: dict[str, str]) -> None:
+        super().__init__("; ".join(by_question.values()))
+        self.by_question = by_question
+
+
+def _checked(question: Question | None, key: str, value: Any) -> Any:
+    if question is None:
+        raise ValueError(f"{key}: pregunta desconocida")
+    problems: list[str] = []
+    normalized = _normalize(question, value, problems)
+    if not problems and unanswered(normalized) and value not in (None, "", []):
+        problems.append(f"{key}: la respuesta está vacía o es de relleno")
+    if problems:
+        raise ValueError("; ".join(problems))
+    if isinstance(normalized, NotApplicable):
+        return {NOT_APPLICABLE: True, REASON: normalized.reason}
+    return normalized
+
+
+def set_answers(store: WorkspaceStore, changes: dict[str, Any]) -> None:
+    """Fija varias respuestas a la vez, conservando las demás: todas o ninguna.
+
+    Lanza AnswersRejected (un ValueError) con el mensaje de cada pregunta rechazada, sin escribir.
+    """
+    if not changes:
+        return
+    templates = load_templates()
+    questions = {q.id: q for q in all_questions(templates)}
+    checked: dict[str, Any] = {}
+    rejected: dict[str, str] = {}
+    for key, value in changes.items():
+        try:
+            checked[key] = _checked(questions.get(key), key, value)
+        except ValueError as exc:
+            rejected[key] = str(exc)
+    if rejected:
+        raise AnswersRejected(rejected)
+    current = (
+        read_answers(store) if store.exists(ANSWERS_KEY) else yaml.safe_load(skeleton(templates))
+    )
+    answers = {**(current or {}), **checked}
+    store.write_text(ANSWERS_KEY, yaml.safe_dump(answers, allow_unicode=True, sort_keys=False))

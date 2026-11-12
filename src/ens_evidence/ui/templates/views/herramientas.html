@@ -1,0 +1,26 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Herramientas</h1>
+<p class="lead">Programas que se instalan junto a la caja y aportan evidencia a la matriz. Esta página solo lee: no los ejecuta ni los comprueba.</p>
+{{ m.revision_humana() }}
+<div class="grid">
+  {%- for tool in tools %}
+  <section class="card" aria-labelledby="h-{{ tool.id }}">
+    <h2 id="h-{{ tool.id }}">{{ tool.name }}</h2>
+    <p>{{ tool.purpose }}</p>
+    <p><span class="badge tone-{{ tool.state.tone }}">{{ m.icon(m.TONE_ICON[tool.state.tone]) }}<span>{{ tool.state.label }}</span></span></p>
+    <p class="muted">Última comprobación: <span class="mono">{{ tool.state.checked_at }}</span>. El estado sale de la última evidencia guardada, no de una consulta en vivo.</p>
+    {% if tool.state.key in tool.hints %}<p>{{ tool.hints[tool.state.key] }} <a href="{{ tool.help_url }}">{{ tool.help_label }}</a>.</p>{% endif %}
+    <p>Apoya las medidas: {% for measure in tool.measures %}<a class="mono" href="/matriz/{{ measure }}">{{ measure }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. {{ tool.measures_note }}</p>
+    <p class="muted">{% if tool.ram %}Memoria: ≈{{ tool.ram.mib }} MiB (medido el {{ tool.ram.measured_on }}, {{ tool.ram.conditions }}).{% else %}RAM sin medir.{% endif %}</p>
+    <div class="actions">
+      {% if tool.open_url %}<a class="btn btn-primary" href="{{ tool.open_url }}">Abrir</a>
+      <a class="btn" href="{{ tool.wizard_url }}">Preparar otro paquete</a>
+      {% else %}<a class="btn btn-primary" href="{{ tool.wizard_url }}">{{ tool.cta }}</a>{% endif %}
+    </div>
+    {% if not tool.open_url %}<p class="muted">Aún no está desplegado en esta caja. El asistente prepara el paquete de instalación.</p>{% endif %}
+  </section>
+  {%- endfor %}
+</div>
+{% endblock %}

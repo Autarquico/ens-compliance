@@ -1,0 +1,20 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Aquí listas los tipos de información que maneja el sistema: datos de clientes, facturas, nóminas. Más adelante valorarás cuánto perjuicio causaría perderlos o filtrarlos.</p>
+{% include "partials/_paso_cabecera.html" %}
+{% if information %}
+<div class="table-wrap"><table>
+  <caption>Tipos de información registrados</caption>
+  <thead><tr><th scope="col">Identificador</th><th scope="col">Descripción</th></tr></thead>
+  <tbody>{%- for i in information %}<tr><td class="id">{{ i.id }}</td><td>{{ i.description }}</td></tr>{% endfor %}</tbody>
+</table></div>
+{% endif %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <h3>Añadir un tipo de información</h3>
+  {{ m.text_field("info_id", "Identificador", hint="Sin espacios, por ejemplo «datos-clientes».") }}
+  {{ m.text_field("description", "Descripción", hint="Qué datos son y quién los usa.", multiline=True) }}
+  {% include "partials/_paso_acciones.html" %}
+</form>
+{% endblock %}

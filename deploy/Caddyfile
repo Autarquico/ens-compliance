@@ -1,6 +1,19 @@
-# Deny-all salvo cinco POST del protocolo TLS de osquery hacia el servidor de agentes (ADR 0016).
-# Todo lo demás responde 403 y queda en el log; no hay UI pública.
-# Escucha en :8080 dentro de las redes internas `edge` y `agent`; ningún puerto se publica en el host.
+# Separa por nombre de host (ADR 0016, ADR 0021). Deny-all salvo:
+#   - ENS_UI_HOST: la interfaz web (ui:8000); detrás de Cloudflare Access, que firma Cf-Access-Jwt-Assertion.
+#   - ENS_COPIAS_HOST: la interfaz de Backrest (backrest:9898), también detrás de Access; además tiene su
+#     propio usuario. Backrest (v1.14.1, internal/auth/middleware.go) autentica con Authorization
+#     (Basic o Bearer JWT que guarda el navegador), nunca con cookies: Authorization pasa y la cookie
+#     de Access no.
+#   - ENS_CLAVES_HOST: la interfaz de OpenBao (openbao:8200), también detrás de Access; además exige su
+#     propio token. La UI de OpenBao se autentica con la cabecera X-Vault-Token (guardada en el
+#     navegador), no con cookies: la cookie de Access no pasa. Las partes de desbloqueo no se
+#     teclean aquí (Cloudflare termina TLS): solo por terminal.
+#   - ENS_CONTRASENAS_HOST: la interfaz de Vaultwarden (vaultwarden:80), también detrás de Access; además
+#     cada persona tiene su cuenta. Las cookies de Cloudflare no pasan a Vaultwarden; las suyas (VW_ADMIN del panel) sí. Los
+#     clientes nativos de Bitwarden (extensión, móvil) quizá no pasen Access: sin verificar.
+#   - ENS_AGENT_HOST: cinco POST del protocolo TLS de osquery hacia el servidor de agentes.
+# Un host desconocido o vacío, y todo lo demás, responde 403 y queda en el log.
+# Escucha en :8080 dentro de las redes internas `edge`, `agent`, `ui-net`, `copias-net`, `claves-net` y `contrasenas-net`; ningún puerto se publica en el host.
 {
 	auto_https off
 	admin localhost:2019
@@ -28,6 +41,21 @@
 		}
 	}
 
+	@ui host {$ENS_UI_HOST:ui.invalid}
+	# /healthz es solo para el healthcheck del contenedor (127.0.0.1); no se publica.
+	@ui_healthz {
+		host {$ENS_UI_HOST:ui.invalid}
+		path /healthz /healthz/*
+	}
+	@copias host {$ENS_COPIAS_HOST:copias.invalid}
+	@claves host {$ENS_CLAVES_HOST:claves.invalid}
+	@contrasenas host {$ENS_CONTRASENAS_HOST:contrasenas.invalid}
+	# La subida de evidencias admite 5 MiB de fichero más el envoltorio multipart (forms.py).
+	@ui_upload {
+		host {$ENS_UI_HOST:ui.invalid}
+		method POST
+		path /evidencias/nueva
+	}
 	@small_agent {
 		method POST
 		path /agent/enroll /agent/config /agent/distributed/read
@@ -37,14 +65,105 @@
 		path /agent/log /agent/distributed/write
 	}
 	@agent_any {
+		host {$ENS_AGENT_HOST:agent.invalid}
 		method POST
 		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
 	}
 	# El servidor no descomprime: osquery con --logger_tls_compress enviaría cuerpos que no puede leer.
 	@encoded {
+		host {$ENS_AGENT_HOST:agent.invalid}
 		method POST
 		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
 		header Content-Encoding *
+	}
+
+	handle @ui_healthz {
+		respond "Forbidden" 403
+	}
+
+	handle @ui_upload {
+		request_body {
+			max_size 5184KiB
+		}
+		reverse_proxy ui:8000 {
+			header_up -Cookie
+			header_up -X-Forwarded-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle @ui {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy ui:8000 {
+			# Cf-Access-Jwt-Assertion SÍ llega a la interfaz: es su identidad. La cookie de Access no.
+			header_up -Cookie
+			header_up -X-Forwarded-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle @copias {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy backrest:9898 {
+			# Backrest no usa cookies ni la identidad de Access; sí necesita Authorization.
+			header_up -Cookie
+			header_up -Cf-Access-*
+			header_up -X-Forwarded-*
+			# Su API de eventos es un stream largo.
+			flush_interval -1
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle @claves {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy openbao:8200 {
+			# OpenBao usa X-Vault-Token, no cookies ni la identidad de Access.
+			header_up -Cookie
+			header_up -Cf-Access-*
+			header_up -X-Forwarded-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle @contrasenas {
+		# Los adjuntos van cifrados y pueden pesar más que el resto de cuerpos de la caja.
+		request_body {
+			max_size 10MB
+		}
+		reverse_proxy vaultwarden:80 {
+			# El panel /admin guarda su sesión en la cookie VW_ADMIN: solo se quitan las de Cloudflare
+			# (CF_Authorization...), no todas. Authorization (clientes y web vault) pasa.
+			header_up Cookie "(^|;\s*)CF_[A-Za-z_]+=[^;]*;?\s*" "$1"
+			header_up -Cf-Access-*
+			header_up -X-Forwarded-*
+			# Vaultwarden limita login y /admin y registra por X-Real-IP (IP_HEADER por defecto): la fija
+			# la caja con la IP que escribe Cloudflare, nunca el cliente. Sin Cf-Connecting-Ip queda vacía
+			# y Vaultwarden usa la IP del vecino (Caddy).
+			header_up X-Real-IP {http.request.header.Cf-Connecting-Ip}
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
 	}
 
 	handle @encoded {

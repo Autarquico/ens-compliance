@@ -2,17 +2,17 @@
 codename: ens-compliance
 title: "Kit: copias de seguridad con restic y Backrest"
 type: task
-status: active
+status: shipped
 priority: P1
 size: L
-issue: null
-prs: []
+issue: 66
+prs: [73]
 related_issues: [66]
 depends_on: [box-packaging, collector-restic, web-ui-flujo]
 supersedes: []
 related_specs: [toolkit-server, installer]
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-12
 ---
 
 # Kit: copias de seguridad con restic y Backrest
@@ -99,7 +99,7 @@ Piezas:
   - La contraseña del repositorio va en claro en `config.json`: el volumen de configuración de Backrest es secreto y no lo lee la app.
   - Tiene modo multihost (emparejamiento de instancias con tokens). Sirve para «otros equipos»; se evalúa en el plan.
   - Las imágenes no fijan `USER`: se ejecuta con un UID explícito, que necesita permiso de lectura sobre lo que copia.
-- **Retención frente a bloqueo de objetos.** `forget` y `prune` de Backrest fallan sobre objetos todavía bloqueados. La retención del plan tiene que ser mayor que el periodo de bloqueo, y la app lo valida al generar la configuración.
+- **Retención frente a bloqueo de objetos.** Comprobado con MinIO (`tests/box/test_copias_objectlock.py`, runbook `kit-copias.md`): con la clave de escritura, `forget` no falla sobre objetos bloqueados; deja una marca de borrado y la versión sigue retenida hasta que vence el bloqueo. El bucket crece mientras duren las retenciones. Sin verificar en R2.
 - **Sin verificar:** restic sobre el bloqueo de objetos de R2 (ya anotado en `docs/vision.md`).
 - **Lo que se copia en solo lectura.** Montar volúmenes de otros servicios no da a Backrest permiso de escritura sobre ellos. Se excluyen los tmpfs y el socket de Docker.
 - **El destino es un punto único de fallo.** Por eso se recomienda un proveedor distinto del de la copia propia de la caja, o al menos credenciales y administración separadas (ADR 0008).

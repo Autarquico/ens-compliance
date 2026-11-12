@@ -95,7 +95,11 @@ def collect_repository(repository: str, repository_id: str | None) -> Section:
 
 
 def collect_snapshots(
-    execute: Executor, records: WorkspaceRecords, current: str | None, repository: str
+    execute: Executor,
+    records: WorkspaceRecords,
+    current: str | None,
+    repository: str,
+    command: tuple[str, ...] = LIST_SNAPSHOTS,
 ) -> Section:
     if current is None:
         return Section(
@@ -103,7 +107,7 @@ def collect_snapshots(
             summary={"count": 0, "foreign_snapshots": [], "repository_exists": False},
         )
     try:
-        result = execute(LIST_SNAPSHOTS)
+        result = execute(command)
     except ResticUnavailable as exc:
         return Section(status=CollectionStatus.ERROR, reason=f"restic no disponible ({exc.kind})")
     if result.returncode != 0:
@@ -137,7 +141,7 @@ def collect_snapshots(
         items=items,
         summary={
             "count": len(items),
-            "tag": TAG,
+            "tag": TAG if command == LIST_SNAPSHOTS else None,
             "foreign_snapshots": [item["id"] for item in items if item["foreign"]],
         },
     )

@@ -1,0 +1,38 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Una dependencia dice que un activo necesita a otro para funcionar. Por ejemplo, una aplicación depende de su base de datos. Sirve para saber qué se ve afectado si algo falla.</p>
+{% include "partials/_paso_cabecera.html" %}
+{% if dependencies %}
+<div class="table-wrap"><table>
+  <caption>Dependencias registradas</caption>
+  <thead><tr><th scope="col">Identificador</th><th scope="col">Activo</th><th scope="col">Depende de</th><th scope="col">Para qué</th></tr></thead>
+  <tbody>
+  {%- for d in dependencies %}
+  <tr><td class="id">{{ d.id }}</td><td class="id">{{ d.asset }}</td><td class="id">{{ d.depends_on }}</td><td>{{ d.purpose or "" }}</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+{% endif %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <h3>Añadir una dependencia</h3>
+  {{ m.text_field("dependency_id", "Identificador", hint="Sin espacios, por ejemplo «app-db».") }}
+  <div class="field">
+    <label for="f-asset">Activo<span class="hint">El que necesita al otro.</span></label>
+    <select id="f-asset" name="asset"{% if (errors or {}).get("asset") %} aria-invalid="true" aria-describedby="err-asset"{% endif %}>
+      <option value="">Elige un activo</option>{%- for c in asset_choices %}<option value="{{ c.id }}"{% if (values or {}).get("asset") == c.id %} selected{% endif %}>{{ c.id }}</option>{% endfor %}
+    </select>
+    {{ m.field_errors("asset") }}
+  </div>
+  <div class="field">
+    <label for="f-depends_on">Depende de<span class="hint">El activo que necesita.</span></label>
+    <select id="f-depends_on" name="depends_on"{% if (errors or {}).get("depends_on") %} aria-invalid="true" aria-describedby="err-depends_on"{% endif %}>
+      <option value="">Elige un activo</option>{%- for c in asset_choices %}<option value="{{ c.id }}"{% if (values or {}).get("depends_on") == c.id %} selected{% endif %}>{{ c.id }}</option>{% endfor %}
+    </select>
+    {{ m.field_errors("depends_on") }}
+  </div>
+  {{ m.text_field("purpose", "Para qué (opcional)") }}
+  {% include "partials/_paso_acciones.html" %}
+</form>
+{% endblock %}

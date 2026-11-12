@@ -1,0 +1,86 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% macro por_que(q) -%}
+{%- if q.help %}<p class="muted">{{ q.help }}</p>{% endif %}
+<p class="muted">Cláusula que lo motiva: <span class="mono">{{ q.clause.reference }}</span></p>
+{%- if q.condition_note %}<p class="muted">{{ q.condition_note }}</p>{% endif %}
+{%- endmacro %}
+{% macro no_aplica(q) -%}
+{%- if q.allow_na %}
+<div class="check"><input type="checkbox" id="na-{{ q.id }}" name="na~{{ q.id }}" value="1"{% if q.na %} checked{% endif %}><label for="na-{{ q.id }}">{{ q.na_label }}</label></div>
+<div class="field">
+  <label for="reason-{{ q.id }}">Motivo, si marcas «{{ q.na_label }}»<span class="hint">Una causa concreta, no «n/a».</span></label>
+  <input type="text" id="reason-{{ q.id }}" name="reason~{{ q.id }}" value="{{ q.reason }}">
+</div>
+{%- endif %}
+{%- endmacro %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">{{ block_intro }}</p>
+{% include "partials/_paso_cabecera.html" %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  {% if people %}<datalist id="personas-declaradas">{% for p in people %}<option value="{{ p }}"></option>{% endfor %}</datalist>{% endif %}
+  {% for q in questions %}
+  <section class="pregunta" id="p-{{ q.id }}">
+    <input type="hidden" name="q~{{ q.id }}" value="1">
+    {% if q.type == "text" %}
+    <div class="field">
+      <label for="f-{{ q.id }}">{{ q.text }}{% if q.optional %}<span class="hint">Opcional</span>{% endif %}</label>
+      {{ por_que(q) }}
+      {% if q.choices -%}
+      <select id="f-{{ q.id }}" name="{{ q.name }}"{% if (errors or {}).get(q.name) %} aria-invalid="true" aria-describedby="err-{{ q.name }}"{% endif %}>
+        <option value="">Elige una opción</option>
+        {% for c in q.choices %}<option value="{{ c }}"{% if c == q.value %} selected{% endif %}>{{ c }}</option>{% endfor %}
+      </select>
+      {%- elif q.multiline -%}
+      <textarea id="f-{{ q.id }}" name="{{ q.name }}"{% if (errors or {}).get(q.name) %} aria-invalid="true" aria-describedby="err-{{ q.name }}"{% endif %}>{{ q.value }}</textarea>
+      {%- else -%}
+      <input type="text" id="f-{{ q.id }}" name="{{ q.name }}" value="{{ q.value }}"{% if q.people_list and people %} list="personas-declaradas"{% endif %}{% if (errors or {}).get(q.name) %} aria-invalid="true" aria-describedby="err-{{ q.name }}"{% endif %}>
+      {%- endif %}
+      {{ m.field_errors(q.name) }}
+    </div>
+    {% elif q.type == "list" %}
+    <fieldset class="checks">
+      <legend>{{ q.text }}{% if q.optional %} (opcional){% endif %}</legend>
+      {{ por_que(q) }}
+      {{ no_aplica(q) }}
+      {% for r in q.rows %}
+      <div class="field">
+        <label for="f-{{ q.id }}-{{ r.n }}">Elemento {{ r.n }}</label>
+        <input type="text" id="f-{{ q.id }}-{{ r.n }}" name="{{ q.name }}" value="{{ r.value }}">
+        {% if r.filled %}<div class="check"><input type="checkbox" id="del-{{ q.id }}-{{ r.n }}" name="del~{{ q.id }}" value="{{ r.n }}"{% if r.removed %} checked{% endif %}><label for="del-{{ q.id }}-{{ r.n }}">Quitar el elemento {{ r.n }} al guardar</label></div>{% endif %}
+      </div>
+      {% endfor %}
+      <p class="muted">Para añadir más, escribe en las filas vacías y guarda: aparecerán filas nuevas.</p>
+      {{ m.field_errors(q.name) }}
+    </fieldset>
+    {% else %}
+    <fieldset class="checks">
+      <legend>{{ q.text }}{% if q.optional %} (opcional){% endif %}</legend>
+      {{ por_que(q) }}
+      {{ no_aplica(q) }}
+      {% for r in q.rows %}
+      <fieldset class="dimension">
+        <legend>Fila {{ r.n }}</legend>
+        {% for c in r.cells %}
+        <div class="field">
+          <label for="f-{{ q.id }}-{{ r.n }}-{{ c.id }}">{{ c.label }}</label>
+          {% if c.long -%}
+          <textarea id="f-{{ q.id }}-{{ r.n }}-{{ c.id }}" name="{{ c.name }}">{{ c.value }}</textarea>
+          {%- else -%}
+          <input type="text" id="f-{{ q.id }}-{{ r.n }}-{{ c.id }}" name="{{ c.name }}" value="{{ c.value }}">
+          {%- endif %}
+        </div>
+        {% endfor %}
+        {% if r.filled %}<div class="check"><input type="checkbox" id="del-{{ q.id }}-{{ r.n }}" name="del~{{ q.id }}" value="{{ r.n }}"{% if r.removed %} checked{% endif %}><label for="del-{{ q.id }}-{{ r.n }}">Quitar la fila {{ r.n }} al guardar</label></div>{% endif %}
+      </fieldset>
+      {% endfor %}
+      <p class="muted">Para añadir otra fila, rellena la vacía y guarda: aparecerá una nueva.</p>
+      {{ m.field_errors(q.name) }}
+    </fieldset>
+    {% endif %}
+  </section>
+  {% endfor %}
+  {% include "partials/_paso_acciones.html" %}
+</form>
+{% endblock %}

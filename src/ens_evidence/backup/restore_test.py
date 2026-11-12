@@ -110,21 +110,30 @@ def record_restore_test(
 
     `ValidationError` si la declaración no vale; `BackupError` si no cuadra con el registro.
     """
+    return record_declared(store, repository_id, parse_declaration(data), now)
+
+
+def parse_declaration(data: bytes) -> RestoreTestDeclaration:
     try:
         loaded = safe_load_unique(data)
     except yaml.YAMLError:
         raise BackupError("el fichero no es YAML válido") from None
-    declaration = RestoreTestDeclaration.model_validate(loaded)
+    return RestoreTestDeclaration.model_validate(loaded)
+
+
+def record_declared(
+    store: WorkspaceStore, repository_id: str, declaration: RestoreTestDeclaration, now: datetime
+) -> RestoreTest:
     if declaration.review.reviewed_at > now:
         raise BackupError("review.reviewed_at está en el futuro")
-    _require_inventoried_system(store, declaration.system)
+    require_inventoried_system(store, declaration.system)
     _require_tied_to_restore(store, declaration, repository_id)
     record = RestoreTest(**declaration.model_dump(), repository_id=repository_id)
     _write(store, record, now)
     return record
 
 
-def _require_inventoried_system(store: WorkspaceStore, system: str) -> None:
+def require_inventoried_system(store: WorkspaceStore, system: str) -> None:
     assets, _errors = load_assets(store)
     if assets is None:
         raise BackupError("no se puede leer el inventario de activos para validar system")

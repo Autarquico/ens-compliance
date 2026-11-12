@@ -1,16 +1,40 @@
 """Propuesta de aplicabilidad: marca lo exigido por el anexo II, sin tocar decisiones humanas."""
 
-from collections.abc import Iterable
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
+from pydantic import BaseModel, ValidationError
+
 from ens_evidence.applicability.context import Context, load_context
 from ens_evidence.applicability.selection import is_own_proposal, proposal_text
-from ens_evidence.applicability.validate import load_checked_measures
-from ens_evidence.catalog.controls import save_measures
+from ens_evidence.applicability.validate import (
+    ApplicabilityRejected,
+    load_checked_measures,
+    measure_errors,
+)
+from ens_evidence.catalog.controls import init_measures, save_measures
 from ens_evidence.models.enums import Applicability
-from ens_evidence.models.readiness import Measure, SelectionBasis
+from ens_evidence.models.readiness import AbsentAssets, Compensation, Measure, SelectionBasis
+from ens_evidence.scope.inventory import load_assets
+from ens_evidence.scope.messages import describe_validation
+from ens_evidence.scope.sync import MEASURES_KEY
 from ens_evidence.workspace import WorkspaceStore
+
+MIN_REASON = 20
+GENERIC_REASONS = frozenset({"n/a", "na", "no aplica", "no", "ninguno", "ninguna", "-", "x"})
+
+
+def _own_reason_errors(applicability: Applicability, justification: str) -> list[str]:
+    text = justification.strip()
+    if applicability == Applicability.APPLICABLE:
+        return []
+    if len(text) < MIN_REASON or text.rstrip(".").lower() in GENERIC_REASONS:
+        return [
+            "Escribe una razón propia: por qué esta medida no tiene sentido en tu sistema "
+            f"(al menos {MIN_REASON} caracteres; «no aplica» no basta)."
+        ]
+    return []
 
 
 @dataclass
@@ -51,11 +75,16 @@ def _propose_one(
     elif measure.selection != basis:
         if measure.id in confirm:
             result.confirmed.append(measure.id)
-            return measure.model_copy(update={"selection": basis, "proposed": False})
+            return _confirmed(measure, basis)
         result.pending_review.append(measure.id)
         return measure
     result.unchanged += 1
     return measure
+
+
+def _confirmed(measure: Measure, basis: SelectionBasis) -> Measure:
+    """La decisión humana pasa a ser la vigente: se registra su fundamento."""
+    return measure.model_copy(update={"selection": basis, "proposed": False})
 
 
 def _proposed(measure: Measure, basis: SelectionBasis) -> Measure:
@@ -87,3 +116,54 @@ def propose_applicability(
     if updated != document.measures:
         save_measures(store, document.model_copy(update={"measures": updated}))
     return result
+
+
+def decide(
+    store: WorkspaceStore,
+    now: datetime,
+    measure_id: str,
+    applicability: Applicability,
+    justification: str,
+    chosen_reinforcements: Iterable[str] = (),
+    compensation: Compensation | Mapping | None = None,
+    absent_assets: AbsentAssets | Mapping | None = None,
+) -> Measure:
+    """Decisión humana de una medida, registrada con el fundamento vigente.
+
+    Crea `controls/measures.yaml` si falta. Lanza `ScopeNotApproved`, `CategorizationNotCurrent`
+    o `ApplicabilityRejected` con lo que `applicability validate` rechazaría para esa medida;
+    en ese caso no escribe nada. Conserva la valoración, la revisión y las evidencias.
+    """
+    if errors := _own_reason_errors(applicability, justification):
+        raise ApplicabilityRejected(errors)
+    context = load_context(store, now)
+    if not store.exists(MEASURES_KEY):
+        init_measures(store)
+    document = load_checked_measures(store, context)
+    current = next((m for m in document.measures if m.id == measure_id), None)
+    if current is None:
+        raise ApplicabilityRejected([f"{MEASURES_KEY}: {measure_id} no es una medida del catálogo"])
+    fields = {
+        "applicability": applicability,
+        "justification": justification,
+        "chosen_reinforcements": list(chosen_reinforcements),
+        "compensation": _plain(compensation),
+        "absent_assets": _plain(absent_assets),
+        "proposed": False,
+    }
+    raw = {**current.model_dump(mode="json", exclude_none=True), **fields}
+    try:
+        decided = _confirmed(Measure.model_validate(raw), context.basis(measure_id))
+    except ValidationError as exc:
+        raise ApplicabilityRejected(describe_validation(MEASURES_KEY, exc, raw)) from None
+    assets_file, _ = load_assets(store)
+    assets = assets_file.assets if assets_file else []
+    if errors := measure_errors(decided, context, assets):
+        raise ApplicabilityRejected(errors)
+    updated = [decided if m.id == measure_id else m for m in document.measures]
+    save_measures(store, document.model_copy(update={"measures": updated}))
+    return decided
+
+
+def _plain(value: object) -> object:
+    return value.model_dump(mode="json") if isinstance(value, BaseModel) else value
