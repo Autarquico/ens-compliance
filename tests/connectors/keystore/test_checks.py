@@ -107,6 +107,61 @@ def test_cero_claves_es_fail_no_hay_claves_gestionadas(api, run):
     assert outcome.status is FAIL and "no hay claves gestionadas" in outcome.reason
 
 
+def only_kv(api, **entries):
+    api.drop("LIST", "transit/keys/")
+    api.set("LIST", "kv/metadata/", (200, {"data": {"keys": list(entries)}}))
+    for name, entry in entries.items():
+        api.set("GET", f"kv/metadata/{name}", (200, entry))
+
+
+def test_version_destruida_reciente_sin_mas_claves_no_es_pass(api, run):
+    only_kv(api, app=kv_entry(days_ago(1), destroyed=True))
+
+    outcome = run(checks.keys_rotated)
+
+    assert outcome.status is FAIL
+    assert (
+        "no hay claves gestionadas" in outcome.reason
+        and "1 con la versión actual" in outcome.reason
+    )
+
+
+def test_version_borrada_no_cuenta_como_clave_ni_como_rotacion(api, run):
+    only_kv(api, app=kv_entry(days_ago(1), deletion_time=days_ago(0)))
+
+    assert run(checks.keys_rotated).status is FAIL
+
+
+def test_borrado_programado_a_futuro_sigue_siendo_clave_viva(api, run):
+    only_kv(api, app=kv_entry(days_ago(1), deletion_time=days_ago(-30)))
+
+    assert run(checks.keys_rotated).status is PASS
+
+
+def test_deletion_time_ilegible_no_cuenta_como_clave(api, run):
+    only_kv(api, app=kv_entry(days_ago(1), deletion_time="mañana"))
+
+    assert run(checks.keys_rotated).status is FAIL
+
+
+def test_mezcla_de_destruida_y_viva_evalua_solo_la_viva(api, run):
+    only_kv(
+        api,
+        muerta=kv_entry(days_ago(1), destroyed=True),
+        viva=kv_entry(days_ago(10)),
+    )
+
+    outcome = run(checks.keys_rotated)
+
+    assert outcome.status is PASS and outcome.reason.startswith("1 claves")
+
+
+def test_version_destruida_antigua_no_cuenta_como_excedida(api, run):
+    only_kv(api, muerta=kv_entry(days_ago(200), destroyed=True), viva=kv_entry(days_ago(10)))
+
+    assert run(checks.keys_rotated).status is PASS
+
+
 def test_claves_que_exceden_el_umbral_son_fail_y_se_listan_sin_valores(api, run):
     api.set("GET", "kv/metadata/app", (200, kv_entry(days_ago(91))))
 
