@@ -6,13 +6,13 @@ status: active
 priority: P1
 size: XL
 issue: null
-prs: []
+prs: [64]
 related_issues: [63]
 depends_on: [web-ui-base]
 supersedes: []
 related_specs: [web-ui, web-ui-base]
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 ---
 
 # UI web: el flujo completo, de los riesgos a la pre-auditoría
