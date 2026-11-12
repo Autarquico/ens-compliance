@@ -48,7 +48,7 @@ def external_services(services):
 def test_las_imagenes_externas_estan_fijadas_por_digest(services):
     external = external_services(services)
 
-    assert {"caddy", "cloudflared", "backrest", "copias-proxy"} <= set(external)
+    assert {"caddy", "cloudflared", "backrest", "openbao", "copias-proxy"} <= set(external)
     unpinned = [s["image"] for s in external.values() if not DIGEST.search(s["image"])]
     assert unpinned == []
 
@@ -89,15 +89,23 @@ def test_ningun_servicio_monta_el_socket_de_docker(services):
     assert [m for m in mounts if "docker.sock" in m] == []
 
 
-def test_los_unicos_montajes_del_host_son_ficheros_de_config_en_solo_lectura(services):
-    mounts = [str(v) for s in services.values() for v in s.get("volumes", [])]
-    host_mounts = [m for m in mounts if m.startswith((".", "/", "~", "$"))]
+CLAVES_CONFIG_MOUNT = "${ENS_CLAVES_CONFIG:-/dev/null}:/openbao/config/config.hcl:ro"
 
-    assert host_mounts == [
-        "./deploy/Caddyfile:/etc/caddy/Caddyfile:ro",
-        "./deploy/copias-proxy.conf:/etc/squid/proxy.conf:ro",
-        "${ENS_COPIAS_DESTINO_CONF:-/dev/null}:/etc/squid/destino.conf:ro",  # lo fija box.sh
-    ]
+
+def test_los_unicos_montajes_del_host_son_ficheros_de_config_en_solo_lectura(services):
+    host_mounts = {
+        n: [str(v) for v in s.get("volumes", []) if str(v).startswith((".", "/", "~", "$"))]
+        for n, s in services.items()
+    }
+
+    assert {n: m for n, m in host_mounts.items() if m} == {
+        "caddy": ["./deploy/Caddyfile:/etc/caddy/Caddyfile:ro"],
+        "openbao": [CLAVES_CONFIG_MOUNT],
+        "copias-proxy": [
+            "./deploy/copias-proxy.conf:/etc/squid/proxy.conf:ro",
+            "${ENS_COPIAS_DESTINO_CONF:-/dev/null}:/etc/squid/destino.conf:ro",  # lo fija box.sh
+        ],
+    }
 
 
 def test_las_credenciales_solo_llegan_a_quien_las_necesita(services):
@@ -152,7 +160,7 @@ def test_el_latido_del_scheduler_es_de_cada_contenedor_no_del_volumen(services):
 def test_caddy_no_tiene_salida_a_internet(compose, services):
     networks = services["caddy"]["networks"]
 
-    assert set(networks) == {"edge", "agent", "ui-net", "copias-net"}
+    assert set(networks) == {"edge", "agent", "ui-net", "copias-net", "claves-net"}
     assert all(compose["networks"][n].get("internal") is True for n in networks)
 
 
@@ -221,6 +229,8 @@ def test_backrest_ve_los_datos_de_la_caja_solo_en_lectura_y_guarda_sus_secretos_
         "backrest-config:/config",
         "backrest-data:/data",
         "data:/source/caja:ro",
+        "openbao-data:/source/claves:ro",
+        "openbao-audit:/source/claves-auditoria:ro",
     ]
     owners = [n for n, s in services.items() if "backrest-config:/config" in s.get("volumes", [])]
     assert owners == ["backrest"]
@@ -349,6 +359,71 @@ def test_solo_app_cloudflared_y_copias_proxy_tienen_salida_a_internet(compose, s
     assert outbound == {"app", "cloudflared", "copias-proxy"}
 
 
+# --- kit de claves: servicio `openbao` (spec kit-secrets, plan C3, C4, K11) ------------------
+
+
+def test_openbao_solo_arranca_con_el_perfil_claves(services):
+    assert services["openbao"]["profiles"] == ["claves"]
+
+
+def test_openbao_usa_la_imagen_distroless_fijada_por_digest_real(services):
+    image = services["openbao"]["image"]
+
+    assert image.startswith("ghcr.io/openbao/openbao-distroless:2.7.2@sha256:")
+    digest = image.rpartition(":")[2]
+    assert DIGEST.search("@sha256:" + digest) and len(set(digest)) > 4, "digest de relleno"
+
+
+def test_openbao_corre_endurecido_con_uid_explicito_y_sin_puertos(services):
+    openbao = services["openbao"]
+
+    assert openbao["user"] == "10001:10001"
+    assert openbao["read_only"] is True
+    assert openbao["tmpfs"] == ["/tmp"]
+    assert openbao["cap_drop"] == ["ALL"] and "cap_add" not in openbao
+    assert "no-new-privileges:true" in openbao["security_opt"]
+    assert "ports" not in openbao and "privileged" not in openbao
+    assert openbao["restart"] == "unless-stopped"
+    assert openbao["command"] == ["server", "-config=/openbao/config/config.hcl"]
+
+
+def test_openbao_no_tiene_healthcheck_porque_sellado_es_un_estado_normal(services):
+    assert "healthcheck" not in services["openbao"]
+
+
+def test_openbao_no_recibe_ficheros_de_entorno(services):
+    assert "env_file" not in services["openbao"]
+
+
+def test_openbao_solo_esta_en_redes_internas(compose, services):
+    networks = services["openbao"]["networks"]
+
+    assert networks == ["claves-net", "claves-app"]
+    assert all(compose["networks"][n].get("internal") is True for n in networks)
+    assert {n for n, s in services.items() if "claves-net" in s["networks"]} == {"caddy", "openbao"}
+    assert {n for n, s in services.items() if "claves-app" in s["networks"]} == {"app", "openbao"}
+
+
+def test_openbao_monta_su_hcl_y_sus_dos_volumenes(compose, services):
+    assert services["openbao"]["volumes"] == [
+        CLAVES_CONFIG_MOUNT,
+        "openbao-data:/openbao/data",
+        "openbao-audit:/openbao/audit",
+    ]
+    assert {"openbao-data", "openbao-audit"} <= set(compose["volumes"])
+
+
+@pytest.mark.parametrize("volume", ["openbao-data", "openbao-audit"])
+def test_nadie_monta_los_volumenes_de_openbao_salvo_backrest_en_solo_lectura(services, volume):
+    users = {
+        n: [str(v) for v in s.get("volumes", []) if str(v).startswith(f"{volume}:")]
+        for n, s in services.items()
+    }
+
+    assert {n: m for n, m in users.items() if m}.keys() == {"openbao", "backrest"}
+    assert all(m.endswith(":ro") for m in users["backrest"])
+
+
 AGENT_PATHS = [
     "/agent/enroll",
     "/agent/config",
@@ -370,7 +445,7 @@ def test_caddy_enruta_la_ui_por_nombre_de_host(caddyfile):
     ui = block(caddyfile, "handle @ui")
     assert "reverse_proxy ui:8000" in ui
     assert re.search(r"request_body \{\s*max_size 1MB", ui)
-    assert caddyfile.count("reverse_proxy") == 4
+    assert caddyfile.count("reverse_proxy") == 5
 
 
 def test_el_limite_de_la_subida_en_caddy_cubre_el_de_la_app(caddyfile):
@@ -459,6 +534,18 @@ def test_caddy_enruta_backrest_por_nombre_de_host_y_le_deja_su_authorization(cad
         "Backrest autentica con Authorization (v1.14.1)"
     )
     assert re.search(r"request_body \{\s*max_size 1MB", copias)
+
+
+def test_caddy_enruta_openbao_por_nombre_de_host_sin_cookies_ni_access(caddyfile):
+    # La UI de OpenBao v2.7.2 se autentica con X-Vault-Token (ui/app/services/auth.js:177, K3),
+    # no con cookies: se quitan las de Access igual que en @copias.
+    assert re.search(r"@claves host \{\$ENS_CLAVES_HOST:claves\.invalid\}", caddyfile)
+    claves = block(caddyfile, "handle @claves")
+
+    assert "reverse_proxy openbao:8200" in claves
+    assert "header_up -Cookie" in claves and "header_up -Cf-Access-*" in claves
+    assert "header_up -X-Forwarded-*" in claves
+    assert re.search(r"request_body \{\s*max_size 1MB", claves)
 
 
 def test_caddy_no_reenvia_cookies_ni_cabeceras_de_access(caddyfile):

@@ -320,3 +320,23 @@ según lo que muestre:
      registro para revisarlo con la persona responsable.
   3. Prueba de restauración vencida: repite la sección 3 y regístrala como
      prueba de restauración (revisión humana).
+
+## 10. Incluir el almacén de claves
+
+Si activas el [kit de claves](kit-claves.md), sus volúmenes pueden entrar en
+el mismo plan de copias.
+
+1. En el asistente `/herramientas/copias`, regenera el paquete marcando los
+   volúmenes `claves` y `claves-auditoria` (entran en `/source/claves` y
+   `/source/claves-auditoria`, en solo lectura).
+2. Actívalo sobre la configuración existente:
+
+   ```bash
+   deploy/box.sh kit enable copias --replace-config /ruta/al/paquete.tar.gz
+   ```
+
+   Es lo de la sección 2: sustituye `config.json` y el usuario `admin` de
+   Backrest, y `box.sh` muestra una contraseña nueva una sola vez.
+3. La copia del almacén sirve solo con M partes de desbloqueo: sin ellas no abre
+   nada. Guarda las partes aparte de la copia. La restauración está en
+   [kit-claves](kit-claves.md) (prueba manual, no verificada).

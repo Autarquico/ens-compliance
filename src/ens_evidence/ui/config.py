@@ -12,6 +12,7 @@ AUD_ENV = "ENS_UI_ACCESS_AUD"
 TEAM_DOMAIN_ENV = "ENS_UI_ACCESS_TEAM_DOMAIN"
 JWKS_FILE_ENV = "ENS_UI_ACCESS_JWKS_FILE"
 COPIAS_HOST_ENV = "ENS_COPIAS_HOST"
+CLAVES_HOST_ENV = "ENS_CLAVES_HOST"
 
 _HOST = re.compile(r"^[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+$")
 
@@ -27,6 +28,7 @@ class UiConfig:
     team_domain: str
     jwks_file: Path
     copias_host: str | None = None
+    claves_host: str | None = None
 
     @property
     def issuer(self) -> str:
@@ -41,6 +43,7 @@ def load_ui_config(env: Mapping[str, str] | None = None) -> UiConfig:
         team_domain=_team_domain(_required(env, TEAM_DOMAIN_ENV)),
         jwks_file=Path(_required(env, JWKS_FILE_ENV)).expanduser(),
         copias_host=_optional_host(env, COPIAS_HOST_ENV),
+        claves_host=_optional_host(env, CLAVES_HOST_ENV),
     )
 
 

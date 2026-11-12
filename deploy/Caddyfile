@@ -4,9 +4,13 @@
 #     propio usuario. Backrest (v1.14.1, internal/auth/middleware.go) autentica con Authorization
 #     (Basic o Bearer JWT que guarda el navegador), nunca con cookies: Authorization pasa y la cookie
 #     de Access no.
+#   - ENS_CLAVES_HOST: la interfaz de OpenBao (openbao:8200), también detrás de Access; además exige su
+#     propio token. La UI de OpenBao se autentica con la cabecera X-Vault-Token (guardada en el
+#     navegador), no con cookies: la cookie de Access no pasa. Las partes de desbloqueo no se
+#     teclean aquí (Cloudflare termina TLS): solo por terminal.
 #   - ENS_AGENT_HOST: cinco POST del protocolo TLS de osquery hacia el servidor de agentes.
 # Un host desconocido o vacío, y todo lo demás, responde 403 y queda en el log.
-# Escucha en :8080 dentro de las redes internas `edge`, `agent`, `ui-net` y `copias-net`; ningún puerto se publica en el host.
+# Escucha en :8080 dentro de las redes internas `edge`, `agent`, `ui-net`, `copias-net` y `claves-net`; ningún puerto se publica en el host.
 {
 	auto_https off
 	admin localhost:2019
@@ -32,6 +36,7 @@
 		path /healthz /healthz/*
 	}
 	@copias host {$ENS_COPIAS_HOST:copias.invalid}
+	@claves host {$ENS_CLAVES_HOST:claves.invalid}
 	# La subida de evidencias admite 5 MiB de fichero más el envoltorio multipart (forms.py).
 	@ui_upload {
 		host {$ENS_UI_HOST:ui.invalid}
@@ -103,6 +108,22 @@
 			header_up -X-Forwarded-*
 			# Su API de eventos es un stream largo.
 			flush_interval -1
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle @claves {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy openbao:8200 {
+			# OpenBao usa X-Vault-Token, no cookies ni la identidad de Access.
+			header_up -Cookie
+			header_up -Cf-Access-*
+			header_up -X-Forwarded-*
 			transport http {
 				dial_timeout 3s
 				response_header_timeout 30s

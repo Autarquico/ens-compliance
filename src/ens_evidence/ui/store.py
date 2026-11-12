@@ -11,6 +11,7 @@ WRITABLE_PREFIXES = (
     "org",
     "incidents",
     "evidence/assessments",
+    "evidence/key-custodians",
     "evidence/raw",
     "evidence/manifests",
     "evidence/preaudits/requests",

@@ -21,6 +21,8 @@ from ens_evidence.connectors.github import checks as github
 from ens_evidence.connectors.github.config import GitHubConfig
 from ens_evidence.connectors.google_workspace import checks as workspace
 from ens_evidence.connectors.google_workspace.config import GoogleWorkspaceConfig
+from ens_evidence.connectors.keystore import checks as keystore
+from ens_evidence.connectors.keystore.config import KeystoreConfig
 from ens_evidence.connectors.restic import checks as restic
 from ens_evidence.connectors.restic.config import ResticConfig
 from ens_evidence.endpoint.config import CONFIG_NAME as ENDPOINT
@@ -36,6 +38,7 @@ CONFIG_MODELS: Mapping[str, type[BaseModel]] = MappingProxyType(
         "google-workspace": GoogleWorkspaceConfig,
         "restic": ResticConfig,
         "backups": BackupsConfig,
+        "keystore": KeystoreConfig,
         ENDPOINT: EndpointConfig,
     }
 )
@@ -61,6 +64,12 @@ CHECK_FUNCTIONS: Mapping[str, CheckFunction] = MappingProxyType(
         backups.INTEGRITY: backups.backup_004_integrity,
         backups.RESTORE_TEST: backups.backup_005_restore_test,
         backups.OFFSITE: backups.backup_006_offsite,
+        keystore.UNSEALED: keystore.unsealed,
+        keystore.AUDIT_ENABLED: keystore.audit_enabled,
+        keystore.KEYS_ROTATED: keystore.keys_rotated,
+        keystore.NO_ROOT_TOKEN: keystore.no_root_token,
+        keystore.APP_TOKEN_SCOPED: keystore.app_token_scoped,
+        keystore.CUSTODIANS_REGISTERED: keystore.custodians_registered,
     }
 )
 

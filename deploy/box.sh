@@ -2,13 +2,16 @@
 # Opera la caja en Docker Compose (ADR 0016): install, update, rollback, status.
 #
 #   deploy/box.sh install <vX.Y.Z>
-#   deploy/box.sh update [--no-backup] <vX.Y.Z>
-#   deploy/box.sh rollback
+#   deploy/box.sh update [--no-backup] [--seal-ok] <vX.Y.Z>
+#   deploy/box.sh rollback [--seal-ok]
 #   deploy/box.sh restart [app|caddy|cloudflared|agent|ui]
 #   deploy/box.sh status
 #   deploy/box.sh kit enable copias [--replace-config] <paquete.tar.gz>
 #   deploy/box.sh kit disable copias
 #   deploy/box.sh kit copias reset-password
+#   deploy/box.sh kit enable claves <paquete.tar.gz>
+#   deploy/box.sh kit claves init | unseal
+#   deploy/box.sh kit disable claves
 #
 # Lo ejecuta una persona con Docker en la VM, desde un clon del repositorio con la etiqueta
 # desplegada (git checkout <tag>). La imagen, compose.yaml y el Caddyfile salen de `git archive`
@@ -32,10 +35,16 @@ UI_ENV_FILE="$ROOT/deploy/ui.env"
 UI_HOST=
 AGENT_HOST=
 COPIAS_HOST=
+CLAVES_HOST=
 COPIAS_DIR="$ROOT/deploy/kit/copias"
 COPIAS_OVERRIDE="$COPIAS_DIR/compose.yaml"
+CLAVES_DIR="$ROOT/deploy/kit/claves"
+CLAVES_CONFIG="$CLAVES_DIR/openbao.hcl"
+CLAVES_MANIFEST="$CLAVES_DIR/MANIFEST"
 COPIAS_DESTINO="$COPIAS_DIR/destino.conf"
 BACKREST_UID=10001
+OPENBAO_UID=10001
+INIT_CONTAINER=
 STATE_FILE=/data/state/box-deploy.json
 APP_UID=10001
 HEALTH_TIMEOUT=${ENS_BOX_HEALTH_TIMEOUT:-180}
@@ -44,8 +53,8 @@ LOCK_DIR=
 REL=
 COMMIT=
 RELEASE_FILES="compose.yaml deploy/Caddyfile deploy/box.sh"
-# Solo las releases que lo traen (las anteriores al proxy de copias no lo tienen y deben seguir desplegándose).
-OPTIONAL_RELEASE_FILES="deploy/copias-proxy.conf"
+# Solo las releases que los traen: un commit anterior al kit de claves no los tiene y sigue siendo desplegable.
+OPTIONAL_RELEASE_FILES="deploy/openbao/config.hcl deploy/openbao/policies/ens-app-metadata.hcl deploy/openbao/policies/claves-admin.hcl deploy/copias-proxy.conf"
 
 info() { printf '%s\n' "$*"; }
 warn() { printf 'AVISO: %s\n' "$*" >&2; }
@@ -57,6 +66,8 @@ die() {
 cleanup() {
   [ -z "$WORK_DIR" ] || rm -rf "$WORK_DIR"
   WORK_DIR=
+  [ -z "$INIT_CONTAINER" ] || docker rm -f "$INIT_CONTAINER" >/dev/null 2>&1 || true
+  INIT_CONTAINER=
 }
 
 # Directorio temporal propio (dentro de $1 si se indica, para poder moverlo sin copiar).
@@ -97,7 +108,7 @@ trap 'cleanup; release_lock' EXIT
 trap 'exit 130' INT TERM
 
 usage() {
-  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] <vX.Y.Z> | rollback | restart [app|caddy|cloudflared|agent|ui|backrest] | status | kit enable copias [--replace-config] <paquete> | kit disable copias | kit copias reset-password"
+  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] [--seal-ok] <vX.Y.Z> | rollback [--seal-ok] | restart [app|caddy|cloudflared|agent|ui|backrest] | status | kit enable copias [--replace-config] <paquete> | kit disable copias | kit copias reset-password | kit enable claves <paquete> | kit disable claves | kit claves init | kit claves unseal"
 }
 
 # --- comprobaciones ------------------------------------------------------------------------
@@ -156,6 +167,8 @@ load_hostnames() {
     die "ENS_AGENT_HOST de $AGENT_ENV_FILE no es un nombre de host (sin esquema ni puerto)."
   COPIAS_HOST=$(hostname_from "$UI_ENV_FILE" ENS_COPIAS_HOST) ||
     die "ENS_COPIAS_HOST de $UI_ENV_FILE no es un nombre de host (sin esquema ni puerto)."
+  CLAVES_HOST=$(hostname_from "$UI_ENV_FILE" ENS_CLAVES_HOST) ||
+    die "ENS_CLAVES_HOST de $UI_ENV_FILE no es un nombre de host (sin esquema ni puerto)."
 }
 
 ensure_env_file() {
@@ -191,6 +204,20 @@ check_copias_override() {
     die "Falta $COPIAS_DESTINO (el destino S3 que admite copias-proxy). Repite kit enable con el paquete."
 }
 
+# El kit de claves se activa con deploy/kit/claves/MANIFEST (lo instala `kit enable`, lo renombra
+# `kit disable`). Igual que copias, una release que no define `openbao` lo ignora.
+claves_enabled() {
+  [ -e "$CLAVES_MANIFEST" ] && grep -q '^  openbao:' "$REL/compose.yaml"
+}
+
+# El HCL es del host, no de la release: solo vale si sigue siendo el que registró `kit enable`.
+check_claves_config() {
+  [ ! -L "$CLAVES_CONFIG" ] || die "$CLAVES_CONFIG es un enlace simbólico; debe ser un fichero normal."
+  want=$(sed -n 's/^\([0-9a-f]\{64\}\)  claves\/openbao[.]hcl$/\1/p' "$CLAVES_MANIFEST" 2>/dev/null || true)
+  [ -n "$want" ] && [ -f "$CLAVES_CONFIG" ] && [ "$(sha256_of "$CLAVES_CONFIG")" = "$want" ] ||
+    die "$CLAVES_CONFIG no coincide con el MANIFEST del paquete instalado; no se usa. Repite kit enable claves con el paquete."
+}
+
 # --- docker --------------------------------------------------------------------------------
 
 # ENS_VERSION es obligatoria en compose.yaml; compose y Caddyfile son los de la release en uso.
@@ -205,10 +232,17 @@ dc() {
     profiles="${profiles:+$profiles,}copias"
     set -- -f "$COPIAS_OVERRIDE" "$@"
   fi
+  claves_config=
+  if claves_enabled; then
+    check_claves_config
+    profiles="${profiles:+$profiles,}claves"
+    claves_config=$CLAVES_CONFIG
+  fi
   # Vacíos, compose.yaml pone `.invalid` y Caddy contesta 403 a todo en ese servicio.
   COMPOSE_PROFILES=$profiles ENS_ENV_FILE=$ENV_FILE ENS_TUNNEL_ENV_FILE=$TUNNEL_ENV_FILE \
     ENS_AGENT_ENV_FILE=$AGENT_ENV_FILE ENS_UI_ENV_FILE=$UI_ENV_FILE \
     ENS_UI_HOST=$UI_HOST ENS_AGENT_HOST=$AGENT_HOST ENS_COPIAS_HOST=$COPIAS_HOST \
+    ENS_CLAVES_HOST=$CLAVES_HOST ENS_CLAVES_CONFIG=$claves_config \
     ENS_COPIAS_DESTINO_CONF=$COPIAS_DESTINO \
     docker compose -p "$PROJECT" -f "$REL/compose.yaml" --project-directory "$REL" "$@"
 }
@@ -369,6 +403,7 @@ stop_orphan_services() {
   agent_enabled || stop_orphan agent
   ui_enabled || stop_orphan ui
   copias_enabled || stop_orphan backrest
+  claves_enabled || stop_orphan openbao
   copias_enabled || stop_orphan copias-proxy
 }
 
@@ -402,6 +437,7 @@ verify_running() {
   ! ui_enabled || wait_healthy ui || return 1
   ! copias_enabled || wait_running copias-proxy || return 1
   ! copias_enabled || wait_running backrest || return 1
+  ! claves_enabled || wait_running openbao || return 1
   wait_healthy caddy || return 1
 }
 
@@ -427,6 +463,10 @@ use_release() {
   git -C "$ROOT" rev-parse --verify --quiet "$commit^{commit}" >/dev/null ||
     die "El commit registrado $commit no existe en $ROOT (¿git fetch --tags?)."
   releases="$(git_dir)/ens-box/releases"
+  files=$RELEASE_FILES
+  for file in $OPTIONAL_RELEASE_FILES; do
+    ! git -C "$ROOT" cat-file -e "$commit:$file" 2>/dev/null || files="$files $file"
+  done
   REL="$releases/$commit"
   files=$RELEASE_FILES
   for file in $OPTIONAL_RELEASE_FILES; do
@@ -540,10 +580,15 @@ cmd_install() {
 
 cmd_update() {
   skip_backup=0
-  if [ "${1:-}" = "--no-backup" ]; then
-    skip_backup=1
+  seal_ok=0
+  while [ $# -gt 1 ]; do
+    case $1 in
+      --no-backup) skip_backup=1 ;;
+      --seal-ok) seal_ok=1 ;;
+      *) usage ;;
+    esac
     shift
-  fi
+  done
   [ $# -eq 1 ] || usage
   tag=$1
   valid_tag "$tag" || die "Etiqueta no válida: $tag (esperado vX.Y.Z o vX.Y.Z-rcN)."
@@ -560,6 +605,7 @@ cmd_update() {
   new_commit=$COMMIT
   use_release "$new_commit"
   require_script_from_release "$tag"
+  ! openbao_would_recreate "$tag" || confirm_seal_loss "$seal_ok"
 
   # La copia previa y la lectura de ajustes se hacen con la versión que corre ahora.
   current_commit=$(state_get current.commit)
@@ -607,6 +653,10 @@ cmd_update() {
 }
 
 cmd_rollback() {
+  seal_ok=0
+  case ${1:-} in
+    --seal-ok) seal_ok=1; shift ;;
+  esac
   [ $# -eq 0 ] || usage
   require_tools
   acquire_lock
@@ -625,6 +675,8 @@ cmd_rollback() {
     die "La imagen local $(image_ref "$target") no es la registrada; no se revierte sola."
   use_release "$commit" "$compose_sha" "$caddyfile_sha"
   export ENS_VERSION="$target"
+  # K12: si la release de destino cambia la configuración de OpenBao, `up` lo recrearía y sellaría.
+  ! openbao_would_recreate "$target" || confirm_seal_loss "$seal_ok"
   info "Volviendo a $target (los datos no se tocan)..."
   dc up -d --no-build
   stop_orphan_services
@@ -660,6 +712,7 @@ recreate_service() {
   case $service in
     app) verify_running_app ;;
     backrest) wait_running backrest ;;
+    openbao) wait_running openbao ;;
     *) wait_healthy "$service" ;;
   esac || die "$service no está sano tras recrearlo; revisa: docker compose -p $PROJECT logs $service"
   info "Recreado: $service ($current)"
@@ -684,6 +737,29 @@ cmd_restart() {
   require_volume
   use_current_release
   recreate_service "$service"
+}
+
+# K12: recrear OpenBao lo sella y no hay desbloqueo automático. Con la release $1 (REL) y el
+# servicio en marcha, ¿cambiaría su configuración de Compose (imagen incluida)?
+openbao_would_recreate() {
+  claves_enabled || return 1
+  export ENS_VERSION="$1"
+  running=$(dc ps -q openbao 2>/dev/null || true)
+  [ -n "$running" ] || return 1
+  have=$(docker inspect --format '{{index .Config.Labels "com.docker.compose.config-hash"}}' "$running")
+  want=$(dc config --hash openbao 2>/dev/null | awk '{ print $2 }')
+  [ -n "$want" ] && [ "$have" = "$want" ] && return 1
+  return 0
+}
+
+# $1 = 1 si se pasó --seal-ok. Sin él hace falta una persona delante: en modo no interactivo se para.
+confirm_seal_loss() {
+  warn "OpenBao se va a recrear y quedará SELLADO: harán falta los custodios con sus partes (kit claves unseal)."
+  [ "$1" = 1 ] && return 0
+  [ -t 0 ] || die "No hay terminal para confirmarlo; usa --seal-ok si los custodios están localizables. No se ha cambiado nada."
+  printf 'Escribe SELLAR para continuar: '
+  read -r answer || answer=
+  [ "$answer" = SELLAR ] || die "Sin confirmación no se recrea OpenBao. No se ha cambiado nada."
 }
 
 # Avisa de los contenedores que no se crearon con el compose.yaml de la release en uso.
@@ -715,6 +791,10 @@ cmd_status() {
   fi
   print_status
   [ -n "$attempt" ] || warn_foreign_compose
+  if claves_enabled; then
+    info ""
+    info "Claves (OpenBao): $(openbao_seal_state || echo 'no responde')"
+  fi
   if [ -z "$attempt" ] && [ -n "$(dc ps -q app 2>/dev/null)" ]; then
     info ""
     dc exec -T app ens-evidence scheduler status || warn "scheduler status falló."
@@ -723,9 +803,10 @@ cmd_status() {
 
 # --- kit de herramientas -------------------------------------------------------------------
 
-# Volumen de Backrest: lo crea con las etiquetas de Compose y lo deja del UID de Backrest. Es el
-# único paso con root, sin más capacidad que CHOWN; la imagen scratch no trae directorios propios.
-prepare_backrest_volume() {
+# Volumen de un kit ($1) para el UID $2: lo crea con las etiquetas de Compose y lo deja de ese UID.
+# Es el único paso con root, sin más capacidad que CHOWN; las imágenes scratch/distroless no
+# traen directorios propios.
+prepare_volume() {
   volume="${PROJECT}_$1"
   docker volume inspect "$volume" >/dev/null 2>&1 ||
     docker volume create --label "com.docker.compose.project=$PROJECT" \
@@ -733,7 +814,7 @@ prepare_backrest_volume() {
   # shellcheck disable=SC2016 # $(stat ...) lo expande el sh del contenedor
   docker run --rm --network none --read-only --cap-drop ALL --cap-add CHOWN \
     --security-opt no-new-privileges:true --user 0:0 -v "$volume:/v" "$(python_image)" \
-    sh -c '[ "$(stat -c %u /v)" = "$1" ] || { chmod 700 /v && chown "$1:$1" /v; }' sh "$BACKREST_UID" ||
+    sh -c '[ "$(stat -c %u /v)" = "$1" ] || { chmod 700 /v && chown "$1:$1" /v; }' sh "$2" ||
     die "No se pudo preparar el volumen $volume."
 }
 
@@ -801,6 +882,8 @@ for volume in doc["services"]["backrest"]["volumes"]:
         sys.exit("compose.yaml del paquete: ruta del host no admitida")
     if target == "/source/caja" or target.startswith("/source/caja/"):
         sys.exit("compose.yaml del paquete: /source/caja es de la caja")
+    if target.startswith("/source/claves"):
+        sys.exit("compose.yaml del paquete: /source/claves* es del kit de claves")
 '
 }
 
@@ -976,8 +1059,8 @@ kit_copias_enable() {
   validate_copias_fragment <"$pkg/backups.yaml"
   validate_copias_env "$pkg/app.env"
   destination=$(copias_destination <"$pkg/config.json") || exit 1
-  prepare_backrest_volume backrest-config
-  prepare_backrest_volume backrest-data
+  prepare_volume backrest-config "$BACKREST_UID"
+  prepare_volume backrest-data "$BACKREST_UID"
   has_config=$(in_backrest_config 'test -e /config/config.json && echo 1 || echo 0')
   [ "$has_config" = 0 ] || [ "$replace" = 1 ] ||
     die "Backrest ya tiene configuración (con su usuario). Para sustituirla por la del paquete usa --replace-config (la anterior queda como config.json.prev en su volumen)."
@@ -1086,21 +1169,343 @@ kit_copias_disable() {
   info "La ruta $COPIAS_HOST sigue en Caddy y responde 503 mientras no haya Backrest."
 }
 
+# --- kit de claves ---------------------------------------------------------------------------
+
+# Contenedor aislado de la red claves-app (la que alcanza a OpenBao), sin logs, con la imagen de la
+# app. $@ son las opciones de `docker run` restantes, la imagen y el comando.
+claves_isolated() {
+  docker run --log-driver none --network "${PROJECT}_claves-app" --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --tmpfs /tmp "$@"
+}
+
+# Estado de sellado sin token (sys/seal-status no lo pide): `initialized=true sealed=false`.
+openbao_seal_state() {
+  docker run --rm --log-driver none --network "${PROJECT}_claves-app" --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --user "$APP_UID:$APP_UID" "$(python_image)" python -I -c '
+import json
+import urllib.request
+
+opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+with opener.open("http://openbao:8200/v1/sys/seal-status", timeout=5) as response:
+    status = json.load(response)
+print("initialized=%s sealed=%s" % (str(status["initialized"]).lower(), str(status["sealed"]).lower()))
+' 2>/dev/null
+}
+
+wait_openbao_api() {
+  info "Esperando a que OpenBao responda..."
+  waited=0
+  while [ "$waited" -lt 60 ]; do
+    openbao_seal_state >/dev/null && return 0
+    sleep 2
+    waited=$((waited + 2))
+  done
+  return 1
+}
+
+# La imagen de la app solo sirve si sigue siendo la registrada (la etiqueta es mutable).
+app_image_checked() {
+  wanted_id=$(state_get current.image_id)
+  [ "$(image_id "$current")" = "$wanted_id" ] ||
+    die "La imagen local $(image_ref "$current") no es la registrada; no se usa."
+  image_ref "$current"
+}
+
+# MANIFEST del paquete (contrato C6): `version: 1` y `<sha256>  claves/<fichero>` de init.json, keystore.yaml y openbao.hcl.
+verify_claves_package() {
+  dir=$1
+  manifest="$dir/MANIFEST"
+  [ "$(sed -n 1p "$manifest")" = "version: 1" ] || die "MANIFEST: versión de formato no admitida."
+  [ "$(sed -n '2,$p' "$manifest" | grep -c .)" -eq 3 ] || die "MANIFEST: debe listar exactamente tres ficheros."
+  for name in init.json keystore.yaml openbao.hcl; do
+    want=$(sed -n "s/^\([0-9a-f]\{64\}\)  claves\/$(printf '%s' "$name" | sed 's/[.]/[.]/g')\$/\1/p" "$manifest")
+    [ "$(printf '%s' "$want" | wc -c)" -eq 64 ] || die "MANIFEST: falta o se repite el sha256 de $name."
+    [ "$(sha256_of "$dir/$name")" = "$want" ] || die "MANIFEST: el sha256 de $name no coincide; no se instala nada."
+  done
+}
+
+extract_claves_package() {
+  package=$1
+  dest=$2
+  names=$(tar -tzf "$package" 2>/dev/null) || die "$package no es un tar.gz válido."
+  printf '%s\n' "$names" | grep -vxE 'claves/?|claves/(MANIFEST|init[.]json|keystore[.]yaml|openbao[.]hcl)' |
+    grep -q . && die "El paquete contiene ficheros que no son del contrato; no se instala."
+  [ -z "$(printf '%s\n' "$names" | grep -v '/$' | sort | uniq -d)" ] || die "El paquete repite ficheros; no se instala."
+  tar -tvzf "$package" | grep -q '^[^-d]' &&
+    die "El paquete contiene enlaces u otros tipos de fichero; no se instala."
+  mkdir "$dest"
+  tar -xzf "$package" -C "$dest"
+  for name in MANIFEST init.json keystore.yaml openbao.hcl; do
+    [ -f "$dest/claves/$name" ] || die "Al paquete le falta claves/$name."
+  done
+}
+
+# init.json: solo key_shares y key_threshold enteros, 1 <= umbral <= partes <= 255 (lo repite keystore_setup).
+validate_claves_init() {
+  in_app python -I -c '
+import json
+import sys
+
+doc = json.load(sys.stdin)
+ok = isinstance(doc, dict) and set(doc) == {"key_shares", "key_threshold"}
+ok = ok and all(type(n) is int for n in doc.values())
+ok = ok and 1 <= doc["key_threshold"] <= doc["key_shares"] <= 255
+if not ok:
+    sys.exit("init.json del paquete: solo key_shares y key_threshold, con 1 <= umbral <= partes <= 255")
+'
+}
+
+# keystore.yaml: configuración del conector, solo las claves admitidas (ninguna es una credencial) y apuntando al OpenBao de la caja.
+validate_claves_fragment() {
+  in_app python -I -c '
+import sys
+
+import yaml
+
+doc = yaml.safe_load(sys.stdin)
+allowed = {"asset_id", "address", "max_key_age_days", "max_token_period_hours"}
+if not isinstance(doc, dict) or not {"asset_id", "address", "max_key_age_days"} <= set(doc) <= allowed:
+    sys.exit("keystore.yaml del paquete: claves no admitidas o faltan asset_id, address y max_key_age_days")
+if doc["address"] != "http://openbao:8200":
+    sys.exit("keystore.yaml del paquete: address debe ser http://openbao:8200")
+'
+}
+
+# Instala connectors/keystore.yaml en el workspace si no existe; uno ya editado no se pisa.
+install_claves_fragment() {
+  in_app python -I -c '
+import os
+import pathlib
+import sys
+
+path = pathlib.Path("/data/workspace/connectors/keystore.yaml")
+new = sys.stdin.read()
+if path.exists():
+    print("conservado" if path.read_text(encoding="utf-8") != new else "igual")
+    sys.exit(0)
+path.parent.mkdir(parents=True, exist_ok=True)
+temporary = path.with_suffix(".yaml.tmp")
+temporary.write_text(new, encoding="utf-8")
+os.replace(temporary, path)
+print("instalado")
+'
+}
+
+kit_claves_enable() {
+  [ $# -eq 1 ] || usage
+  package=$1
+  [ -f "$package" ] && [ ! -L "$package" ] || die "$package no es un fichero normal."
+  [ "$(wc -c <"$package")" -le 1048576 ] || die "$package pesa más de 1 MiB; no parece un paquete de claves."
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  grep -q '^  openbao:' "$REL/compose.yaml" ||
+    die "La release $current no define el perfil claves; actualiza la caja a una versión que lo incluya."
+  [ -f "$REL/deploy/openbao/config.hcl" ] || die "La release $current no trae deploy/openbao/config.hcl."
+  [ -n "$CLAVES_HOST" ] ||
+    die "Define ENS_CLAVES_HOST en $UI_ENV_FILE (p. ej. claves.example.org) antes de activar las claves."
+
+  # Todo lo que puede fallar sin tocar nada, antes de instalar.
+  new_work_dir
+  extract_claves_package "$package" "$WORK_DIR/pkg"
+  pkg="$WORK_DIR/pkg/claves"
+  verify_claves_package "$pkg"
+  # La configuración de OpenBao (auditoría, listener) la fija la release, no el paquete.
+  cmp -s "$pkg/openbao.hcl" "$REL/deploy/openbao/config.hcl" ||
+    die "openbao.hcl del paquete no coincide con el de la release $current; genera el paquete con esa versión."
+  validate_claves_init <"$pkg/init.json"
+  validate_claves_fragment <"$pkg/keystore.yaml"
+
+  # Cambiar el HCL de un OpenBao en marcha lo recrea y lo sella.
+  recreate=
+  if [ -e "$CLAVES_CONFIG" ] && ! cmp -s "$pkg/openbao.hcl" "$CLAVES_CONFIG" && [ -n "$(dc ps -q openbao 2>/dev/null)" ]; then
+    confirm_seal_loss 0
+    recreate=--force-recreate
+  fi
+  prepare_volume openbao-data "$OPENBAO_UID"
+  prepare_volume openbao-audit "$OPENBAO_UID"
+
+  # El HCL y init.json no llevan secretos y los lee el UID 10001 del contenedor: modo 644 en un directorio 700.
+  mkdir -p "$CLAVES_DIR"
+  chmod 700 "$ROOT/deploy/kit" "$CLAVES_DIR"
+  (umask 022 && cp "$pkg/openbao.hcl" "$CLAVES_DIR/openbao.hcl.new" && cp "$pkg/init.json" "$CLAVES_DIR/init.json.new" &&
+    cp "$pkg/MANIFEST" "$CLAVES_DIR/MANIFEST.new")
+  mv "$CLAVES_DIR/openbao.hcl.new" "$CLAVES_CONFIG"
+  mv "$CLAVES_DIR/init.json.new" "$CLAVES_DIR/init.json"
+  mv "$CLAVES_DIR/MANIFEST.new" "$CLAVES_MANIFEST"
+  installed=$(install_claves_fragment <"$pkg/keystore.yaml") ||
+    die "No se pudo escribir connectors/keystore.yaml en el workspace."
+  cleanup
+  [ "$installed" != conservado ] || warn "connectors/keystore.yaml ya existía y difiere del paquete: se conserva el actual."
+
+  info "Arrancando OpenBao y publicando $CLAVES_HOST..."
+  # shellcheck disable=SC2086 # $recreate es vacío o una sola opción
+  dc up -d --no-build --no-deps $recreate openbao caddy
+  wait_running openbao || die "OpenBao no arranca; revisa: docker compose -p $PROJECT logs openbao"
+  wait_openbao_api || die "OpenBao no responde en claves-app; revisa: docker compose -p $PROJECT logs openbao"
+  wait_healthy caddy || die "caddy no está sano; revisa: docker compose -p $PROJECT logs caddy"
+  state_now=$(openbao_seal_state) || die "No se pudo leer el estado de sellado de OpenBao."
+  info "Claves activadas (OpenBao: $state_now)."
+  case $state_now in
+    *initialized=false*) info "Siguiente paso: deploy/box.sh kit claves init (docs/runbooks/kit-claves.md)." ;;
+    *sealed=true*) info "Está sellado: deploy/box.sh kit claves unseal (hacen falta los custodios)." ;;
+    *) info "Ya inicializado y desbloqueado; no hay nada más que hacer." ;;
+  esac
+}
+
+# Un solo proceso interactivo dentro de un contenedor de un solo uso con la imagen de la app. Docker
+# con -t mezcla stdout y pantalla, así que el JSON final no se puede separar de lo que ve el
+# operador. Por eso el contenedor se deja vivo (`sleep`), `exec -it` ejecuta keystore_setup con el
+# stdout redirigido a un tmpfs (/out, solo RAM) y, al terminar, se lee el JSON con un `exec` sin
+# TTY y se destruye el contenedor. Ni las partes ni el root token salen del contenedor; el token
+# de la app y la contraseña viajan por la salida de `docker exec`, nunca por argv ni a disco.
+kit_claves_init() {
+  [ $# -eq 0 ] || usage
+  [ -t 0 ] && [ -t 1 ] || die "init necesita un terminal interactivo (las partes se piden y se muestran en él)."
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  claves_enabled || die "Las claves no están activadas; usa kit enable claves <paquete>."
+  [ -f "$CLAVES_DIR/init.json" ] || die "Falta $CLAVES_DIR/init.json; repite kit enable claves con el paquete."
+  state_now=$(openbao_seal_state) || die "OpenBao no responde; ¿está en marcha? (deploy/box.sh status)"
+  case $state_now in
+    *initialized=false*) ;;
+    *) die "OpenBao ya está inicializado ($state_now); init no se repite. Si se cortó a medias, sigue la recuperación manual de docs/runbooks/kit-claves.md." ;;
+  esac
+  image=$(app_image_checked)
+
+  info "Se abre una sesión interactiva con OpenBao. Haz esto en una terminal sin grabación"
+  info "(sin script, tmux/screen con log ni grabador de pantalla) y cierra la ventana al terminar."
+  INIT_CONTAINER="${PROJECT}-claves-init"
+  docker rm -f "$INIT_CONTAINER" >/dev/null 2>&1 || true
+  claves_isolated -d --name "$INIT_CONTAINER" --tmpfs /out:uid=10001,mode=700 \
+    -v "$CLAVES_DIR/init.json:/init.json:ro" "$image" sleep 3600 >/dev/null ||
+    die "No se pudo crear el contenedor de inicialización."
+  failed=0
+  # shellcheck disable=SC2016 # lo expande el sh del contenedor
+  docker exec -it "$INIT_CONTAINER" sh -c 'umask 077; exec python -I -m ens_evidence.kit.keystore_setup init --init-file /init.json >/out/result.json' ||
+    failed=1
+  if [ "$failed" = 1 ]; then
+    cleanup
+    die "keystore_setup terminó con error (el motivo se mostró en pantalla). Revisa docs/runbooks/kit-claves.md: si OpenBao llegó a inicializarse, la recuperación es manual."
+  fi
+  admin_password=$(claves_result password) || admin_password=
+  token_line=$(claves_result token) || token_line=
+  cleanup
+  if [ -z "$admin_password" ] || [ -z "$token_line" ]; then
+    die "keystore_setup no entregó el JSON esperado (falta o no es válido). OpenBao puede estar inicializado sin token de app: sigue docs/runbooks/kit-claves.md (paso manual, sin automatismo)."
+  fi
+
+  info ""
+  info "Contraseña del administrador de OpenBao (usuario admin, método userpass):"
+  info "  Contraseña: $admin_password"
+  info "  Se muestra solo ahora y no se guarda en ningún sitio: pásala a tu gestor de contraseñas."
+  ensure_env_file
+  # merge_copias_env no distingue de qué kit son las variables; lee de stdin, sin fichero temporal.
+  printf '%s\n' "$token_line" | merge_copias_env /dev/stdin ||
+    die "No se pudo escribir ENS_KEYSTORE_TOKEN en $ENV_FILE. Crea un token nuevo con el rol ens-app como administrador (docs/runbooks/kit-claves.md) y pégalo ahí."
+  token_line=
+  info "ENS_KEYSTORE_TOKEN guardado en $ENV_FILE (modo 600); no se muestra."
+  recreate_service app
+}
+
+# $1 = token | password. Lee /out/result.json del contenedor de init y valida su forma.
+claves_result() {
+  docker exec "$INIT_CONTAINER" python -I -c '
+import json
+import re
+import sys
+
+with open("/out/result.json", encoding="utf-8") as handle:
+    result = json.load(handle)
+token, password = result["app_token"], result["admin_password"]
+if not (re.fullmatch(r"[A-Za-z0-9._-]{8,300}", token) and re.fullmatch(r"[A-Za-z0-9_-]{16,200}", password)):
+    sys.exit(1)
+sys.stdout.write("ENS_KEYSTORE_TOKEN=" + token if sys.argv[1] == "token" else password)
+' "$1"
+}
+
+kit_claves_unseal() {
+  [ $# -eq 0 ] || usage
+  [ -t 0 ] && [ -t 1 ] || die "unseal necesita un terminal interactivo (las partes se piden ocultas en él)."
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  claves_enabled || die "Las claves no están activadas; usa kit enable claves <paquete>."
+  image=$(app_image_checked)
+  claves_isolated --rm -it "$image" python -I -m ens_evidence.kit.keystore_setup unseal ||
+    die "unseal no terminó bien (el motivo se mostró en pantalla)."
+  info "Estado: $(openbao_seal_state || echo 'no responde')"
+}
+
+# Para y quita el contenedor. No borra volúmenes (claves, auditoría) ni deploy/kit/claves: el
+# MANIFEST se renombra para que `dc` deje de activar el perfil.
+kit_claves_disable() {
+  [ $# -eq 0 ] || usage
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  [ -e "$CLAVES_MANIFEST" ] || die "Las claves no están activadas (falta $CLAVES_MANIFEST)."
+  for container in $(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" \
+    --filter "label=com.docker.compose.service=openbao"); do
+    docker stop "$container" >/dev/null
+    docker rm "$container" >/dev/null
+  done
+  mv "$CLAVES_MANIFEST" "$CLAVES_MANIFEST.disabled"
+  info "OpenBao parado y desactivado. No se ha borrado nada:"
+  info "  - volúmenes ${PROJECT}_openbao-data y ${PROJECT}_openbao-audit (las claves y la auditoría),"
+  info "  - $CLAVES_DIR (el HCL queda; el MANIFEST pasa a MANIFEST.disabled),"
+  info "  - ENS_KEYSTORE_TOKEN de deploy/.env ni connectors/keystore.yaml del workspace."
+  info "Al reactivar con kit enable claves, OpenBao arranca sellado: harán falta los custodios."
+  info "La ruta $CLAVES_HOST sigue en Caddy y responde 503 mientras no haya OpenBao."
+}
+
 cmd_kit() {
   [ $# -ge 2 ] || usage
-  if [ "$1" = copias ] && [ "$2" = reset-password ]; then
-    shift 2
-    kit_copias_reset_password "$@"
-    return
-  fi
+  case "$1 $2" in
+    "copias reset-password")
+      shift 2
+      kit_copias_reset_password "$@"
+      return
+      ;;
+    "claves init")
+      shift 2
+      kit_claves_init "$@"
+      return
+      ;;
+    "claves unseal")
+      shift 2
+      kit_claves_unseal "$@"
+      return
+      ;;
+  esac
   action=$1
   tool=$2
   shift 2
-  [ "$tool" = copias ] || die "Herramienta del kit desconocida: $tool (solo copias)."
-  case $action in
-    enable) kit_copias_enable "$@" ;;
-    disable) kit_copias_disable "$@" ;;
-    *) usage ;;
+  case $tool in
+    copias)
+      case $action in
+        enable) kit_copias_enable "$@" ;;
+        disable) kit_copias_disable "$@" ;;
+        *) usage ;;
+      esac
+      ;;
+    claves)
+      case $action in
+        enable) kit_claves_enable "$@" ;;
+        disable) kit_claves_disable "$@" ;;
+        *) usage ;;
+      esac
+      ;;
+    *) die "Herramienta del kit desconocida: $tool (copias o claves)." ;;
   esac
 }
 

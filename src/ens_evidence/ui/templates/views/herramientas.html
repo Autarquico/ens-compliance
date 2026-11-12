@@ -22,5 +22,23 @@
     </div>
     {% if not open_url %}<p class="muted">Aún no está desplegado en esta caja. El asistente prepara el paquete de instalación.</p>{% endif %}
   </section>
+  <section class="card" aria-labelledby="h-claves">
+    <h2 id="h-claves">Claves y secretos</h2>
+    <p>Guarda cifradas las claves y los secretos de la organización en un almacén propio (OpenBao), con auditoría de accesos y desbloqueo repartido entre varios custodios.</p>
+    <p><span class="badge tone-{{ claves_state.tone }}">{{ m.icon(m.TONE_ICON[claves_state.tone]) }}<span>{{ claves_state.label }}</span></span></p>
+    <p class="muted">Última comprobación: <span class="mono">{{ claves_state.checked_at }}</span>. El estado sale de la última evidencia guardada, no de una consulta en vivo.</p>
+    {% set claves_hints = {
+      "sealed": "Sellado: hacen falta M de N custodios para desbloquearlo. Mientras siga sellado nadie puede leer los secretos.",
+      "down": "La app no ha podido leer el almacén. Comprueba que el servicio está en marcha y que el token de la app sigue vigente.",
+      "problems": "Alguna comprobación ha fallado: auditoría, rotación de claves, token raíz, permisos del token o registro de custodios."} %}
+    {% if claves_state.key in claves_hints %}<p>{{ claves_hints[claves_state.key] }} <a href="/ayuda/kit-claves">Qué hacer: runbook de las claves</a>.</p>{% endif %}
+    <p>Apoya las medidas: {% for measure in claves_measures %}<a class="mono" href="/matriz/{{ measure }}">{{ measure }}</a>{% if not loop.last %}, {% endif %}{% endfor %}. Las partes de desbloqueo nunca se teclean en la web.</p>
+    <div class="actions">
+      {% if claves_open_url %}<a class="btn btn-primary" href="{{ claves_open_url }}">Abrir</a>
+      <a class="btn" href="/herramientas/claves">Preparar otro paquete</a>
+      {% else %}<a class="btn btn-primary" href="/herramientas/claves">Preparar las claves</a>{% endif %}
+    </div>
+    {% if not claves_open_url %}<p class="muted">Aún no está desplegado en esta caja. El asistente prepara el paquete de instalación.</p>{% endif %}
+  </section>
 </div>
 {% endblock %}

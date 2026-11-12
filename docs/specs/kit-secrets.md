@@ -12,7 +12,7 @@ depends_on: [kit-backups]
 supersedes: []
 related_specs: [toolkit-server]
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-10
 ---
 
 # Kit: almacén de claves y secretos con OpenBao

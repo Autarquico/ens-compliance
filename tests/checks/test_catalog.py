@@ -30,6 +30,7 @@ def _constants(module: str, pattern: str) -> set[str]:
             r"workspace\.[a-z0-9_]+",
         ),
         ("ens_evidence.connectors.backups.checks", "backups", r"backups\.[a-z0-9_]+"),
+        ("ens_evidence.connectors.keystore.checks", "keystore", r"keystore\.[a-z0-9_]+"),
         ("ens_evidence.connectors.restic.checks", "restic", r"restic\.[a-z0-9_]+"),
         ("ens_evidence.endpoint.checks", "endpoint", r"HOST-\d{3}"),
     ],
