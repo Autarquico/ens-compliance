@@ -78,7 +78,8 @@ class ResultBound:
     """Cota de snapshots programados por consulta y equipo.
 
     `spacing` separa snapshots por su hora de generación (deduplica reentregas y tolera el splay);
-    `max_receipts` por `window` de recepción acota a un equipo que inventa horas de generación.
+    `max_receipts` por `window` de recepción acota los atrasados, porque esa hora la pone el equipo.
+    Uno actual siempre cabe: a lo sumo uno más por `spacing`.
     """
 
     spacing: timedelta
@@ -140,7 +141,8 @@ class AgentState:
         bound: ResultBound,
     ) -> bool:
         """`True` si el snapshot es al menos `bound.spacing` más nuevo que el último guardado de esa
-        consulta y equipo, y el equipo no ha agotado sus entregas en la ventana de recepción.
+        consulta y equipo, y o bien es actual (generado en el último `spacing`) o el equipo no ha
+        agotado sus entregas en la ventana de recepción: los atrasos no desplazan al más reciente.
 
         Solo en memoria: reiniciar el servicio reabre la cota una vez por consulta y equipo.
         """
@@ -150,7 +152,8 @@ class AgentState:
             return True
         recent = [at for at in slot.received if now - at < bound.window]
         newer = collected_at - slot.collected_at >= bound.spacing
-        return newer and len(recent) < bound.max_receipts
+        current = now - collected_at <= bound.spacing
+        return newer and (current or len(recent) < bound.max_receipts)
 
     def record_result(
         self,

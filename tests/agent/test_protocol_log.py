@@ -338,3 +338,16 @@ def test_the_interval_is_per_host_and_query(world):
     send(world, first, distinct_batch("1"))
     send(world, second, [snapshot_event("os_version", [OS_VERSION_ROW], host=SERVER_UUID.upper())])
     assert len(manifests(world)) == 2
+
+
+def test_after_three_late_deliveries_the_current_snapshot_is_still_stored(world, caplog):
+    node_key = world.enroll()
+    world.clock.advance(hours=18)
+    for hours in (0, 6, 12):  # atrasos de un corte, en POST separados
+        send(world, node_key, distinct_batch(str(hours), unix=NOW + timedelta(hours=hours)))
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    send(world, node_key, distinct_batch("18", unix=NOW + timedelta(hours=18)))
+
+    assert len(manifests(world)) == 4
+    assert "outcome=throttled" not in caplog.text
