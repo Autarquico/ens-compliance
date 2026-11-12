@@ -122,7 +122,7 @@ def test_los_ficheros_de_openbao_van_en_la_release_si_el_commit_los_tiene():
         str(p.relative_to(REPO)) for p in (REPO / "deploy" / "openbao").rglob("*") if p.is_file()
     )
 
-    assert sorted(optional) == on_disk
+    assert sorted(f for f in optional if f.startswith("deploy/openbao/")) == on_disk
     # Un commit anterior al kit no los trae: no pueden ser obligatorios para desplegarlo.
     assert "deploy/openbao" not in re.search(r'^RELEASE_FILES="(.*)"$', text, re.M).group(1)
     assert "cat-file -e" in shell_function("use_release")

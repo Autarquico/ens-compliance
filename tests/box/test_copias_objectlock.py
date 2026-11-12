@@ -130,6 +130,18 @@ def test_con_las_credenciales_de_lectura_se_listan_las_copias_sin_bloquear(s3):
     assert "1 snapshots" in listing.stdout
 
 
+def test_con_las_credenciales_de_lectura_restic_restore_con_no_lock_recupera_los_ficheros(s3):
+    """El comando de recuperación del runbook (sección 4) con la credencial de lectura."""
+    restic, _ = s3
+
+    restored = restic(READER, READER_KEY, "restore", "latest", "--target", "/tmp/r", "--no-lock")
+    without_flag = restic(READER, READER_KEY, "restore", "latest", "--target", "/tmp/r")
+
+    assert restored.returncode == 0, restored.stderr
+    assert "Summary: Restored" in restored.stdout + restored.stderr
+    assert without_flag.returncode != 0 and "Access Denied" in without_flag.stderr
+
+
 def test_sin_no_lock_las_credenciales_de_lectura_no_pueden_ni_listar(s3):
     restic, _ = s3
 

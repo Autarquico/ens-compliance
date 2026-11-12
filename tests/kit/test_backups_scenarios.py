@@ -21,7 +21,8 @@ from ens_evidence.models.enums import CheckStatus
 from ens_evidence.models.readiness import BlockerKind
 from ens_evidence.workspace import LocalStore
 
-RUNBOOKS = Path(__file__).resolve().parents[2] / "docs" / "runbooks"
+REPO_ROOT = Path(__file__).resolve().parents[2]
+RUNBOOKS = REPO_ROOT / "docs" / "runbooks"
 RECENT, RESTORE = backups_checks.RECENT, backups_checks.RESTORE_TEST
 LIMIT_HOURS = 26
 REPO = {
@@ -157,3 +158,26 @@ def test_el_runbook_tiene_la_restauracion_completa_y_su_registro_como_revision_h
     assert "revisión humana" in section
     assert "restauracion-de-evidencias.md" in (RUNBOOKS / "kit-copias.md").read_text("utf-8")
     assert (RUNBOOKS / "restauracion-de-evidencias.md").is_file()
+
+
+def test_la_recuperacion_con_credenciales_de_lectura_no_toma_el_lock():
+    """La política de lectura niega crear el lock (tests/box/test_copias_objectlock.py)."""
+    section = runbook_section("Restaurar el VPS entero en una máquina nueva")
+
+    (command,) = [line for line in section.splitlines() if " restore latest:" in line]
+
+    assert "--no-lock" in command
+
+
+def test_las_dos_copias_del_runbook_son_identicas():
+    packaged = REPO_ROOT / "src" / "ens_evidence" / "ui" / "runbooks" / "kit-copias.md"
+
+    assert packaged.read_text("utf-8") == (RUNBOOKS / "kit-copias.md").read_text("utf-8")
+
+
+def test_la_primera_prueba_se_registra_con_la_orden_que_verifica_y_pide_la_declaracion():
+    section = runbook_section("Primera prueba de restauración")
+
+    assert "restore-test record-kit" in section
+    assert "--restored" in section and "--original" in section
+    assert "reviewer" in section and "no rellena el revisor" in section

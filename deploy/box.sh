@@ -41,6 +41,7 @@ COPIAS_OVERRIDE="$COPIAS_DIR/compose.yaml"
 CLAVES_DIR="$ROOT/deploy/kit/claves"
 CLAVES_CONFIG="$CLAVES_DIR/openbao.hcl"
 CLAVES_MANIFEST="$CLAVES_DIR/MANIFEST"
+COPIAS_DESTINO="$COPIAS_DIR/destino.conf"
 BACKREST_UID=10001
 OPENBAO_UID=10001
 INIT_CONTAINER=
@@ -53,7 +54,7 @@ REL=
 COMMIT=
 RELEASE_FILES="compose.yaml deploy/Caddyfile deploy/box.sh"
 # Solo las releases que los traen: un commit anterior al kit de claves no los tiene y sigue siendo desplegable.
-OPTIONAL_RELEASE_FILES="deploy/openbao/config.hcl deploy/openbao/policies/ens-app-metadata.hcl deploy/openbao/policies/claves-admin.hcl"
+OPTIONAL_RELEASE_FILES="deploy/openbao/config.hcl deploy/openbao/policies/ens-app-metadata.hcl deploy/openbao/policies/claves-admin.hcl deploy/copias-proxy.conf"
 
 info() { printf '%s\n' "$*"; }
 warn() { printf 'AVISO: %s\n' "$*" >&2; }
@@ -198,6 +199,9 @@ check_copias_override() {
   want=$(sed -n 's/^\([0-9a-f]\{64\}\)  copias\/compose[.]yaml$/\1/p' "$COPIAS_DIR/MANIFEST" 2>/dev/null || true)
   [ -n "$want" ] && [ "$(sha256_of "$COPIAS_OVERRIDE")" = "$want" ] ||
     die "$COPIAS_OVERRIDE no coincide con el MANIFEST del paquete instalado; no se usa. Repite kit enable con el paquete."
+  # Sin él, Docker crearía un directorio en su lugar y copias-proxy no sabría a qué destino dejar salir.
+  { [ -f "$COPIAS_DESTINO" ] && [ ! -L "$COPIAS_DESTINO" ]; } ||
+    die "Falta $COPIAS_DESTINO (el destino S3 que admite copias-proxy). Repite kit enable con el paquete."
 }
 
 # El kit de claves se activa con deploy/kit/claves/MANIFEST (lo instala `kit enable`, lo renombra
@@ -239,6 +243,7 @@ dc() {
     ENS_AGENT_ENV_FILE=$AGENT_ENV_FILE ENS_UI_ENV_FILE=$UI_ENV_FILE \
     ENS_UI_HOST=$UI_HOST ENS_AGENT_HOST=$AGENT_HOST ENS_COPIAS_HOST=$COPIAS_HOST \
     ENS_CLAVES_HOST=$CLAVES_HOST ENS_CLAVES_CONFIG=$claves_config \
+    ENS_COPIAS_DESTINO_CONF=$COPIAS_DESTINO \
     docker compose -p "$PROJECT" -f "$REL/compose.yaml" --project-directory "$REL" "$@"
 }
 
@@ -399,6 +404,7 @@ stop_orphan_services() {
   ui_enabled || stop_orphan ui
   copias_enabled || stop_orphan backrest
   claves_enabled || stop_orphan openbao
+  copias_enabled || stop_orphan copias-proxy
 }
 
 # La imagen de Backrest es scratch: no hay healthcheck. Corre y no se reinicia durante unos segundos.
@@ -429,6 +435,7 @@ verify_running() {
   verify_running_app || return 1
   ! agent_enabled || wait_healthy agent || return 1
   ! ui_enabled || wait_healthy ui || return 1
+  ! copias_enabled || wait_running copias-proxy || return 1
   ! copias_enabled || wait_running backrest || return 1
   ! claves_enabled || wait_running openbao || return 1
   wait_healthy caddy || return 1
@@ -461,6 +468,10 @@ use_release() {
     ! git -C "$ROOT" cat-file -e "$commit:$file" 2>/dev/null || files="$files $file"
   done
   REL="$releases/$commit"
+  files=$RELEASE_FILES
+  for file in $OPTIONAL_RELEASE_FILES; do
+    ! git -C "$ROOT" cat-file -e "$commit:$file" 2>/dev/null || files="$files $file"
+  done
   if [ ! -d "$REL" ]; then
     new_work_dir "$releases"
     # shellcheck disable=SC2086 # son rutas fijas sin espacios
@@ -908,6 +919,31 @@ new_backrest_credentials() {
   [ -n "$password_hash" ] || die "No se pudo calcular el bcrypt de la contraseña de Backrest."
 }
 
+# Fragmento de squid (ACL del destino) a partir del config.json del paquete, ya verificado por el
+# MANIFEST: todos los repos son s3:https://host[:puerto]/... y del mismo host:puerto. Es la única
+# fuente del destino (la misma URI que usa Backrest); copias-proxy no deja salir a ningún otro.
+copias_destination() {
+  in_app python -I -c '
+import json
+import re
+import sys
+
+repos = json.load(sys.stdin).get("repos")
+found = set()
+for repo in repos if isinstance(repos, list) else []:
+    uri = repo.get("uri") if isinstance(repo, dict) else None
+    match = re.fullmatch(r"s3:https://([A-Za-z0-9](?:[A-Za-z0-9.-]{0,251}[A-Za-z0-9])?)(?::([0-9]{1,5}))?/\S*", uri or "")
+    if not match or not 0 < int(match.group(2) or 443) < 65536:
+        sys.exit("config.json del paquete: cada repositorio debe ser s3:https://servidor[:puerto]/bucket")
+    found.add((match.group(1).lower(), int(match.group(2) or 443)))
+if len(found) != 1:
+    sys.exit("config.json del paquete: se admite un único destino S3 (mismo servidor y puerto en todos los repositorios)")
+host, port = found.pop()
+print(f"acl destino_host dstdomain {host}")
+print(f"acl destino_puerto port {port}")
+'
+}
+
 # Solo `repositories` con id y sin claves de credencial (la config del conector no lleva secretos).
 validate_copias_fragment() {
   in_app python -I -c '
@@ -947,6 +983,32 @@ path.parent.mkdir(parents=True, exist_ok=True)
 temporary = path.with_suffix(".yaml.tmp")
 temporary.write_text(yaml.safe_dump(current, sort_keys=False, allow_unicode=True), encoding="utf-8")
 os.replace(temporary, path)
+'
+}
+
+# Enlaza los checks backups.* con las cláusulas de mp.info.6 (como `matrix link`; no declara
+# cumplimiento). Sale con 1 si algo queda sin enlazar y lista los comandos para hacerlo a mano.
+link_copias_checks() {
+  in_app python -I -c '
+import sys
+from datetime import UTC, datetime
+from pathlib import Path
+
+from ens_evidence.connectors.backups import link_backups_checks
+from ens_evidence.connectors.backups.links import manual_commands
+from ens_evidence.workspace import LocalStore
+
+outcome = link_backups_checks(LocalStore(Path("/data/workspace")), datetime.now(UTC))
+for check, covers in outcome.linked:
+    print("  enlazado a mp.info.6:", check, "(" + ", ".join(covers) + ")")
+if outcome.skipped:
+    print("  Sin enlazar:")
+    for reason in outcome.skipped:
+        print("   -", reason)
+    print("  Cuando la Declaración esté vigente y la matriz iniciada, enlázalos a mano:")
+    for command in manual_commands():
+        print("   ", command)
+    sys.exit(1)
 '
 }
 
@@ -996,6 +1058,7 @@ kit_copias_enable() {
   validate_copias_override <"$pkg/compose.yaml"
   validate_copias_fragment <"$pkg/backups.yaml"
   validate_copias_env "$pkg/app.env"
+  destination=$(copias_destination <"$pkg/config.json") || exit 1
   prepare_volume backrest-config "$BACKREST_UID"
   prepare_volume backrest-data "$BACKREST_UID"
   has_config=$(in_backrest_config 'test -e /config/config.json && echo 1 || echo 0')
@@ -1018,26 +1081,35 @@ kit_copias_enable() {
   mkdir -p "$COPIAS_DIR"
   chmod 700 "$ROOT/deploy/kit" "$COPIAS_DIR"
   (umask 077 && cp "$pkg/MANIFEST" "$COPIAS_DIR/MANIFEST.new" && cp "$pkg/compose.yaml" "$COPIAS_DIR/compose.yaml.new")
+  # Legible por el usuario de squid dentro del contenedor; solo lleva host y puerto.
+  [ ! -e "$COPIAS_DESTINO" ] || cp "$COPIAS_DESTINO" "$COPIAS_DESTINO.prev"
+  printf '%s\n' "$destination" >"$COPIAS_DESTINO.new"
+  chmod 644 "$COPIAS_DESTINO.new"
+  mv "$COPIAS_DESTINO.new" "$COPIAS_DESTINO"
   mv "$COPIAS_DIR/compose.yaml.new" "$COPIAS_OVERRIDE"
   mv "$COPIAS_DIR/MANIFEST.new" "$COPIAS_DIR/MANIFEST"
   cleanup
 
-  info "Arrancando Backrest y publicando $COPIAS_HOST..."
-  dc up -d --no-build --no-deps --force-recreate backrest caddy
+  info "Arrancando Backrest (con su proxy de salida) y publicando $COPIAS_HOST..."
+  dc up -d --no-build --no-deps --force-recreate copias-proxy backrest caddy
   if wait_running backrest; then
     # Con la configuración nueva sana, sus restos con claves de escritura ya no sirven para nada.
+    rm -f "$COPIAS_DESTINO.prev"
     in_backrest_config 'rm -f /config/config.json.prev /config/config.json.pre-update' ||
       warn "No se pudieron borrar config.json.prev ni config.json.pre-update del volumen; bórralos a mano."
   else
     if [ "$has_config" = 1 ]; then
       in_backrest_config 'set -eu; umask 077; cp /config/config.json.prev /config/config.json.new && mv /config/config.json.new /config/config.json' &&
-        dc up -d --no-build --no-deps --force-recreate backrest || true
+        { [ ! -e "$COPIAS_DESTINO.prev" ] || mv "$COPIAS_DESTINO.prev" "$COPIAS_DESTINO"; } &&
+        dc up -d --no-build --no-deps --force-recreate copias-proxy backrest || true
       die "Backrest no arranca con la configuración del paquete. Se ha restaurado la anterior; config.json.prev se conserva para el rollback. Revisa: docker compose -p $PROJECT logs backrest"
     fi
     die "Backrest no arranca; revisa: docker compose -p $PROJECT logs backrest"
   fi
   wait_healthy caddy || die "caddy no está sano; revisa: docker compose -p $PROJECT logs caddy"
   recreate_service app
+  info ""
+  link_copias_checks || warn "Los checks de copias no quedaron enlazados a mp.info.6 (arriba, qué falta y cómo hacerlo)."
   info ""
   info "Copias activadas. Backrest ya pide usuario y contraseña (docs/runbooks/kit-copias.md, sección 2):"
   info "  Usuario:    admin"
@@ -1082,13 +1154,15 @@ kit_copias_disable() {
   require_volume
   use_current_release
   [ -e "$COPIAS_OVERRIDE" ] || die "Las copias no están activadas (falta $COPIAS_OVERRIDE)."
-  for container in $(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" \
-    --filter "label=com.docker.compose.service=backrest"); do
-    docker stop "$container" >/dev/null
-    docker rm "$container" >/dev/null
+  for service in backrest copias-proxy; do
+    for container in $(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" \
+      --filter "label=com.docker.compose.service=$service"); do
+      docker stop "$container" >/dev/null
+      docker rm "$container" >/dev/null
+    done
   done
-  rm -f "$COPIAS_OVERRIDE" "$COPIAS_DIR/MANIFEST"
-  info "Backrest parado y desactivado. No se ha borrado nada:"
+  rm -f "$COPIAS_OVERRIDE" "$COPIAS_DIR/MANIFEST" "$COPIAS_DESTINO" "$COPIAS_DESTINO.prev"
+  info "Backrest y su proxy de salida parados y desactivados. No se ha borrado nada:"
   info "  - volúmenes ${PROJECT}_backrest-config y ${PROJECT}_backrest-data (su configuración y su caché),"
   info "  - las variables ENS_BACKUPS_* de deploy/.env ni connectors/backups.yaml del workspace,"
   info "  - las copias en el destino S3."

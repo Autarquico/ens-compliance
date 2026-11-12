@@ -421,3 +421,84 @@ def test_reset_password_cambia_la_contrasena_sin_paquete_y_conserva_la_configura
     for path in (box.clone / "deploy").rglob("*"):
         if path.is_file():
             assert new not in path.read_text(errors="ignore"), path
+
+
+def connect_via_proxy(box, target, *, network=None):
+    """Primera línea de la respuesta de copias-proxy a un CONNECT, desde la red de Backrest."""
+    request = f"CONNECT {target} HTTP/1.1\\r\\nHost: {target}\\r\\n\\r\\n"
+    shown = run(
+        [
+            "docker",
+            "run",
+            "--rm",
+            "--network",
+            network or f"{box.project}_copias-salida",
+            "alpine:3",
+        ]
+        + ["sh", "-c", f'printf "{request}" | nc -w5 copias-proxy 3128 | head -1']
+    )
+    return shown.stdout.strip()
+
+
+def test_el_proxy_deniega_connect_a_cualquier_destino_que_no_sea_el_s3_elegido(
+    box, s3, enabled, snapshots
+):
+    denied = {
+        "otro host": "example.org:443",
+        "ip literal": "1.1.1.1:443",
+        "otro puerto del mismo host": f"{s3.server}:22",
+    }
+
+    for what, target in denied.items():
+        assert " 403 " in connect_via_proxy(box, target), what
+
+
+def test_el_proxy_deja_pasar_el_connect_al_s3_elegido(box, s3, enabled, snapshots):
+    assert " 200 " in connect_via_proxy(box, f"{s3.server}:9000")
+
+
+def test_el_destino_del_proxy_es_solo_host_y_puerto_del_paquete(box, s3, enabled):
+    written = (box.clone / "deploy" / "kit" / "copias" / "destino.conf").read_text()
+
+    assert written.splitlines() == [
+        f"acl destino_host dstdomain {s3.server}",
+        "acl destino_puerto port 9000",
+    ]
+    assert READER[1] not in written and WRITER[1] not in written
+
+
+def test_backrest_no_tiene_salida_directa_y_la_copia_llego_por_el_proxy(
+    box, s3, enabled, snapshots
+):
+    networks = run(
+        [
+            "docker",
+            "inspect",
+            box.container("backrest"),
+            "--format",
+            "{{json .NetworkSettings.Networks}}",
+        ]
+    )
+    assert set(json.loads(networks.stdout)) == {
+        f"{box.project}_copias-net",
+        f"{box.project}_copias-salida",
+    }
+    for network in ("copias-net", "copias-salida"):
+        internal = run(
+            [
+                "docker",
+                "network",
+                "inspect",
+                f"{box.project}_{network}",
+                "--format",
+                "{{.Internal}}",
+            ]
+        )
+        assert internal.stdout.strip() == "true", network
+    direct = run(
+        ["docker", "run", "--rm", "--network", f"{box.project}_copias-salida", "alpine:3"]
+        + ["nc", "-w3", "1.1.1.1", "443"]
+    )
+    assert direct.returncode != 0
+    logs = run(["docker", "logs", box.container("copias-proxy")])
+    assert f"CONNECT {s3.server}:9000" in logs.stdout + logs.stderr
