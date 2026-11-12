@@ -89,11 +89,11 @@ KIT_TOOLS: tuple[KitTool, ...] = (
             ),
         },
         ram=MeasuredRam(
-            mib=13,
-            measured_on="2026-11-10",
+            mib=24,
+            measured_on="2026-11-12",
             image=COPIAS_IMAGE,
-            conditions="en reposo, sin repositorio conectado ni copia en curso, Docker Desktop"
-            " arm64",
+            conditions="Backrest (13 MiB, medido el 2026-11-10) y su proxy de salida (11 MiB) en"
+            " reposo, sin repositorio conectado ni copia en curso, Docker Desktop arm64",
         ),
     ),
     KitTool(

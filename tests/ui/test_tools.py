@@ -329,7 +329,7 @@ def test_ficha_de_mp_info_6_propone_el_kit_mientras_no_haya_evidencia(web):
     assert ">Añadir las copias<" in html
     assert "mp.info.6.1</span>: cubierta en parte" in html
     assert "mp.info.6.2</span>: no cubierta" in html and "mp.info.6.r1.1" in html
-    assert "≈13 MiB" in tail(html)
+    assert "≈24 MiB" in tail(html)
 
 
 def test_ficha_de_mp_info_6_no_propone_el_kit_con_evidencia(web, signed):
