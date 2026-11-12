@@ -79,7 +79,7 @@ class ResultBound:
 
     `spacing` separa snapshots por su hora de generación (deduplica reentregas y tolera el splay);
     `max_receipts` por `window` de recepción acota los atrasados, porque esa hora la pone el equipo.
-    Uno actual siempre cabe: a lo sumo uno más por `spacing`.
+    Uno actual siempre cabe; en total, como mucho `2 * max_receipts` por `window`.
     """
 
     spacing: timedelta

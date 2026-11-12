@@ -74,7 +74,8 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   de splay de osquery y el desfase de reloj de 5 min), porque osquery entrega
   cada consulta en POST distintos y reentrega tras un corte. Como esa hora la
   pone el equipo, además como mucho 3 entregas atrasadas por consulta y equipo
-  cada 6 h de recepción; un snapshot actual siempre cabe. Lo que sobra se descarta con 200 y de un lote mixto se guarda
+  cada 6 h de recepción; un snapshot actual siempre cabe (en total, como mucho
+  6 por consulta y equipo cada 6 h). Lo que sobra se descarta con 200 y de un lote mixto se guarda
   lo que cabe. La cota es en memoria. Caddy aplica `read_header` e `idle`
   (sin plazo de cuerpo: sería para todo `:8080` y cortaría subidas lentas de
   la UI y del kit) y completa el cuerpo (`request_buffers`) antes de abrir el
