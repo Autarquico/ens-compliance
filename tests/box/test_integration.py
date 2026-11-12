@@ -163,7 +163,16 @@ def box(tmp_path_factory):
     ).stdout.split()
     if owned:
         run(["docker", "rm", "-f", *owned])
-    for network in ("backend", "edge", "tunnel", "agent", "ui-net", "copias-net", "copias"):
+    for network in (
+        "backend",
+        "edge",
+        "tunnel",
+        "agent",
+        "ui-net",
+        "copias-net",
+        "copias-salida",
+        "copias",
+    ):
         run(["docker", "network", "rm", f"{project}_{network}"])
     for volume in ("data", "backrest-config", "backrest-data"):
         run(["docker", "volume", "rm", "-f", f"{project}_{volume}"])
@@ -540,7 +549,12 @@ CONFIG_JSON = json.dumps(
         "version": 4,
         "instance": "ens-test",
         "repos": [
-            {"id": "r1", "guid": "ab" * 32, "uri": "/data/repo-inexistente", "password": SECRET}
+            {
+                "id": "r1",
+                "guid": "ab" * 32,
+                "uri": "s3:https://s3.inexistente.invalid/b/r1",
+                "password": SECRET,
+            }
         ],
         "auth": {"disabled": True},
     }
@@ -620,7 +634,11 @@ def test_kit_enable_instala_cada_fichero_en_su_sitio_y_sin_secretos_fuera(
         result.stdout
     )
     kit = box.clone / "deploy" / "kit" / "copias"
-    assert sorted(p.name for p in kit.iterdir()) == ["MANIFEST", "compose.yaml"]
+    assert sorted(p.name for p in kit.iterdir()) == ["MANIFEST", "compose.yaml", "destino.conf"]
+    assert (kit / "destino.conf").read_text().splitlines() == [
+        "acl destino_host dstdomain s3.inexistente.invalid",
+        "acl destino_puerto port 443",
+    ]
     env = (box.clone / "deploy" / ".env").read_text()
     assert f"ENS_BACKUPS_R1_RESTIC_PASSWORD={SECRET}" in env
     assert (box.clone / "deploy" / ".env").stat().st_mode & 0o777 == 0o600
@@ -745,6 +763,12 @@ def test_kit_disable_para_backrest_sin_borrar_volumenes_ni_secretos(box, ui_env_
         + ["--filter", "label=com.docker.compose.service=backrest"]
     )
     assert owned.stdout.split() == []
+    proxy = run(
+        ["docker", "ps", "-aq", "--filter", f"label=com.docker.compose.project={box.project}"]
+        + ["--filter", "label=com.docker.compose.service=copias-proxy"]
+    )
+    assert proxy.stdout.split() == []
+    assert not (box.clone / "deploy" / "kit" / "copias" / "destino.conf").exists()
     for volume in ("backrest-config", "backrest-data"):
         assert run(["docker", "volume", "inspect", f"{box.project}_{volume}"]).returncode == 0
     assert box.sh("kit", "disable", "copias").returncode != 0

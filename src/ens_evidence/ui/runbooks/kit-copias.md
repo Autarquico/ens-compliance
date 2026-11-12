@@ -29,10 +29,23 @@ persona (sección 3).
   `backrest-data` guarda su base de operaciones y logs. `data` de la caja entra en
   `/source/caja:ro`; las rutas del host que se elijan entran en `/source/<nombre>:ro`
   por `deploy/kit/copias/compose.yaml` (generado, fuera de git).
-- Redes: `copias-net` (interna; solo la alcanza Caddy) y `copias` (con salida).
-  Compose no filtra la salida por destino: `backrest` puede salir a cualquier
-  sitio. Si quieres limitarla al destino S3, hazlo en el cortafuegos del VPS
-  (no verificado aquí).
+- Salida filtrada: `backrest` está solo en redes internas (`copias-net`, que
+  alcanza Caddy, y `copias-salida`) y no tiene salida directa a Internet. Su única
+  salida es el servicio `copias-proxy` (perfil `copias`): Squid 7 (imagen
+  `ubuntu/squid:7.2-26.04_edge` fijada por digest; Canonical), que solo admite
+  `CONNECT` al servidor y puerto del destino S3 y responde 403 a todo lo demás
+  (otros hosts, IP literales, otros puertos, HTTP sin túnel). restic llega a él
+  por `HTTPS_PROXY`/`https_proxy` (el transporte de Go de restic las lee). No
+  hace falta cortafuegos en el VPS para esto.
+- `copias-proxy` corre como el usuario sin privilegios de la imagen, `read_only`
+  (con `tmpfs`), `cap_drop: [ALL]`, `no-new-privileges` y sin puertos publicados;
+  no tiene shell, así que tampoco healthcheck. Gasta unos 11 MiB en reposo.
+- El destino sale del `config.json` del paquete (la URI `s3:https://servidor[:puerto]/bucket`
+  que Backrest ya usa): `kit enable` lo valida (un único servidor y puerto, solo
+  `s3:https://`) y escribe `deploy/kit/copias/destino.conf` (solo servidor y
+  puerto, sin secretos; fuera de git). Si Backrest necesita cualquier otra salida
+  (otro servidor, avisos de versión, webhooks de hooks), falla cerrado: no hay
+  ruta. En las pruebas con v1.14.1 no se vio ninguna otra.
 - Caddy publica Backrest en `ENS_COPIAS_HOST`. Backrest autentica con
   `Authorization` (Basic o el Bearer que guarda el navegador), no con cookies
   (`internal/auth/middleware.go` en v1.14.1): Caddy deja pasar `Authorization` y
@@ -217,7 +230,8 @@ release nueva, no editando el clon.
    ```
 
 4. Publica la release y `deploy/box.sh update vX.Y.Z`. `box.sh` comprueba que
-   `backrest` corre.
+   `backrest` y `copias-proxy` corren. La imagen del proxy se actualiza igual
+   (`docker buildx imagetools inspect ubuntu/squid:<tag>`, el `Digest:` del índice).
 5. Si no arranca: `deploy/box.sh rollback`; si la versión anterior no lee la
    configuración migrada, vuelve a poner `config.json.pre-update` como `config.json`.
 
@@ -234,14 +248,22 @@ release nueva, no editando el clon.
   4.3, con `restic key list`); después actualiza la contraseña en Backrest y
   `ENS_BACKUPS_<ID>_RESTIC_PASSWORD` en `deploy/.env`. Esta operación no se ha
   ejecutado: pruébala primero en un repositorio de prueba.
+- **Cambiar de destino S3.** Genera un paquete nuevo con el endpoint nuevo y
+  `deploy/box.sh kit enable copias --replace-config <paquete>`: reescribe
+  `destino.conf` y recrea `copias-proxy` y Backrest. Editar el repositorio en la
+  interfaz de Backrest no basta: el proxy seguiría dejando salir solo al destino
+  anterior y la copia nueva fallaría. Rollback: si Backrest no arranca con el
+  paquete nuevo, `box.sh` restaura `config.json` y `destino.conf` anteriores;
+  si arrancó pero el destino nuevo no funciona, repite `kit enable --replace-config`
+  con el paquete anterior (`config.json.prev` solo se conserva si falló el arranque).
 - **Todo a la vez** (paquete nuevo): `kit enable copias --replace-config`; `box.sh`
   genera una contraseña nueva para `admin` y la muestra una vez.
 - Tras rotar, borra `config.json.prev` y `config.json.pre-update` del volumen si quedaron (`kit enable` ya los borra cuando Backrest arranca sano).
 
 ## 7. Desactivar
 
-`deploy/box.sh kit disable copias` para y quita el contenedor, y borra el
-override. No borra los volúmenes, las variables de `deploy/.env`,
+`deploy/box.sh kit disable copias` para y quita `backrest` y `copias-proxy`, y borra el
+override y `destino.conf`. No borra los volúmenes, las variables de `deploy/.env`,
 `connectors/backups.yaml` ni las copias. Caddy responde 503 en
 `ENS_COPIAS_HOST` hasta que se vuelva a activar o se quite el hostname del túnel.
 

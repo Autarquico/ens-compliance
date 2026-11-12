@@ -48,7 +48,7 @@ def external_services(services):
 def test_las_imagenes_externas_estan_fijadas_por_digest(services):
     external = external_services(services)
 
-    assert {"caddy", "cloudflared", "backrest"} <= set(external)
+    assert {"caddy", "cloudflared", "backrest", "copias-proxy"} <= set(external)
     unpinned = [s["image"] for s in external.values() if not DIGEST.search(s["image"])]
     assert unpinned == []
 
@@ -89,11 +89,15 @@ def test_ningun_servicio_monta_el_socket_de_docker(services):
     assert [m for m in mounts if "docker.sock" in m] == []
 
 
-def test_el_unico_montaje_del_host_es_el_caddyfile_en_solo_lectura(services):
+def test_los_unicos_montajes_del_host_son_ficheros_de_config_en_solo_lectura(services):
     mounts = [str(v) for s in services.values() for v in s.get("volumes", [])]
-    host_mounts = [m for m in mounts if m.startswith((".", "/", "~"))]
+    host_mounts = [m for m in mounts if m.startswith((".", "/", "~", "$"))]
 
-    assert host_mounts == ["./deploy/Caddyfile:/etc/caddy/Caddyfile:ro"]
+    assert host_mounts == [
+        "./deploy/Caddyfile:/etc/caddy/Caddyfile:ro",
+        "./deploy/copias-proxy.conf:/etc/squid/proxy.conf:ro",
+        "${ENS_COPIAS_DESTINO_CONF:-/dev/null}:/etc/squid/destino.conf:ro",  # lo fija box.sh
+    ]
 
 
 def test_las_credenciales_solo_llegan_a_quien_las_necesita(services):
@@ -227,9 +231,65 @@ def test_backrest_no_recibe_ficheros_de_entorno_ni_la_red_interna_de_los_datos(c
     backrest = services["backrest"]
 
     assert "env_file" not in backrest
-    assert backrest["networks"] == ["copias-net", "copias"]
+    assert backrest["networks"] == ["copias-net", "copias-salida"]
     assert compose["networks"]["copias-net"]["internal"] is True
+
+
+def test_backrest_solo_esta_en_redes_internas_y_sale_por_el_proxy(compose, services):
+    backrest = services["backrest"]
+
+    assert all(compose["networks"][n].get("internal") is True for n in backrest["networks"])
+    env = backrest["environment"]
+    for name in ("HTTPS_PROXY", "https_proxy"):
+        assert env[name] == "http://copias-proxy:3128"
+    assert "copias-proxy" in backrest["depends_on"]
+    assert "copias-salida" in services["copias-proxy"]["networks"]
+
+
+def test_copias_proxy_es_la_unica_salida_del_kit_y_corre_endurecido(compose, services):
+    proxy = services["copias-proxy"]
+
+    assert proxy["profiles"] == ["copias"]
+    assert proxy["networks"] == ["copias-salida", "copias"]
     assert not compose["networks"]["copias"].get("internal")
+    assert proxy["read_only"] is True and proxy["cap_drop"] == ["ALL"]
+    assert "no-new-privileges:true" in proxy["security_opt"]
+    assert "ports" not in proxy and "privileged" not in proxy and "user" not in proxy
+    assert proxy["restart"] == "unless-stopped"
+    assert all(t.startswith("/") and ":" not in t for t in proxy["tmpfs"])
+    assert "env_file" not in proxy and "environment" not in proxy
+
+
+def test_copias_proxy_usa_squid_fijado_por_digest_real_sin_latest(services):
+    image = services["copias-proxy"]["image"]
+
+    assert re.fullmatch(r"ubuntu/squid:7\.2-26\.04_edge@sha256:[0-9a-f]{64}", image)
+    digest = image.rpartition(":")[2]
+    assert len(set(digest)) > 4, "digest de relleno"
+    assert not any("latest" in (s["image"]) for s in services.values() if "image" in s)
+
+
+PROXY_CONF = (REPO / "deploy" / "copias-proxy.conf").read_text()
+
+
+def test_la_config_del_proxy_solo_admite_connect_al_destino_y_deniega_lo_demas():
+    rules = [row.split() for row in PROXY_CONF.splitlines() if row.startswith("http_access")]
+
+    assert rules == [
+        ["http_access", "allow", "CONNECT", "destino_host", "destino_puerto"],
+        ["http_access", "deny", "all"],
+    ]
+    assert "include /etc/squid/destino.conf" in PROXY_CONF
+    assert "cache deny all" in PROXY_CONF
+
+
+def test_la_config_del_proxy_no_lleva_hosts_ni_secretos():
+    code = "\n".join(row for row in PROXY_CONF.splitlines() if not row.startswith("#"))
+    assert not re.search(r"dstdomain|password|secret|AWS_", code)
+    mounts = yaml.safe_load((REPO / "compose.yaml").read_text())["services"]
+    assert (
+        "./deploy/copias-proxy.conf:/etc/squid/proxy.conf:ro" in mounts["copias-proxy"]["volumes"]
+    )
 
 
 def test_la_imagen_instala_los_extras_server_y_ui(dockerfile):
@@ -279,14 +339,14 @@ def test_todas_las_redes_a_las_que_llega_un_servicio_con_datos_son_internas(comp
         )
 
 
-def test_solo_app_cloudflared_y_backrest_tienen_salida_a_internet(compose, services):
+def test_solo_app_cloudflared_y_copias_proxy_tienen_salida_a_internet(compose, services):
     outbound = {
         name
         for name, service in services.items()
         if any(not compose["networks"][n].get("internal") for n in service["networks"])
     }
 
-    assert outbound == {"app", "cloudflared", "backrest"}
+    assert outbound == {"app", "cloudflared", "copias-proxy"}
 
 
 AGENT_PATHS = [
@@ -791,6 +851,54 @@ def test_el_fragmento_de_backups_rechaza_ids_que_el_conector_rechaza(identifier)
 
 
 BCRYPT_B64 = base64.b64encode(b"$2a$14$" + b"a" * 53).decode()
+
+
+def destination(*uris):
+    config = json.dumps({"repos": [{"id": f"r{i}", "uri": u} for i, u in enumerate(uris)]})
+    return run_validator("copias_destination", config)
+
+
+def test_el_destino_del_proxy_sale_del_uri_del_repositorio_con_puerto_443_por_defecto():
+    result = destination("s3:https://S3.eu-west-1.Amazonaws.com/bucket/caja")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines() == [
+        "acl destino_host dstdomain s3.eu-west-1.amazonaws.com",
+        "acl destino_puerto port 443",
+    ]
+
+
+def test_el_destino_del_proxy_admite_puerto_explicito_y_repos_del_mismo_destino():
+    result = destination("s3:https://minio.local:9000/a", "s3:https://minio.local:9000/b/c")
+
+    assert result.returncode == 0, result.stderr
+    assert result.stdout.splitlines()[1] == "acl destino_puerto port 9000"
+
+
+@pytest.mark.parametrize(
+    "uris",
+    [
+        (),
+        ("s3:http://minio.local/b",),
+        ("rest:https://x.example.org/b",),
+        ("s3:https://a.example.org/b", "s3:https://b.example.org/b"),
+        ("s3:https://a.example.org:9000/b", "s3:https://a.example.org/b"),
+        ("s3:https://a.example.org:99999/b",),
+        ("s3:https://a.example.org\nhttp_access allow all/b",),
+        ("s3:https://[::1]/b",),
+        ("s3:https://u:p@a.example.org/b",),
+    ],
+)
+def test_el_destino_del_proxy_rechaza_lo_que_no_es_un_unico_s3_https(uris):
+    assert destination(*uris).returncode != 0
+
+
+def test_kit_enable_instala_el_destino_del_proxy_y_disable_lo_borra():
+    script = (REPO / "deploy" / "box.sh").read_text()
+
+    assert "ENS_COPIAS_DESTINO_CONF=$COPIAS_DESTINO" in script
+    assert "recreate copias-proxy backrest caddy" in script.replace("--force-", "")
+    assert 'rm -f "$COPIAS_OVERRIDE" "$COPIAS_DIR/MANIFEST" "$COPIAS_DESTINO"' in script
 
 
 def test_el_usuario_inicial_de_backrest_se_inyecta_con_el_bcrypt_y_auth_activada():
