@@ -88,16 +88,27 @@ def test_sin_fecha_es_ahora(web, example_store):
     assert manifest.collected_at == NOW
 
 
-def test_el_nombre_del_fichero_se_descarta(web, example_store):
+@pytest.mark.parametrize(
+    "name",
+    [HOSTILE_NAME, "/etc/passwd", "a/b.txt", "a\\b.txt", "..", "C:evil.txt"],
+)
+def test_un_nombre_con_rutas_se_rechaza_sin_escribir(web, example_store, name):
+    _, post = web
+    before = snapshot_of(example_store)
+
+    response = post(form(), file=(name, CONTENT))
+
+    assert response.status_code == 400
+    assert snapshot_of(example_store) == before
+
+
+def test_el_nombre_del_fichero_no_se_guarda(web, example_store):
     _, post = web
 
-    response = post(form(), file=(HOSTILE_NAME, CONTENT))
+    response = post(form(), file=("acta-secreta.txt", CONTENT))
 
     assert response.status_code == 303
-    assert all("passwd" not in k and "secreto" not in k for k in example_store.list(""))
-    assert all(
-        b"secreto" not in example_store.read_bytes(k) for k in example_store.list("evidence")
-    )
+    assert all("secreta" not in k for k in example_store.list(""))
 
 
 @pytest.mark.parametrize(
@@ -200,3 +211,10 @@ def test_cuerpo_que_no_es_multipart_es_400(client, token):
     )
 
     assert response.status_code == 400
+
+
+def test_un_nombre_con_nul_no_es_un_nombre_simple():
+    from ens_evidence.ui.forms import _is_plain_filename
+
+    assert not _is_plain_filename("acta\x00.txt")
+    assert _is_plain_filename("acta.txt")

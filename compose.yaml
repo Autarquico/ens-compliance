@@ -159,6 +159,11 @@ services:
     environment:
       # El restic de la imagen; sin esto Backrest intentaría descargar uno en un sistema de solo lectura.
       BACKREST_RESTIC_COMMAND: /bin/restic
+      # Sin salida directa: restic (transporte de Go) sale solo por copias-proxy, que solo admite el destino S3.
+      HTTPS_PROXY: http://copias-proxy:3128
+      https_proxy: http://copias-proxy:3128
+      NO_PROXY: localhost,127.0.0.1
+      no_proxy: localhost,127.0.0.1
     volumes:
       # backrest-config guarda las credenciales de escritura (config.json): ningún otro servicio lo monta.
       - backrest-config:/config
@@ -170,7 +175,31 @@ services:
       # Vacío si el kit de contraseñas no está activado. Instantánea de la base y rsa_key* (0600 del
       # mismo UID 10001 que el exportador). Adjuntos y sends no entran: docs/runbooks/kit-contrasenas.md.
       - contrasenas-snapshot:/source/contrasenas:ro
-    networks: [copias-net, copias]
+    networks: [copias-net, copias-salida]
+    depends_on: [copias-proxy]
+    logging: *logging
+
+  copias-proxy:
+    # Proxy de salida de Backrest (ADR 0019, spec kit-backups): Squid, solo CONNECT al host:puerto del
+    # destino S3 (deploy/copias-proxy.conf + destino.conf que genera `kit enable copias`); todo lo demás, 403.
+    # Imagen chiselled de Canonical (sin shell: sin healthcheck; box.sh solo comprueba que corre).
+    profiles: [copias]
+    image: ubuntu/squid:7.2-26.04_edge@sha256:6a252a42875d08bbb9dae4ab70a041afd4f8b530eaa0226102d1816309eef8b5
+    entrypoint: ["/usr/sbin/squid-gnutls", "-N", "-f", "/etc/squid/proxy.conf"]
+    restart: unless-stopped
+    read_only: true
+    tmpfs:
+      - /tmp
+      - /var/log/squid
+      - /var/run/squid
+      - /var/spool/squid
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - ./deploy/copias-proxy.conf:/etc/squid/proxy.conf:ro
+      # Lo escribe `kit enable copias` desde el destino del paquete (ENS_COPIAS_DESTINO_CONF); sin secretos.
+      - ${ENS_COPIAS_DESTINO_CONF:-/dev/null}:/etc/squid/destino.conf:ro
+    networks: [copias-salida, copias]
     logging: *logging
 
   openbao:
@@ -287,8 +316,10 @@ services:
 #   app         backend: sin entrada; salida a Internet (conectores y R2).
 #   agent       agent:   interna, sin salida a Internet; solo la alcanza caddy (perfil agents).
 #   ui          ui-net:  interna, sin salida a Internet; solo la alcanza caddy (perfil ui).
-#   backrest    copias-net: interna, solo la alcanza caddy (perfil copias); copias: salida a Internet
-#               hacia el destino S3 (Compose no filtra por destino; ver docs/runbooks/kit-copias.md).
+#   backrest    copias-net + copias-salida: ambas internas, sin salida a Internet (perfil copias);
+#               copias-net la alcanza caddy; copias-salida solo llega a copias-proxy.
+#   copias-proxy copias-salida + copias: proxy CONNECT que solo admite el host:puerto del destino S3
+#               (deploy/copias-proxy.conf); la única salida a Internet del kit, filtrada por destino.
 #   openbao     claves-net (caddy) + claves-app (app): internas, sin salida a Internet (perfil claves).
 #   vaultwarden contrasenas-net (caddy): interna, sin salida a Internet (perfil contrasenas).
 #   contrasenas-export  network_mode none: sin red.
@@ -309,6 +340,8 @@ networks:
   claves-app:
     internal: true
   contrasenas-net:
+    internal: true
+  copias-salida:
     internal: true
   copias: {}
   tunnel: {}

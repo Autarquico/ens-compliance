@@ -46,7 +46,15 @@ VOLUME_MOUNTS = {
 _FORBIDDEN_TREES = ("/proc", "/sys", "/dev")
 _DOCKER_SOCKETS = ("/var/run/docker.sock", "/run/docker.sock")
 _SECRET_CHARS = re.compile(r"[A-Za-z0-9/+=_.\-]{8,256}")
-_CRON_FIELD = re.compile(r"[0-9*/,\-]+")
+_CRON_ITEM = re.compile(r"(\*|(\d+)(?:-(\d+))?)(?:/(\d+))?")
+# (nombre, mínimo, máximo) de los cinco campos; el día de la semana es 0-6 como en robfig/cron
+_CRON_FIELDS = (
+    ("minuto", 0, 59),
+    ("hora", 0, 23),
+    ("día", 1, 31),
+    ("mes", 1, 12),
+    ("día-semana", 0, 6),
+)
 _BUCKET = re.compile(r"[a-z0-9][a-z0-9.\-]{1,61}[a-z0-9]")
 _PREFIX_SEGMENT = re.compile(r"[A-Za-z0-9._\-]+")
 _PRUNE_CRON = "0 4 * * 0"
@@ -121,9 +129,26 @@ class Schedule(_Strict):
     @classmethod
     def _cron(cls, value: str) -> str:
         fields = value.split()
-        if len(fields) != 5 or not all(_CRON_FIELD.fullmatch(f) for f in fields):
+        if len(fields) != 5:
             raise ValueError("el cron debe tener 5 campos (minuto hora día mes día-semana)")
+        for field, (name, low, high) in zip(fields, _CRON_FIELDS, strict=True):
+            if not all(_cron_item_valid(item, low, high) for item in field.split(",")):
+                raise ValueError(f"cron: el campo {name} ({field}) no es válido ({low}-{high})")
         return " ".join(fields)
+
+
+def _cron_item_valid(item: str, low: int, high: int) -> bool:
+    """`*`, `n` o `n-m` dentro de [low, high], con paso `/k` (k >= 1) opcional."""
+    match = _CRON_ITEM.fullmatch(item)
+    if match is None:
+        return False
+    _, first, last, step = match.groups()
+    if step is not None and int(step) < 1:
+        return False
+    if first is None:
+        return True
+    start, end = int(first), int(last) if last is not None else int(first)
+    return low <= start <= end <= high
 
 
 def normalize_host_path(value: str) -> str:

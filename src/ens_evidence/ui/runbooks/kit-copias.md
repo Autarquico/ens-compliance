@@ -29,10 +29,23 @@ persona (sección 3).
   `backrest-data` guarda su base de operaciones y logs. `data` de la caja entra en
   `/source/caja:ro`; las rutas del host que se elijan entran en `/source/<nombre>:ro`
   por `deploy/kit/copias/compose.yaml` (generado, fuera de git).
-- Redes: `copias-net` (interna; solo la alcanza Caddy) y `copias` (con salida).
-  Compose no filtra la salida por destino: `backrest` puede salir a cualquier
-  sitio. Si quieres limitarla al destino S3, hazlo en el cortafuegos del VPS
-  (no verificado aquí).
+- Salida filtrada: `backrest` está solo en redes internas (`copias-net`, que
+  alcanza Caddy, y `copias-salida`) y no tiene salida directa a Internet. Su única
+  salida es el servicio `copias-proxy` (perfil `copias`): Squid 7 (imagen
+  `ubuntu/squid:7.2-26.04_edge` fijada por digest; Canonical), que solo admite
+  `CONNECT` al servidor y puerto del destino S3 y responde 403 a todo lo demás
+  (otros hosts, IP literales, otros puertos, HTTP sin túnel). restic llega a él
+  por `HTTPS_PROXY`/`https_proxy` (el transporte de Go de restic las lee). No
+  hace falta cortafuegos en el VPS para esto.
+- `copias-proxy` corre como el usuario sin privilegios de la imagen, `read_only`
+  (con `tmpfs`), `cap_drop: [ALL]`, `no-new-privileges` y sin puertos publicados;
+  no tiene shell, así que tampoco healthcheck. Gasta unos 11 MiB en reposo.
+- El destino sale del `config.json` del paquete (la URI `s3:https://servidor[:puerto]/bucket`
+  que Backrest ya usa): `kit enable` lo valida (un único servidor y puerto, solo
+  `s3:https://`) y escribe `deploy/kit/copias/destino.conf` (solo servidor y
+  puerto, sin secretos; fuera de git). Si Backrest necesita cualquier otra salida
+  (otro servidor, avisos de versión, webhooks de hooks), falla cerrado: no hay
+  ruta. En las pruebas con v1.14.1 no se vio ninguna otra.
 - Caddy publica Backrest en `ENS_COPIAS_HOST`. Backrest autentica con
   `Authorization` (Basic o el Bearer que guarda el navegador), no con cookies
   (`internal/auth/middleware.go` en v1.14.1): Caddy deja pasar `Authorization` y
@@ -72,6 +85,14 @@ escritura: trátalo como un secreto.
    validar que solo toca los volúmenes de `backrest`, de host, en `:ro` bajo
    `/source/`) en `deploy/kit/copias/`. Recrea `backrest`, `caddy` y `app`. Nada
    de eso imprime valores, salvo la contraseña de `admin` (ver el paso 5).
+   Al final enlaza los checks `backups.*` con las cláusulas de mp.info.6 que miden
+   (`mp.info.6.1` para copia reciente, repositorio accesible e integridad;
+   `mp.info.6.r1.1` para la prueba de restauración si la Declaración la exige),
+   igual que `matrix link`: declara qué cubre cada check, no que se cumpla.
+   Necesita la Declaración de Aplicabilidad vigente y `matrix init` hecho; si no,
+   lo avisa con los comandos `ens-evidence matrix link mp.info.6 --check … --covers …`
+   para ejecutarlos cuando estén. BACKUP-006 (copia en otro lugar) no se enlaza:
+   el kit no la configura.
 4. **Borra el paquete.** `rm` o `shred`; el de `/herramientas` no se guarda en la app.
 5. **Contraseña de Backrest: anótala ahora.** El paquete no trae usuario: antes de
    escribir `config.json`, `box.sh` genera una contraseña aleatoria, calcula su
@@ -101,21 +122,68 @@ restaura la anterior desde `config.json.prev` y lo conserva, como conserva
 
 ## 3. Primera prueba de restauración
 
-mp.info.6 no se evidencia sin una prueba hecha por una persona.
+mp.info.6 no se evidencia sin una prueba hecha por una persona, y esa prueba
+solo cuenta si la herramienta ha comparado lo restaurado con el original.
 
-1. En Backrest, elige una copia, Restore, y como destino una carpeta dentro de
+1. En Backrest, elige una copia, Restore, **una carpeta concreta** (la que vas a
+   comparar; ficheros que no hayan cambiado desde la copia, porque cualquier
+   diferencia invalida la prueba) y como destino una carpeta dentro de
    `/data` (el único sitio escribible del contenedor), p. ej. `/data/prueba`.
-2. Comprueba el resultado desde el host y compáralo con el original:
+2. Pasa lo restaurado al volumen `data`, junto a la app, fuera del workspace, y
+   mira dónde ha quedado la carpeta (Backrest puede dejar la ruta de origen
+   completa por debajo de `/data/prueba`):
 
    ```bash
-   docker run --rm -v ens-box_backrest-data:/d:ro alpine:3 sh -c 'cd /d/prueba && find . -type f | head && sha256sum <un-fichero>'
-   docker run --rm --user 10001 -v ens-box_data:/d:ro alpine:3 sha256sum /d/<mismo-fichero>
+   docker run --rm --user 10001 -v ens-box_backrest-data:/b:ro -v ens-box_data:/d alpine:3 \
+     sh -c 'mkdir -p /d/prueba-restauracion && cp -a /b/prueba /d/prueba-restauracion/restaurado && find /d/prueba-restauracion/restaurado | head'
    ```
 
-3. Borra la prueba: `docker run --rm --user 10001 -v ens-box_backrest-data:/d alpine:3 rm -rf /d/prueba`.
-4. Regístrala como prueba de restauración (revisión humana) según el
-   [runbook de restauración](restauracion-de-evidencias.md). Repítela con la
-   periodicidad de la política de copias.
+3. Escribe la declaración (`prueba.yaml`) **tú, con tu nombre**: la herramienta
+   no rellena el revisor. Sin `restore_id` (lo genera la orden). `performed_at`
+   es cuándo restauraste; `backup.snapshot_id` es el id completo (64
+   caracteres) de la copia restaurada, el que muestra Backrest o
+   `restic snapshots`; `system` es el id del activo del inventario.
+
+   ```yaml
+   test_id: RT-2026-01
+   system: <id del activo>
+   performed_at: 2026-10-15T10:00:00+00:00
+   isolated_target: true
+   backup: { snapshot_id: <64 caracteres> }
+   result: { restored: true, integrity_verified: true, application_started: not_applicable,
+             application_justification: Solo se restauran ficheros }
+   review:
+     approved: true
+     reviewer: <nombre y apellidos de quien lo declara>
+     role: security_officer
+     reviewed_at: 2026-10-15T11:00:00+00:00
+     valid_until: 2027-01-15T11:00:00+00:00
+   ```
+
+4. Regístrala. La orden compara `--restored` con `--original` fichero a fichero
+   (sha256); si coinciden registra la restauración como verificada y tu
+   declaración como evidencia manual; si no, deja la restauración como NO
+   verificada, lista las diferencias y no crea la prueba (BACKUP-005 no pasa):
+
+   ```bash
+   ens() { docker compose -p ens-box exec -T app ens-evidence "$@"; }
+   docker compose -p ens-box exec -T app sh -c 'cat > /data/prueba-restauracion/prueba.yaml' < prueba.yaml
+   ens backup restore-test record-kit /data/prueba-restauracion/prueba.yaml --repository <id en backups.yaml> \
+     --restored /data/prueba-restauracion/restaurado/<carpeta> --original /data/<la misma carpeta en la caja>
+   ```
+
+   Las dos carpetas deben ser distintas y no estar una dentro de la otra. En la
+   siguiente recogida, BACKUP-005 es PASS si además el snapshot sigue en el
+   repositorio y la revisión está vigente. El revisor es declarado, no se
+   autentica. Este recorrido está probado con restic real y un repositorio local
+   (`tests/connectors/backups/test_kit_restore_record.py`); la copia entre volúmenes de
+   arriba no se ha ejecutado con un Backrest real.
+5. Borra la prueba:
+   `docker run --rm --user 10001 -v ens-box_data:/d alpine:3 rm -rf /d/prueba-restauracion` y
+   `docker run --rm --user 10001 -v ens-box_backrest-data:/d alpine:3 rm -rf /d/prueba`.
+   Repítela con la periodicidad de la política de copias. Para restaurar a mano
+   sin registrar nada, ver el
+   [runbook de restauración](restauracion-de-evidencias.md).
 
 ## 4. Restaurar el VPS entero en una máquina nueva
 
@@ -136,7 +204,7 @@ contraseña y unas credenciales de lectura.
      --tmpfs /cache:uid=10001 -e XDG_CACHE_HOME=/cache --env-file restore.env \
      -v ens-box_data:/restore --entrypoint /bin/restic \
      ghcr.io/garethgeorge/backrest:v1.14.1-scratch@sha256:<el digest de compose.yaml> \
-     -r s3:https://<endpoint>/<bucket>/<ruta> restore latest:/source/caja --target /restore
+     -r s3:https://<endpoint>/<bucket>/<ruta> restore latest:/source/caja --target /restore --no-lock
    ```
 
 4. `deploy/box.sh restart app` y `deploy/box.sh status`.
@@ -162,7 +230,8 @@ release nueva, no editando el clon.
    ```
 
 4. Publica la release y `deploy/box.sh update vX.Y.Z`. `box.sh` comprueba que
-   `backrest` corre.
+   `backrest` y `copias-proxy` corren. La imagen del proxy se actualiza igual
+   (`docker buildx imagetools inspect ubuntu/squid:<tag>`, el `Digest:` del índice).
 5. Si no arranca: `deploy/box.sh rollback`; si la versión anterior no lee la
    configuración migrada, vuelve a poner `config.json.pre-update` como `config.json`.
 
@@ -179,14 +248,22 @@ release nueva, no editando el clon.
   4.3, con `restic key list`); después actualiza la contraseña en Backrest y
   `ENS_BACKUPS_<ID>_RESTIC_PASSWORD` en `deploy/.env`. Esta operación no se ha
   ejecutado: pruébala primero en un repositorio de prueba.
+- **Cambiar de destino S3.** Genera un paquete nuevo con el endpoint nuevo y
+  `deploy/box.sh kit enable copias --replace-config <paquete>`: reescribe
+  `destino.conf` y recrea `copias-proxy` y Backrest. Editar el repositorio en la
+  interfaz de Backrest no basta: el proxy seguiría dejando salir solo al destino
+  anterior y la copia nueva fallaría. Rollback: si Backrest no arranca con el
+  paquete nuevo, `box.sh` restaura `config.json` y `destino.conf` anteriores;
+  si arrancó pero el destino nuevo no funciona, repite `kit enable --replace-config`
+  con el paquete anterior (`config.json.prev` solo se conserva si falló el arranque).
 - **Todo a la vez** (paquete nuevo): `kit enable copias --replace-config`; `box.sh`
   genera una contraseña nueva para `admin` y la muestra una vez.
 - Tras rotar, borra `config.json.prev` y `config.json.pre-update` del volumen si quedaron (`kit enable` ya los borra cuando Backrest arranca sano).
 
 ## 7. Desactivar
 
-`deploy/box.sh kit disable copias` para y quita el contenedor, y borra el
-override. No borra los volúmenes, las variables de `deploy/.env`,
+`deploy/box.sh kit disable copias` para y quita `backrest` y `copias-proxy`, y borra el
+override y `destino.conf`. No borra los volúmenes, las variables de `deploy/.env`,
 `connectors/backups.yaml` ni las copias. Caddy responde 503 en
 `ENS_COPIAS_HOST` hasta que se vuelva a activar o se quite el hostname del túnel.
 
