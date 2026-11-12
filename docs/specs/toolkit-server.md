@@ -29,7 +29,7 @@ Las herramientas tienen que estar siempre encendidas, igual que el scheduler, el
 - **Recomendación desde la matriz.** Cada medida sin cubrir que tenga herramienta en el kit dice cuál, qué resuelve y qué no, y cuánto cuesta operarla.
 - **Despliegue.** Cada herramienta es un perfil de Compose de la caja. La app genera la configuración de las elegidas y el comando para activarlas, y el instalador (`installer`) prepara el VPS: cortafuegos, actualizaciones automáticas de seguridad y copia propia. La app no guarda credenciales del servidor y no lo modifica sin una acción explícita del usuario (reglas 6 a 8).
 - **Contrato por herramienta**, igual para todas: (1) servicio en el Compose, (2) conector de solo lectura que recoge evidencia de uso, (3) checks que comprueban uso real, no instalación, (4) runbook de operación, actualización, copia y restauración, (5) aviso en la web cuando deja de funcionar.
-- **Panel de acceso** (`/herramientas` en la web de la caja): la entrada única al kit. Por cada herramienta desplegada muestra para qué sirve en una frase, su estado y un botón «Abrir» que lleva a su interfaz. Las que no están desplegadas aparecen como propuesta, con el botón para añadirlas. Cada herramienta se publica en su propio subdominio, detrás de la misma protección que la web (Cloudflare Access o VPN), nunca en abierto. Si la herramienta lo admite, el inicio de sesión es único contra el proveedor de identidad del kit.
+- **Panel de acceso** (`/herramientas` en la web de la caja): la entrada única al kit. Por cada herramienta desplegada muestra para qué sirve en una frase, su estado y un botón «Abrir» que lleva a su interfaz. Las que no están desplegadas aparecen como propuesta, con el botón para añadirlas. Cada herramienta se publica en su propio subdominio, detrás de la misma protección que la web (Cloudflare Access o VPN), nunca en abierto. El inicio de sesión lo pide Access contra el proveedor de identidad que la pyme ya usa (Workspace o Entra ID); la caja no lleva proveedor propio (`access-identity-guide`).
 - **Panel de monitorización** (`/monitorizacion`): una sola página con la salud de todo lo desplegado, sin Grafana ni servicios extra (visión, «Fuera a propósito»). Lo recoge el scheduler de la app:
   - por herramienta: responde o no, versión y si hay actualización de seguridad, y su dato clave (última copia correcta, OpenBao sellado o no, firmas antimalware al día, usuarios sin doble factor);
   - del VPS: CPU, memoria y disco (por osquery, que ya corre en el servidor), certificados TLS próximos a caducar y actualizaciones del sistema pendientes;
@@ -44,7 +44,6 @@ Las herramientas tienen que estar siempre encendidas, igual que el scheduler, el
   | Copias de seguridad | restic + Backrest (panel) | mp.info.6 (base; R1 desde MEDIO: prueba de restauración) | última copia correcta, retención, última prueba de restauración |
   | Claves y secretos de sistemas | OpenBao | op.exp.10 | inventario de claves, rotaciones, política de acceso, auditoría activada |
   | Contraseñas del equipo | Vaultwarden | apoyo parcial a op.acc.6 (op.acc.6.4 y R1): no es el mecanismo de autenticación del sistema | usuarios con doble factor, cuentas sin usar |
-  | Identidad y doble factor | Authentik o Keycloak | op.acc.6 (refuerzos de doble factor), y op.acc.5 solo si hay usuarios externos; vale solo para los servicios que federan contra él | MFA obligatorio, usuarios activos, altas y bajas, servicios federados |
   | Código dañino | ClamAV en servidores Linux; en Windows y macOS, el antimalware nativo evidenciado por osquery | op.exp.6 (ClamAV sin análisis en acceso no cubre la protección en tiempo real de op.exp.6.5) | firmas al día y últimos análisis por equipo |
 
   osquery (op.exp.1, op.exp.2) ya existe y no cambia. La detección (wazuh-manager y VictoriaLogs, op.exp.8, op.mon.1) sigue en `detection-profile` (v0.3) y se desplegará en este servidor.
@@ -108,7 +107,7 @@ Las herramientas tienen que estar siempre encendidas, igual que el scheduler, el
 - **Concentración.** El servidor guarda las claves y las copias de la pyme, así que es un objetivo valioso. Necesita un bastionado mínimo (SSH solo con clave, cortafuegos, actualizaciones automáticas, sin paneles públicos: acceso por Cloudflare Access o VPN), y la review de seguridad es obligatoria en cada herramienta.
 - **Estado de los contenedores sin dar root a la app.** Leer el socket de Docker equivale a ser root en el VPS. La salud se comprueba por HTTP contra cada herramienta y por osquery; si hace falta el estado de los contenedores, se usa un proxy de solo lectura del socket, nunca el socket montado en la app.
 - **Carga de operación.** Cada herramienta añade actualizaciones, copias y usuarios. El kit solo vale si cada una trae runbook y vigilancia. Se empieza con las imprescindibles para BÁSICA.
-- **Licencias.** Verificar la licencia y las condiciones de redistribución de cada herramienta antes de incluirla (Backrest, OpenBao, Vaultwarden, Authentik o Keycloak, ClamAV).
+- **Licencias.** Verificar la licencia y las condiciones de redistribución de cada herramienta antes de incluirla (Backrest, OpenBao, Vaultwarden, ClamAV).
 - **RAM.** Medir el consumo real del conjunto en un VPS pequeño (2-4 GiB) antes de fijar el tamaño recomendado.
 - Medidas y cláusulas de la tabla comprobadas contra el texto de `src/ens_evidence/catalog/data/{op,mp}.yaml` (op.exp.6.5 en op.yaml:1742, mp.info.6 R1 en mp.yaml:2195). op.cont.3 no aplica: es la prueba del plan de continuidad y es n.a. en BAJO y MEDIO.
 - **Licencias e imágenes:** el paquete referencia imágenes upstream fijadas por digest, no las redistribuye.
@@ -123,7 +122,7 @@ Sub-specs, en este orden:
 - [ ] `kit-secrets`: claves y secretos con OpenBao
 - [ ] `kit-access-panel`: contrato común extraído y panel `/herramientas`
 - [ ] `kit-passwords`: Vaultwarden
-- [ ] `kit-identity`: Authentik o Keycloak, y SSO del kit
+- [ ] `access-identity-guide`: Access con el proveedor de identidad de la pyme (sustituye a `kit-identity`, archivada el 2026-11-12)
 - [ ] `kit-antimalware`: ClamAV en Linux y antimalware nativo por osquery
 - [ ] `kit-monitoring`: panel `/monitorizacion`
 - [ ] Bastionado del VPS y restauración completa: en `installer`
