@@ -45,6 +45,62 @@ services:
       retries: 3
       start_period: 60s
 
+  agent:
+    profiles: [agents]
+    image: ens-evidence:${ENS_VERSION:?usa deploy/box.sh}
+    command: [ens-evidence, agent, serve, --host, 0.0.0.0, --port, "8000"]
+    init: true
+    restart: unless-stopped
+    # Solo deploy/agent.env: el servidor de agentes no recibe las credenciales de los conectores.
+    env_file: ${ENS_AGENT_ENV_FILE:-deploy/agent.env}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - data:/data
+    networks: [agent]
+    logging: *logging
+    healthcheck:
+      # La imagen no trae curl ni wget; /healthz solo existe para este sondeo.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
+  ui:
+    profiles: [ui]
+    image: ens-evidence:${ENS_VERSION:?usa deploy/box.sh}
+    command: [ens-evidence, ui, serve, --host, 0.0.0.0, --port, "8000"]
+    init: true
+    restart: unless-stopped
+    # Solo deploy/ui.env: la interfaz no recibe las credenciales de los conectores (deploy/.env).
+    env_file: ${ENS_UI_ENV_FILE:-deploy/ui.env}
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    volumes:
+      - data:/data
+    networks: [ui-net]
+    logging: *logging
+    healthcheck:
+      # La imagen no trae curl ni wget; /healthz solo se sondea en 127.0.0.1; Caddy responde 403 en el host de la UI.
+      test:
+        - CMD
+        - python
+        - -c
+        - "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/healthz', timeout=3)"
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 20s
+
   caddy:
     image: caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5
     restart: unless-stopped
@@ -63,7 +119,11 @@ services:
     security_opt: ["no-new-privileges:true"]
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-    networks: [edge]
+    networks: [edge, agent, ui-net]
+    environment:
+      # Los nombres de host salen de deploy/ui.env y deploy/agent.env (los lee box.sh); sin ellos, `.invalid`.
+      ENS_UI_HOST: ${ENS_UI_HOST:-ui.invalid}
+      ENS_AGENT_HOST: ${ENS_AGENT_HOST:-agent.invalid}
     logging: *logging
     healthcheck:
       # Toda ruta da 403, así que se sondea la API de administración (solo en localhost).
@@ -96,10 +156,16 @@ services:
 
 # Salidas de red:
 #   app         backend: sin entrada; salida a Internet (conectores y R2).
-#   caddy       edge:    interna, sin salida a Internet; escucha en :8080 solo en esta red.
+#   agent       agent:   interna, sin salida a Internet; solo la alcanza caddy (perfil agents).
+#   ui          ui-net:  interna, sin salida a Internet; solo la alcanza caddy (perfil ui).
+#   caddy       edge + agent + ui-net: todas internas, sin salida a Internet; escucha en :8080.
 #   cloudflared edge + tunnel: llega a caddy:8080 y sale hacia Cloudflare.
 networks:
   backend: {}
+  agent:
+    internal: true
+  ui-net:
+    internal: true
   edge:
     internal: true
   tunnel: {}

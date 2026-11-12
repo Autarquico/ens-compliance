@@ -96,9 +96,10 @@ Un VPS (o un portátil para evaluar, sin evidencia continua ni kit; ADR 0019) co
 │   caddy (TLS automático) ──► /agent/*  público (agentes osquery)       │
 │                          └─► /         solo LAN/VPN/Access (UI)        │
 │                    ▼                                                   │
+│   agent (misma imagen, red interna; ADR 0020)                          │
+│    · servidor TLS de osquery (enroll, config, log, distributed r/w)    │
 │   app (Python, núcleo ens_evidence)                                    │
 │    · UI web (plantillas en servidor + htmx): asistente + seguridad     │
-│    · servidor TLS de osquery (enroll, config, log, distributed r/w)    │
 │    · scheduler: collectors → checks → informes                         │
 │    · pre-auditoría (capa determinista) + adaptador LLM                 │
 │         │                         │                                    │
@@ -119,8 +120,9 @@ Un VPS (o un portátil para evaluar, sin evidencia continua ni kit; ADR 0019) co
 | Pieza | Decisión | Motivo |
 |-------|----------|--------|
 | Proxy | Caddy | TLS automático; separa la ruta pública de agentes de la UI privada. |
-| App | Un contenedor: UI, API, servidor osquery, scheduler | Un proceso que operar, actualizar y respaldar. |
-| UI | Renderizada en servidor con htmx; sin SPA ni build de Node | Lo más ligero; misma app y mismo contenedor. |
+| App | Contenedor `app`: UI, API, scheduler | Un proceso que operar, actualizar y respaldar. |
+| Agentes | Servicio `agent` aparte, de la misma imagen, en red interna sin salida y sin los secretos de los conectores (ADR 0020) | Aísla el proceso expuesto a Internet; desvío del «un contenedor» original. |
+| UI | Renderizada en servidor con htmx; sin SPA ni build de Node | Lo más ligero; misma imagen que la app. |
 | Estado | SQLite | Sin servidor de base de datos; backup = un fichero. |
 | Evidencias | Ficheros locales + manifiestos sha256 | Simple; la inmutabilidad la aporta la copia externa. |
 | Copia independiente | Restic cifrado a S3 externo con bloqueo de objetos | Copia independiente (guía, línea 727) y protección contra borrado. |

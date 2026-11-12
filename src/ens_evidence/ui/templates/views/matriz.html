@@ -1,0 +1,24 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Matriz de medidas</h1>
+<p class="lead">Una fila por medida del anexo II del ENS. «Aplicabilidad» dice si la medida te toca. «Valoración» es el juicio de una persona.</p>
+{{ m.revision_humana() }}
+<div class="table-wrap"><table>
+  <caption>{{ rows | length }} medidas · datos de {{ generated_at }}</caption>
+  <thead><tr><th scope="col" class="id">Medida</th><th scope="col">Título</th><th scope="col">Aplicabilidad</th><th scope="col">Valoración</th><th scope="col">Evidencias</th></tr></thead>
+  <tbody>
+  {%- for r in rows %}
+  <tr>
+    <th scope="row" class="id"><a href="/matriz/{{ r.measure_id }}">{{ r.measure_id }}</a></th>
+    <td>{{ r.title }}</td>
+    <td>{{ m.badge(r.applicability, show_code=False) }}</td>
+    <td>{{ m.badge(r.assessment, show_code=False) }}</td>
+    <td class="mono">{{ r.evidence_count }}</td>
+  </tr>
+  {%- else %}
+  <tr><td colspan="5" class="muted">{% if wizard_pending %}Todavía no hay medidas. Termina antes el alcance y la categorización.{% else %}La matriz se llena cuando se firma la Declaración de Aplicabilidad (el documento que dice qué medidas te tocan).{% endif %}</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+{% endblock %}

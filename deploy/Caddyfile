@@ -1,6 +1,8 @@
-# Deny-all: toda ruta responde 403 y queda en el log (ADR 0016).
-# /agent/* no se publica hasta osquery-server; no hay UI pública.
-# Escucha en :8080 dentro de la red interna `edge`; ningún puerto se publica en el host.
+# Separa por nombre de host (ADR 0016, ADR 0021). Deny-all salvo:
+#   - ENS_UI_HOST: la interfaz web (ui:8000); detrás de Cloudflare Access, que firma Cf-Access-Jwt-Assertion.
+#   - ENS_AGENT_HOST: cinco POST del protocolo TLS de osquery hacia el servidor de agentes.
+# Un host desconocido o vacío, y todo lo demás, responde 403 y queda en el log.
+# Escucha en :8080 dentro de las redes internas `edge`, `agent` y `ui-net`; ningún puerto se publica en el host.
 {
 	auto_https off
 	admin localhost:2019
@@ -18,5 +20,101 @@
 			resp_headers delete
 		}
 	}
-	respond "Forbidden" 403
+
+	@ui host {$ENS_UI_HOST:ui.invalid}
+	# /healthz es solo para el healthcheck del contenedor (127.0.0.1); no se publica.
+	@ui_healthz {
+		host {$ENS_UI_HOST:ui.invalid}
+		path /healthz /healthz/*
+	}
+	# La subida de evidencias admite 5 MiB de fichero más el envoltorio multipart (forms.py).
+	@ui_upload {
+		host {$ENS_UI_HOST:ui.invalid}
+		method POST
+		path /evidencias/nueva
+	}
+	@small_agent {
+		method POST
+		path /agent/enroll /agent/config /agent/distributed/read
+	}
+	@large_agent {
+		method POST
+		path /agent/log /agent/distributed/write
+	}
+	@agent_any {
+		host {$ENS_AGENT_HOST:agent.invalid}
+		method POST
+		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
+	}
+	# El servidor no descomprime: osquery con --logger_tls_compress enviaría cuerpos que no puede leer.
+	@encoded {
+		host {$ENS_AGENT_HOST:agent.invalid}
+		method POST
+		path /agent/enroll /agent/config /agent/log /agent/distributed/read /agent/distributed/write
+		header Content-Encoding *
+	}
+
+	handle @ui_healthz {
+		respond "Forbidden" 403
+	}
+
+	handle @ui_upload {
+		request_body {
+			max_size 5184KiB
+		}
+		reverse_proxy ui:8000 {
+			header_up -Cookie
+			header_up -X-Forwarded-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle @ui {
+		request_body {
+			max_size 1MB
+		}
+		reverse_proxy ui:8000 {
+			# Cf-Access-Jwt-Assertion SÍ llega a la interfaz: es su identidad. La cookie de Access no.
+			header_up -Cookie
+			header_up -X-Forwarded-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle @encoded {
+		respond "Unsupported Media Type" 415
+	}
+
+	handle @agent_any {
+		request_body @small_agent {
+			max_size 64KB
+		}
+		request_body @large_agent {
+			max_size 10MB
+		}
+		reverse_proxy agent:8000 {
+			header_up -Cookie
+			header_up -Cf-Access-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
+	}
+
+	handle {
+		respond "Forbidden" 403
+	}
+
+	# Agente caído o lento: 503 sin detalle. Los demás errores (p. ej. 413 por tamaño) conservan su código.
+	handle_errors {
+		@upstream_down expression {http.error.status_code} in [502, 503, 504]
+		respond @upstream_down "Service Unavailable" 503
+	}
 }

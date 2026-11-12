@@ -1,0 +1,3 @@
+{# Respuesta htmx (hx_request=true): solo el paso y la lista de pasos fuera de banda. #}
+{% block paso %}{% endblock %}
+<nav id="pasos" aria-label="Pasos del asistente" hx-swap-oob="true">{% include "partials/lista_pasos.html" %}</nav>

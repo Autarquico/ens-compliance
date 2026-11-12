@@ -12,7 +12,7 @@ depends_on: [web-ui-base]
 supersedes: []
 related_specs: [web-ui, web-ui-base]
 created: 2026-11-08
-updated: 2026-11-08
+updated: 2026-11-09
 ---
 
 # UI web: el flujo completo, de los riesgos a la pre-auditoría

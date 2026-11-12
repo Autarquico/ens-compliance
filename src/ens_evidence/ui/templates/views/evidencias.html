@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Evidencias</h1>
+<p class="lead">Una evidencia es el rastro que demuestra algo, por ejemplo la salida de una comprobación. Aquí ves solo los manifiestos: qué se recogió, de dónde y cuándo. El contenido en bruto no se muestra.</p>
+{% if uploaded is defined and uploaded %}<p class="saved" role="status">Evidencia registrada: <span class="mono">{{ uploaded }}</span>. Ya puedes enlazarla desde la <a href="/matriz">matriz</a>.</p>{% endif %}
+<p><a class="btn btn-primary" href="/evidencias/nueva">Subir una evidencia</a></p>
+<div class="table-wrap"><table>
+  <caption>{{ manifests | length }} manifiestos</caption>
+  <thead><tr><th scope="col">Identificador</th><th scope="col">Fuente</th><th scope="col">Recogida</th><th scope="col">Estado</th></tr></thead>
+  <tbody>
+  {%- for e in manifests %}
+  <tr>
+    <th scope="row" class="id">{{ e.id }}</th>
+    <td>{{ e.source }}</td>
+    <td class="mono">{{ e.collected_at }}</td>
+    <td>{{ m.badge(e.status) }}</td>
+  </tr>
+  {%- else %}
+  <tr><td colspan="4" class="muted">No hay evidencias recogidas todavía.</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+<p class="muted">La ausencia de evidencia nunca cuenta como correcta.</p>
+{% endblock %}

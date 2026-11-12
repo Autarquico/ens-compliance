@@ -1,0 +1,31 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Lo aprueba el responsable de la seguridad. La aprobación vale un año y deja de valer si cambian los riesgos, el plan de tratamiento, el alcance o la categorización.</p>
+{% include "partials/_paso_cabecera.html" %}
+<dl class="facts">
+  <dt>Estado</dt><dd>{{ m.badge(risk_state) }}</dd>
+  <dt>Riesgos</dt><dd>{{ risks_count }}</dd>
+  <dt>Acciones</dt><dd>{{ actions_count }}</dd>
+  {% if approval %}<dt>Aprobado por</dt><dd>{{ approval.approved_by }} <span class="muted">· {{ approval.approved_at }}</span></dd>
+  <dt>Vale hasta</dt><dd>{{ approval.valid_until }}</dd>{% endif %}
+</dl>
+{% if stale_reasons %}
+<div class="notice notice-warn"><p><strong>Hay que aprobarlo de nuevo:</strong></p>
+<ul>{% for r in stale_reasons %}<li>{{ r }}</li>{% endfor %}</ul></div>
+{% endif %}
+{% if issues %}
+<div class="notice notice-warn"><p><strong>Antes de aprobar:</strong></p>
+<ul>{% for i in issues %}<li>{{ i }}</li>{% endfor %}{% if issues_more %}<li>Y {{ issues_more }} más.</li>{% endif %}</ul></div>
+{% endif %}
+{{ m.revision_humana() }}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  {{ m.approver_field() }}
+  <div class="actions">
+    <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if issues %} disabled{% endif %}>Aprobar el análisis de riesgos</button>
+    {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+    {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

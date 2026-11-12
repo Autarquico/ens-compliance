@@ -8,7 +8,6 @@ from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime, tzinfo
 from enum import StrEnum
-from importlib.resources import files
 from pathlib import Path
 from typing import Annotated, Any, Literal
 
@@ -17,6 +16,7 @@ import yaml
 from pydantic import ValidationError
 
 from ens_evidence import schemas
+from ens_evidence.agent.cli import agent_app
 from ens_evidence.applicability import (
     ApplicabilityRejected,
     DeclarationRejected,
@@ -27,6 +27,7 @@ from ens_evidence.applicability import (
     propose_applicability,
     validate_applicability,
 )
+from ens_evidence.applicability.propose import decide
 from ens_evidence.assessment import (
     assessment_status,
     count_statuses,
@@ -35,10 +36,9 @@ from ens_evidence.assessment import (
 )
 from ens_evidence.assessment.dossier import (
     TransitionRejected,
-    build_snapshot,
-    current_inputs,
     dossier_status,
     entries,
+    generate_dossier,
     record_transition,
     render_snapshot_md,
     scan_transitions,
@@ -72,7 +72,6 @@ from ens_evidence.assessment.dossier.store import (
     list_dossiers,
     load_snapshot,
     save_markdown,
-    save_snapshot,
 )
 from ens_evidence.assessment.dossier.verification import package_required, verification_problems
 from ens_evidence.assessment.render import counted
@@ -106,7 +105,7 @@ from ens_evidence.backup.transfer import export_all, import_all
 from ens_evidence.benchmark.cli import app as benchmark_app
 from ens_evidence.catalog import load_catalog
 from ens_evidence.catalog.controls import MeasuresFileError, init_measures
-from ens_evidence.catalog.model import Catalog, Group, MeasureCard
+from ens_evidence.catalog.model import Catalog, Dimension, Group, MeasureCard
 from ens_evidence.categorization import (
     CategorizationApprovalRejected,
     CategorizationNotCurrent,
@@ -116,6 +115,12 @@ from ens_evidence.categorization import (
     commitment,
     commitment_notice,
     init_categorization,
+)
+from ens_evidence.categorization.edit import (
+    CategorizationEditRejected,
+    add_information,
+    set_rating,
+    set_valuation,
 )
 from ens_evidence.checks.engine import CONFIG_INVALID, ConnectorOutcome, OutcomeKind, run_all
 from ens_evidence.checks.inputs import NO_EVIDENCE
@@ -191,7 +196,14 @@ from ens_evidence.matrix.messages import (
     role_label,
 )
 from ens_evidence.models.dossier import CorrectiveMeasure
-from ens_evidence.models.enums import Category, CheckStatus, CollectionStatus, DossierState, Role
+from ens_evidence.models.enums import (
+    Applicability,
+    Category,
+    CheckStatus,
+    CollectionStatus,
+    DossierState,
+    Role,
+)
 from ens_evidence.models.preaudit import (
     PROPOSAL_NOTICE,
     DeterministicRule,
@@ -205,6 +217,7 @@ from ens_evidence.models.preaudit import (
     Ref,
     RefKind,
 )
+from ens_evidence.models.readiness import AbsentAssets, Compensation
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
     AnswersInvalid,
@@ -221,6 +234,8 @@ from ens_evidence.orgdocs import (
     requirement_label,
     skeleton,
 )
+from ens_evidence.orgdocs.answers import set_answer
+from ens_evidence.orgdocs.template import AnswerType
 from ens_evidence.preaudit import service as preaudit
 from ens_evidence.preaudit.deterministic import RULE_LABELS
 from ens_evidence.preaudit.findings import FindingState, FindingsView, findings_view
@@ -239,6 +254,15 @@ from ens_evidence.risk import (
     risk_status,
     validate_risk,
 )
+from ens_evidence.risk.edit import (
+    RiskEditRejected,
+    add_action,
+    add_risk,
+    adopt_methodology,
+    remove_action,
+    remove_risk,
+)
+from ens_evidence.risk.models import ActionStatus, Treatment
 from ens_evidence.scheduling.calendar import JobKind
 from ens_evidence.scheduling.clock import SystemClock
 from ens_evidence.scheduling.collect import (
@@ -278,11 +302,22 @@ from ens_evidence.scope import (
     revoke_approval,
     scope_status,
 )
-from ens_evidence.scope.edit import ScopeEditRejected, add_asset, parse_field, set_system
+from ens_evidence.scope.edit import (
+    ScopeEditRejected,
+    add_asset,
+    add_dependency,
+    add_service,
+    include_asset,
+    include_service,
+    parse_field,
+    set_system,
+)
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.models import AssetType, Deployment
 from ens_evidence.scope.secrets import find_secrets
-from ens_evidence.scope.sync import QUESTIONNAIRE_KEY, SCOPE_KEYS, synced_keys
+from ens_evidence.scope.skeleton import create_scope_skeleton, write_if_absent
+from ens_evidence.scope.sync import SCOPE_KEYS, synced_keys
+from ens_evidence.ui.cli import ui_app
 from ens_evidence.workspace import (
     AlreadyExists,
     BackupSettings,
@@ -361,6 +396,8 @@ app.add_typer(matrix_app, name="matrix")
 app.add_typer(incident_app, name="incident")
 app.add_typer(preaudit_app, name="preaudit")
 app.add_typer(benchmark_app, name="benchmark")
+app.add_typer(agent_app, name="agent")
+app.add_typer(ui_app, name="ui")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -373,17 +410,6 @@ SettingsOption = Annotated[
         help="Fichero de ajustes (por defecto ~/.config/ens-evidence/settings.yaml).",
     ),
 ]
-
-SCOPE_SKELETON = {
-    "scope/assets.yaml": "# Un activo por elemento; ver scope/questionnaire.md.\nassets: []\n",
-    "scope/services.yaml": "services: []\n",
-    "scope/dependencies.yaml": "dependencies: []\n",
-    "scope/system.yaml": (
-        "# Rellena nombre, descripción y los activos y servicios incluidos o excluidos.\n"
-        'name: ""\ndescription: ""\n'
-        "included_assets: []\nincluded_services: []\nexclusions: []\n"
-    ),
-}
 
 
 def fail(message: str, code: int = 2) -> typer.Exit:
@@ -485,9 +511,7 @@ def init(
         write_settings(settings_path, path, s3_bucket, s3_prefix, s3_endpoint, s3_region)
         typer.echo(f"Ajustes creados: {settings_path}")
     store = open_store(load_settings(settings_path))
-    template = files("ens_evidence").joinpath("templates/questionnaire.md").read_text("utf-8")
-    skeleton = {**SCOPE_SKELETON, QUESTIONNAIRE_KEY: template}
-    created = [key for key, text in skeleton.items() if write_if_absent(store, key, text)]
+    created = create_scope_skeleton(store)
     for key in created:
         typer.echo(f"Creado: {key}")
     if not created:
@@ -521,13 +545,6 @@ def write_settings(
     except SettingsError:
         settings_path.unlink(missing_ok=True)
         raise
-
-
-def write_if_absent(store: WorkspaceStore, key: str, text: str) -> bool:
-    if store.exists(key):
-        return False
-    store.write_text(key, text)
-    return True
 
 
 def differing_keys(source: WorkspaceStore, target: WorkspaceStore, keys: list[str]) -> list[str]:
@@ -792,7 +809,7 @@ def scope_add_asset(
             if not separator or not name.strip():
                 raise ScopeEditRejected([f"--set {item!r}: usa campo=valor"])
             values[name.strip()] = parse_field(name.strip(), value)
-        revoked = add_asset(open_workspace(ctx), values, include, datetime.now(UTC))
+        revoked = add_asset(open_workspace(ctx), values, include, clock())
     except ScopeEditRejected as exc:
         typer.echo("No se añade el activo:", err=True)
         print_errors(exc.errors)
@@ -812,12 +829,95 @@ def scope_set_system(
 ) -> None:
     """Rellena el nombre y la descripción del sistema. No aprueba nada."""
     try:
-        revoked = set_system(open_workspace(ctx), name, description, datetime.now(UTC))
+        revoked = set_system(open_workspace(ctx), name, description, clock())
     except ScopeEditRejected as exc:
         typer.echo("No se cambia el sistema:", err=True)
         print_errors(exc.errors)
         raise typer.Exit(1) from None
     typer.echo("Sistema actualizado.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+
+
+@scope_app.command("add-service")
+@handled
+def scope_add_service(
+    ctx: typer.Context,
+    service_id: Annotated[str, typer.Option("--id", help="Identificador único del servicio.")],
+    name: Annotated[str, typer.Option("--name", help="Nombre del servicio.")],
+    assets: Annotated[
+        list[str],
+        typer.Option("--asset", help="Activo que sustenta el servicio (repetible, al menos uno)."),
+    ],
+    include: Annotated[bool, typer.Option("--include", help="Inclúyelo en el alcance.")] = False,
+) -> None:
+    """Añade un servicio al inventario, sin tocar los demás. No aprueba nada."""
+    try:
+        revoked = add_service(open_workspace(ctx), service_id, name, assets, include, clock())
+    except ScopeEditRejected as exc:
+        typer.echo("No se añade el servicio:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Servicio {service_id} añadido{' e incluido en el alcance' if include else ''}.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+
+
+@scope_app.command("include-asset")
+@handled
+def scope_include_asset(
+    ctx: typer.Context,
+    asset_id: Annotated[str, typer.Option("--id", help="Identificador del activo.")],
+) -> None:
+    """Incluye en el alcance un activo existente. No aprueba nada."""
+    try:
+        revoked = include_asset(open_workspace(ctx), asset_id, clock())
+    except ScopeEditRejected as exc:
+        typer.echo("No se incluye el activo:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Activo {asset_id} incluido en el alcance.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+
+
+@scope_app.command("include-service")
+@handled
+def scope_include_service(
+    ctx: typer.Context,
+    service_id: Annotated[str, typer.Option("--id", help="Identificador del servicio.")],
+) -> None:
+    """Incluye en el alcance un servicio existente. No aprueba nada."""
+    try:
+        revoked = include_service(open_workspace(ctx), service_id, clock())
+    except ScopeEditRejected as exc:
+        typer.echo("No se incluye el servicio:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Servicio {service_id} incluido en el alcance.")
+    if revoked:
+        typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
+
+
+@scope_app.command("add-dependency")
+@handled
+def scope_add_dependency(
+    ctx: typer.Context,
+    dependency_id: Annotated[str, typer.Option("--id", help="Identificador único.")],
+    asset: Annotated[str, typer.Option("--asset", help="Activo que depende.")],
+    depends_on: Annotated[str, typer.Option("--depends-on", help="Activo del que depende.")],
+    purpose: Annotated[str | None, typer.Option("--purpose", help="Para qué la usa.")] = None,
+) -> None:
+    """Añade una dependencia entre activos. No aprueba nada."""
+    try:
+        revoked = add_dependency(
+            open_workspace(ctx), dependency_id, asset, depends_on, purpose, clock()
+        )
+    except ScopeEditRejected as exc:
+        typer.echo("No se añade la dependencia:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Dependencia {dependency_id} añadida.")
     if revoked:
         typer.echo("Se revoca la aprobación del alcance; hay que aprobarlo de nuevo.")
 
@@ -832,7 +932,7 @@ def scope_approve(
     """Aprueba el alcance vigente. Solo lo aprueba el responsable del sistema."""
     store = open_workspace(ctx)
     try:
-        approval = approve_scope(store, by, role, datetime.now(UTC))
+        approval = approve_scope(store, by, role, clock())
     except ScopeApprovalRejected as exc:
         typer.echo("No se aprueba el alcance:", err=True)
         print_errors(exc.errors)
@@ -877,6 +977,79 @@ def categorization_init(ctx: typer.Context) -> None:
         )
     else:
         typer.echo("Se conserva scope/categorization.yaml.")
+
+
+def edit_categorization(action: Callable[[], None], failure: str) -> None:
+    try:
+        action()
+    except CategorizationEditRejected as exc:
+        typer.echo(failure, err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+
+
+@categorization_app.command("add-information")
+@handled
+def categorization_add_information(
+    ctx: typer.Context,
+    info_id: Annotated[str, typer.Option("--id", help="Identificador único de la información.")],
+    description: Annotated[str, typer.Option("--description", help="Qué información es.")],
+) -> None:
+    """Añade una información sin valorar. No aprueba nada."""
+    store = open_workspace(ctx)
+    edit_categorization(
+        lambda: add_information(store, info_id, description),
+        "No se añade la información:",
+    )
+    typer.echo(f"Información {info_id} añadida; valora cada dimensión con categorization rate.")
+
+
+@categorization_app.command("rate")
+@handled
+def categorization_rate(
+    ctx: typer.Context,
+    element_id: Annotated[str, typer.Option("--id", help="Información o servicio a valorar.")],
+    dimension: Annotated[Dimension, typer.Option("--dimension", help="C, I, T, A o D.")],
+    level: Annotated[
+        str, typer.Option("--level", help="BAJO, MEDIO, ALTO o not_affected (no afectada).")
+    ],
+    justification: Annotated[
+        str, typer.Option("--justification", help="Criterio del anexo I, 3 que aplica.")
+    ],
+    is_service: Annotated[
+        bool, typer.Option("--service", help="El elemento es un servicio, no una información.")
+    ] = False,
+) -> None:
+    """Fija el nivel de una dimensión de una información o servicio. No aprueba nada."""
+    store = open_workspace(ctx)
+    kind = "service" if is_service else "information"
+    edit_categorization(
+        lambda: set_rating(store, kind, element_id, dimension, level, justification),
+        "No se guarda la valoración:",
+    )
+    typer.echo(f"{element_id}: dimensión {dimension.value} valorada.")
+
+
+@categorization_app.command("sign-valuation")
+@handled
+def categorization_sign_valuation(
+    ctx: typer.Context,
+    element_id: Annotated[str, typer.Option("--id", help="Información o servicio valorado.")],
+    by: Annotated[str, typer.Option("--by", help="Nombre de su responsable (declarado).")],
+    is_service: Annotated[
+        bool, typer.Option("--service", help="El elemento es un servicio, no una información.")
+    ] = False,
+) -> None:
+    """Registra quién valora una información o servicio. El rol sale del tipo de elemento."""
+    store = open_workspace(ctx)
+    kind = "service" if is_service else "information"
+    edit_categorization(
+        lambda: set_valuation(store, kind, element_id, by, clock()),
+        "No se registra la valoración:",
+    )
+    typer.echo(
+        f"{element_id}: valoración de {by} registrada.\nEl nombre es declarado; no se autentica."
+    )
 
 
 @categorization_app.command("approve")
@@ -1006,6 +1179,82 @@ def print_exclusions(exclusions: list[Exclusion]) -> None:
     typer.echo("Exigidas por el anexo II y excluidas por ausencia del tipo de activo (2.1.a):")
     for item in exclusions:
         typer.echo(f"  - {item.id} {item.name} [{item.asset_type}]: {item.justification}")
+
+
+@applicability_app.command("decide")
+@handled
+def applicability_decide(
+    ctx: typer.Context,
+    measure: Annotated[str, typer.Argument(help="Medida (p. ej. op.acc.1).")],
+    applicability: Annotated[
+        Applicability,
+        typer.Option("--applicability", help="APPLICABLE o NOT_APPLICABLE."),
+    ],
+    justification: Annotated[str, typer.Option("--justification", help="Fundamento.")],
+    reinforcements: Annotated[
+        list[str] | None,
+        typer.Option("--reinforcement", help="Refuerzo elegido, p. ej. R1 (repetible)."),
+    ] = None,
+    absent_type: Annotated[
+        str | None,
+        typer.Option("--absent-asset-type", help="Tipo de activo que no existe en el sistema."),
+    ] = None,
+    absent_justification: Annotated[
+        str | None, typer.Option("--absent-justification", help="Por qué no existe.")
+    ] = None,
+    compensation_measures: Annotated[
+        list[str] | None,
+        typer.Option("--compensation-measure", help="Medida compensatoria (repetible)."),
+    ] = None,
+    compensation_replaces: Annotated[
+        list[str] | None,
+        typer.Option(
+            "--compensation-replaces",
+            help="Obligación que sustituye: base o refuerzo, p. ej. R1 (repetible).",
+        ),
+    ] = None,
+    compensation_justification: Annotated[
+        str | None,
+        typer.Option("--compensation-justification", help="Por qué protegen igual o mejor."),
+    ] = None,
+) -> None:
+    """Registra la decisión humana sobre una medida. No aprueba nada."""
+    try:
+        absent = (
+            AbsentAssets(asset_type=absent_type or "", justification=absent_justification or "")
+            if absent_type or absent_justification
+            else None
+        )
+        compensation = (
+            Compensation(
+                measures=compensation_measures or [],
+                replaces=compensation_replaces or [],
+                justification=compensation_justification or "",
+            )
+            if compensation_measures or compensation_replaces or compensation_justification
+            else None
+        )
+        decide(
+            open_workspace(ctx),
+            clock(),
+            measure,
+            applicability,
+            justification,
+            chosen_reinforcements=tuple(reinforcements or ()),
+            compensation=compensation,
+            absent_assets=absent,
+        )
+    except ValidationError as exc:
+        typer.echo("No se registra la decisión:", err=True)
+        print_errors(describe_validation("applicability decide", exc))
+        raise typer.Exit(1) from None
+    except (ScopeNotApproved, CategorizationNotCurrent) as exc:
+        raise report_missing_context(exc) from None
+    except ApplicabilityRejected as exc:
+        typer.echo("No se registra la decisión:", err=True)
+        print_errors(exc.errors)
+        raise typer.Exit(1) from None
+    typer.echo(f"Decisión sobre {measure} registrada. Valida con applicability validate.")
 
 
 @applicability_app.command("validate")
@@ -1534,6 +1783,46 @@ def docs_init(ctx: typer.Context) -> None:
         typer.echo(f"{ANSWERS_KEY} ya existe y se conserva.")
 
 
+@docs_app.command("answer")
+@handled
+def docs_answer(
+    ctx: typer.Context,
+    key: Annotated[str, typer.Argument(help="Clave de la pregunta (ver `docs questions`).")],
+    values: Annotated[
+        list[str] | None,
+        typer.Option("--value", help="Valor (repetible para listas de textos)."),
+    ] = None,
+    as_json: Annotated[
+        str | None,
+        typer.Option("--json", help="Valor como JSON, para listas de objetos."),
+    ] = None,
+) -> None:
+    """Responde una pregunta de las plantillas en org/answers.yaml."""
+    if (as_json is None) == (not values):
+        raise fail("Indica --value (una o varias veces) o --json, no ambos.")
+    if as_json is not None:
+        try:
+            value = json.loads(as_json)
+        except json.JSONDecodeError:
+            raise fail("--json no es JSON válido.") from None
+    else:
+        value = values if _is_list_question(key) else values[0]
+        if len(values) > 1 and not _is_list_question(key):
+            raise fail("--value solo se repite en preguntas de tipo lista.")
+    try:
+        set_answer(open_workspace(ctx), key, value)
+    except ValueError as exc:
+        typer.echo("No se guarda la respuesta:", err=True)
+        print_errors(str(exc).split("; "))
+        raise typer.Exit(1) from None
+    typer.echo(f"Respuesta {key} guardada. Genera los documentos con docs build.")
+
+
+def _is_list_question(key: str) -> bool:
+    question = next((q for q in all_questions(load_templates()) if q.id == key), None)
+    return question is not None and question.type is AnswerType.LIST
+
+
 @docs_app.command("build")
 @handled
 def docs_build(ctx: typer.Context) -> None:
@@ -1629,6 +1918,166 @@ def risk_init(ctx: typer.Context) -> None:
     for key in kept:
         typer.echo(f"Se conserva {key}.")
     typer.echo("Siguiente paso: declara tu metodología en risk/methodology.yaml.")
+
+
+def _fail_risk_edit(title: str, exc: RiskEditRejected) -> typer.Exit:
+    typer.echo(title, err=True)
+    print_errors(exc.errors)
+    return typer.Exit(1)
+
+
+@risk_app.command("adopt-methodology")
+@handled
+def risk_adopt_methodology(
+    ctx: typer.Context,
+    name: Annotated[str, typer.Option("--name", help="Nombre y versión de la metodología.")],
+    reference: Annotated[str, typer.Option("--reference", help="Norma o guía que la respalda.")],
+    adaptation: Annotated[str, typer.Option("--adaptation", help="Qué se adapta de ella.")],
+) -> None:
+    """Declara la metodología de la organización y la marca adoptada. No toca las escalas."""
+    try:
+        created = adopt_methodology(open_workspace(ctx), name, reference, adaptation)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se adopta la metodología:", exc) from None
+    for key in created:
+        typer.echo(f"Creado {key} (propuesta editable).")
+    typer.echo("Metodología declarada y adoptada. Revisa las escalas en risk/methodology.yaml.")
+
+
+def _valuation(items: list[str]) -> dict[str, str]:
+    valuation: dict[str, str] = {}
+    for item in items:
+        dimension, separator, level = item.partition("=")
+        if not separator:
+            raise typer.BadParameter(
+                f"{item!r}: usa dimensión=nivel, p. ej. C=ALTO", param_hint="--valuation"
+            )
+        valuation[dimension.strip()] = level.strip()
+    return valuation
+
+
+@risk_app.command("add")
+@handled
+def risk_add(
+    ctx: typer.Context,
+    risk_id: Annotated[str, typer.Option("--id", help="Identificador único del riesgo.")],
+    threat: Annotated[str, typer.Option("--threat", help="Descripción de la amenaza.")],
+    dimensions: Annotated[
+        list[Dimension], typer.Option("--dimension", help="Dimensión afectada (repetible).")
+    ],
+    valuation: Annotated[
+        list[str],
+        typer.Option("--valuation", help="Valoración dimensión=nivel (repetible, una por dim.)."),
+    ],
+    likelihood: Annotated[str, typer.Option("--likelihood", help="Valor de la escala.")],
+    impact: Annotated[str, typer.Option("--impact", help="Valor de la escala.")],
+    inherent: Annotated[str, typer.Option("--inherent", help="Debe coincidir con la matriz.")],
+    residual: Annotated[str, typer.Option("--residual", help="Valor de risk_levels.")],
+    treatment: Annotated[
+        Treatment, typer.Option("--treatment", help="mitigate, accept, transfer o avoid.")
+    ],
+    owner: Annotated[str, typer.Option("--owner", help="Persona responsable.")],
+    assets: Annotated[
+        list[str] | None, typer.Option("--asset", help="Activo afectado (repetible).")
+    ] = None,
+    services: Annotated[
+        list[str] | None, typer.Option("--service", help="Servicio afectado (repetible).")
+    ] = None,
+    safeguards: Annotated[
+        list[str] | None, typer.Option("--safeguard", help="Medida del catálogo (repetible).")
+    ] = None,
+    accepted_by: Annotated[
+        str | None, typer.Option("--accepted-by", help="Quién acepta el riesgo residual.")
+    ] = None,
+    accepted_role: Annotated[
+        Role | None, typer.Option("--accepted-role", help="Rol de quien lo acepta.")
+    ] = None,
+) -> None:
+    """Añade un riesgo al registro. Los valores los decide la persona; aquí solo se validan."""
+    now = clock()
+    fields: dict[str, Any] = {
+        "id": risk_id,
+        "assets": assets or [],
+        "services": services or [],
+        "threat": threat,
+        "dimensions": [d.value for d in dimensions],
+        "likelihood": likelihood,
+        "impact": impact,
+        "inherent": inherent,
+        "safeguards": safeguards or [],
+        "residual": residual,
+        "treatment": treatment.value,
+        "owner": owner,
+    }
+    if accepted_by or accepted_role:
+        fields["acceptance"] = {
+            "accepted_by": accepted_by,
+            "role": accepted_role.value if accepted_role else None,
+            "accepted_at": now.isoformat(),
+        }
+    try:
+        fields["valuation"] = _valuation(valuation)
+        add_risk(open_workspace(ctx), fields, now)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se añade el riesgo:", exc) from None
+    typer.echo(f"Riesgo {risk_id} añadido. Valida con risk validate.")
+
+
+@risk_app.command("remove")
+@handled
+def risk_remove(
+    ctx: typer.Context,
+    risk_id: Annotated[str, typer.Option("--id", help="Identificador del riesgo.")],
+) -> None:
+    """Quita un riesgo del registro (no si el plan tiene acciones que lo citan)."""
+    try:
+        remove_risk(open_workspace(ctx), risk_id)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se quita el riesgo:", exc) from None
+    typer.echo(f"Riesgo {risk_id} quitado.")
+
+
+@risk_app.command("add-action")
+@handled
+def risk_add_action(
+    ctx: typer.Context,
+    action_id: Annotated[str, typer.Option("--id", help="Identificador único de la acción.")],
+    risk_id: Annotated[str, typer.Option("--risk", help="Riesgo que trata.")],
+    description: Annotated[str, typer.Option("--description", help="Qué se hará.")],
+    owner: Annotated[str, typer.Option("--owner", help="Persona responsable.")],
+    due: Annotated[str, typer.Option("--due", help="Fecha límite AAAA-MM-DD.")],
+    action_status: Annotated[
+        ActionStatus, typer.Option("--status", help="Estado de la acción.")
+    ] = ActionStatus.PENDING,
+) -> None:
+    """Añade una acción al plan de tratamiento."""
+    fields = {
+        "id": action_id,
+        "risk": risk_id,
+        "description": description,
+        "owner": owner,
+        "due": due,
+        "status": action_status.value,
+    }
+    try:
+        add_action(open_workspace(ctx), fields)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se añade la acción:", exc) from None
+    typer.echo(f"Acción {action_id} añadida. Valida con risk validate.")
+
+
+@risk_app.command("remove-action")
+@handled
+def risk_remove_action(
+    ctx: typer.Context,
+    action_id: Annotated[str, typer.Option("--id", help="Identificador de la acción.")],
+) -> None:
+    """Quita una acción del plan de tratamiento."""
+    try:
+        remove_action(open_workspace(ctx), action_id)
+    except RiskEditRejected as exc:
+        raise _fail_risk_edit("No se quita la acción:", exc) from None
+    typer.echo(f"Acción {action_id} quitada.")
 
 
 @risk_app.command("validate")
@@ -2755,13 +3204,15 @@ def scheduler_run(ctx: typer.Context) -> None:
     stop = threading.Event()
     system_clock = SystemClock(stop)
     heartbeat = file_heartbeat(os.environ)
+    executor = CycleExecutor(store, settings, os.environ, system_clock, stop, heartbeat=heartbeat)
     scheduler = Scheduler(
         system_clock,
-        CycleExecutor(store, settings, os.environ, system_clock, stop, heartbeat=heartbeat),
+        executor,
         lambda: load_schedule_config(store).config,
         workspace_done_periods(store, system_clock),
         stop,
         heartbeat=heartbeat,
+        requests=executor.pending_requests,
     )
     with stop_on_signals(stop):
         scheduler.run()
@@ -2849,7 +3300,7 @@ def evidence_import(
             data,
             asset_id=asset,
             submitted_by=by,
-            now=datetime.now(UTC),
+            now=clock(),
             collected_at=collected,
             valid_until=expires,
         )
@@ -2883,7 +3334,7 @@ def import_endpoint_package(
     except OSError:
         raise fail("No se puede leer el fichero indicado.") from None
     package, result = import_endpoint(
-        open_workspace(ctx), data, asset_id=asset, submitted_by=by, now=datetime.now(UTC)
+        open_workspace(ctx), data, asset_id=asset, submitted_by=by, now=clock()
     )
     typer.echo(
         f"Evidencia registrada: {result.id} (paquete original: {package.id})\n"
@@ -3033,32 +3484,26 @@ def dossier_generate(ctx: typer.Context) -> None:
     store = open_workspace(ctx)
     now = clock()
     try:
-        snapshot = build_snapshot(
-            store, current_inputs(now), checks=StoredCheckResults(reference_now=now)
-        )
+        generated = generate_dossier(store, now)
     except CategorizationNotCurrent as exc:
         raise report_missing_context(exc) from None
     except DossierRejected as exc:
         raise dossier_rejected("No se genera el expediente:", exc.errors) from None
-    try:
-        dossier = save_snapshot(store, snapshot)
     except AlreadyExists:
         raise fail(
             "Ya existe un expediente con ese contenido y ese instante; reintenta.", 1
         ) from None
-    save_markdown(store, dossier, render_snapshot_md(snapshot))
+    dossier, snapshot = generated.dossier, generated.snapshot
     typer.echo(f"Expediente {dossier} generado ({category_name(snapshot.category)}).")
     typer.echo(snapshot.commitment)
     print_notice(snapshot)
+    if generated.package_errors:
+        typer.echo(
+            f"El paquete por medida no se ha guardado: ejecuta `dossier package {dossier}`.",
+            err=True,
+        )
+        raise dossier_rejected("Paquete rechazado:", list(generated.package_errors)) from None
     if snapshot.category is not Category.BASICA:
-        try:
-            save_package(store, dossier, snapshot)
-        except PackageRejected as exc:
-            typer.echo(
-                f"El paquete por medida no se ha guardado: ejecuta `dossier package {dossier}`.",
-                err=True,
-            )
-            raise dossier_rejected("Paquete rechazado:", exc.errors) from None
         typer.echo("Paquete por medida guardado.")
     print_caveats(snapshot, DossierState.GENERATED)
     typer.echo(dossier_step(dossier, snapshot, DossierState.GENERATED))

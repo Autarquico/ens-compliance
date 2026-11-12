@@ -25,6 +25,7 @@ from ens_evidence.categorization import (
 )
 from ens_evidence.models.contracts import SHA256_PATTERN, Strict
 from ens_evidence.models.enums import Applicability, Category, Role
+from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.scope.messages import describe_validation
 from ens_evidence.scope.sync import MEASURES_KEY
@@ -172,6 +173,8 @@ def approve_declaration(store: WorkspaceStore, by: str, now: datetime) -> Declar
 
     Lanza `ScopeNotApproved`, `CategorizationNotCurrent` o `DeclarationRejected`.
     """
+    if name_errors := check_declared_name(by):
+        raise DeclarationRejected(name_errors)
     validation = validate_applicability(store, now)
     if validation.errors or validation.measures is None:
         raise DeclarationRejected(validation.errors)

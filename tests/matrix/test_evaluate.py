@@ -15,6 +15,7 @@ from ens_evidence.matrix import (
     prepare_review,
 )
 from ens_evidence.matrix import evaluate as evaluate_module
+from ens_evidence.matrix.review import uncovered_message
 from ens_evidence.matrix.status import row_status
 from ens_evidence.models import (
     Applicability,
@@ -868,3 +869,30 @@ def test_la_fuente_de_hallazgos_decide_si_el_juicio_se_ejecuto(signed):
 
     assert executed.readiness.pending_human_review is False
     assert pending.readiness.pending_human_review is True
+
+
+def test_prepare_review_compliant_expone_las_unidades_sin_cubrir_como_datos(signed):
+    check_measure(signed)
+
+    plan = review(signed, StaticCheckResults([passing(signed)], problems=PROBLEMS))
+
+    assert plan.uncovered
+    assert all(uncovered_message(g) in plan.problems for g in plan.uncovered)
+
+
+def test_prepare_review_no_compliant_no_marca_unidades_sin_cubrir(signed):
+    check_measure(signed)
+
+    plan = prepare_review(
+        signed,
+        NOW,
+        ONE_CLAUSE,
+        by="Ana",
+        role="system_administrator",
+        conclusion="Pide revisión",
+        assessment="REQUIRES_REVIEW",
+        documents=FakeDocuments(),
+        checks=StaticCheckResults([], problems=PROBLEMS),
+    )
+
+    assert plan.uncovered == ()
