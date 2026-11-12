@@ -27,6 +27,12 @@
 		host {$ENS_UI_HOST:ui.invalid}
 		path /healthz /healthz/*
 	}
+	# La subida de evidencias admite 5 MiB de fichero más el envoltorio multipart (forms.py).
+	@ui_upload {
+		host {$ENS_UI_HOST:ui.invalid}
+		method POST
+		path /evidencias/nueva
+	}
 	@small_agent {
 		method POST
 		path /agent/enroll /agent/config /agent/distributed/read
@@ -50,6 +56,20 @@
 
 	handle @ui_healthz {
 		respond "Forbidden" 403
+	}
+
+	handle @ui_upload {
+		request_body {
+			max_size 5184KiB
+		}
+		reverse_proxy ui:8000 {
+			header_up -Cookie
+			header_up -X-Forwarded-*
+			transport http {
+				dial_timeout 3s
+				response_header_timeout 30s
+			}
+		}
 	}
 
 	handle @ui {

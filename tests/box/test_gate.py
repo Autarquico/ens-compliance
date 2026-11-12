@@ -257,7 +257,21 @@ def test_caddy_enruta_la_ui_por_nombre_de_host(caddyfile):
     ui = block(caddyfile, "handle @ui")
     assert "reverse_proxy ui:8000" in ui
     assert re.search(r"request_body \{\s*max_size 1MB", ui)
-    assert caddyfile.count("reverse_proxy") == 2
+    assert caddyfile.count("reverse_proxy") == 3
+
+
+def test_el_limite_de_la_subida_en_caddy_cubre_el_de_la_app(caddyfile):
+    from ens_evidence.ui.forms import MAX_UPLOAD_BYTES, UPLOAD_ENVELOPE_BYTES
+
+    matcher = block(caddyfile, "@ui_upload")
+    assert "method POST" in matcher
+    assert re.search(r"^\s*path /evidencias/nueva$", matcher, re.M)
+    upload = block(caddyfile, "handle @ui_upload")
+    assert "reverse_proxy ui:8000" in upload
+    limit = re.search(r"request_body \{\s*max_size (\d+)KiB", upload)
+    assert limit
+    assert int(limit.group(1)) * 1024 == MAX_UPLOAD_BYTES + UPLOAD_ENVELOPE_BYTES
+    assert caddyfile.index("handle @ui_upload") < caddyfile.index("handle @ui {")
 
 
 def test_caddy_no_publica_healthz_en_ningun_host(caddyfile):
