@@ -256,6 +256,19 @@ def _revoke_root(client: Client, root: str) -> None:
     raise SetupError("el root token sigue activo tras revocarlo; revócalo a mano")
 
 
+def _configure_failure(client: Client, root: str, failure: Exception) -> str:
+    """Mensaje del fallo de `_configure`, tras intentar (y verificar) la revocación del root."""
+    cause = str(failure) if isinstance(failure, SetupError) else type(failure).__name__
+    try:
+        _revoke_root(client, root)
+    except Exception:  # noqa: BLE001 - best effort: el mensaje dice que sigue vivo
+        return (
+            f"{cause}. Además no se pudo revocar el root token: sigue vivo y esta era su única "
+            f"copia; revócalo a mano. {RUNBOOK_HINT}"
+        )
+    return f"{cause}. El root token se ha revocado; la configuración quedó a medias. {RUNBOOK_HINT}"
+
+
 def run_init(
     client: Client, term: Terminal, config: InitConfig, policies: dict[str, str]
 ) -> dict[str, str]:
@@ -273,7 +286,13 @@ def run_init(
         term.write(f"Ahora introduce {config.threshold} partes para desbloquear.\n")
         _submit_shares(client, term, config.threshold)
         _wait_until_active(client)
+    except SetupError as exc:
+        raise SetupError(f"{exc}. {RUNBOOK_HINT}") from None
+    try:
         result = _configure(client, root, policies)
+    except Exception as exc:  # noqa: BLE001 - cualquier fallo debe cerrar el root antes de salir
+        raise SetupError(_configure_failure(client, root, exc)) from None
+    try:
         _revoke_root(client, root)
     except SetupError as exc:
         raise SetupError(f"{exc}. {RUNBOOK_HINT}") from None
