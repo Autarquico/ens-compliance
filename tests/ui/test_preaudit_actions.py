@@ -13,6 +13,7 @@ from preaudit.test_review import CORRECTED_AT, imported_at
 from preaudit.test_service import ANTHROPIC, PREPARED_AT, SENT_AT
 from starlette.testclient import TestClient
 
+from ens_evidence.assessment.dossier.store import list_dossiers
 from ens_evidence.models.preaudit import DispositionState, Layer
 from ens_evidence.preaudit.records import scan_dispositions, scan_runs
 from ens_evidence.preaudit.requests import (
@@ -426,3 +427,15 @@ def test_plain_quita_las_ordenes_de_cli():
 
     assert "--" not in text and "`" not in text
     assert "La evidencia:" in text and "la pre-auditoría" in text
+
+
+def test_con_un_expediente_anterior_no_se_muestra_la_ejecucion_de_otro(judged):
+    ui, store, dossier, finding, _ = judged
+    (older, *_) = [d.id for d in list_dossiers(store) if d.snapshot is not None and d.id != dossier]
+
+    current = ui.get(f"/preauditoria?expediente={dossier}").text
+    previous = ui.get(f"/preauditoria?expediente={older}").text
+
+    assert finding.reason in current
+    assert finding.reason not in previous
+    assert f'action="/preauditoria/hallazgos/{finding.id}"' not in previous
