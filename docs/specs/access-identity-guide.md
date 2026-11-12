@@ -2,12 +2,12 @@
 codename: ens-compliance
 title: "Guía: Cloudflare Access con el proveedor de identidad de la pyme"
 type: task
-status: draft
+status: active
 priority: P2
 size: M
 issue: null
 prs: []
-related_issues: []
+related_issues: [77]
 depends_on: [collector-cloudflare]
 supersedes: [kit-identity]
 related_specs: [toolkit-server, setup-guides, kit-access-panel]
