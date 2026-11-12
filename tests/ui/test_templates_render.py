@@ -62,6 +62,7 @@ VIEW_TEMPLATES = [
     "views/herramientas.html",
     "views/herramientas_copias.html",
     "views/herramientas_claves.html",
+    "views/herramientas_contrasenas.html",
     "views/herramientas_claves_custodios.html",
     "views/ayuda.html",
 ]
@@ -774,6 +775,16 @@ VIEW_CONTEXT = {
         "application_assets": [HOSTILE, "app-facturas"],
         "enable_command": "deploy/box.sh kit enable claves <paquete>",
         "init_command": "deploy/box.sh kit claves init",
+    },
+    "views/herramientas_contrasenas.html": {
+        "values": {"asset_id": HOSTILE, "inactive_days": HOSTILE, "host": HOSTILE},
+        "errors": {"asset_id": [HOSTILE], "inactive_days": [HOSTILE], "host": [HOSTILE]},
+        "form_errors": [HOSTILE],
+        "application_assets": [HOSTILE, "app-facturas"],
+        "enable_command": "deploy/box.sh kit enable contrasenas <paquete>",
+        "host_setting": "ENS_CONTRASENAS_HOST",
+        "setup_command": "deploy/box.sh kit contrasenas alta",
+        "close_command": "deploy/box.sh kit contrasenas cerrar-alta",
     },
     "views/herramientas_claves_custodios.html": {
         "values": {"asset_id": HOSTILE, "key_shares": HOSTILE, "reviewer": HOSTILE},

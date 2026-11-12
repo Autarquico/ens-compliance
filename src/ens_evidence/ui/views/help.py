@@ -18,7 +18,7 @@ from starlette.routing import BaseRoute, Route
 from ens_evidence.ui.pages import error_page, page_context, render
 
 RUNBOOKS_DIR = Path(__file__).resolve().parent.parent / "runbooks"
-RUNBOOKS = frozenset({"kit-copias", "kit-claves", "restauracion-de-evidencias"})
+RUNBOOKS = frozenset({"kit-copias", "kit-claves", "kit-contrasenas", "restauracion-de-evidencias"})
 
 _HEADING = re.compile(r"(#{1,6}) (.+)")
 _BULLET = re.compile(r"- (.*)")

@@ -162,7 +162,14 @@ def test_el_latido_del_scheduler_es_de_cada_contenedor_no_del_volumen(services):
 def test_caddy_no_tiene_salida_a_internet(compose, services):
     networks = services["caddy"]["networks"]
 
-    assert set(networks) == {"edge", "agent", "ui-net", "copias-net", "claves-net"}
+    assert set(networks) == {
+        "edge",
+        "agent",
+        "ui-net",
+        "copias-net",
+        "claves-net",
+        "contrasenas-net",
+    }
     assert all(compose["networks"][n].get("internal") is True for n in networks)
 
 
@@ -233,6 +240,7 @@ def test_backrest_ve_los_datos_de_la_caja_solo_en_lectura_y_guarda_sus_secretos_
         "data:/source/caja:ro",
         "openbao-data:/source/claves:ro",
         "openbao-audit:/source/claves-auditoria:ro",
+        "contrasenas-snapshot:/source/contrasenas:ro",
     ]
     owners = [n for n, s in services.items() if "backrest-config:/config" in s.get("volumes", [])]
     assert owners == ["backrest"]
@@ -351,14 +359,27 @@ def test_todas_las_redes_a_las_que_llega_un_servicio_con_datos_son_internas(comp
         )
 
 
+def has_internet(compose, service) -> bool:
+    """Sin `network_mode: none` y sin `networks`, Compose lo pone en la red por defecto: sale."""
+    if service.get("network_mode") == "none":
+        return False
+    networks = service.get("networks")
+    if networks is None:
+        return True
+    return any(not compose["networks"][n].get("internal") for n in networks)
+
+
 def test_solo_app_cloudflared_y_copias_proxy_tienen_salida_a_internet(compose, services):
-    outbound = {
-        name
-        for name, service in services.items()
-        if any(not compose["networks"][n].get("internal") for n in service["networks"])
-    }
+    outbound = {name for name, service in services.items() if has_internet(compose, service)}
 
     assert outbound == {"app", "cloudflared", "copias-proxy"}
+
+
+def test_un_servicio_sin_redes_declaradas_solo_existe_con_network_mode_none(services):
+    without_networks = {n for n, s in services.items() if "networks" not in s}
+
+    assert without_networks == {"contrasenas-export"}
+    assert services["contrasenas-export"]["network_mode"] == "none"
 
 
 # --- kit de claves: servicio `openbao` (spec kit-secrets, plan C3, C4, K11) ------------------
@@ -402,8 +423,9 @@ def test_openbao_solo_esta_en_redes_internas(compose, services):
 
     assert networks == ["claves-net", "claves-app"]
     assert all(compose["networks"][n].get("internal") is True for n in networks)
-    assert {n for n, s in services.items() if "claves-net" in s["networks"]} == {"caddy", "openbao"}
-    assert {n for n, s in services.items() if "claves-app" in s["networks"]} == {"app", "openbao"}
+    members = {n: s.get("networks", []) for n, s in services.items()}
+    assert {n for n, nets in members.items() if "claves-net" in nets} == {"caddy", "openbao"}
+    assert {n for n, nets in members.items() if "claves-app" in nets} == {"app", "openbao"}
 
 
 def test_openbao_monta_su_hcl_y_sus_dos_volumenes(compose, services):
@@ -424,6 +446,85 @@ def test_nadie_monta_los_volumenes_de_openbao_salvo_backrest_en_solo_lectura(ser
 
     assert {n: m for n, m in users.items() if m}.keys() == {"openbao", "backrest"}
     assert all(m.endswith(":ro") for m in users["backrest"])
+
+
+# --- kit de contraseñas: `vaultwarden` y `contrasenas-export` (spec kit-passwords, plan C3) ----
+
+
+def volume_users(services, volume):
+    return {
+        n: [str(v) for v in s.get("volumes", []) if str(v).startswith(f"{volume}:")]
+        for n, s in services.items()
+        if any(str(v).startswith(f"{volume}:") for v in s.get("volumes", []))
+    }
+
+
+def test_los_servicios_de_contrasenas_solo_arrancan_con_su_perfil(services):
+    assert services["vaultwarden"]["profiles"] == ["contrasenas"]
+    assert services["contrasenas-export"]["profiles"] == ["contrasenas"]
+
+
+def test_vaultwarden_solo_esta_en_su_red_interna_con_caddy(compose, services):
+    assert services["vaultwarden"]["networks"] == ["contrasenas-net"]
+    assert compose["networks"]["contrasenas-net"]["internal"] is True
+    members = {n for n, s in services.items() if "contrasenas-net" in s.get("networks", [])}
+    assert members == {"caddy", "vaultwarden"}
+
+
+def test_vaultwarden_nace_cerrado_sin_panel_y_sin_ficheros_de_entorno(services):
+    environment = services["vaultwarden"]["environment"]
+
+    assert environment["SIGNUPS_ALLOWED"] == "false"
+    assert environment["INVITATIONS_ALLOWED"] == "true"
+    assert "ADMIN_TOKEN" not in environment and "env_file" not in services["vaultwarden"]
+
+
+def test_el_exportador_corre_endurecido_sin_red_y_con_el_uid_de_backrest(services):
+    exporter = services["contrasenas-export"]
+
+    assert exporter["network_mode"] == "none"
+    assert exporter["user"] == services["backrest"]["user"] == "10001:10001"
+    assert exporter["read_only"] is True and exporter["cap_drop"] == ["ALL"]
+    assert exporter["security_opt"] == ["no-new-privileges:true"]
+    assert "env_file" not in exporter and "ports" not in exporter
+    assert exporter["depends_on"] == {"vaultwarden": {"condition": "service_healthy"}}
+
+
+def test_el_exportador_lee_la_base_en_solo_lectura_y_escribe_solo_sus_dos_salidas(services):
+    assert services["contrasenas-export"]["volumes"] == [
+        "vaultwarden-data:/source:ro",
+        "contrasenas-export:/export",
+        "contrasenas-snapshot:/snapshot",
+    ]
+
+
+def test_la_base_de_vaultwarden_no_la_monta_ni_la_app_ni_backrest(services):
+    assert volume_users(services, "vaultwarden-data") == {
+        "vaultwarden": ["vaultwarden-data:/data"],
+        "contrasenas-export": ["vaultwarden-data:/source:ro"],
+    }
+
+
+def test_el_export_lo_escribe_el_exportador_y_la_app_lo_lee_en_solo_lectura(services):
+    assert volume_users(services, "contrasenas-export") == {
+        "app": ["contrasenas-export:/run/kit/contrasenas:ro"],
+        "contrasenas-export": ["contrasenas-export:/export"],
+    }
+
+
+def test_la_instantanea_la_escribe_el_exportador_y_solo_backrest_la_lee_en_solo_lectura(
+    services,
+):
+    assert volume_users(services, "contrasenas-snapshot") == {
+        "backrest": ["contrasenas-snapshot:/source/contrasenas:ro"],
+        "contrasenas-export": ["contrasenas-snapshot:/snapshot"],
+    }
+
+
+def test_los_volumenes_del_kit_de_contrasenas_estan_declarados(compose):
+    assert {"vaultwarden-data", "contrasenas-export", "contrasenas-snapshot"} <= set(
+        compose["volumes"]
+    )
 
 
 AGENT_PATHS = [
@@ -447,7 +548,7 @@ def test_caddy_enruta_la_ui_por_nombre_de_host(caddyfile):
     ui = block(caddyfile, "handle @ui")
     assert "reverse_proxy ui:8000" in ui
     assert re.search(r"request_body \{\s*max_size 1MB", ui)
-    assert caddyfile.count("reverse_proxy") == 5
+    assert caddyfile.count("reverse_proxy") == 6
 
 
 def test_el_limite_de_la_subida_en_caddy_cubre_el_de_la_app(caddyfile):
@@ -526,7 +627,7 @@ def test_caddy_limita_el_cuerpo_por_ruta(caddyfile):
 
 
 # Servicio de compose de cada herramienta del registro: el registro no lo guarda.
-KIT_COMPOSE_SERVICE = {"copias": "backrest", "claves": "openbao"}
+KIT_COMPOSE_SERVICE = {"copias": "backrest", "claves": "openbao", "contrasenas": "vaultwarden"}
 
 
 def test_cada_herramienta_del_kit_tiene_su_servicio_de_compose():

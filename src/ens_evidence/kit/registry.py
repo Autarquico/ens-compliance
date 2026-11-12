@@ -14,6 +14,10 @@ CLAVES_IMAGE = (
     "ghcr.io/openbao/openbao-distroless:2.7.2"
     "@sha256:67406e08c6eecae98c7a10f7326515489468f90386f4f2214b2a0498f22c3aa6"
 )
+CONTRASENAS_IMAGE = (
+    "vaultwarden/server:1.37.5-alpine"
+    "@sha256:bbe684a02d6b0db54256ff88eac9754f4519284a7b26314afc241fd7d0918191"
+)
 
 
 @dataclass(frozen=True)
@@ -141,6 +145,56 @@ KIT_TOOLS: tuple[KitTool, ...] = (
             measured_on="2026-11-10",
             image=CLAVES_IMAGE,
             conditions="en reposo, inicializado y desbloqueado, Docker Desktop arm64",
+        ),
+    ),
+    KitTool(
+        id="contrasenas",
+        name="Contraseñas del equipo",
+        purpose=(
+            "Un gestor de contraseñas propio (Vaultwarden) para que el equipo genere, guarde y "
+            "cambie sus credenciales sin hojas de cálculo ni notas, con segundo factor en las "
+            "cuentas del propio gestor."
+        ),
+        connector="passwords",
+        measures=("op.acc.6",),
+        measures_note=(
+            "La app no lee los cofres: solo un resumen de las cuentas del gestor (sin correos)."
+        ),
+        covers=(
+            "Por sí solo no cubre ninguna cláusula de op.acc.6. El gestor ayuda a generar "
+            "contraseñas largas y a cambiarlas sin esfuerzo. En cada recogida la herramienta "
+            "comprueba el segundo factor y la inactividad de las cuentas del propio gestor; "
+            "detectar una cuenta inactiva no la suspende: eso lo hace una persona."
+        ),
+        not_covers=(
+            "No mide cada cuánto se cambian las credenciales de tus sistemas (op.acc.6.4), ni su "
+            "complejidad (op.acc.6.r1.2), ni el segundo factor de acceso a esos sistemas "
+            "(op.acc.6.r2.1): el segundo factor que se comprueba es el de las cuentas del gestor. "
+            "Tampoco decide que la medida esté cubierta: eso lo valora una persona."
+        ),
+        covers_clauses=(),
+        partial_clauses=(),
+        not_covered_clauses=("op.acc.6.4", "op.acc.6.r1.2", "op.acc.6.r2.1"),
+        wizard_url="/herramientas/contrasenas",
+        cta="Añadir las contraseñas",
+        help_slug="kit-contrasenas",
+        help_label="Qué hacer: runbook de las contraseñas",
+        hints={
+            "down": (
+                "La app no ha podido leer el resumen del gestor, o es demasiado viejo. Comprueba "
+                "que el exportador y Vaultwarden están en marcha."
+            ),
+            "problems": (
+                "Alguna comprobación ha fallado: una cuenta del gestor sin segundo factor, "
+                "inactiva, o una instantánea de la base que no es reciente."
+            ),
+        },
+        ram=MeasuredRam(
+            mib=81,
+            measured_on="2026-11-11",
+            image=CONTRASENAS_IMAGE,
+            conditions="Vaultwarden (30 MiB) y su exportador (51 MiB) en reposo, base de prueba con"
+            " tres usuarios, Docker Desktop arm64",
         ),
     ),
 )

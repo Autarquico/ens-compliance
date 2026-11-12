@@ -217,6 +217,12 @@ def test_un_volumen_desconocido_y_una_seleccion_vacia_se_rechazan():
         inputs(volumes=[], host_paths=[])
 
 
+def test_la_instantanea_de_contrasenas_entra_en_el_plan_sin_montaje_nuevo():
+    blob = render_bundle(inputs(volumes=["data", "contrasenas"], host_paths=[]), SECRETS, NOW)
+    plan = json.loads(unpack(blob)["copias/config.json"][1])["plans"][0]
+    assert plan["paths"] == ["/source/caja", "/source/contrasenas"]
+
+
 def test_las_rutas_del_host_se_normalizan_y_se_deduplican():
     assert inputs(host_paths=["/srv/datos/", "/srv//datos"]).host_paths == ("/srv/datos",)
 

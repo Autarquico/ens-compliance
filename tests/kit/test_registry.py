@@ -60,7 +60,16 @@ def test_ninguna_medida_tiene_dos_herramientas():
 def test_tool_for_devuelve_la_herramienta_de_la_medida_o_none():
     assert tool_for("mp.info.6") is BY_ID["copias"]
     assert tool_for("op.exp.10") is BY_ID["claves"]
+    assert tool_for("op.acc.6") is BY_ID["contrasenas"]
     assert tool_for("op.acc.1") is None
+
+
+def test_contrasenas_no_declara_cobertura_de_ninguna_clausula():
+    tool = BY_ID["contrasenas"]
+    assert tool.covers_clauses == () and tool.partial_clauses == ()
+    assert set(tool.not_covered_clauses) == {"op.acc.6.4", "op.acc.6.r1.2", "op.acc.6.r2.1"}
+    assert "no la suspende" in tool.covers
+    assert not re.search(r"certific|garantiza el cumplimiento|cumple el ENS", tool.covers, re.I)
 
 
 def test_los_ids_del_registro_son_unicos():

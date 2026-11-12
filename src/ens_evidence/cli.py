@@ -4,6 +4,7 @@ import os
 import re
 import shutil
 import threading
+import time
 from collections.abc import Callable, Iterator, Mapping
 from contextlib import contextmanager
 from datetime import UTC, datetime, tzinfo
@@ -161,6 +162,12 @@ from ens_evidence.incidents import (
 from ens_evidence.incidents.model import INCIDENT_ID_PATTERN, ReviewResult
 from ens_evidence.incidents.present import RECORD_LABELS, SIMULATION_LABEL, list_line, show_lines
 from ens_evidence.incidents.verify import scan_incident
+from ens_evidence.kit.passwords_export import (
+    DB_FILE,
+    PasswordsExportError,
+    parse_interval,
+)
+from ens_evidence.kit.passwords_export import export as export_passwords
 from ens_evidence.matrix import (
     DECLARATION_REPORTS_PREFIX,
     MATRIX_REPORTS_PREFIX,
@@ -337,6 +344,9 @@ from ens_evidence.workspace import (
 from ens_evidence.workspace.cycle_lock import CycleBusy, CycleContext, CycleLock
 
 app = typer.Typer(help="Prepara evidencias para el ENS. No certifica.", no_args_is_help=True)
+kit_app = typer.Typer(help="Herramientas de la caja.", no_args_is_help=True)
+contrasenas_app = typer.Typer(help="Kit de contraseñas.", no_args_is_help=True)
+kit_app.add_typer(contrasenas_app, name="contrasenas")
 report_app = typer.Typer(help="Informes.", no_args_is_help=True)
 scheduler_app = typer.Typer(help="Planificador de informes.", no_args_is_help=True)
 assessment_app = typer.Typer(help="Evaluación.", no_args_is_help=True)
@@ -400,6 +410,7 @@ app.add_typer(preaudit_app, name="preaudit")
 app.add_typer(benchmark_app, name="benchmark")
 app.add_typer(agent_app, name="agent")
 app.add_typer(ui_app, name="ui")
+app.add_typer(kit_app, name="kit")
 
 SCHEMAS_DIR = Path("schemas")
 
@@ -4233,3 +4244,34 @@ def print_preaudit_layers(record: PreAuditRecord) -> None:
         case LayerStatus.NOT_RUN:
             typer.echo("Capa de juicio: NOT_RUN.")
             typer.echo(f"Estado: {JUDGMENT_PENDING}.")
+
+
+@contrasenas_app.command("export")
+def kit_contrasenas_export(
+    data: Annotated[Path, typer.Option("--data", help="Directorio de datos de Vaultwarden.")],
+    out: Annotated[Path, typer.Option("--out", help="Directorio de usuarios.json.")],
+    snapshot: Annotated[Path, typer.Option("--snapshot", help="Directorio de la instantánea.")],
+    every: Annotated[
+        str | None, typer.Option("--every", help="Repite cada intervalo (15m, 30s, 1h).")
+    ] = None,
+) -> None:
+    """Exporta usuarios (sin email ni cofres) e instantánea; sin --every, una sola vez."""
+    try:
+        interval = parse_interval(every) if every is not None else None
+    except ValueError as error:
+        typer.echo(str(error), err=True)
+        raise typer.Exit(2) from None
+    while True:
+        try:
+            result = export_passwords(data / DB_FILE, out, snapshot, datetime.now(UTC))
+            typer.echo(
+                f"Export de {len(result.users)} usuarios; instantánea "
+                f"{'correcta' if result.snapshot_ok else 'FALLIDA'}."
+            )
+        except PasswordsExportError as error:
+            typer.echo(f"Export no publicado: {error}", err=True)
+            if interval is None:
+                raise typer.Exit(1) from None
+        if interval is None:
+            return
+        time.sleep(interval)

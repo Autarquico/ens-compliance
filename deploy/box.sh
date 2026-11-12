@@ -12,6 +12,9 @@
 #   deploy/box.sh kit enable claves <paquete.tar.gz>
 #   deploy/box.sh kit claves init | unseal
 #   deploy/box.sh kit disable claves
+#   deploy/box.sh kit enable contrasenas <paquete.tar.gz>
+#   deploy/box.sh kit contrasenas alta | cerrar-alta
+#   deploy/box.sh kit disable contrasenas
 #
 # Lo ejecuta una persona con Docker en la VM, desde un clon del repositorio con la etiqueta
 # desplegada (git checkout <tag>). La imagen, compose.yaml y el Caddyfile salen de `git archive`
@@ -36,13 +39,19 @@ UI_HOST=
 AGENT_HOST=
 COPIAS_HOST=
 CLAVES_HOST=
+CONTRASENAS_HOST=
 COPIAS_DIR="$ROOT/deploy/kit/copias"
 COPIAS_OVERRIDE="$COPIAS_DIR/compose.yaml"
 CLAVES_DIR="$ROOT/deploy/kit/claves"
 CLAVES_CONFIG="$CLAVES_DIR/openbao.hcl"
 CLAVES_MANIFEST="$CLAVES_DIR/MANIFEST"
+CONTRASENAS_DIR="$ROOT/deploy/kit/contrasenas"
+CONTRASENAS_MANIFEST="$CONTRASENAS_DIR/MANIFEST"
+CONTRASENAS_ADMIN_ENV="$CONTRASENAS_DIR/admin.env"
+CONTRASENAS_ALTA="$CONTRASENAS_DIR/alta.yaml"
 COPIAS_DESTINO="$COPIAS_DIR/destino.conf"
 BACKREST_UID=10001
+EXPORT_UID=10001
 OPENBAO_UID=10001
 INIT_CONTAINER=
 STATE_FILE=/data/state/box-deploy.json
@@ -108,7 +117,7 @@ trap 'cleanup; release_lock' EXIT
 trap 'exit 130' INT TERM
 
 usage() {
-  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] [--seal-ok] <vX.Y.Z> | rollback [--seal-ok] | restart [app|caddy|cloudflared|agent|ui|backrest] | status | kit enable copias [--replace-config] <paquete> | kit disable copias | kit copias reset-password | kit enable claves <paquete> | kit disable claves | kit claves init | kit claves unseal"
+  die "uso: deploy/box.sh install <vX.Y.Z> | update [--no-backup] [--seal-ok] <vX.Y.Z> | rollback [--seal-ok] | restart [app|caddy|cloudflared|agent|ui|backrest] | status | kit enable copias [--replace-config] <paquete> | kit disable copias | kit copias reset-password | kit enable claves <paquete> | kit disable claves | kit claves init | kit claves unseal | kit enable contrasenas <paquete> | kit disable contrasenas | kit contrasenas alta | kit contrasenas cerrar-alta"
 }
 
 # --- comprobaciones ------------------------------------------------------------------------
@@ -169,6 +178,8 @@ load_hostnames() {
     die "ENS_COPIAS_HOST de $UI_ENV_FILE no es un nombre de host (sin esquema ni puerto)."
   CLAVES_HOST=$(hostname_from "$UI_ENV_FILE" ENS_CLAVES_HOST) ||
     die "ENS_CLAVES_HOST de $UI_ENV_FILE no es un nombre de host (sin esquema ni puerto)."
+  CONTRASENAS_HOST=$(hostname_from "$UI_ENV_FILE" ENS_CONTRASENAS_HOST) ||
+    die "ENS_CONTRASENAS_HOST de $UI_ENV_FILE no es un nombre de host (sin esquema ni puerto)."
 }
 
 ensure_env_file() {
@@ -218,6 +229,26 @@ check_claves_config() {
     die "$CLAVES_CONFIG no coincide con el MANIFEST del paquete instalado; no se usa. Repite kit enable claves con el paquete."
 }
 
+# El kit de contraseñas se activa con deploy/kit/contrasenas/MANIFEST (lo instala `kit enable`, lo
+# renombra `kit disable`). Una release que no define `vaultwarden` lo ignora.
+contrasenas_enabled() {
+  [ -e "$CONTRASENAS_MANIFEST" ] && grep -q '^  vaultwarden:' "$REL/compose.yaml"
+}
+
+# alta.yaml abre el panel de administración: es el único modo de que Vaultwarden tenga ADMIN_TOKEN, y
+# solo vale tal como lo escribió `kit contrasenas alta` (mismo contenido, admin.env privado).
+alta_override_text() {
+  printf 'services:\n  vaultwarden:\n    env_file:\n      - "%s"\n' "$CONTRASENAS_ADMIN_ENV"
+}
+
+check_alta_override() {
+  [ ! -L "$CONTRASENAS_ALTA" ] || die "$CONTRASENAS_ALTA es un enlace simbólico; debe ser un fichero normal."
+  [ -f "$CONTRASENAS_ALTA" ] && [ "$(alta_override_text)" = "$(cat "$CONTRASENAS_ALTA")" ] &&
+    [ -f "$CONTRASENAS_ADMIN_ENV" ] ||
+    die "$CONTRASENAS_ALTA no es el que escribió kit contrasenas alta (o falta admin.env); no se usa. Ejecuta kit contrasenas cerrar-alta."
+  check_private "$CONTRASENAS_ADMIN_ENV"
+}
+
 # --- docker --------------------------------------------------------------------------------
 
 # ENS_VERSION es obligatoria en compose.yaml; compose y Caddyfile son los de la release en uso.
@@ -238,11 +269,18 @@ dc() {
     profiles="${profiles:+$profiles,}claves"
     claves_config=$CLAVES_CONFIG
   fi
+  if contrasenas_enabled; then
+    profiles="${profiles:+$profiles,}contrasenas"
+    if [ -e "$CONTRASENAS_ALTA" ] || [ -L "$CONTRASENAS_ALTA" ]; then
+      check_alta_override
+      set -- -f "$CONTRASENAS_ALTA" "$@"
+    fi
+  fi
   # Vacíos, compose.yaml pone `.invalid` y Caddy contesta 403 a todo en ese servicio.
   COMPOSE_PROFILES=$profiles ENS_ENV_FILE=$ENV_FILE ENS_TUNNEL_ENV_FILE=$TUNNEL_ENV_FILE \
     ENS_AGENT_ENV_FILE=$AGENT_ENV_FILE ENS_UI_ENV_FILE=$UI_ENV_FILE \
     ENS_UI_HOST=$UI_HOST ENS_AGENT_HOST=$AGENT_HOST ENS_COPIAS_HOST=$COPIAS_HOST \
-    ENS_CLAVES_HOST=$CLAVES_HOST ENS_CLAVES_CONFIG=$claves_config \
+    ENS_CLAVES_HOST=$CLAVES_HOST ENS_CLAVES_CONFIG=$claves_config ENS_CONTRASENAS_HOST=$CONTRASENAS_HOST \
     ENS_COPIAS_DESTINO_CONF=$COPIAS_DESTINO \
     docker compose -p "$PROJECT" -f "$REL/compose.yaml" --project-directory "$REL" "$@"
 }
@@ -404,6 +442,8 @@ stop_orphan_services() {
   ui_enabled || stop_orphan ui
   copias_enabled || stop_orphan backrest
   claves_enabled || stop_orphan openbao
+  contrasenas_enabled || stop_orphan contrasenas-export
+  contrasenas_enabled || stop_orphan vaultwarden
   copias_enabled || stop_orphan copias-proxy
 }
 
@@ -438,6 +478,8 @@ verify_running() {
   ! copias_enabled || wait_running copias-proxy || return 1
   ! copias_enabled || wait_running backrest || return 1
   ! claves_enabled || wait_running openbao || return 1
+  ! contrasenas_enabled || wait_healthy vaultwarden || return 1
+  ! contrasenas_enabled || wait_running contrasenas-export || return 1
   wait_healthy caddy || return 1
 }
 
@@ -713,6 +755,7 @@ recreate_service() {
     app) verify_running_app ;;
     backrest) wait_running backrest ;;
     openbao) wait_running openbao ;;
+    contrasenas-export) wait_running contrasenas-export ;;
     *) wait_healthy "$service" ;;
   esac || die "$service no está sano tras recrearlo; revisa: docker compose -p $PROJECT logs $service"
   info "Recreado: $service ($current)"
@@ -729,6 +772,7 @@ cmd_restart() {
     agent) [ -e "$AGENT_ENV_FILE" ] || die "agent necesita $AGENT_ENV_FILE (perfil agents)." ;;
     ui) [ -e "$UI_ENV_FILE" ] || die "ui necesita $UI_ENV_FILE (perfil ui)." ;;
     backrest) [ -e "$COPIAS_OVERRIDE" ] || die "backrest necesita $COPIAS_OVERRIDE (deploy/box.sh kit enable copias)." ;;
+    vaultwarden | contrasenas-export) [ -e "$CONTRASENAS_MANIFEST" ] || die "$service necesita el kit de contraseñas (deploy/box.sh kit enable contrasenas)." ;;
     *) usage ;;
   esac
   require_tools
@@ -794,6 +838,14 @@ cmd_status() {
   if claves_enabled; then
     info ""
     info "Claves (OpenBao): $(openbao_seal_state || echo 'no responde')"
+  fi
+  if contrasenas_enabled; then
+    info ""
+    if [ -e "$CONTRASENAS_ALTA" ] || [ -L "$CONTRASENAS_ALTA" ]; then
+      warn "Contraseñas (Vaultwarden): alta ABIERTA, el panel /admin está activo. Ciérrala: deploy/box.sh kit contrasenas cerrar-alta"
+    else
+      info "Contraseñas (Vaultwarden): alta cerrada."
+    fi
   fi
   if [ -z "$attempt" ] && [ -n "$(dc ps -q app 2>/dev/null)" ]; then
     info ""
@@ -884,6 +936,8 @@ for volume in doc["services"]["backrest"]["volumes"]:
         sys.exit("compose.yaml del paquete: /source/caja es de la caja")
     if target.startswith("/source/claves"):
         sys.exit("compose.yaml del paquete: /source/claves* es del kit de claves")
+    if target.startswith("/source/contrasenas"):
+        sys.exit("compose.yaml del paquete: /source/contrasenas* es del kit de contraseñas")
 '
 }
 
@@ -1271,14 +1325,14 @@ if doc["address"] != "http://openbao:8200":
 '
 }
 
-# Instala connectors/keystore.yaml en el workspace si no existe; uno ya editado no se pisa.
-install_claves_fragment() {
+# Instala connectors/<$1>.yaml en el workspace si no existe; uno ya editado no se pisa.
+install_connector_fragment() {
   in_app python -I -c '
 import os
 import pathlib
 import sys
 
-path = pathlib.Path("/data/workspace/connectors/keystore.yaml")
+path = pathlib.Path("/data/workspace/connectors") / (sys.argv[1] + ".yaml")
 new = sys.stdin.read()
 if path.exists():
     print("conservado" if path.read_text(encoding="utf-8") != new else "igual")
@@ -1288,7 +1342,7 @@ temporary = path.with_suffix(".yaml.tmp")
 temporary.write_text(new, encoding="utf-8")
 os.replace(temporary, path)
 print("instalado")
-'
+' "$1"
 }
 
 kit_claves_enable() {
@@ -1335,7 +1389,7 @@ kit_claves_enable() {
   mv "$CLAVES_DIR/openbao.hcl.new" "$CLAVES_CONFIG"
   mv "$CLAVES_DIR/init.json.new" "$CLAVES_DIR/init.json"
   mv "$CLAVES_DIR/MANIFEST.new" "$CLAVES_MANIFEST"
-  installed=$(install_claves_fragment <"$pkg/keystore.yaml") ||
+  installed=$(install_connector_fragment keystore <"$pkg/keystore.yaml") ||
     die "No se pudo escribir connectors/keystore.yaml en el workspace."
   cleanup
   [ "$installed" != conservado ] || warn "connectors/keystore.yaml ya existía y difiere del paquete: se conserva el actual."
@@ -1468,6 +1522,254 @@ kit_claves_disable() {
   info "La ruta $CLAVES_HOST sigue en Caddy y responde 503 mientras no haya OpenBao."
 }
 
+# --- kit de contraseñas ----------------------------------------------------------------------
+
+# MANIFEST del paquete: `version: 1` y `<sha256>  contrasenas/passwords.yaml`.
+verify_contrasenas_package() {
+  dir=$1
+  manifest="$dir/MANIFEST"
+  [ "$(sed -n 1p "$manifest")" = "version: 1" ] || die "MANIFEST: versión de formato no admitida."
+  [ "$(sed -n '2,$p' "$manifest" | grep -c .)" -eq 1 ] || die "MANIFEST: debe listar exactamente un fichero."
+  want=$(sed -n 's/^\([0-9a-f]\{64\}\)  contrasenas\/passwords[.]yaml$/\1/p' "$manifest")
+  [ "$(printf '%s' "$want" | wc -c)" -eq 64 ] || die "MANIFEST: falta o se repite el sha256 de passwords.yaml."
+  [ "$(sha256_of "$dir/passwords.yaml")" = "$want" ] || die "MANIFEST: el sha256 de passwords.yaml no coincide; no se instala nada."
+}
+
+extract_contrasenas_package() {
+  package=$1
+  dest=$2
+  names=$(tar -tzf "$package" 2>/dev/null) || die "$package no es un tar.gz válido."
+  printf '%s\n' "$names" | grep -vxE 'contrasenas/?|contrasenas/(MANIFEST|passwords[.]yaml)' |
+    grep -q . && die "El paquete contiene ficheros que no son del contrato; no se instala."
+  [ -z "$(printf '%s\n' "$names" | grep -v '/$' | sort | uniq -d)" ] || die "El paquete repite ficheros; no se instala."
+  tar -tvzf "$package" | grep -q '^[^-d]' &&
+    die "El paquete contiene enlaces u otros tipos de fichero; no se instala."
+  mkdir "$dest"
+  tar -xzf "$package" -C "$dest"
+  for name in MANIFEST passwords.yaml; do
+    [ -f "$dest/contrasenas/$name" ] || die "Al paquete le falta contrasenas/$name."
+  done
+}
+
+# passwords.yaml: configuración del conector. Con asset_id, sin claves que parezcan credenciales y
+# con el export en la ruta donde la app lo monta (la fija compose.yaml, no el paquete).
+validate_contrasenas_fragment() {
+  in_app python -I -c '
+import re
+import sys
+
+import yaml
+
+doc = yaml.safe_load(sys.stdin)
+if not isinstance(doc, dict) or not isinstance(doc.get("asset_id"), str) or not doc["asset_id"]:
+    sys.exit("passwords.yaml del paquete: falta asset_id")
+if re.search(r"password|secret|token|credential|access_?key", " ".join(map(str, doc)), re.IGNORECASE):
+    sys.exit("passwords.yaml del paquete: no puede llevar credenciales")
+if doc.get("export_path", "/run/kit/contrasenas/usuarios.json") != "/run/kit/contrasenas/usuarios.json":
+    sys.exit("passwords.yaml del paquete: export_path debe ser /run/kit/contrasenas/usuarios.json")
+'
+}
+
+# Contenedor aislado en la red de Vaultwarden (interna), sin logs ni privilegios.
+contrasenas_isolated() {
+  docker run --rm --log-driver none --network "${PROJECT}_contrasenas-net" --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --user "$APP_UID:$APP_UID" "$@"
+}
+
+# Estado del panel: `enabled` o `disabled`. Cerrado y abierto responden 200; solo el cuerpo los distingue
+# («The admin panel is disabled...»). Falla si Vaultwarden no responde.
+vaultwarden_admin_state() {
+  contrasenas_isolated "$(python_image)" python -I -c '
+import urllib.request
+
+opener = urllib.request.build_opener(urllib.request.ProxyHandler({}))
+with opener.open("http://vaultwarden:80/admin", timeout=10) as response:
+    body = response.read(8192).decode("utf-8", "replace")
+print("disabled" if "The admin panel is disabled" in body else "enabled")
+' 2>/dev/null
+}
+
+# ¿Tiene el contenedor de Vaultwarden la variable ADMIN_TOKEN? Falla si no hay contenedor.
+vaultwarden_has_admin_token() {
+  container=$(dc ps -q vaultwarden 2>/dev/null || true)
+  [ -n "$container" ] || return 2
+  docker inspect --format '{{range .Config.Env}}{{println .}}{{end}}' "$container" | grep -q '^ADMIN_TOKEN='
+}
+
+# Argon2id (PHC, preajuste OWASP de Vaultwarden) del token de stdin. En un contenedor sin red, sin
+# volúmenes ni entorno: el token no toca el disco. $1 = imagen de la app.
+contrasenas_admin_hash() {
+  docker run --rm -i --log-driver none --network none --read-only --cap-drop ALL \
+    --security-opt no-new-privileges:true --user "$APP_UID:$APP_UID" "$1" python -I -c '
+import os
+import sys
+
+from cryptography.hazmat.primitives.kdf.argon2 import Argon2id
+
+token = sys.stdin.readline().rstrip("\n").encode()
+kdf = Argon2id(salt=os.urandom(16), length=32, iterations=2, lanes=1, memory_cost=19456)
+print(kdf.derive_phc_encoded(token))
+'
+}
+
+kit_contrasenas_enable() {
+  [ $# -eq 1 ] || usage
+  package=$1
+  [ -f "$package" ] && [ ! -L "$package" ] || die "$package no es un fichero normal."
+  [ "$(wc -c <"$package")" -le 1048576 ] || die "$package pesa más de 1 MiB; no parece un paquete de contraseñas."
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  grep -q '^  vaultwarden:' "$REL/compose.yaml" ||
+    die "La release $current no define el perfil contrasenas; actualiza la caja a una versión que lo incluya."
+  [ -n "$CONTRASENAS_HOST" ] ||
+    die "Define ENS_CONTRASENAS_HOST en $UI_ENV_FILE (p. ej. contrasenas.example.org) antes de activar las contraseñas."
+
+  # Todo lo que puede fallar sin tocar nada, antes de instalar.
+  new_work_dir
+  extract_contrasenas_package "$package" "$WORK_DIR/pkg"
+  pkg="$WORK_DIR/pkg/contrasenas"
+  verify_contrasenas_package "$pkg"
+  validate_contrasenas_fragment <"$pkg/passwords.yaml"
+  # El volumen de Vaultwarden lo crea y lo posee Vaultwarden (root del contenedor); estos dos son del exportador.
+  prepare_volume contrasenas-export "$EXPORT_UID"
+  prepare_volume contrasenas-snapshot "$EXPORT_UID"
+
+  [ ! -L "$CONTRASENAS_DIR" ] || die "$CONTRASENAS_DIR es un enlace simbólico; debe ser un directorio."
+  mkdir -p "$CONTRASENAS_DIR"
+  chmod 700 "$ROOT/deploy/kit" "$CONTRASENAS_DIR"
+  (umask 022 && cp "$pkg/MANIFEST" "$CONTRASENAS_DIR/MANIFEST.new")
+  mv "$CONTRASENAS_DIR/MANIFEST.new" "$CONTRASENAS_MANIFEST"
+  rm -f "$CONTRASENAS_MANIFEST.disabled"
+  installed=$(install_connector_fragment passwords <"$pkg/passwords.yaml") ||
+    die "No se pudo escribir connectors/passwords.yaml en el workspace."
+  cleanup
+  [ "$installed" != conservado ] || warn "connectors/passwords.yaml ya existía y difiere del paquete: se conserva el actual."
+
+  info "Arrancando Vaultwarden y publicando $CONTRASENAS_HOST..."
+  dc up -d --no-build --no-deps vaultwarden
+  wait_healthy vaultwarden || die "Vaultwarden no está sano; revisa: docker compose -p $PROJECT logs vaultwarden"
+  dc up -d --no-build --no-deps contrasenas-export caddy
+  wait_running contrasenas-export || die "El exportador no arranca; revisa: docker compose -p $PROJECT logs contrasenas-export"
+  wait_healthy caddy || die "caddy no está sano; revisa: docker compose -p $PROJECT logs caddy"
+  wait_export || warn "Aún no hay usuarios.json (el exportador reintenta cada 15 min); revisa: docker compose -p $PROJECT logs contrasenas-export"
+  info "Contraseñas activadas. Siguiente paso: deploy/box.sh kit contrasenas alta (docs/runbooks/kit-contrasenas.md)."
+}
+
+# Espera hasta 60 s a que el exportador publique su primer usuarios.json.
+wait_export() {
+  waited=0
+  while [ "$waited" -lt 60 ]; do
+    docker run --rm --network none --read-only --cap-drop ALL --security-opt no-new-privileges:true \
+      --user "$APP_UID:$APP_UID" -v "${PROJECT}_contrasenas-export:/e:ro" "$(python_image)" \
+      test -s /e/usuarios.json 2>/dev/null && return 0
+    sleep 3
+    waited=$((waited + 3))
+  done
+  return 1
+}
+
+# Abre el alta: ADMIN_TOKEN temporal (Argon2id) en deploy/kit/contrasenas/admin.env, modo 600, que
+# entra en la release fijada con el override alta.yaml. El token en claro se muestra una vez, al final;
+# en disco solo queda el hash. Un alta abierta no se pisa ni se repite: primero cerrar-alta.
+kit_contrasenas_alta() {
+  [ $# -eq 0 ] || usage
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  contrasenas_enabled || die "Las contraseñas no están activadas; usa kit enable contrasenas <paquete>."
+  if [ -e "$CONTRASENAS_ALTA" ] || [ -L "$CONTRASENAS_ALTA" ]; then
+    die "Ya hay un alta abierta ($CONTRASENAS_ALTA). El token solo se mostró al abrirla; si no lo tienes, ejecuta kit contrasenas cerrar-alta y repite alta."
+  fi
+  [ ! -L "$CONTRASENAS_DIR" ] && [ ! -L "$CONTRASENAS_ADMIN_ENV" ] || die "Enlaces simbólicos en $CONTRASENAS_DIR; no se continúa."
+  case $ROOT in *[\"\\]*) die "La ruta $ROOT lleva comillas o barras invertidas; no se puede escribir el override." ;; esac
+  image=$(app_image_checked)
+  token=$(head -c 48 /dev/urandom | base64 | tr -d '=+/\n' | cut -c1-32)
+  [ "${#token}" -eq 32 ] || die "No se pudo generar el token del alta."
+  phc=$(printf '%s\n' "$token" | contrasenas_admin_hash "$image") || phc=
+  # shellcheck disable=SC2016 # el prefijo PHC lleva `$` literales
+  case $phc in '$argon2id$'*) ;; *) die "No se pudo calcular el hash Argon2id del token." ;; esac
+
+  # admin.env primero y alta.yaml después: sin override el token no entra en ningún contenedor.
+  chmod 700 "$ROOT/deploy/kit" "$CONTRASENAS_DIR"
+  rm -f "$CONTRASENAS_ADMIN_ENV.new" "$CONTRASENAS_ALTA.new"
+  (umask 077 && printf "ADMIN_TOKEN='%s'\n" "$phc" >"$CONTRASENAS_ADMIN_ENV.new")
+  chmod 600 "$CONTRASENAS_ADMIN_ENV.new"
+  mv "$CONTRASENAS_ADMIN_ENV.new" "$CONTRASENAS_ADMIN_ENV"
+  (umask 077 && alta_override_text >"$CONTRASENAS_ALTA.new")
+  mv "$CONTRASENAS_ALTA.new" "$CONTRASENAS_ALTA"
+
+  info "Recreando Vaultwarden con el panel de administración..."
+  dc up -d --no-build --no-deps --force-recreate vaultwarden ||
+    die "No se pudo recrear Vaultwarden. El alta queda a medias y no se mostró ningún token: ejecuta kit contrasenas cerrar-alta y repite alta."
+  wait_healthy vaultwarden ||
+    die "Vaultwarden no está sano con el alta abierta. No se mostró ningún token: ejecuta kit contrasenas cerrar-alta y revisa: docker compose -p $PROJECT logs vaultwarden"
+  state_now=$(vaultwarden_admin_state) || state_now=
+  [ "$state_now" = enabled ] ||
+    die "El panel /admin no quedó activo (estado: ${state_now:-desconocido}). No se mostró ningún token: ejecuta kit contrasenas cerrar-alta y repite alta."
+  info "Alta abierta. Token del panel (se muestra UNA vez; en disco solo queda su hash):"
+  info ""
+  info "  $token"
+  info ""
+  info "Entra en https://$CONTRASENAS_HOST/admin, invita al primer propietario por su email y, cuando se haya registrado:"
+  info "  deploy/box.sh kit contrasenas cerrar-alta"
+}
+
+# Cierra el alta: borra admin.env y el override, recrea Vaultwarden y comprueba las dos cosas: que el
+# contenedor ya no tiene ADMIN_TOKEN y que /admin responde «panel desactivado». Se puede repetir.
+kit_contrasenas_cerrar_alta() {
+  [ $# -eq 0 ] || usage
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  contrasenas_enabled || die "Las contraseñas no están activadas; usa kit enable contrasenas <paquete>."
+  # Antes de tocar Docker: `dc` rechazaría un override corrupto y el alta no se podría cerrar.
+  rm -f "$CONTRASENAS_ADMIN_ENV" "$CONTRASENAS_ALTA" "$CONTRASENAS_ADMIN_ENV.new" "$CONTRASENAS_ALTA.new"
+  info "Recreando Vaultwarden sin el panel de administración..."
+  dc up -d --no-build --no-deps --force-recreate vaultwarden ||
+    die "NO se ha cerrado el alta: no se pudo recrear Vaultwarden. Puede conservar ADMIN_TOKEN; repite kit contrasenas cerrar-alta."
+  wait_healthy vaultwarden ||
+    die "NO se ha confirmado el cierre del alta: Vaultwarden no está sano. Revisa los logs y repite kit contrasenas cerrar-alta."
+  if vaultwarden_has_admin_token; then
+    die "NO se ha cerrado el alta: el contenedor de Vaultwarden sigue con ADMIN_TOKEN. Repite kit contrasenas cerrar-alta."
+  fi
+  state_now=$(vaultwarden_admin_state) || state_now=
+  [ "$state_now" = disabled ] ||
+    die "NO se ha confirmado el cierre del alta: /admin no responde «panel desactivado» (estado: ${state_now:-desconocido}). Repite kit contrasenas cerrar-alta."
+  info "Alta cerrada: el contenedor no tiene ADMIN_TOKEN y /admin responde «panel desactivado»."
+}
+
+# Para y quita los contenedores. No borra volúmenes (cofres cifrados, export, instantánea) ni
+# deploy/kit/contrasenas salvo el alta: el MANIFEST se renombra para que `dc` deje de activar el perfil.
+kit_contrasenas_disable() {
+  [ $# -eq 0 ] || usage
+  require_tools
+  acquire_lock
+  check_secret_files
+  require_volume
+  use_current_release
+  [ -e "$CONTRASENAS_MANIFEST" ] || die "Las contraseñas no están activadas (falta $CONTRASENAS_MANIFEST)."
+  for service in contrasenas-export vaultwarden; do
+    for container in $(docker ps -aq --filter "label=com.docker.compose.project=$PROJECT" \
+      --filter "label=com.docker.compose.service=$service"); do
+      docker stop "$container" >/dev/null
+      docker rm "$container" >/dev/null
+    done
+  done
+  rm -f "$CONTRASENAS_ADMIN_ENV" "$CONTRASENAS_ALTA"
+  mv "$CONTRASENAS_MANIFEST" "$CONTRASENAS_MANIFEST.disabled"
+  info "Vaultwarden y el exportador parados y desactivados (un alta abierta queda cerrada en disco). No se ha borrado nada:"
+  info "  - volúmenes ${PROJECT}_vaultwarden-data (cuentas y cofres cifrados), ${PROJECT}_contrasenas-export y ${PROJECT}_contrasenas-snapshot,"
+  info "  - connectors/passwords.yaml del workspace."
+  info "La ruta $CONTRASENAS_HOST sigue en Caddy y responde 503 mientras no haya Vaultwarden."
+}
+
 cmd_kit() {
   [ $# -ge 2 ] || usage
   case "$1 $2" in
@@ -1484,6 +1786,16 @@ cmd_kit() {
     "claves unseal")
       shift 2
       kit_claves_unseal "$@"
+      return
+      ;;
+    "contrasenas alta")
+      shift 2
+      kit_contrasenas_alta "$@"
+      return
+      ;;
+    "contrasenas cerrar-alta")
+      shift 2
+      kit_contrasenas_cerrar_alta "$@"
       return
       ;;
   esac
@@ -1505,7 +1817,14 @@ cmd_kit() {
         *) usage ;;
       esac
       ;;
-    *) die "Herramienta del kit desconocida: $tool (copias o claves)." ;;
+    contrasenas)
+      case $action in
+        enable) kit_contrasenas_enable "$@" ;;
+        disable) kit_contrasenas_disable "$@" ;;
+        *) usage ;;
+      esac
+      ;;
+    *) die "Herramienta del kit desconocida: $tool (copias o claves) ni contrasenas." ;;
   esac
 }
 

@@ -24,6 +24,9 @@ services:
       ENS_HEARTBEAT_FILE: /tmp/scheduler-heartbeat
     volumes:
       - data:/data
+      # Solo el export de usuarios, en solo lectura (kit de contraseñas). Vacío sin el kit. La app
+      # nunca monta vaultwarden-data ni alcanza contrasenas-net.
+      - contrasenas-export:/run/kit/contrasenas:ro
     # claves-app: interna; solo la alcanza openbao (perfil claves). Sin el perfil, queda vacía.
     networks: [backend, claves-app]
     logging: *logging
@@ -120,13 +123,14 @@ services:
     security_opt: ["no-new-privileges:true"]
     volumes:
       - ./deploy/Caddyfile:/etc/caddy/Caddyfile:ro
-    networks: [edge, agent, ui-net, copias-net, claves-net]
+    networks: [edge, agent, ui-net, copias-net, claves-net, contrasenas-net]
     environment:
       # Los nombres de host salen de deploy/ui.env y deploy/agent.env (los lee box.sh); sin ellos, `.invalid`.
       ENS_UI_HOST: ${ENS_UI_HOST:-ui.invalid}
       ENS_AGENT_HOST: ${ENS_AGENT_HOST:-agent.invalid}
       ENS_COPIAS_HOST: ${ENS_COPIAS_HOST:-copias.invalid}
       ENS_CLAVES_HOST: ${ENS_CLAVES_HOST:-claves.invalid}
+      ENS_CONTRASENAS_HOST: ${ENS_CONTRASENAS_HOST:-contrasenas.invalid}
     logging: *logging
     healthcheck:
       # Toda ruta da 403, así que se sondea la API de administración (solo en localhost).
@@ -168,6 +172,9 @@ services:
       # Vacíos si el kit de claves no está activado. Mismo UID que openbao (10001), solo lectura.
       - openbao-data:/source/claves:ro
       - openbao-audit:/source/claves-auditoria:ro
+      # Vacío si el kit de contraseñas no está activado. Instantánea de la base y rsa_key* (0600 del
+      # mismo UID 10001 que el exportador). Adjuntos y sends no entran: docs/runbooks/kit-contrasenas.md.
+      - contrasenas-snapshot:/source/contrasenas:ro
     networks: [copias-net, copias-salida]
     depends_on: [copias-proxy]
     logging: *logging
@@ -217,6 +224,73 @@ services:
     networks: [claves-net, claves-app]
     logging: *logging
 
+  vaultwarden:
+    # Kit de contraseñas (spec kit-passwords, ADR 0019). Vaultwarden 1.37.5 (AGPL-3.0). Corre como
+    # root del contenedor pero sin una sola capacidad (CapEff=0, verificado) y sin Internet: red
+    # interna con caddy como único vecino. Sin ADMIN_TOKEN salvo durante el alta (deploy/box.sh kit
+    # contrasenas alta añade deploy/kit/contrasenas/alta.yaml; cerrar-alta lo retira).
+    profiles: [contrasenas]
+    image: vaultwarden/server:1.37.5-alpine@sha256:bbe684a02d6b0db54256ff88eac9754f4519284a7b26314afc241fd7d0918191
+    restart: unless-stopped
+    read_only: true
+    tmpfs: [/tmp]
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    environment:
+      DOMAIN: https://${ENS_CONTRASENAS_HOST:-contrasenas.invalid}
+      SIGNUPS_ALLOWED: "false"
+      INVITATIONS_ALLOWED: "true"
+      DISABLE_ICON_DOWNLOAD: "true"
+    volumes:
+      - vaultwarden-data:/data
+    networks: [contrasenas-net]
+    logging: *logging
+    healthcheck:
+      test: ["CMD", "/healthcheck.sh"]
+      interval: 15s
+      timeout: 10s
+      retries: 3
+      start_period: 20s
+
+  contrasenas-export:
+    # Exportador del kit de contraseñas: lee la base de Vaultwarden en solo lectura y publica el
+    # recuento de usuarios (sin emails ni cofres) y una instantánea. Sin red, sin el env_file ni el
+    # volumen de la app. El UID 10001 es el de backrest, que lee la instantánea 0600.
+    profiles: [contrasenas]
+    image: ens-evidence:${ENS_VERSION:?usa deploy/box.sh}
+    command:
+      - ens-evidence
+      - kit
+      - contrasenas
+      - export
+      - --data
+      - /source
+      - --out
+      - /export
+      - --snapshot
+      - /snapshot
+      - --every
+      - 15m
+    init: true
+    user: "10001:10001"
+    restart: unless-stopped
+    network_mode: none
+    read_only: true
+    # /data: la imagen declara VOLUME /data; el tmpfs evita un volumen anónimo por contenedor.
+    tmpfs:
+      - /tmp
+      - /data:uid=10001,mode=700
+    cap_drop: [ALL]
+    security_opt: ["no-new-privileges:true"]
+    depends_on:
+      vaultwarden:
+        condition: service_healthy
+    volumes:
+      - vaultwarden-data:/source:ro
+      - contrasenas-export:/export
+      - contrasenas-snapshot:/snapshot
+    logging: *logging
+
   cloudflared:
     profiles: [tunnel]
     image: cloudflare/cloudflared:2026.10.7@sha256:4955524aeaa379e154023d5a027c250f7b35041a2e7e950cf13f144bc9b9c5ba
@@ -247,7 +321,9 @@ services:
 #   copias-proxy copias-salida + copias: proxy CONNECT que solo admite el host:puerto del destino S3
 #               (deploy/copias-proxy.conf); la única salida a Internet del kit, filtrada por destino.
 #   openbao     claves-net (caddy) + claves-app (app): internas, sin salida a Internet (perfil claves).
-#   caddy       edge + agent + ui-net + copias-net + claves-net: todas internas, sin salida a Internet; escucha en :8080.
+#   vaultwarden contrasenas-net (caddy): interna, sin salida a Internet (perfil contrasenas).
+#   contrasenas-export  network_mode none: sin red.
+#   caddy       edge + agent + ui-net + copias-net + claves-net + contrasenas-net: todas internas, sin salida a Internet; escucha en :8080.
 #   cloudflared edge + tunnel: llega a caddy:8080 y sale hacia Cloudflare.
 networks:
   backend: {}
@@ -262,6 +338,8 @@ networks:
   claves-net:
     internal: true
   claves-app:
+    internal: true
+  contrasenas-net:
     internal: true
   copias-salida:
     internal: true
@@ -279,3 +357,9 @@ volumes:
     name: ${ENS_BOX_PROJECT:-ens-box}_openbao-data
   openbao-audit:
     name: ${ENS_BOX_PROJECT:-ens-box}_openbao-audit
+  vaultwarden-data:
+    name: ${ENS_BOX_PROJECT:-ens-box}_vaultwarden-data
+  contrasenas-export:
+    name: ${ENS_BOX_PROJECT:-ens-box}_contrasenas-export
+  contrasenas-snapshot:
+    name: ${ENS_BOX_PROJECT:-ens-box}_contrasenas-snapshot

@@ -12,7 +12,7 @@ depends_on: [kit-backups]
 supersedes: []
 related_specs: [toolkit-server]
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-12
 ---
 
 # Kit: gestor de contraseñas del equipo con Vaultwarden
@@ -41,7 +41,7 @@ Un gestor de contraseñas no es el mecanismo de autenticación del sistema (op.a
 ### Scenario: doble factor obligatorio
 - **Given** un usuario sin doble factor
 - **When** corre el check
-- **Then** da FAIL con el usuario (sin datos personales en el texto: identificador interno) y la tarjeta sale en amarillo
+- **Then** da FAIL con el usuario (sin datos personales en el texto: identificador interno) y la tarjeta sale «con problemas»
 
 ### Scenario: la app no ve cofres
 - **Given** el acceso de la app

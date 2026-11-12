@@ -33,7 +33,7 @@ from ens_evidence.kit.bundle import pack
 BACKREST_CONFIG_VERSION = 6
 # Volúmenes con nombre del compose de la caja que se pueden copiar. Los volúmenes de
 # configuración y datos de Backrest quedan fuera: el primero guarda secretos.
-ALLOWED_VOLUMES = frozenset({"data", "claves", "claves-auditoria"})
+ALLOWED_VOLUMES = frozenset({"data", "claves", "claves-auditoria", "contrasenas"})
 SOURCE_ROOT = "/source"
 # compose.yaml de la caja ya monta `data` en `:ro` en /source/caja; el paquete no lo vuelve a montar
 # (box.sh rechaza que el override toque /source/caja).
@@ -41,6 +41,7 @@ VOLUME_MOUNTS = {
     "data": f"{SOURCE_ROOT}/caja",
     "claves": f"{SOURCE_ROOT}/claves",
     "claves-auditoria": f"{SOURCE_ROOT}/claves-auditoria",
+    "contrasenas": f"{SOURCE_ROOT}/contrasenas",
 }
 _FORBIDDEN_TREES = ("/proc", "/sys", "/dev")
 _DOCKER_SOCKETS = ("/var/run/docker.sock", "/run/docker.sock")

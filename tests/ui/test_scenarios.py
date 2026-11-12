@@ -44,11 +44,13 @@ GET_ROUTES = [
     "/", "/matriz", "/evidencias", "/expediente", "/preauditoria", "/asistente",
     *(f"/asistente/{s.slug}" for s in STEPS), "/static/ui.css",
     "/herramientas", "/herramientas/claves", "/herramientas/claves/custodios",
+    "/herramientas/contrasenas",
 ]  # fmt: skip
 POST_ROUTES = [
     *(f"/asistente/{s.slug}" for s in STEPS),
     "/herramientas/claves",
     "/herramientas/claves/custodios",
+    "/herramientas/contrasenas",
 ]
 
 
@@ -477,16 +479,17 @@ def test_openbao_instalado_sin_claves_ni_auditoria_no_sale_como_al_dia(session, 
 # --- docs/specs/kit-access-panel.md -----------------------------------------------------------
 
 
-def test_con_las_dos_herramientas_desplegadas_cada_tarjeta_da_su_estado_y_abrir(
+def test_con_todas_las_herramientas_desplegadas_cada_tarjeta_da_su_estado_y_abrir(
     config, example_store, key, token
 ):
     from ens_evidence.kit.registry import KIT_TOOLS
 
-    from . import test_tools, test_tools_claves
+    from . import test_tools, test_tools_claves, test_tools_contrasenas
 
     hosts = {tool.id: f"{tool.id}.example.org" for tool in KIT_TOOLS}
     test_tools.record(example_store, CheckStatus.PASS)
     test_tools_claves.record(example_store, test_tools_claves.UNSEALED_OK)
+    test_tools_contrasenas.record(example_store, test_tools_contrasenas.SECOND_OK)
     deployed = Session(ui_client(replace(config, kit_hosts=hosts), example_store, key), token)
 
     html = deployed.get("/herramientas").text
@@ -547,3 +550,82 @@ def test_una_herramienta_con_problemas_o_caida_no_se_propone_como_si_faltara(
     test_tools.record(signed, *statuses, complete=complete)
 
     assert 'id="h-kit"' not in web.get("/matriz/mp.info.6").text
+
+
+# --- docs/specs/kit-passwords.md --------------------------------------------------------------
+
+PWD_EMAIL = "persona01@example.test"
+PWD_USER = "00000000-0000-4000-8000-000000000001"
+
+
+def passwords_card(store, session, tmp_path, doc: dict | None) -> str:
+    """La tarjeta tras recoger de verdad un export y evaluar los checks reales sobre él."""
+    import json
+
+    from ens_evidence.connectors.passwords import PasswordsConfig, PasswordsConnector
+    from ens_evidence.connectors.passwords import checks as passwords_checks
+
+    from .test_tools_contrasenas import card, record
+
+    path = tmp_path / "usuarios.json"
+    if doc is not None:
+        path.write_text(json.dumps(doc), encoding="utf-8")
+    config = PasswordsConfig(
+        asset_id="app-facturas", export_path=str(path), inactive_days=90, max_export_age_minutes=60
+    )
+    result = PasswordsConnector(clock=lambda: NOW).collect(config)
+    outcomes = [
+        outcome
+        for check in (passwords_checks.second_factor, passwords_checks.no_inactive_accounts)
+        for outcome in check(result, "EV-20261108-aaaaaaaa", NOW)
+    ]
+    record(store, *[(o.check_id, o.status, o.reason) for o in outcomes])
+    return card(session.get("/herramientas").text)
+
+
+def password_export(second_factor: bool) -> dict:
+    moment = (NOW - timedelta(minutes=5)).isoformat()
+    return {
+        "format": 1,
+        "exported_at": moment,
+        "vaultwarden_migration": "20261007120000",
+        "snapshot_ok": True,
+        "last_good_snapshot_at": moment,
+        "users": [
+            {
+                "id": PWD_USER,
+                "enabled": True,
+                "invited": False,
+                "created_at": (NOW - timedelta(days=100)).isoformat(),
+                "second_factor": second_factor,
+                "last_active": (NOW - timedelta(days=1)).isoformat(),
+            }
+        ],
+    }
+
+
+def test_un_usuario_sin_doble_factor_pone_la_tarjeta_de_contrasenas_en_problemas(
+    session, example_store, tmp_path
+):
+    html = passwords_card(example_store, session, tmp_path, password_export(second_factor=False))
+
+    assert "Con problemas" in html and "Al día" not in html
+    assert PWD_EMAIL not in html
+    assert 'href="/ayuda/kit-contrasenas"' in html
+
+
+def test_con_el_doble_factor_en_todos_la_tarjeta_de_contrasenas_esta_al_dia(
+    session, example_store, tmp_path
+):
+    html = passwords_card(example_store, session, tmp_path, password_export(second_factor=True))
+
+    assert "Al día" in html
+
+
+@pytest.mark.parametrize("doc", [None, {"format": 2}], ids=["export ausente", "export erróneo"])
+def test_un_export_ausente_o_erroneo_nunca_deja_la_tarjeta_de_contrasenas_al_dia(
+    session, example_store, tmp_path, doc
+):
+    html = passwords_card(example_store, session, tmp_path, doc)
+
+    assert "Al día" not in html and "Caída" in html
