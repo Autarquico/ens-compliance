@@ -5,7 +5,7 @@ type: task
 status: active
 priority: P1
 size: L
-issue: null
+issue: 66
 prs: [73]
 related_issues: [66]
 depends_on: [box-packaging, collector-restic, web-ui-flujo]
