@@ -18,7 +18,7 @@ from ens_evidence.ui.config import CLAVES_HOST_ENV, load_ui_config
 from ens_evidence.ui.views import help as help_view
 
 from .conftest import NOW, ORIGIN, Session, snapshot_of, ui_client
-from .test_tools import signed, tail, web  # noqa: F401  (fixtures reutilizadas)
+from .test_tools import assert_kit_clauses_have_text, tail
 
 SHA = "a" * 64
 FORM = {
@@ -78,6 +78,7 @@ def test_sin_evidencia_la_tarjeta_dice_sin_datos_y_ofrece_el_asistente(session):
     html = card(session.get("/herramientas").text)
 
     assert "Sin datos" in html and 'href="/herramientas/claves"' in html
+    assert ">Añadir las claves<" in html and "Preparar las claves" not in html
     assert "/ayuda/kit-claves" not in html
 
 
@@ -144,10 +145,13 @@ def test_las_copias_no_se_mezclan_con_el_estado_de_claves(session, example_store
 
 def test_abrir_lleva_al_host_configurado(config, example_store, key, token):
     deployed = Session(
-        ui_client(replace(config, claves_host="claves.example.org"), example_store, key), token
+        ui_client(replace(config, kit_hosts={"claves": "claves.example.org"}), example_store, key),
+        token,
     )
 
-    assert 'href="https://claves.example.org"' in deployed.get("/herramientas").text
+    html = card(deployed.get("/herramientas").text)
+
+    assert 'href="https://claves.example.org"' in html and ">Preparar otro paquete<" in html
 
 
 def test_claves_host_se_lee_del_entorno():
@@ -157,8 +161,8 @@ def test_claves_host_se_lee_del_entorno():
         "ENS_UI_ACCESS_TEAM_DOMAIN": "acme.cloudflareaccess.com",
         "ENS_UI_ACCESS_JWKS_FILE": "/x",
     }
-    assert load_ui_config(base).claves_host is None
-    assert load_ui_config({**base, CLAVES_HOST_ENV: "Claves.Example.org"}).claves_host == (
+    assert load_ui_config(base).kit_hosts.get("claves") is None
+    assert load_ui_config({**base, CLAVES_HOST_ENV: "Claves.Example.org"}).kit_hosts["claves"] == (
         "claves.example.org"
     )
 
@@ -237,22 +241,27 @@ def test_post_con_otro_origin_se_rechaza(raw_client, token):
 # --- matriz --------------------------------------------------------------------------------------
 
 
-def test_op_exp_10_propone_el_kit_sin_evidencia_y_sin_prometer_cumplimiento(web):  # noqa: F811
+def test_op_exp_10_propone_el_kit_sin_evidencia_y_sin_prometer_cumplimiento(web):
     html = web.get("/matriz/op.exp.10").text
     text = tail(html)
 
     assert "el kit de claves" in html and 'href="/herramientas/claves"' in html
     assert "op.exp.10.2" in text and "op.exp.10.3" in text and "R1" in text
+    assert ">Añadir las claves<" in html and "cubierta en parte" in html
     assert not re.search(r"certific|garantiza el cumplimiento|cumple el ENS", html, re.I)
 
 
-def test_op_exp_10_no_propone_el_kit_con_evidencia(web, signed):  # noqa: F811
+def test_la_ficha_de_op_exp_10_enseña_el_texto_de_cada_clausula_del_kit(web):
+    assert_kit_clauses_have_text(web.get("/matriz/op.exp.10").text, "op.exp.10")
+
+
+def test_op_exp_10_no_propone_el_kit_con_evidencia(web, signed):
     record(signed, UNSEALED_OK)
 
     assert "el kit de claves" not in web.get("/matriz/op.exp.10").text
 
 
-def test_mp_info_6_sigue_proponiendo_copias_y_no_claves(web):  # noqa: F811
+def test_mp_info_6_sigue_proponiendo_copias_y_no_claves(web):
     html = web.get("/matriz/mp.info.6").text
 
     assert "kit de copias" in html and "kit de claves" not in html

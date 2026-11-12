@@ -5,6 +5,7 @@ ejecución de checks del conector `backups`, y el paquete (con las claves) se de
 como descarga. Nada de lo que contiene se guarda ni se audita; solo el hecho.
 """
 
+from collections.abc import Mapping
 from typing import Any
 
 from pydantic import SecretStr, ValidationError
@@ -24,6 +25,7 @@ from ens_evidence.kit.backups import (
     render_bundle,
     render_host_bundle,
 )
+from ens_evidence.kit.registry import KIT_TOOLS, KitTool, tool_for
 from ens_evidence.models.enums import CheckStatus
 from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.models import AssetType
@@ -35,8 +37,6 @@ from ens_evidence.ui.views import NO_DATE, format_instant
 
 CONNECTOR = "backups"
 KEYSTORE_CONNECTOR = "keystore"
-MEASURES = ("mp.info.6",)
-KEYSTORE_MEASURES = ("op.exp.10",)
 STEP = "copias"
 ENABLE_COMMAND = "deploy/box.sh kit enable copias <fichero>"
 
@@ -130,23 +130,34 @@ def _state(key: str, at: Any) -> dict[str, Any]:
     }
 
 
-def copias_offer(store: UiStore, measure_id: str) -> dict[str, Any] | None:
-    """Propuesta del kit para una medida que apoya, mientras no haya evidencia de sus copias."""
-    if measure_id not in MEASURES or kit_state(store, CONNECTOR)["key"] != "nodata":
+def kit_offer(
+    store: UiStore,
+    measure_id: str,
+    applicable: bool,
+    clause_texts: Mapping[str, str] | None = None,
+) -> dict[str, Any] | None:
+    """Propuesta del kit para una medida aplicable que apoya, mientras su conector no tenga
+    evidencia. `clause_texts` (id de cláusula -> texto oficial) viene del catálogo que ya
+    carga la ficha; una cláusula sin texto se enseña solo con su id."""
+    texts = clause_texts or {}
+
+    def clauses(ids: tuple[str, ...]) -> list[dict[str, str | None]]:
+        return [{"id": i, "text": texts.get(i)} for i in ids]
+
+    tool = tool_for(measure_id)
+    if tool is None or not applicable or kit_state(store, tool.connector)["key"] != "nodata":
         return None
     return {
-        "name": "copias",
-        "cta": "Preparar las copias",
-        "url": "/herramientas/copias",
-        "covers": (
-            "Hace copias cifradas a un almacenamiento externo con bloqueo, y en cada recogida "
-            "comprueba que las copias existen, son recientes y el repositorio se puede leer."
-        ),
-        "not_covers": (
-            "La prueba de restauración (se pide desde el nivel MEDIO) la hace y la registra "
-            "una persona; el kit no la sustituye. Tampoco decide que la medida esté "
-            "cubierta: eso lo valora una persona."
-        ),
+        "name": tool.id,
+        "tool_name": tool.name,
+        "cta": tool.cta,
+        "url": tool.wizard_url,
+        "covers": tool.covers,
+        "not_covers": tool.not_covers,
+        "covers_clauses": clauses(tool.covers_clauses),
+        "partial_clauses": clauses(tool.partial_clauses),
+        "not_covered_clauses": clauses(tool.not_covered_clauses),
+        "ram": tool.ram,
     }
 
 
@@ -154,17 +165,32 @@ def copias_offer(store: UiStore, measure_id: str) -> dict[str, Any] | None:
 
 
 def panel(request: Request) -> Response:
+    store = request.app.state.store
+    hosts = request.app.state.config.kit_hosts
     return render(
         request,
         "views/herramientas.html",
         **page_context(request, "herramientas", "Herramientas"),
-        state=kit_state(request.app.state.store, CONNECTOR),
-        measures=list(MEASURES),
-        open_url=_open_url(request.app.state.config.copias_host),
-        claves_state=kit_state(request.app.state.store, KEYSTORE_CONNECTOR),
-        claves_measures=list(KEYSTORE_MEASURES),
-        claves_open_url=_open_url(request.app.state.config.claves_host),
+        tools=[_tool_card(store, tool, hosts.get(tool.id)) for tool in KIT_TOOLS],
     )
+
+
+def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any]:
+    return {
+        "id": tool.id,
+        "name": tool.name,
+        "purpose": tool.purpose,
+        "state": kit_state(store, tool.connector),
+        "measures": list(tool.measures),
+        "measures_note": tool.measures_note,
+        "hints": tool.hints,
+        "open_url": _open_url(host),
+        "wizard_url": tool.wizard_url,
+        "cta": tool.cta,
+        "help_url": f"/ayuda/{tool.help_slug}",
+        "help_label": tool.help_label,
+        "ram": tool.ram,
+    }
 
 
 def _open_url(host: str | None) -> str | None:

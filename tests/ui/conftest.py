@@ -4,16 +4,20 @@ from datetime import UTC, datetime
 from pathlib import Path
 
 import pytest
+from applicability.helpers import LATER, decide_all_undetermined, prepared_workspace, uniform
 from cryptography.hazmat.primitives import hashes
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
+from matrix.helpers import SIGNED_AT
 from starlette.requests import Request
 from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
+from ens_evidence.applicability import approve_declaration, propose_applicability
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.config import UiConfig
 from ens_evidence.ui.pages import identity_of
+from ens_evidence.ui.views.matrix import MATRIX_ROUTES
 from ens_evidence.workspace import LocalStore
 
 NOW = datetime(2026, 11, 8, 12, 0, tzinfo=UTC)
@@ -197,3 +201,18 @@ def completed(session) -> Session:
 
     ui_script(session)
     return session
+
+
+@pytest.fixture
+def signed(tmp_path):
+    store = prepared_workspace(tmp_path / "signed", uniform("MEDIO"))
+    propose_applicability(store, LATER)
+    decide_all_undetermined(store)
+    approve_declaration(store, "Luis Pardo", SIGNED_AT)
+    return store
+
+
+@pytest.fixture
+def web(config, signed, key, token) -> Session:
+    app = create_ui_app(config, signed, lambda: NOW, lambda: jwks_for(key), routes=MATRIX_ROUTES)
+    return Session(TestClient(app, base_url=ORIGIN), token)

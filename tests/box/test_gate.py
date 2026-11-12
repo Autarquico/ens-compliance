@@ -16,6 +16,8 @@ from pathlib import Path
 import pytest
 import yaml
 
+from ens_evidence.kit.registry import KIT_TOOLS
+
 REPO = Path(__file__).resolve().parents[2]
 BOX_SH = REPO / "deploy" / "box.sh"
 DIGEST = re.compile(r"@sha256:[0-9a-f]{64}$")
@@ -523,8 +525,27 @@ def test_caddy_limita_el_cuerpo_por_ruta(caddyfile):
     assert re.search(r"request_body @large_agent \{\s*max_size 10MB", caddyfile)
 
 
+# Servicio de compose de cada herramienta del registro: el registro no lo guarda.
+KIT_COMPOSE_SERVICE = {"copias": "backrest", "claves": "openbao"}
+
+
+def test_cada_herramienta_del_kit_tiene_su_servicio_de_compose():
+    assert set(KIT_COMPOSE_SERVICE) == {tool.id for tool in KIT_TOOLS}
+
+
+@pytest.mark.parametrize("tool", KIT_TOOLS, ids=lambda t: t.id)
+def test_toda_herramienta_del_kit_entra_solo_por_su_host_tras_access(tool, caddyfile, services):
+    env = f"ENS_{tool.id.upper()}_HOST"
+    assert re.search(rf"@{tool.id} host \{{\${env}:[^}}\s]+\}}", caddyfile), tool.id
+    handle = caddyfile.index(f"\thandle @{tool.id} {{")
+    deny_all = caddyfile.index("\thandle {\n")
+    assert handle < deny_all, "el handle de la herramienta debe ir antes del deny-all final"
+    assert "ports" not in services[KIT_COMPOSE_SERVICE[tool.id]]
+    example = (REPO / "deploy" / "ui.env.example").read_text(encoding="utf-8")
+    assert re.search(rf"^{env}=", example, re.M), tool.id
+
+
 def test_caddy_enruta_backrest_por_nombre_de_host_y_le_deja_su_authorization(caddyfile):
-    assert re.search(r"@copias host \{\$ENS_COPIAS_HOST:copias\.invalid\}", caddyfile)
     copias = block(caddyfile, "handle @copias")
 
     assert "reverse_proxy backrest:9898" in copias
@@ -539,7 +560,6 @@ def test_caddy_enruta_backrest_por_nombre_de_host_y_le_deja_su_authorization(cad
 def test_caddy_enruta_openbao_por_nombre_de_host_sin_cookies_ni_access(caddyfile):
     # La UI de OpenBao v2.7.2 se autentica con X-Vault-Token (ui/app/services/auth.js:177, K3),
     # no con cookies: se quitan las de Access igual que en @copias.
-    assert re.search(r"@claves host \{\$ENS_CLAVES_HOST:claves\.invalid\}", caddyfile)
     claves = block(caddyfile, "handle @claves")
 
     assert "reverse_proxy openbao:8200" in claves

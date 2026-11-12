@@ -1,6 +1,7 @@
 """Un test por escenario de docs/specs/web-ui-base.md y de docs/specs/web-ui-flujo.md."""
 
 import re
+from dataclasses import replace
 from datetime import timedelta
 from pathlib import Path
 
@@ -471,3 +472,78 @@ def test_openbao_instalado_sin_claves_ni_auditoria_no_sale_como_al_dia(session, 
     html = card(session.get("/herramientas").text)
 
     assert "Con problemas" in html and "Al día" not in html
+
+
+# --- docs/specs/kit-access-panel.md -----------------------------------------------------------
+
+
+def test_con_las_dos_herramientas_desplegadas_cada_tarjeta_da_su_estado_y_abrir(
+    config, example_store, key, token
+):
+    from ens_evidence.kit.registry import KIT_TOOLS
+
+    from . import test_tools, test_tools_claves
+
+    hosts = {tool.id: f"{tool.id}.example.org" for tool in KIT_TOOLS}
+    test_tools.record(example_store, CheckStatus.PASS)
+    test_tools_claves.record(example_store, test_tools_claves.UNSEALED_OK)
+    deployed = Session(ui_client(replace(config, kit_hosts=hosts), example_store, key), token)
+
+    html = deployed.get("/herramientas").text
+
+    cards = re.findall(
+        r'<section class="card" aria-labelledby="h-(\w+)">(.*?)</section>', html, re.S
+    )
+    assert [tool_id for tool_id, _ in cards] == [tool.id for tool in KIT_TOOLS]
+    for (tool_id, body), tool in zip(cards, KIT_TOOLS, strict=True):
+        assert tool.name in body
+        assert "Al día" in body, tool_id
+        assert f'href="https://{hosts[tool_id]}"' in body and ">Abrir<" in body, tool_id
+        assert tool.cta not in body, tool_id
+
+
+def test_la_ficha_propone_la_herramienta_con_sus_clausulas_y_el_boton_al_asistente(
+    web,
+):
+    from ens_evidence.kit.registry import tool_for
+
+    for measure_id in ("op.exp.10", "mp.info.6"):
+        tool = tool_for(measure_id)
+        html = web.get(f"/matriz/{measure_id}").text
+
+        offer = html.split('id="h-kit"', 1)[1].split("</section>", 1)[0]
+        assert tool.name.lower() in " ".join(offer.split()).lower(), measure_id
+        for clause in tool.partial_clauses:
+            assert f"{clause}</span>: cubierta en parte" in offer, clause
+        for clause in tool.not_covered_clauses:
+            assert f"{clause}</span>: no cubierta" in offer, clause
+        assert f'href="{tool.wizard_url}">{tool.cta}</a>' in offer, measure_id
+
+
+# Una medida n.a. no recibe propuesta: se prueba en test_tools.py sobre kit_offer; hoy ninguna
+# medida del kit admite n.a. (son obligatorias en todos los niveles): no hay ficha que pintar.
+
+
+def test_con_copias_con_evidencia_y_claves_sin_datos_solo_op_exp_10_propone(web, signed):
+    from . import test_tools
+
+    test_tools.record(signed, CheckStatus.PASS)
+
+    assert 'id="h-kit"' not in web.get("/matriz/mp.info.6").text
+    assert 'id="h-kit"' in web.get("/matriz/op.exp.10").text
+
+
+@pytest.mark.parametrize(
+    "statuses,complete", [((CheckStatus.FAIL,), True), ((CheckStatus.PASS,), False)]
+)
+def test_una_herramienta_con_problemas_o_caida_no_se_propone_como_si_faltara(
+    web,
+    signed,
+    statuses,
+    complete,
+):
+    from . import test_tools
+
+    test_tools.record(signed, *statuses, complete=complete)
+
+    assert 'id="h-kit"' not in web.get("/matriz/mp.info.6").text
