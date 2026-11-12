@@ -48,13 +48,21 @@ APP_LOOKUP = {
 }
 
 
-def kv_entry(created: str, version: int = 1) -> dict[str, Any]:
+def kv_entry(
+    created: str, version: int = 1, *, destroyed: bool = False, deletion_time: str = ""
+) -> dict[str, Any]:
     return {
         "data": {
             "current_version": version,
             "oldest_version": 1,
             "custom_metadata": {"nota": CUSTOM},
-            "versions": {str(version): {"created_time": created, "destroyed": False}},
+            "versions": {
+                str(version): {
+                    "created_time": created,
+                    "deletion_time": deletion_time,
+                    "destroyed": destroyed,
+                }
+            },
         }
     }
 

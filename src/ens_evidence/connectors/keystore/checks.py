@@ -155,10 +155,10 @@ def _keys_rotated(result: CollectionResult, evaluated_at: datetime) -> Outcome:
     if problem:
         return problem
     assert kv is not None and transit is not None and mounts is not None
-    entries = [
-        (f"kv:{_dict(i).get('path')}", _dict(i).get("last_version_at"))
-        for i in _list(kv.get("items"))
-    ] + [
+    kv_items = [_dict(i) for i in _list(kv.get("items"))]
+    live = [i for i in kv_items if not _version_gone(i, evaluated_at)]
+    gone = len(kv_items) - len(live)
+    entries = [(f"kv:{i.get('path')}", i.get("last_version_at")) for i in live] + [
         (f"transit:{_dict(i).get('name')}", _dict(i).get("last_version_at"))
         for i in _list(transit.get("items"))
     ]
@@ -174,11 +174,23 @@ def _keys_rotated(result: CollectionResult, evaluated_at: datetime) -> Outcome:
     if uncovered:
         return _unknown(f"motor {_names(uncovered)} sin cobertura; revísalo a mano")
     if not entries:
-        return _fail("no hay claves gestionadas: instalar OpenBao no es cumplir")
+        aside = f" ({gone} con la versión actual destruida o borrada)" if gone else ""
+        return _fail(f"no hay claves gestionadas{aside}: instalar OpenBao no es cumplir")
     unreadable = [name for name, age in ages if age is None]
     if unreadable:
         return _unknown(f"fecha de la última versión ilegible o futura: {_names(unreadable)}")
     return _pass(f"{len(entries)} claves con la última versión de menos de {limit} días")
+
+
+def _version_gone(entry: dict[str, Any], evaluated_at: datetime) -> bool:
+    """Versión actual destruida o con borrado ya vencido (o ilegible): no hay clave que rotar."""
+    if entry.get("destroyed") is True:
+        return True
+    raw = entry.get("deletion_time")
+    if not raw:
+        return False
+    moment = parse_time(raw)
+    return moment is None or moment <= evaluated_at
 
 
 def _age(raw: Any, evaluated_at: datetime) -> timedelta | None:

@@ -48,6 +48,8 @@ def test_kv_recorre_las_carpetas_y_solo_guarda_metadatos(collect):
         "path": "dir/db",
         "current_version": 3,
         "last_version_at": days_ago(20).replace("Z", "+00:00"),
+        "destroyed": False,
+        "deletion_time": None,
     }
 
 
@@ -341,3 +343,29 @@ def test_sin_period_en_lookup_self_el_periodo_es_creation_ttl_como_en_openbao_2_
     assert token["period_seconds"] is None
     assert token["creation_ttl_seconds"] == 72 * 3600
     assert token["renewed"] is True  # sin esto el token del kit caducaría a las 72 h
+
+
+def test_kv_conserva_destruida_y_deletion_time_de_la_version_actual(api, collect):
+    api.set("GET", "kv/metadata/app", (200, kv_entry(days_ago(1), destroyed=True)))
+    api.set("GET", "kv/metadata/dir/db", (200, kv_entry(days_ago(1), deletion_time="mañana")))
+
+    items = {i["path"]: i for i in section(collect(), "kv")["items"]}
+
+    assert items["app"]["destroyed"] is True
+    assert items["dir/db"]["deletion_time"] == "ilegible"
+
+
+def test_kv_con_mas_peticiones_que_el_limite_en_un_listado_plano_es_parcial(
+    api, collect, monkeypatch
+):
+    from ens_evidence.connectors.keystore import sections
+
+    monkeypatch.setattr(sections, "MAX_KV_REQUESTS", 5)
+    names = [f"k{n}" for n in range(sections.MAX_KV_REQUESTS + 1)]
+    api.set("LIST", "kv/metadata/", (200, {"data": {"keys": names}}))
+    for name in names:
+        api.set("GET", f"kv/metadata/{name}", (200, kv_entry(days_ago(1))))
+
+    kv = section(collect(), "kv")
+
+    assert kv["status"] == "ERROR" and "parcial" in kv["reason"]

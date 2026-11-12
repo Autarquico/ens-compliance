@@ -183,6 +183,14 @@ Si `kit claves init` se interrumpe (cierre de terminal, corte de red, error), el
 root token se perdió con el proceso. Es un paso **manual**; el kit nunca lo hace
 solo.
 
+**Root sin revocar.** Si el error ocurre después de desbloquear, `init` intenta
+revocar el root token antes de salir y lo verifica; el mensaje de error dice si
+se revocó («El root token se ha revocado») o no («no se pudo revocar el root
+token»). En el segundo caso, o si el error ocurrió antes de desbloquear, el root
+puede seguir vivo sin que nadie tenga su valor: no hay forma de revocarlo desde
+fuera, así que sigue por los pasos de abajo y vacía el almacén. Mientras exista,
+el check de «sin root token vivo» fallará.
+
 1. Mira qué llegó a pasar. Si la pantalla mostró la contraseña de `admin`, la
    inicialización terminó: no vacíes nada; sigue por «Token de la app caducado».
 2. Si no la mostró, comprueba con los custodios que nadie ha guardado secretos

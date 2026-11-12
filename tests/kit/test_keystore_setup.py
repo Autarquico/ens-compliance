@@ -20,6 +20,8 @@ class FakeBao:
         self.calls: list[tuple[str, str, dict]] = []
         self.root_revoked = False
         self.created_orphan = True
+        self.fail_path: str | None = None  # responde 500 con el root a esta ruta
+        self.revoke_fails = False
         self.health_codes: list[int] = []  # respuestas previas de sys/health (500 = aún no activo)
 
     def handle(self, method, path, body, token):
@@ -43,6 +45,10 @@ class FakeBao:
             return 403, {}
         if token != ROOT:
             return 403, {}
+        if path == self.fail_path:
+            return 500, {}
+        if path == "auth/token/revoke-self" and self.revoke_fails:
+            return 500, {}
         if path == "sys/audit":
             return 200, {"data": self.audit, **self.audit}
         if path == "auth/token/revoke-self":
@@ -201,7 +207,11 @@ def test_aborta_sin_tocar_si_no_hay_auditoria(bao, package, capsys):
     assert run_init(bao, package, script) == 1
 
     assert capsys.readouterr().out == ""
-    written = [c for c in paths(bao) if c[0] != "GET" and not c[1].startswith("sys/")]
+    written = [
+        c
+        for c in paths(bao)
+        if c[0] != "GET" and not c[1].startswith(("sys/", "auth/token/revoke"))
+    ]
     assert written == [] and not any("mounts" in p or "policies" in p for _, p in paths(bao))
     assert "kit-claves" in script.text and ROOT not in script.text
 
@@ -310,3 +320,54 @@ def test_si_el_nodo_no_llega_a_ser_activo_no_configura_nada(bao, package, monkey
 
     assert "no llegó a estar activo" in script.text and "kit-claves" in script.text
     assert "sys/audit" not in [p for _, p in paths(bao)]
+
+
+CONFIGURE_STEPS = [
+    "sys/audit",
+    "sys/mounts/kv",
+    "sys/mounts/transit",
+    "sys/policies/acl/ens-app-metadata",
+    "auth/token/roles/ens-app",
+    "auth/token/create/ens-app",
+    "sys/auth/userpass",
+    "auth/userpass/users/admin",
+]
+
+
+@pytest.mark.parametrize("step", CONFIGURE_STEPS)
+def test_fallo_en_cualquier_paso_de_configurar_revoca_y_verifica_el_root(bao, package, step):
+    bao.fail_path = step
+    script = good_script()
+
+    assert run_init(bao, package, script) == 1
+
+    order = [p for _, p in paths(bao)]
+    assert bao.root_revoked
+    assert order[-2:] == ["auth/token/revoke-self", "auth/token/lookup-self"]
+    assert "se ha revocado" in script.text and "500" in script.text
+    assert ROOT not in script.text
+
+
+def test_si_falla_configurar_y_tambien_revocar_el_mensaje_dice_ambos(bao, package):
+    bao.fail_path = "sys/mounts/transit"
+    bao.revoke_fails = True
+    script = good_script()
+
+    assert run_init(bao, package, script) == 1
+
+    assert "500 a POST /v1/sys/mounts/transit" in script.text
+    assert "no se pudo revocar el root token" in script.text and "kit-claves" in script.text
+    assert not bao.root_revoked
+
+
+def test_una_excepcion_de_red_al_configurar_tambien_revoca(bao, package, monkeypatch):
+    def boom(*_a, **_k):
+        raise TimeoutError("secreto interno")
+
+    monkeypatch.setattr(setup, "_require_audit", boom)
+    script = good_script()
+
+    assert run_init(bao, package, script) == 1
+
+    assert bao.root_revoked
+    assert "TimeoutError" in script.text and "secreto interno" not in script.text

@@ -186,9 +186,7 @@ def collect_kv(client: KeystoreClient) -> Section:
     requests = 0
     while pending:
         folder = pending.pop()
-        requests += 1
-        if requests > MAX_KV_REQUESTS:
-            raise KeystoreError(CollectionStatus.ERROR, "demasiadas entradas en kv: parcial")
+        _count_request(requests := requests + 1)
         prefix = "".join(f"{segment(s)}/" for s in folder.split("/") if s)
         try:
             names = client.list(f"kv/metadata/{prefix}")
@@ -198,10 +196,15 @@ def collect_kv(client: KeystoreClient) -> Section:
             if name.endswith("/"):
                 pending.append(f"{folder}{name}")
                 continue
-            requests += 1
+            _count_request(requests := requests + 1)
             items.append(_kv_entry(client, f"{folder}{name}", prefix + segment(name)))
     items.sort(key=lambda i: i["path"])
     return Section(status=CollectionStatus.SUCCESS, items=items, summary={"count": len(items)})
+
+
+def _count_request(total: int) -> None:
+    if total > MAX_KV_REQUESTS:
+        raise KeystoreError(CollectionStatus.ERROR, "demasiadas entradas en kv: parcial")
 
 
 def _kv_entry(client: KeystoreClient, path: str, quoted: str) -> dict[str, Any]:
@@ -213,7 +216,18 @@ def _kv_entry(client: KeystoreClient, path: str, quoted: str) -> dict[str, Any]:
         "path": path,
         "current_version": current,
         "last_version_at": instant(created) if created else None,
+        "destroyed": version.get("destroyed") is True,
+        "deletion_time": _deletion_time(version.get("deletion_time")),
     }
+
+
+def _deletion_time(raw: Any) -> str | None:
+    """KV v2: `deletion_time` es "" si la versión no está marcada; si no, RFC 3339 (pasada si
+    se borró, futura si hay `delete_version_after`). Lo no legible se conserva como tal."""
+    if raw in ("", None):
+        return None
+    moment = parse_time(raw)
+    return instant(moment) if moment else "ilegible"
 
 
 def collect_transit(client: KeystoreClient) -> Section:
