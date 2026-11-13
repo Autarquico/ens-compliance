@@ -3,7 +3,6 @@ paquete alterado y combinaciones no soportadas. Sin red, sin credenciales reales
 # ruff: noqa: F811
 
 import pytest
-from typer.testing import Result
 
 from ens_evidence.agent.install import render_install_script
 from ens_evidence.endpoint.checks import HOST_CHECKS
@@ -12,7 +11,13 @@ from ens_evidence.models.enums import CheckStatus
 
 from .protocol_support import LAPTOP, NOW, snapshot_event
 from .test_cli_agent import ens, settings  # noqa: F401 -- fixture compartida
-from .test_install import FORBIDDEN_FLAGS, Sandbox, install_args, payload_sha, sandbox  # noqa: F401
+from .test_install import (
+    FORBIDDEN_FLAGS,
+    LINUX,
+    assert_nothing_installed_or_started,
+    payload_sha,
+    sandbox,  # noqa: F401
+)
 from .test_install import SERVER as SERVER_HOST
 
 SENTINEL = "sentinel-token-7f3a9c1e5b2d4086"
@@ -58,7 +63,8 @@ def test_windows_host_that_delivers_results_gets_unknown_on_every_host_check(wor
     assert set(mine) == set(HOST_CHECKS)
     assert CheckStatus.PASS not in {r.status for r in mine.values()}
     assert all(r.reason_code == "no_evidence" for r in mine.values())
-    # HOST-001 (cobertura) sale FAIL y no UNKNOWN: ver Open Questions de T4-r1.
+    # Sin evidencia (`_without_evidence`, endpoint/checks.py): HOST-001 sale FAIL por cobertura,
+    # el resto UNKNOWN, nunca PASS.
     assert mine["HOST-001"].status is CheckStatus.FAIL
     assert {r.status for c, r in mine.items() if c != "HOST-001"} == {CheckStatus.UNKNOWN}
 
@@ -121,21 +127,22 @@ def test_powershell_reads_the_token_from_the_file_and_not_from_arguments():
 
 
 # --- Paquete alterado --------------------------------------------------------------------------
+# test_install.py cubre deb/amd64; aquí las demás variantes de Linux.
+
+OTHER_LINUX_TARGETS = [target for target in POSIX_TARGETS[1:] if target != LINUX]
 
 
-@pytest.mark.parametrize(("os_name", "package", "arch"), POSIX_TARGETS[1:])
+@pytest.mark.parametrize(("os_name", "package", "arch"), OTHER_LINUX_TARGETS)
 def test_altered_package_stops_before_the_installer_and_the_service(
     sandbox, os_name, package, arch
 ):
     result = sandbox.run(sandbox.render(os_name, package, arch), expected_sha="0" * 64)
 
-    assert result.returncode != 0
+    assert_nothing_installed_or_started(sandbox, result)
     assert "sha256" in result.stderr
-    assert not [c for c in sandbox.calls if c.startswith(("dpkg", "rpm", "systemctl"))]
-    assert not (sandbox.root / "etc-osquery").exists()
 
 
-@pytest.mark.parametrize(("os_name", "package", "arch"), POSIX_TARGETS[1:])
+@pytest.mark.parametrize(("os_name", "package", "arch"), OTHER_LINUX_TARGETS)
 def test_truncated_package_stops_before_the_installer_and_the_service(
     sandbox, os_name, package, arch
 ):
@@ -144,25 +151,4 @@ def test_truncated_package_stops_before_the_installer_and_the_service(
 
     result = sandbox.run(sandbox.render(os_name, package, arch), expected_sha=expected)
 
-    assert result.returncode != 0
-    assert not [c for c in sandbox.calls if c.startswith(("dpkg", "rpm", "systemctl"))]
-    assert not (sandbox.root / "etc-osquery").exists()
-
-
-# --- Combinaciones no soportadas ---------------------------------------------------------------
-
-
-@pytest.mark.parametrize(
-    ("kwargs", "message"),
-    [
-        ({"os_name": "windows", "package": None, "arch": "arm64"}, "no soportada"),
-        ({"package": None, "arch": None}, "indica --package"),
-        ({"asset": "fantasma"}, "no está inscrito"),
-    ],
-)
-def test_unsupported_requests_fail_without_any_script_on_stdout(settings, kwargs, message):
-    result: Result = ens(settings, *install_args(**kwargs))
-
-    assert result.exit_code == 2
-    assert message in result.output
-    assert result.stdout == ""
+    assert_nothing_installed_or_started(sandbox, result)

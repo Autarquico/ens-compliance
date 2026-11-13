@@ -1,12 +1,16 @@
 import json
+from datetime import timedelta
 
 import pytest
 
+from ens_evidence.endpoint.evaluate import evaluate_workspace
+from ens_evidence.endpoint.evidence import load_host_evidence
 from ens_evidence.endpoint.normalize import STORED_COLUMNS
 from ens_evidence.endpoint.pack import PACK_DIR, load_pack
+from ens_evidence.evidence import list_manifests
+from ens_evidence.evidence.layout import artifact_key, manifest_key, sha256_hex
 
-from .check_data import evaluate, host_evidence
-from .support import members_of, persisted_keys, rebuilt
+from .support import import_package, members_of, normalized, persisted_keys, rebuilt
 from .test_hostile_import import rejected
 
 WINDOWS_QUERIES = ("bitlocker_info", "windows_security_center", "programs")
@@ -42,10 +46,28 @@ def test_a_pending_v1_package_is_rejected_asking_to_repeat_the_collection(store,
     assert persisted_keys(store) == []
 
 
-def test_stored_v1_script_evidence_still_evaluates():
-    evidence = host_evidence()
-    evidence.result.data["package"]["pack_version"] = "1"
+def test_stored_v1_script_evidence_still_evaluates(store, laptop_package):
+    import_package(store, laptop_package)
+    manifest = next(m for m in list_manifests(store).manifests if m.source == "endpoint-script")
+    stored = normalized(store)
+    stored["data"]["package"]["pack_version"] = "1"
+    artifact = json.dumps(stored).encode()
+    old_key, new_key = manifest.artifact.key, artifact_key(sha256_hex(artifact))
+    store.write_bytes(new_key, artifact)
+    path = manifest_key(manifest.id)
+    store.write_text(
+        path,
+        store.read_text(path)
+        .replace(old_key, new_key)
+        .replace(manifest.artifact.sha256, sha256_hex(artifact)),
+    )
+    loaded = load_host_evidence(store)
+    assert loaded.unreadable == []
+    assert loaded.items[0].result.data["package"]["pack_version"] == "1"
 
-    results = evaluate(evidence)
+    results = evaluate_workspace(store, loaded.items[0].collected_at + timedelta(minutes=1)).results
 
-    assert results["HOST-003"].status.name == "PASS"
+    assert (
+        next(r for r in results if r.check_id == "HOST-003" and r.asset_id == "lap-ana").status.name
+        == "PASS"
+    )
