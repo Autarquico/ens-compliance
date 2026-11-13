@@ -63,9 +63,9 @@ Un agente que entrega resultados no cumple nada por sí solo (regla 1): los chec
 - **Then** la instalación se detiene antes de invocar el instalador, y lo mismo ante una descarga truncada o un fallo de cualquier paso
 
 ### Scenario: Windows sin checks
-- **Given** un equipo Windows que entrega resultados
+- **Given** un equipo Windows que entrega resultados por el agente y no tiene evidencia del script guiado
 - **When** corre el ciclo de checks
-- **Then** cada check de endpoint (HOST-001…007) de ese equipo da UNKNOWN, ninguno PASS
+- **Then** HOST-001 (cobertura) da FAIL por falta de evidencia y HOST-002…007 dan UNKNOWN; ninguno PASS
 
 ## Notas técnicas / riesgos
 
