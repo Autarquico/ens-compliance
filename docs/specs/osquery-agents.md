@@ -6,13 +6,13 @@ status: active
 priority: P1
 size: L
 issue: 9
-prs: []
+prs: [81]
 related_issues: [9]
 depends_on: [osquery-server]
 supersedes: []
 related_specs: [collector-osquery, offline-bundle]
 created: 2026-10-15
-updated: 2026-11-12
+updated: 2026-11-13
 ---
 
 # Despliegue de agentes osquery
