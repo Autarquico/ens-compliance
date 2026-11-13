@@ -9,9 +9,9 @@ need() {
   done
 }
 
-[ "$(id -u)" = 0 ] || die "ejecuta este script como root."
 # shellcheck disable=SC2086
 need $REQUIRED_TOOLS
+[ "$(id -u)" = 0 ] || die "ejecuta este script como root."
 
 TOKEN_FILE=@@TOKEN_FILE@@
 FILENAME=@@FILENAME@@

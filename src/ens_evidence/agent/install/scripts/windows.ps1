@@ -23,6 +23,7 @@ if (-not $principal.IsInRole([Security.Principal.WindowsBuiltInRole]::Administra
   throw 'Ejecuta este script como Administrador.'
 }
 
+$TokenFile = $ExecutionContext.SessionState.Path.GetUnresolvedProviderPathFromPSPath($TokenFile)
 $token = Get-Item -LiteralPath $TokenFile -Force
 if ($token.PSIsContainer -or ($token.Attributes -band [IO.FileAttributes]::ReparsePoint)) {
   throw '--token-file debe ser un fichero normal, no un enlace ni un directorio.'

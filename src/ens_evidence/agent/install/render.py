@@ -32,8 +32,13 @@ def _sh(value: str) -> str:
     return shlex.quote(value)
 
 
+POWERSHELL_QUOTES = "'\u2018\u2019\u201a\u201b"
+
+
 def _ps(value: str) -> str:
-    return "'" + value.replace("'", "''") + "'"
+    """Literal de comilla simple: PowerShell cierra con U+0027 y con las comillas tipográficas."""
+    escaped = "".join(char * 2 if char in POWERSHELL_QUOTES else char for char in value)
+    return "'" + escaped + "'"
 
 
 def _resource(*parts: str) -> str:
@@ -50,10 +55,10 @@ def _fill(template: str, values: dict[str, str]) -> str:
 def render_install_script(
     os_name: str, server: str, token_file: str, package: str | None, arch: str | None
 ) -> str:
-    entry = resolve_package(os_name, package, arch)
+    version, packages = load_release()
+    entry = resolve_package(os_name, package, arch, packages)
     host = validate_server(server)
     token = validate_token_file(token_file)
-    version, _ = load_release()
     flags = _fill(_resource("flags", f"{os_name}.flags"), {"SERVER": host})
     quote = _ps if os_name == "windows" else _sh
     values = {

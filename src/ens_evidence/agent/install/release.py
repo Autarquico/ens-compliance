@@ -38,11 +38,16 @@ def load_release() -> tuple[str, tuple[OsqueryPackage, ...]]:
     return data["version"], tuple(_entry(raw) for raw in data["packages"])
 
 
-def resolve_package(os_name: str, package: str | None, arch: str | None) -> OsqueryPackage:
+def resolve_package(
+    os_name: str,
+    package: str | None,
+    arch: str | None,
+    packages: tuple[OsqueryPackage, ...] | None = None,
+) -> OsqueryPackage:
     """El paquete exacto. Linux exige paquete y arquitectura: no se deducen de la caja."""
     if os_name not in OPERATING_SYSTEMS:
         raise InstallError(f"--os debe ser uno de {', '.join(OPERATING_SYSTEMS)}.")
-    _, packages = load_release()
+    packages = load_release()[1] if packages is None else packages
     candidates = [entry for entry in packages if entry.os == os_name]
     if os_name == "linux" and (package is None or arch is None):
         raise InstallError("En Linux indica --package (deb|rpm) y --arch (amd64|arm64).")

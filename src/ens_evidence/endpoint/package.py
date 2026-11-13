@@ -164,7 +164,7 @@ def _parse_meta(body: bytes) -> Meta:
 
 
 def _verify_meta(meta: Meta, pack: QueryPack, now: datetime) -> None:
-    if meta.pack_version != str(pack.version) and meta.pack_version == "1":
+    if meta.pack_version == "1" and str(pack.version) != "1":
         raise PackageRejected(
             "el paquete es de la versión 1 de consultas; repite la recogida con el script "
             "nuevo (`ens-evidence endpoint script`)"

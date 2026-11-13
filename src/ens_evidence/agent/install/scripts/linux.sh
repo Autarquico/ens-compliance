@@ -7,7 +7,7 @@ FLAGS_FILE=/etc/osquery/osquery.flags
 ENROLL_SECRET=/etc/osquery/enroll_secret
 ROOT_GROUP=root
 PACKAGE=@@PACKAGE@@
-REQUIRED_TOOLS="curl sha256sum mktemp tr chown systemctl"
+REQUIRED_TOOLS="id curl sha256sum cut mktemp rm tr cat chmod chown mkdir dirname systemctl"
 
 sha256_of() {
   sha256sum "$1" | cut -d ' ' -f 1

@@ -358,6 +358,17 @@ def powershell() -> str:
     return render("windows", None, None, token_file="C:\\Users\\o'brien\\token.txt")
 
 
+@pytest.mark.parametrize("quote", ["'", "\u2018", "\u2019", "\u201a", "\u201b"])
+def test_powershell_doubles_every_quote_that_closes_a_literal(quote):
+    script = render("windows", None, None, token_file=f"C:\\x{quote}; calc{quote}\\t.txt")
+    assert f"$TokenFile = 'C:\\x{quote}{quote}; calc{quote}{quote}\\t.txt'" in script
+
+
+def test_powershell_resolves_token_file_once_to_an_absolute_path(powershell):
+    assert powershell.count("GetUnresolvedProviderPathFromPSPath($TokenFile)") == 1
+    assert "[IO.File]::ReadAllText($TokenFile)" in powershell
+
+
 def test_powershell_contract_at_text_level(powershell):
     assert "$ErrorActionPreference = 'Stop'" in powershell
     assert "Set-PSDebug" not in powershell
