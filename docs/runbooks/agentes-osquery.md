@@ -85,7 +85,7 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
    | macOS | `--os macos` | `sudo sh instalar.sh` |
    | Linux (Debian, Ubuntu) | `--os linux --package deb --arch amd64\|arm64` | `sudo sh instalar.sh` |
    | Linux (RHEL, Fedora…) | `--os linux --package rpm --arch amd64\|arm64` | `sudo sh instalar.sh` |
-   | Windows (solo amd64) | `--os windows` | PowerShell como Administrador: `.\instalar.ps1` |
+   | Windows (solo amd64) | `--os windows` | Consola de PowerShell como Administrador: `powershell -NoProfile -ExecutionPolicy Bypass -File .\instalar.ps1` |
 
    ```bash
    docker compose -p ens-box --profile agents exec -T agent ens-evidence agent install \
@@ -110,6 +110,12 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
    | Linux | `osqueryd` (systemd) | `/etc/osquery/osquery.flags` | `/etc/osquery/enroll_secret` (600, root) |
    | Windows | `osqueryd` (servicio) | `C:\Program Files\osquery\osquery.flags` | `C:\Program Files\osquery\enroll_secret` (solo SYSTEM y Administradores) |
 
+   En Windows, `.\instalar.ps1` a secas falla con la política de ejecución
+   por defecto. `-ExecutionPolicy Bypass -File` la omite solo en esa
+   invocación: no cambia la política del equipo y no se recomienda
+   cambiarla de forma permanente. No verificado en un Windows real (piloto
+   pendiente).
+
    Los flags clave son `--host_identifier=uuid` (obligatorio: el servidor
    exige el uuid de hardware inscrito; con `hostname` el alta responde
    `node_invalid` sin más pista), los endpoints `/agent/*` por TLS y, para
@@ -117,13 +123,23 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
    (registros; purga los más antiguos), `--logger_tls_period=60` y
    `--logger_tls_backoff_max=3600`. **Prohibidos:** `--logger_tls_compress`
    (Caddy responde 415), `--tls_secret_always` y `--enroll_secret_env`.
-4. Comprueba:
+4. Comprueba. En la caja:
 
    ```bash
    docker compose -p ens-box --profile agents exec -T agent ens-evidence agent hosts
    ```
 
-   El equipo aparece con su último contacto y `admitido`. El primer snapshot
+   El equipo aparece con su último contacto y `admitido`. En el equipo,
+   según el SO (esta es la única comprobación por SO; los pilotos remiten
+   aquí):
+
+   | SO | Servicio y versión |
+   |---|---|
+   | macOS | `sudo launchctl print system/io.osquery.agent`; `osqueryd --version`; que el `.pkg` dejó `io.osquery.agent.plist` donde asume el script (no verificado en equipo real) |
+   | Linux | `systemctl status osqueryd`; `osqueryd --version` |
+   | Windows | `Get-Service osqueryd`; `icacls` sobre `enroll_secret`; versión del msi en Aplicaciones (no verificado en equipo real) |
+
+   El primer snapshot
    programado llega a las ~6 h de arrancar osquery (con splay del 10 %); para
    tener datos antes, lanza una consulta en vivo (sección 3).
 5. **Retira el token del equipo en cuanto aparezca en `agent hosts`:** borra
@@ -197,11 +213,28 @@ usuario, los pilotos reales** (no se dan por hechos por el test del
 contenedor; el script de macOS y el de Windows no se han ejecutado nunca en
 un equipo real). Evidencia que adjuntar al cerrar cada uno:
 
-| Piloto | Evidencia |
+Comprobación del servicio por SO: paso 4 de la sección 2. Cada piloto
+adjunta esa salida y lo que añade la tabla:
+
+| Piloto | Evidencia adicional |
 |---|---|
-| macOS real (instalar osquery cambia el sistema: requiere aprobación) | Salida de `agent hosts` con contacto reciente; id de la evidencia `osquery-agent` y su snapshot; `osqueryctl`/`launchctl print system/io.osquery.agent`; confirmación de que el `.pkg` dejó `io.osquery.agent.plist` donde asume el script |
-| Linux real (deb o rpm, con systemd) | Salida de `agent hosts`; id del snapshot; `systemctl status osqueryd`; un corte del servidor de unos minutos y el snapshot actual guardado después |
-| Windows (VM) | Salida de `agent hosts`; id del snapshot con filas de `bitlocker_info`, `windows_security_center` y `programs`; `Get-Service osqueryd`; la ACL de `enroll_secret` (`icacls`) y que `--tls_server_certs` por defecto valida el certificado de Caddy |
+| macOS real (instalar osquery cambia el sistema: requiere aprobación) | Id de la evidencia `osquery-agent` y su snapshot |
+| Linux real (deb o rpm, con systemd) | Id del snapshot |
+| Windows (VM) | Id del snapshot con filas de `bitlocker_info`, `windows_security_center` y `programs`; que `--tls_server_certs` por defecto valida el certificado de Caddy; que `-ExecutionPolicy Bypass -File` ejecuta el script |
+
+**Evidencia pendiente de «caja caída» (no verificada).** El test del
+contenedor mide que el servidor no se degrada y que la consulta en vivo
+responde tras el corte; no verifica el primer snapshot programado ni la
+entrega de atrasos del búfer, porque el intervalo es fijo de 6 h
+(`src/ens_evidence/agent/osquery_config.py`). En al menos el piloto de Linux
+real, adjuntar:
+
+1. Primer snapshot programado: salida de `agent hosts` y el id del snapshot
+   unas ~6 h después del alta (sin consulta en vivo de por medio).
+2. Corte del servidor de varios intervalos (más de 6 h) y recuperación:
+   salida de `agent hosts` antes y después, e ids de los snapshots que
+   llegan como atrasos y del snapshot actual guardado (cotas en la sección
+   3; las descartadas aparecen como `outcome=throttled` en el log de `agent`).
 
 ## 3. Consultas en vivo
 
