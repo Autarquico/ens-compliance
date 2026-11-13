@@ -9,7 +9,7 @@
 ## Done esta semana
 
 <!-- pm-sync:done-this-week -->
-- #26 Banco de defectos sembrados
+- #28 Servidor osquery embebido
 - #56 Ajuste del audit pack hasta el umbral de v0.1
 - #63 UI web: el flujo completo, de los riesgos a la pre-auditoría
 - #66 Kit: copias de seguridad con restic y Backrest
@@ -24,7 +24,6 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-- #28 Servidor osquery embebido
 - #57 Reservada nueva y dev ampliado para el umbral de v0.1
 <!-- /pm-sync:in-progress -->
 
