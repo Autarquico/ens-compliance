@@ -110,6 +110,17 @@ NO_SCHEDULER_CMD = 'CMD ["sh", "-c", "ens-evidence report daily --cycle; exec sl
 CRASH_CMD = 'CMD ["sh", "-c", "exit 1"]'
 
 
+def remove_project_resources(project: str) -> None:
+    label = f"label=com.docker.compose.project={project}"
+    containers = run(["docker", "ps", "-aq", "--filter", label]).stdout.split()
+    if containers:
+        run(["docker", "rm", "-f", *containers])
+    for kind in ("network", "volume"):
+        names = run(["docker", kind, "ls", "-q", "--filter", label]).stdout.split()
+        if names:
+            run(["docker", kind, "rm", *(["-f"] if kind == "volume" else []), *names])
+
+
 @pytest.fixture(scope="module")
 def box(tmp_path_factory):
     suffix = secrets.token_hex(3)
@@ -157,25 +168,9 @@ def box(tmp_path_factory):
     handle = Box(clone, project, tags)
     yield handle
 
-    # Solo lo que lleva el prefijo del proyecto y las etiquetas de prueba.
-    owned = run(
-        ["docker", "ps", "-aq", "--filter", f"label=com.docker.compose.project={project}"]
-    ).stdout.split()
-    if owned:
-        run(["docker", "rm", "-f", *owned])
-    for network in (
-        "backend",
-        "edge",
-        "tunnel",
-        "agent",
-        "ui-net",
-        "copias-net",
-        "copias-salida",
-        "copias",
-    ):
-        run(["docker", "network", "rm", f"{project}_{network}"])
-    for volume in ("data", "backrest-config", "backrest-data"):
-        run(["docker", "volume", "rm", "-f", f"{project}_{volume}"])
+    # Solo lo del proyecto de prueba: Compose etiqueta sus contenedores, redes y volúmenes, y
+    # cada kit añade los suyos; una lista fija dejaba redes huérfanas que agotan los rangos.
+    remove_project_resources(project)
     run(["docker", "rmi", "-f", *[f"ens-evidence:{tag}" for tag in tags.values()]])
 
 
