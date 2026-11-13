@@ -211,10 +211,8 @@ así que el test comprueba el camino de resultados con una consulta en vivo y
 la primera pasada programada real se confirma en los pilotos. **Quedan pendientes de aceptación, con responsable el
 usuario, los pilotos reales** (no se dan por hechos por el test del
 contenedor; el script de macOS y el de Windows no se han ejecutado nunca en
-un equipo real). Evidencia que adjuntar al cerrar cada uno:
-
-Comprobación del servicio por SO: paso 4 de la sección 2. Cada piloto
-adjunta esa salida y lo que añade la tabla:
+un equipo real). Evidencia que adjuntar al cerrar cada uno: la comprobación
+del servicio por SO (paso 4 de la sección 2) más lo que añade la tabla:
 
 | Piloto | Evidencia adicional |
 |---|---|

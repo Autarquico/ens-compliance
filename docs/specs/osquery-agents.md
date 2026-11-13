@@ -35,7 +35,7 @@ Un agente que entrega resultados no cumple nada por sí solo (regla 1): los chec
 - Pilotos de aceptación: un Mac y un Linux reales y Windows en máquina virtual, con evidencia de cada uno. Un piloto no ejecutado deja su escenario pendiente.
 
 **No entra:**
-- Checks sobre los resultados, incluidos los de Windows: `collector-osquery`. Hasta entonces, las medidas que dependan de un equipo Windows quedan en UNKNOWN.
+- Checks sobre los resultados, incluidos los de Windows: `collector-osquery`. Hasta entonces, un equipo Windows sin evidencia del script guiado da FAIL en HOST-001 y UNKNOWN en HOST-002…007; nunca PASS.
 - Paquetes de agente preconfigurados y firmados por SO: `offline-bundle` (v0.3).
 - Gestión remota del equipo (MDM, despliegue masivo).
 - La UI que genera el comando: la aporta `web-ui` sobre `agent install`.
