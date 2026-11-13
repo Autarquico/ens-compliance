@@ -1,5 +1,6 @@
 import json
 import logging
+import sys
 
 import pytest
 from starlette.requests import Request
@@ -7,9 +8,14 @@ from starlette.responses import JSONResponse
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
+from ens_evidence.agent.node_key import host_hash
 from ens_evidence.http.app import create_app
 from ens_evidence.http.limits import read_json_body
-from ens_evidence.http.logging import host_hash, log_request
+from ens_evidence.http.logging import (
+    WithoutTraceback,
+    log_request,
+    uvicorn_log_config,
+)
 
 LIMIT = 64
 JSON = {"content-type": "application/json"}
@@ -136,10 +142,26 @@ def test_log_request_never_contains_host_identifier_or_free_text(caplog):
             outcome="ok",
             endpoint="/agent/log",
             asset_id="laptop-ana",
-            host_identifier=hid,
+            host=host_hash(hid),
         )
         log_request(logging.getLogger("t"), outcome="x\ny=1", endpoint="/agent/log")
     text = caplog.text
     assert hid not in text and host_hash(hid) in text
     assert "laptop-ana" in text and "\ny=1" not in text
     assert json.dumps(text)
+
+
+def test_without_traceback_strips_exception_details_from_records():
+    try:
+        raise ValueError("valor-del-cuerpo")
+    except ValueError:
+        record = logging.LogRecord("u", logging.ERROR, __file__, 1, "boom", None, sys.exc_info())
+
+    assert WithoutTraceback().filter(record)
+    assert logging.Formatter("%(message)s").format(record) == "boom"
+
+
+def test_uvicorn_log_config_filters_every_handler():
+    config = uvicorn_log_config()
+    assert config["handlers"]
+    assert all(h["filters"] == ["without_traceback"] for h in config["handlers"].values())

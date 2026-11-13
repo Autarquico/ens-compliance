@@ -73,10 +73,31 @@ class RunStatus:
     hosts: tuple[HostRun, ...]
 
 
+@dataclass(frozen=True)
+class ResultBound:
+    """Cota de snapshots programados por consulta y equipo.
+
+    `spacing` separa snapshots por su hora de generación (deduplica reentregas y tolera el splay);
+    `max_receipts` por `window` de recepción acota los atrasados, porque esa hora la pone el equipo.
+    Uno actual siempre cabe; en total, como mucho `2 * max_receipts` por `window`.
+    """
+
+    spacing: timedelta
+    window: timedelta
+    max_receipts: int
+
+
+@dataclass(frozen=True)
+class _ResultSlot:
+    collected_at: datetime
+    received: tuple[datetime, ...]
+
+
 class AgentState:
     def __init__(self, state_dir: Path | None = None) -> None:
         self._root = (state_dir or resolve_state_dir()) / AGENT_DIR
         self._written: dict[str, tuple[datetime, str | None]] = {}
+        self._results: dict[tuple[str, str], _ResultSlot] = {}
         self._guard = threading.Lock()
 
     # --- último contacto -------------------------------------------------------------------
@@ -108,6 +129,45 @@ class AgentState:
     def _cached(self, asset_id: str) -> tuple[datetime, str | None] | None:
         stored = self.host(asset_id)
         return (stored.last_contact, stored.platform) if stored else None
+
+    # --- cota de resultados programados ----------------------------------------------------
+
+    def result_slot_free(
+        self,
+        asset_id: str,
+        query_id: str,
+        collected_at: datetime,
+        now: datetime,
+        bound: ResultBound,
+    ) -> bool:
+        """`True` si el snapshot es al menos `bound.spacing` más nuevo que el último guardado de esa
+        consulta y equipo, y o bien es actual (generado en el último `spacing`) o el equipo no ha
+        agotado sus entregas en la ventana de recepción: los atrasos no desplazan al más reciente.
+
+        Solo en memoria: reiniciar el servicio reabre la cota una vez por consulta y equipo.
+        """
+        with self._guard:
+            slot = self._results.get((asset_id, query_id))
+        if slot is None:
+            return True
+        recent = [at for at in slot.received if now - at < bound.window]
+        newer = collected_at - slot.collected_at >= bound.spacing
+        current = now - collected_at <= bound.spacing
+        return newer and (current or len(recent) < bound.max_receipts)
+
+    def record_result(
+        self,
+        asset_id: str,
+        query_id: str,
+        collected_at: datetime,
+        now: datetime,
+        bound: ResultBound,
+    ) -> None:
+        with self._guard:
+            slot = self._results.get((asset_id, query_id))
+            received = slot.received if slot else ()
+            recent = tuple(at for at in received if now - at < bound.window)
+            self._results[(asset_id, query_id)] = _ResultSlot(collected_at, (*recent, now))
 
     # --- consultas en vivo -----------------------------------------------------------------
 
@@ -142,9 +202,11 @@ class AgentState:
         self._replace(self._queue(run.run_id) / "query.json", run.model_dump_json())
         return run
 
-    def list_runs(self) -> list[Run]:
+    def list_runs(self, *, active_at: datetime | None = None) -> list[Run]:
+        """Todas las consultas, o solo las que siguen vigentes en `active_at`."""
         runs = (self._load_run(path.name) for path in _dirs(self._root / "queue"))
-        return sorted((r for r in runs if r), key=lambda run: (run.created_at, run.run_id))
+        live = (r for r in runs if r and (active_at is None or r.expires_at > active_at))
+        return sorted(live, key=lambda run: (run.created_at, run.run_id))
 
     def show_run(self, run_id: str) -> RunStatus | None:
         run = self._load_run(run_id) if is_run_id(run_id) else None
@@ -160,8 +222,8 @@ class AgentState:
         """Runs sin entregar y sin caducar para el activo; cada uno se entrega una sola vez."""
         _safe(asset_id)
         delivered: list[Run] = []
-        for run in self.list_runs():
-            if asset_id not in run.targets or run.expires_at <= now:
+        for run in self.list_runs(active_at=now):
+            if asset_id not in run.targets:
                 continue
             marker = Delivery(delivered_at=now).model_dump_json()
             if self._create(self._queue(run.run_id) / f"delivered-{asset_id}", marker):

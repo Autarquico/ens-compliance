@@ -8,7 +8,7 @@ import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
 from dataclasses import dataclass
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from ens_evidence.agent.node_key import (
@@ -17,7 +17,7 @@ from ens_evidence.agent.node_key import (
     verify_enroll_token,
     verify_node_key,
 )
-from ens_evidence.agent.osquery_config import build_config, query_sql
+from ens_evidence.agent.osquery_config import SCHEDULE_INTERVAL_SECONDS, build_config, query_sql
 from ens_evidence.agent.registry import RegistryError, enrolled_asset, load_registry
 from ens_evidence.agent.results import (
     live_result,
@@ -26,15 +26,24 @@ from ens_evidence.agent.results import (
     write_result,
 )
 from ens_evidence.agent.secrets import AgentSecrets
-from ens_evidence.agent.state import AgentState
+from ens_evidence.agent.state import AgentState, ResultBound
 from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.endpoint.config import CONFIG_NAME, EndpointConfig
-from ens_evidence.http.limits import Rejected
+from ens_evidence.endpoint.package import CLOCK_SKEW
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 
 MAX_HOSTNAME_CHARS = 255
 KNOWN_PLATFORMS = frozenset({"darwin", "linux"})
+# osquery desplaza cada intervalo hasta un 10 % (`--schedule_splay_percent`, 10 por defecto).
+SCHEDULE_SPLAY = 0.10
+# Un snapshot por consulta del paquete y equipo por intervalo de schedule, contado por su hora
+# de generación; tres entregas por intervalo de recepción dejan pasar las atrasadas tras un corte.
+RESULT_BOUND = ResultBound(
+    spacing=timedelta(seconds=SCHEDULE_INTERVAL_SECONDS * (1 - SCHEDULE_SPLAY)) - CLOCK_SKEW,
+    window=timedelta(seconds=SCHEDULE_INTERVAL_SECONDS),
+    max_receipts=3,
+)
 
 
 class NodeInvalid(Exception):
@@ -45,15 +54,32 @@ class Unavailable(Exception):
     """Configuración, registro o almacenamiento ilegibles: el host debe reintentar."""
 
 
+class MalformedBody(Exception):
+    """Credencial válida, pero el cuerpo no tiene la forma que exige el endpoint."""
+
+    def __init__(self, node: "Node") -> None:
+        super().__init__("invalid body")
+        self.node = node
+
+
 class Busy(Exception):
     """El workspace tiene el lock tomado (ciclo o copia): el host debe reintentar."""
 
 
 @dataclass(frozen=True)
-class _Node:
+class Node:
     asset_id: str
     host_identifier: str
     platform: str | None
+
+
+@dataclass(frozen=True)
+class Reply:
+    """Respuesta al equipo y, si se autenticó, quién es (para el log, no para la respuesta)."""
+
+    payload: dict[str, Any]
+    node: Node
+    outcome: str = "ok"
 
 
 def _utcnow() -> datetime:
@@ -76,7 +102,7 @@ class AgentService:
         self._now = now
         self._writers = threading.Lock()
 
-    def enroll(self, body: Any) -> dict[str, Any]:
+    def enroll(self, body: Any) -> Reply:
         fields = _mapping(body)
         host_identifier = _identifier(fields.get("host_identifier"))
         details = _system_info(fields)
@@ -94,42 +120,43 @@ class AgentService:
         if not verify_enroll_token(self._secrets, token, uuid, record.generation, now):
             raise NodeInvalid
         assert asset_id is not None
-        self._state.touch_host(asset_id, now=now, platform=_build_platform(fields), force=True)
+        node = Node(asset_id, uuid, _build_platform(fields))
+        self._state.touch_host(asset_id, now=now, platform=node.platform, force=True)
         node_key = issue_node_key(self._secrets, uuid, record.generation)
-        return {"node_key": node_key, "node_invalid": False}
+        return Reply({"node_key": node_key, "node_invalid": False}, node)
 
-    def config(self, body: Any) -> dict[str, Any]:
+    def config(self, body: Any) -> Reply:
         node = self._authenticate(body)
         self._touch(node)
-        return {**build_config(), "node_invalid": False}
+        return Reply({**build_config(), "node_invalid": False}, node)
 
-    def log(self, body: Any) -> dict[str, Any]:
+    def log(self, body: Any) -> Reply:
         node = self._authenticate(body)
         fields = _mapping(body)
         events = fields.get("data")
         if fields.get("log_type") == "result":
             if not isinstance(events, list):
-                raise Rejected(400, "invalid_body")
-            self._store_snapshots(node, events)
+                raise MalformedBody(node)
+            stored = self._store_snapshots(node, events)
+        else:
+            stored = True
         self._touch(node)
-        return {"node_invalid": False}
+        return Reply({"node_invalid": False}, node, "ok" if stored else "throttled")
 
-    def distributed_read(self, body: Any) -> dict[str, Any]:
+    def distributed_read(self, body: Any) -> Reply:
         node = self._authenticate(body)
         now = self._now()
         runs = self._state.deliver_pending(node.asset_id, now)
         self._touch(node)
-        return {
-            "queries": {run.run_id: query_sql(run.query_id) for run in runs},
-            "node_invalid": False,
-        }
+        queries = {run.run_id: query_sql(run.query_id) for run in runs}
+        return Reply({"queries": queries, "node_invalid": False}, node)
 
-    def distributed_write(self, body: Any) -> dict[str, Any]:
+    def distributed_write(self, body: Any) -> Reply:
         node = self._authenticate(body)
         fields = _mapping(body)
         answers = fields.get("queries")
         if not isinstance(answers, dict):
-            raise Rejected(400, "invalid_body")
+            raise MalformedBody(node)
         statuses = fields.get("statuses")
         statuses = statuses if isinstance(statuses, dict) else {}
         if any(self._state.delivered_unanswered(node.asset_id, run_id) for run_id in answers):
@@ -137,20 +164,34 @@ class AgentService:
                 for run_id, rows in answers.items():
                     self._store_answer(node, run_id, rows, statuses.get(run_id, 0))
         self._touch(node)
-        return {"node_invalid": False}
+        return Reply({"node_invalid": False}, node)
 
-    def _store_snapshots(self, node: _Node, events: list[Any]) -> None:
+    def _store_snapshots(self, node: Node, events: list[Any]) -> bool:
+        """`False` si algún snapshot se descarta por la cota (`RESULT_BOUND`)."""
         now = self._now()
         snapshots = snapshots_from_events(
             events, host_identifier=node.host_identifier, platform=node.platform, now=now
         )
         if not snapshots:
-            return
-        result = scheduled_result(node.asset_id, node.host_identifier, snapshots)
+            return True
         with self._workspace_lock():
-            write_result(self._store, result, now=now)
+            fresh = [
+                s
+                for s in snapshots
+                if self._state.result_slot_free(
+                    node.asset_id, s.query_id, s.collected_at, now, RESULT_BOUND
+                )
+            ]
+            if fresh:
+                result = scheduled_result(node.asset_id, node.host_identifier, fresh)
+                write_result(self._store, result, now=now)
+                for s in fresh:
+                    self._state.record_result(
+                        node.asset_id, s.query_id, s.collected_at, now, RESULT_BOUND
+                    )
+        return len(fresh) == len(snapshots)
 
-    def _store_answer(self, node: _Node, run_id: str, rows: Any, status: Any) -> None:
+    def _store_answer(self, node: Node, run_id: str, rows: Any, status: Any) -> None:
         delivered = self._state.delivered_unanswered(node.asset_id, run_id)
         if delivered is None:
             return
@@ -171,7 +212,7 @@ class AgentService:
             node.asset_id, run_id, evidence_id=evidence_id, status=code, now=now
         )
 
-    def _authenticate(self, body: Any) -> _Node:
+    def _authenticate(self, body: Any) -> Node:
         node_key = _mapping(body).get("node_key")
         identity = verify_node_key(self._secrets, node_key) if isinstance(node_key, str) else None
         if identity is None:
@@ -180,9 +221,9 @@ class AgentService:
         if asset_id is None or not self._registry().accepts(asset_id, identity.generation):
             raise NodeInvalid
         contact = self._state.host(asset_id)
-        return _Node(asset_id, identity.host_identifier, contact.platform if contact else None)
+        return Node(asset_id, identity.host_identifier, contact.platform if contact else None)
 
-    def _touch(self, node: _Node) -> None:
+    def _touch(self, node: Node) -> None:
         self._state.touch_host(node.asset_id, now=self._now())
 
     def _endpoint_config(self) -> EndpointConfig:

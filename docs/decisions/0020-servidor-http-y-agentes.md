@@ -22,7 +22,8 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   del paquete. Sin FastAPI. La validación Pydantic de los cuerpos se hace a
   mano en el borde.
 - uvicorn sin cabecera `server`, sin access log, con `limit_concurrency` y
-  cabeceras h11 acotadas. Los logs no llevan secretos ni cuerpos.
+  cabeceras h11 acotadas. Los logs no llevan secretos ni cuerpos, y uvicorn no
+  vuelca trazas (filtro en `log_config`).
 
 ### Dos servicios, una imagen
 
@@ -68,6 +69,17 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   ocupado (ciclo o copia) se responde 503 con `Retry-After` y osquery
   reintenta; **no hay spool ni drenador**. Los reintentos se deduplican por sha.
 - `log_type=status` se descarta con 200.
+- Cota de almacenamiento: un snapshot por consulta del paquete y equipo por
+  intervalo de schedule, contado por su hora de generación (6 h menos el 10 %
+  de splay de osquery y el desfase de reloj de 5 min), porque osquery entrega
+  cada consulta en POST distintos y reentrega tras un corte. Como esa hora la
+  pone el equipo, además como mucho 3 entregas atrasadas por consulta y equipo
+  cada 6 h de recepción; un snapshot actual siempre cabe (en total, como mucho
+  6 por consulta y equipo cada 6 h). Lo que sobra se descarta con 200 y de un lote mixto se guarda
+  lo que cabe. La cota es en memoria. Caddy aplica `read_header` e `idle`
+  (sin plazo de cuerpo: sería para todo `:8080` y cortaría subidas lentas de
+  la UI y del kit) y completa el cuerpo (`request_buffers`) antes de abrir el
+  upstream.
 - Solo se aceptan snapshots de consultas del paquete, filtrados por plataforma
   y por la lista blanca de columnas.
 - Config servida desde el paquete del repo, SQL byte a byte, en modo snapshot
@@ -88,8 +100,8 @@ osquery y scheduler. Este ADR se desvía de ello (ver «Dos servicios»).
   equipos (runbook de agentes).
 - Una revocación se aplica en la siguiente petición (el registro se relee
   siempre); no hay retraso por caché.
-- El volumen de manifiestos crece con cada lote aceptado (un lote por equipo y
-  intervalo como máximo, por la dedupe y el intervalo de 6 h).
+- El volumen de manifiestos crece con cada lote aceptado (un snapshot por consulta y equipo
+  por intervalo como máximo, por la dedupe y el intervalo de 6 h).
 - El tráfico Caddy → `agent` es HTTP plano dentro de una red Docker interna.
 - Rotar `ENS_AGENT_NODE_KEY_SECRET` invalida todos los node_key: hay que
   readmitir todos los equipos.

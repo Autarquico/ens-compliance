@@ -41,14 +41,6 @@ class AgentRecord(_Strict):
 class AgentRegistry(_Strict):
     agents: dict[str, AgentRecord] = Field(default_factory=dict)
 
-    def generation_of(self, asset_id: str) -> int:
-        record = self.agents.get(asset_id)
-        return record.generation if record else 1
-
-    def is_revoked(self, asset_id: str) -> bool:
-        record = self.agents.get(asset_id)
-        return record is not None and record.revoked
-
     def accepts(self, asset_id: str, generation: int) -> bool:
         """El node_key de esta generación sigue vigente: admitido, no revocado, misma generación."""
         record = self.agents.get(asset_id)

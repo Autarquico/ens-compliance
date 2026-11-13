@@ -12,7 +12,7 @@ depends_on: [evidence-storage, box-packaging]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-11-08
+updated: 2026-11-12
 ---
 
 # Servidor osquery embebido

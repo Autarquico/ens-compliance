@@ -17,6 +17,15 @@
 {
 	auto_https off
 	admin localhost:2019
+	# La cabecera tiene plazo y una conexión ociosa se cierra. El cuerpo no: el plazo sería para
+	# todo :8080 y cortaría subidas lentas legítimas (UI, Backrest, Vaultwarden). Al agente lo
+	# protege `request_buffers`: Caddy completa el cuerpo antes de ocupar una plaza de uvicorn.
+	servers {
+		timeouts {
+			read_header 10s
+			idle 1m
+		}
+	}
 }
 
 :8080 {
@@ -169,6 +178,7 @@
 			max_size 10MB
 		}
 		reverse_proxy agent:8000 {
+			request_buffers 10MB
 			header_up -Cookie
 			header_up -Cf-Access-*
 			transport http {

@@ -11,6 +11,8 @@ from .protocol_support import (
     LAPTOP_UUID,
     NOW,
     OS_VERSION_ROW,
+    SERVER,
+    SERVER_HOST,
     SERVER_UUID,
     snapshot_event,
 )
@@ -204,9 +206,148 @@ def test_log_with_nothing_to_store_does_not_need_the_lock(world):
         assert send(world, node_key, [{"x": 1}], log_type="status").status_code == 200
 
 
-def test_result_log_without_data_list_is_a_bad_request(world):
+def test_result_log_without_data_list_is_a_bad_request(world, caplog):
     node_key = world.enroll()
+
+    caplog.set_level("INFO", logger="ens_evidence.agent")
 
     response = world.post("log", {"node_key": node_key, "log_type": "result", "data": "x"})
 
     assert response.status_code == 400
+    assert "outcome=invalid_body" in caplog.text
+    assert f"asset={LAPTOP}" in caplog.text
+    assert LAPTOP_UUID not in caplog.text
+
+
+def distinct_batch(minor: str, unix=NOW):
+    return [snapshot_event("os_version", [{**OS_VERSION_ROW, "minor": minor}], unix=unix)]
+
+
+def other_query_event():
+    return snapshot_event(
+        "system_info", [{"uuid": LAPTOP_UUID, "hostname": "lap-ana", "cpu": "M2"}]
+    )
+
+
+def stored_queries(world):
+    return sorted(q for m in manifests(world) for q in _artifact(world, m)["data"]["queries"])
+
+
+def test_different_queries_in_separate_posts_are_all_stored(world, caplog):
+    node_key = world.enroll()
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    send(world, node_key, distinct_batch("1"))
+    send(world, node_key, [other_query_event()])
+
+    assert stored_queries(world) == ["os_version", "system_info"]
+    assert "outcome=throttled" not in caplog.text
+
+
+def test_a_repeated_query_in_one_interval_is_throttled(world, caplog):
+    node_key = world.enroll()
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    responses = [send(world, node_key, distinct_batch(str(n))) for n in range(5)]
+
+    assert all(r.json() == {"node_invalid": False} for r in responses)
+    assert len(manifests(world)) == 1
+    assert caplog.text.count("outcome=throttled") == 4
+
+
+def test_a_mixed_batch_stores_the_new_query_and_throttles_the_repeated_one(world, caplog):
+    node_key = world.enroll()
+    send(world, node_key, distinct_batch("1"))
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    response = send(world, node_key, distinct_batch("2") + [other_query_event()])
+
+    assert response.status_code == 200
+    assert stored_queries(world) == ["os_version", "system_info"]
+    assert len(manifests(world)) == 2
+    assert caplog.text.count("outcome=throttled") == 1
+
+
+def test_a_new_batch_is_stored_once_the_interval_has_passed(world):
+    node_key = world.enroll()
+    send(world, node_key, distinct_batch("1"))
+
+    world.clock.advance(hours=6)
+    send(world, node_key, distinct_batch("2", unix=NOW + timedelta(hours=6)))
+    assert len(manifests(world)) == 2
+
+
+def test_a_snapshot_brought_forward_by_the_splay_is_stored(world, caplog):
+    node_key = world.enroll()
+    send(world, node_key, distinct_batch("1"))
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    world.clock.advance(hours=5, minutes=25)
+    send(world, node_key, distinct_batch("2", unix=NOW + timedelta(hours=5, minutes=25)))
+
+    assert len(manifests(world)) == 2
+    assert "outcome=throttled" not in caplog.text
+
+
+def test_after_a_late_delivery_the_next_snapshot_on_schedule_is_stored(world, caplog):
+    node_key = world.enroll()
+    world.clock.advance(hours=2)
+    send(world, node_key, distinct_batch("1"))  # generado a NOW, entregado tras un corte
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    world.clock.advance(hours=4)
+    send(world, node_key, distinct_batch("2", unix=NOW + timedelta(hours=6)))
+
+    assert len(manifests(world)) == 2
+    assert "outcome=throttled" not in caplog.text
+
+
+def test_a_snapshot_older_than_the_stored_one_is_throttled(world, caplog):
+    node_key = world.enroll()
+    send(world, node_key, distinct_batch("1"))
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    send(world, node_key, distinct_batch("0", unix=NOW - timedelta(hours=6)))
+
+    assert len(manifests(world)) == 1
+    assert caplog.text.count("outcome=throttled") == 1
+
+
+def test_invented_generation_times_store_at_most_three_per_interval(world, caplog):
+    node_key = world.enroll()
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    for n in range(6):
+        send(world, node_key, distinct_batch(str(n), unix=NOW - timedelta(days=10 - n)))
+
+    assert len(manifests(world)) == 3
+    assert caplog.text.count("outcome=throttled") == 3
+
+
+def test_a_batch_refused_with_503_does_not_use_the_interval(world):
+    node_key = world.enroll()
+    with world.lock():
+        assert send(world, node_key, distinct_batch("1")).status_code == 503
+    assert send(world, node_key, distinct_batch("1")).status_code == 200
+    assert len(manifests(world)) == 1
+
+
+def test_the_interval_is_per_host_and_query(world):
+    first = world.enroll()
+    second = world.enroll(SERVER, uuid=SERVER_UUID, hostname=SERVER_HOST)
+    send(world, first, distinct_batch("1"))
+    send(world, second, [snapshot_event("os_version", [OS_VERSION_ROW], host=SERVER_UUID.upper())])
+    assert len(manifests(world)) == 2
+
+
+def test_after_three_late_deliveries_the_current_snapshot_is_still_stored(world, caplog):
+    node_key = world.enroll()
+    world.clock.advance(hours=18)
+    for hours in (0, 6, 12):  # atrasos de un corte, en POST separados
+        send(world, node_key, distinct_batch(str(hours), unix=NOW + timedelta(hours=hours)))
+    caplog.set_level("INFO", logger="ens_evidence.agent")
+
+    send(world, node_key, distinct_batch("18", unix=NOW + timedelta(hours=18)))
+
+    assert len(manifests(world)) == 4
+    assert "outcome=throttled" not in caplog.text

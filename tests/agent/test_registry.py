@@ -36,7 +36,7 @@ def admit(store, lock, asset="laptop-ana"):
 def test_empty_registry_when_file_missing(store):
     registry = load_registry(store)
     assert registry.agents == {}
-    assert registry.generation_of("laptop-ana") == 1
+    assert "laptop-ana" not in registry.agents
     assert not registry.accepts("laptop-ana", 1)
 
 
@@ -52,7 +52,7 @@ def test_revocation_bumps_generation_and_rejects_old_keys(store, lock):
     admit(store, lock)
     record = record_revocation(store, lock, "laptop-ana", by="alex", reason="robo", now=NOW)
     registry = load_registry(store)
-    assert record.generation == 2 and registry.is_revoked("laptop-ana")
+    assert record.generation == 2 and registry.agents["laptop-ana"].revoked
     assert not registry.accepts("laptop-ana", 1)
     assert not registry.accepts("laptop-ana", 2)
 
@@ -62,7 +62,7 @@ def test_readmission_after_revocation_accepts_only_the_new_generation(store, loc
     record_revocation(store, lock, "laptop-ana", by="alex", reason="robo", now=NOW)
     admit(store, lock)
     registry = load_registry(store)
-    assert registry.generation_of("laptop-ana") == 2
+    assert registry.agents["laptop-ana"].generation == 2
     assert registry.accepts("laptop-ana", 2) and not registry.accepts("laptop-ana", 1)
     assert registry.agents["laptop-ana"].revoked_at is None
 

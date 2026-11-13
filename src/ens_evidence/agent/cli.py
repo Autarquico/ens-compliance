@@ -90,7 +90,10 @@ def _expiry(raw: str, now: datetime) -> datetime:
     if not match or int(match[1]) < 1:
         raise _fail("--expires debe ser un número de horas o días, p. ej. 24h o 2d.")
     amount = int(match[1])
-    return now + (timedelta(hours=amount) if match[2] == "h" else timedelta(days=amount))
+    span = timedelta(hours=amount) if match[2] == "h" else timedelta(days=amount)
+    if span > timedelta(hours=MAX_ADMIT_HOURS):
+        raise _fail(f"--expires admite como máximo {MAX_ADMIT_HOURS}h (7d).")
+    return now + span
 
 
 @contextmanager
@@ -119,6 +122,7 @@ def serve(
     from ens_evidence.agent.protocol import AgentService
     from ens_evidence.agent.routes import routes
     from ens_evidence.http.app import create_app
+    from ens_evidence.http.logging import uvicorn_log_config
 
     service = AgentService(
         _cli().open_workspace(ctx),
@@ -137,6 +141,7 @@ def serve(
         timeout_keep_alive=5,
         timeout_graceful_shutdown=10,
         h11_max_incomplete_event_size=16384,
+        log_config=uvicorn_log_config(),
     )
 
 
@@ -264,9 +269,14 @@ def query_show(run_id: str) -> None:
 
 @query_app.command("list")
 @handled
-def query_list() -> None:
-    """Lista las consultas bajo demanda encoladas."""
-    for run in AgentState().list_runs():
+def query_list(
+    include_expired: Annotated[
+        bool, typer.Option("--all", help="Incluye también las caducadas.")
+    ] = False,
+) -> None:
+    """Lista las consultas bajo demanda vigentes."""
+    active_at = None if include_expired else _cli().clock()
+    for run in AgentState().list_runs(active_at=active_at):
         typer.echo(
             f"{run.run_id}\t{run.query_id}\t{', '.join(run.targets)}\t"
             f"caduca {run.expires_at.isoformat()}"

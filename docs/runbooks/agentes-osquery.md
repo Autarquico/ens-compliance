@@ -5,15 +5,20 @@ El despliegue del servicio y el enrutado de Caddy están en el
 [runbook de la caja](caja.md#41-servidor-de-agentes-perfil-agents).
 
 Los comandos `ens-evidence agent ...` se ejecutan dentro de la caja, con el
-workspace montado:
+workspace montado. `admit` y `serve` necesitan los secretos de agentes, que solo
+tiene el servicio `agent` (`deploy/agent.env`): ejecútalos ahí. `hosts`, `revoke`
+y `query` no leen secretos y funcionan igual en `agent`, que usamos en todo el
+runbook por uniformidad. Desde el directorio de la release y con `ENS_VERSION`
+exportada (como en [caja.md](caja.md)):
 
 ```bash
-docker compose -p ens-box exec app ens-evidence agent hosts
+export ENS_VERSION=v0.1.0   # la versión instalada (deploy/box.sh status)
+docker compose -p ens-box --profile agents exec -T agent ens-evidence agent hosts
 ```
 
-> Nombres de subcomandos según el plan (`serve`, `hosts`, `admit`, `revoke`,
-> `query run|show|list`). `src/ens_evidence/agent/cli.py` no existía al escribir
-> este runbook: confirma los flags con `ens-evidence agent --help`.
+`-T` evita el pseudo-terminal, para poder capturar la salida (el token de
+`admit` va solo a la salida estándar). Ayuda de cada comando:
+`ens-evidence agent <comando> --help`.
 
 ## 1. Preparar el servidor
 
@@ -41,7 +46,7 @@ docker compose -p ens-box exec app ens-evidence agent hosts
    docker compose -p ens-box exec caddy wget -q -O - \
      --header 'Content-Type: application/json' --post-data '{}' \
      http://127.0.0.1:8080/agent/enroll
-   # esperado: {"node_invalid": true}
+   # esperado: {"node_invalid":true}
    docker compose -p ens-box exec caddy wget -S -O /dev/null http://127.0.0.1:8080/agent/enroll
    # esperado: error 403 (solo se admite POST)
    ```
@@ -56,18 +61,19 @@ El equipo debe estar inscrito en `connectors/endpoint.yaml` (uuid y hostname).
 1. Emite el token de alta (caduca en 24 h por defecto):
 
    ```bash
-   docker compose -p ens-box exec app ens-evidence agent admit portatil-01 --hours 24
+   docker compose -p ens-box --profile agents exec -T agent ens-evidence agent admit \
+     --asset portatil-01 --by "tu nombre" --hours 24
    ```
 
    Imprime el token una sola vez. Entrégalo al equipo por un canal seguro.
 2. En el equipo, guarda el token en un fichero legible solo por root
-   (`/etc/osquery/enroll.token`, modo 600) y configura osquery
+   (`/etc/osquery/enroll_secret`, modo 600) y configura osquery
    (`osquery.flags`):
 
    ```
    --tls_hostname=agentes.example.org
    --host_identifier=uuid
-   --enroll_secret_path=/etc/osquery/enroll.token
+   --enroll_secret_path=/etc/osquery/enroll_secret
    --enroll_tls_endpoint=/agent/enroll
    --config_plugin=tls
    --config_tls_endpoint=/agent/config
@@ -79,12 +85,16 @@ El equipo debe estar inscrito en `connectors/endpoint.yaml` (uuid y hostname).
    --distributed_tls_write_endpoint=/agent/distributed/write
    ```
 
+   `--host_identifier=uuid` es obligatorio: el servidor exige que el
+   identificador sea el uuid de hardware inscrito; con `hostname` el alta
+   responde `node_invalid` sin más pista.
+
    **Prohibidos:** `--logger_tls_compress` (Caddy responde 415) y
    `--tls_secret_always` (el servidor no lo contempla).
 3. Reinicia `osqueryd` y comprueba:
 
    ```bash
-   docker compose -p ens-box exec app ens-evidence agent hosts
+   docker compose -p ens-box --profile agents exec -T agent ens-evidence agent hosts
    ```
 
    El equipo aparece con su último contacto. El primer lote de resultados
@@ -98,20 +108,33 @@ Un token caducado o de otra generación da `node_invalid`: vuelve a ejecutar
 Solo consultas del paquete, por id. Nunca SQL arbitrario.
 
 ```bash
-docker compose -p ens-box exec app ens-evidence agent query list
-docker compose -p ens-box exec app ens-evidence agent query run <id-consulta> --host portatil-01
-docker compose -p ens-box exec app ens-evidence agent query show <run_id>
+docker compose -p ens-box --profile agents exec -T agent ens-evidence agent query list
+docker compose -p ens-box --profile agents exec -T agent ens-evidence agent query run \
+  --asset portatil-01 --query <id-consulta> --by "tu nombre"   # o --all en vez de --asset
+docker compose -p ens-box --profile agents exec -T agent ens-evidence agent query show <run_id>
 ```
 
+`query list` muestra las vigentes; añade `--all` para ver también las
+caducadas. `--expires` admite hasta 7d (168h), igual que `--hours` del alta.
 El equipo la recoge en su siguiente sondeo distribuido y el resultado queda
 como evidencia, visible con `query show`.
+
+El servidor guarda como máximo un snapshot por consulta del paquete y equipo
+cada 6 h según la hora en que osquery lo generó (con margen para el splay del
+10 % y 5 min de desfase), y como mucho 3 entregas atrasadas por consulta y
+equipo cada 6 h; el snapshot actual siempre se guarda (en total, como mucho 6
+por consulta y equipo cada 6 h). Los POST separados que osquery envía por consulta y los atrasados tras un
+corte se guardan; un snapshot repetido o más viejo que el guardado responde
+200 y se descarta (`outcome=throttled` en el log). Las consultas en vivo no están sujetas a esta
+cota. Las peticiones autenticadas registran `asset=<activo> host=<hash>`.
 
 ## 4. Revocar un equipo
 
 Equipo perdido, comprometido o dado de baja:
 
 ```bash
-docker compose -p ens-box exec app ens-evidence agent revoke portatil-01 --reason "equipo perdido"
+docker compose -p ens-box --profile agents exec -T agent ens-evidence agent revoke \
+  --asset portatil-01 --by "tu nombre" --reason "equipo perdido"
 ```
 
 Sube la generación: el node_key anterior deja de valer en la siguiente
