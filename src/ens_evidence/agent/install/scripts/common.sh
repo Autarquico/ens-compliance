@@ -21,15 +21,15 @@ EXPECTED_SHA256=@@SHA256@@
 [ ! -L "$TOKEN_FILE" ] || die "--token-file no puede ser un enlace simbólico."
 [ -f "$TOKEN_FILE" ] || die "--token-file no es un fichero normal."
 [ -s "$TOKEN_FILE" ] || die "--token-file está vacío."
-# Misma ruta, enlace duro o cualquier alias (mismo inodo): se aborta antes de tocar nada.
-if [ -e "$ENROLL_SECRET" ] && [ -n "$(find "$TOKEN_FILE" -samefile "$ENROLL_SECRET" 2>/dev/null)" ]; then
-  die "el token debe estar en un fichero distinto de $ENROLL_SECRET."
-fi
-
 umask 077
 WORKDIR=$(mktemp -d) || die "no se pudo crear el directorio temporal."
 trap 'rm -rf "$WORKDIR"' EXIT
 PACKAGE_FILE="$WORKDIR/$FILENAME"
+
+# El token se lee del origen antes de crear o vaciar el destino: ningún alias del destino puede vaciarlo antes.
+TOKEN_COPY="$WORKDIR/token"
+tr -d '\r\n' <"$TOKEN_FILE" >"$TOKEN_COPY" || die "no se pudo leer --token-file."
+[ -s "$TOKEN_COPY" ] || die "--token-file no contiene ningún token."
 
 curl --fail --silent --show-error --location --proto '=https' --proto-redir '=https' \
   --tlsv1.2 --output "$PACKAGE_FILE" "$URL" || die "la descarga de $FILENAME ha fallado."
@@ -49,6 +49,6 @@ ENS_FLAGS_END
   : >"$ENROLL_SECRET"
   chmod 600 "$ENROLL_SECRET"
   chown root:"$ROOT_GROUP" "$ENROLL_SECRET"
-  tr -d '\r\n' <"$TOKEN_FILE" >"$ENROLL_SECRET"
+  cat "$TOKEN_COPY" >"$ENROLL_SECRET"
   [ -s "$ENROLL_SECRET" ] || die "no se pudo copiar el token."
 }

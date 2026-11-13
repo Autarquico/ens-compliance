@@ -359,7 +359,7 @@ def test_rpm_install_is_repeatable_with_the_same_version(sandbox):
     assert len([c for c in sandbox.calls if c.startswith("rpm -U --replacepkgs ")]) == 2
 
 
-def test_token_file_equal_to_the_destination_aborts_untouched(sandbox):
+def test_token_file_equal_to_the_destination_ends_with_the_token_never_empty(sandbox):
     etc = sandbox.root / "etc-osquery"
     etc.mkdir()
     destination = etc / "enroll_secret"
@@ -370,12 +370,32 @@ def test_token_file_equal_to_the_destination_aborts_untouched(sandbox):
         result = sandbox.run(
             sandbox.render(token_file=token_file), expected_sha=payload_sha(sandbox)
         )
-        assert result.returncode != 0
-        assert "distinto de" in result.stderr
-        assert destination.read_text() == TOKEN + "\n"
-        assert sorted(p.name for p in etc.iterdir()) == ["enroll_secret"]
-        assert not [c for c in sandbox.calls if c.startswith(("curl", "dpkg", "rpm", "systemctl"))]
+        assert result.returncode == 0, result.stderr
+        assert destination.read_text() == TOKEN
         assert TOKEN not in result.stdout + result.stderr
+
+
+def test_token_file_with_only_line_breaks_aborts_before_touching_the_destination(sandbox):
+    etc = sandbox.root / "etc-osquery"
+    etc.mkdir()
+    destination = etc / "enroll_secret"
+    destination.write_text("previo")
+    sandbox.token.write_text("\r\n\n")
+    result = sandbox.run(sandbox.render(), expected_sha=payload_sha(sandbox))
+    assert result.returncode != 0
+    assert destination.read_text() == "previo"
+    assert not [c for c in sandbox.calls if c.startswith(("curl", "dpkg", "rpm", "systemctl"))]
+
+
+def test_service_that_cannot_be_stopped_aborts_before_flags_and_token(sandbox):
+    sandbox._tool(
+        "systemctl", 'echo "systemctl $*" >> "$LOG"; case "$*" in disable*) exit 1;; esac'
+    )
+    result = sandbox.run(sandbox.render(), expected_sha=payload_sha(sandbox))
+    assert result.returncode != 0
+    assert not (sandbox.root / "etc-osquery" / "enroll_secret").exists()
+    assert not (sandbox.root / "etc-osquery" / "osquery.flags").exists()
+    assert "systemctl enable --now osqueryd" not in sandbox.calls
 
 
 def test_server_with_shell_metacharacters_never_reaches_the_script():
@@ -420,12 +440,13 @@ def test_powershell_contract_at_text_level(powershell):
 
 def test_powershell_orders_check_install_stop_token_start(powershell):
     order = [
+        "[IO.File]::ReadAllText($TokenFile)",
         "$actual -ne $ExpectedSha256",
         "msiexec.exe",
         "Disable-Osqueryd\n",
         "New-Item -ItemType File -Path $EnrollSecret",
         "Set-ExclusiveAcl $EnrollSecret",
-        "ReadAllText($TokenFile)",
+        "ReadAllText($TokenCopy)",
         "Start-Service",
     ]
     positions = [powershell.index(fragment) for fragment in order]
@@ -449,18 +470,30 @@ def test_powershell_acl_is_applied_before_the_token_is_written(powershell):
     )
 
 
-def test_powershell_rejects_token_file_equal_to_the_destination_before_downloading(powershell):
-    check = powershell.index("Test-SameFile $TokenFile $EnrollSecret")
-    assert "distinto de $EnrollSecret" in powershell
-    assert "hardlink list" in powershell
-    assert check < powershell.index("Invoke-WebRequest") < powershell.index("msiexec.exe")
+def test_powershell_reads_the_token_before_creating_the_destination(powershell):
+    read = powershell.index("[IO.File]::ReadAllText($TokenFile)")
+    assert read < powershell.index("Invoke-WebRequest")
+    assert read < powershell.index("New-Item -ItemType File -Path $EnrollSecret")
+    assert "$secret.Length -eq 0" in powershell
+    assert "Test-SameFile" not in powershell and "fsutil" not in powershell
+
+
+def test_powershell_stop_is_never_silenced_and_is_verified(powershell):
+    assert "SilentlyContinue" not in powershell.split("finally")[0]
+    assert "Stop-Service -Name osqueryd -Force -ErrorAction Stop" in powershell
+    assert "Set-Service -Name osqueryd -StartupType Disabled -ErrorAction Stop" in powershell
+    assert "Get-Service -Name osqueryd -ErrorAction Stop" in powershell
+    assert "WaitForStatus(" in powershell and "FromSeconds(30)" in powershell
+    assert "ServiceControllerStatus]::Stopped" in powershell
+    assert "Write-Error" in powershell
 
 
 def test_powershell_failure_after_the_msi_leaves_the_service_stopped_and_disabled(powershell):
     assert "Stop-Service -Name osqueryd -Force" in powershell
     assert "Set-Service -Name osqueryd -StartupType Disabled" in powershell
     body = powershell[powershell.index("msiexec.exe") :]
-    assert body.index("catch {") < body.index("Disable-Osqueryd\n    throw")
+    cleanup = body.index("try { Disable-Osqueryd }")
+    assert body.index("catch {") < cleanup < body.index("throw $failure")
     assert powershell.rindex("try {", 0, powershell.index("msiexec.exe")) > powershell.index(
         "Invoke-WebRequest"
     )

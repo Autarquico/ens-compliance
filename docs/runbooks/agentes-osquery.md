@@ -100,12 +100,16 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
    Qué hace el script (todo o nada: un paso fallido aborta antes de arrancar
    el servicio): descarga a un directorio temporal privado, verifica el
    sha256 del mismo fichero que instala (aborta si no coincide, si la descarga
-   está truncada o si falta una herramienta), instala, deja el servicio parado
-   hasta tener flags y token (en Windows, cualquier fallo tras el msi lo deja
-   parado y deshabilitado), crea el destino del token vacío y con permisos
-   restrictivos antes de copiarlo (en Windows, DACL sin herencia solo para
-   SYSTEM y Administradores) y arranca el servicio. Aborta antes de modificar
-   nada si `--token-file` es el mismo fichero que el destino.
+   está truncada o si falta una herramienta), lee el token a una copia
+   en el directorio temporal privado (aborta si queda vacío, antes de tocar
+   el destino), instala, para el servicio y verifica que está parado (el
+   instalador de osquery puede arrancarlo brevemente, sin los flags ni el
+   token de esta instalación; en reinstalación, con los flags previos; si no
+   se para, el script aborta antes de escribir flags y token), crea el destino
+   del token con permisos restrictivos (en Windows, DACL sin herencia solo
+   para SYSTEM y Administradores), le copia el token desde la copia temporal y
+   arranca el servicio. En Windows, cualquier fallo tras el msi intenta
+   dejarlo parado y deshabilitado y, si no puede, lo comunica como error.
 
    | SO | Servicio | Flags | Token copiado para osquery |
    |---|---|---|---|
@@ -163,8 +167,8 @@ pierde su estado (sección 7), el equipo debe inscribirse de nuevo:
 `agent admit` (token nuevo), llévalo al equipo y vuelve a ejecutar el script
 de la tabla anterior. El script es repetible: reinstala la misma versión
 (`rpm -U --replacepkgs`, `dpkg -i`), reescribe flags y token y reinicia el servicio.
-El `--token-file` debe ser un fichero distinto del destino del token (misma
-ruta o enlace duro): si no, el script aborta sin tocar nada. Un equipo revocado exige
+El token se lee antes de escribir el destino, así que `--token-file` puede ser
+incluso el propio destino: el fichero acaba con el token. Un equipo revocado exige
 también `agent admit` (sección 4).
 
 ### Actualizar osquery

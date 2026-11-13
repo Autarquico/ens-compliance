@@ -8,7 +8,7 @@ ENROLL_SECRET=/etc/osquery/enroll_secret
 ROOT_GROUP=wheel
 PLIST_SOURCE=/private/var/osquery/io.osquery.agent.plist
 PLIST=/Library/LaunchDaemons/io.osquery.agent.plist
-REQUIRED_TOOLS="id curl shasum cut mktemp rm tr cat chmod chown mkdir dirname find cp installer launchctl"
+REQUIRED_TOOLS="id curl shasum cut mktemp rm tr cat chmod chown mkdir dirname cp installer launchctl"
 
 sha256_of() {
   shasum -a 256 "$1" | cut -d ' ' -f 1
@@ -16,6 +16,8 @@ sha256_of() {
 
 @@COMMON@@
 
+# El pkg no instala LaunchDaemon, pero si hay uno previo cargado se descarga antes de configurar;
+# con set -eu, un fallo del bootout aborta el script.
 installer -pkg "$PACKAGE_FILE" -target /
 if launchctl print system/io.osquery.agent >/dev/null 2>&1; then
   launchctl bootout system/io.osquery.agent

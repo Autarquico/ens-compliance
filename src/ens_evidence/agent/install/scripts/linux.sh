@@ -7,7 +7,7 @@ FLAGS_FILE=/etc/osquery/osquery.flags
 ENROLL_SECRET=/etc/osquery/enroll_secret
 ROOT_GROUP=root
 PACKAGE=@@PACKAGE@@
-REQUIRED_TOOLS="id curl sha256sum cut mktemp rm tr cat chmod chown mkdir dirname find systemctl"
+REQUIRED_TOOLS="id curl sha256sum cut mktemp rm tr cat chmod chown mkdir dirname systemctl"
 
 sha256_of() {
   sha256sum "$1" | cut -d ' ' -f 1
@@ -21,6 +21,8 @@ case "$PACKAGE" in
   *) die "paquete desconocido: $PACKAGE." ;;
 esac
 
+# El paquete puede arrancar osqueryd al instalar (con los flags previos, sin esta configuración): se para antes de escribirla.
+# Con set -eu, si el servicio no existe o no se para, el script aborta aquí.
 systemctl disable --now osqueryd
 write_configuration
 systemctl enable --now osqueryd

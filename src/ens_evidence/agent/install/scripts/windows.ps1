@@ -32,27 +32,20 @@ function Set-ExclusiveAcl([string] $Path, [bool] $IsDirectory) {
   Set-Acl -LiteralPath $Path -AclObject $acl
 }
 
-# Mismo fichero: ruta resuelta igual o, si ambos existen, enlace duro (fsutil hardlink list, mismo volumen).
-# Límite: alias por unión/montaje de directorio que cambie la ruta y no sea enlace duro no se detectan.
-function Test-SameFile([string] $A, [string] $B) {
-  if ([string]::Equals($A, $B, [StringComparison]::OrdinalIgnoreCase)) { return $true }
-  if (-not ((Test-Path -LiteralPath $A) -and (Test-Path -LiteralPath $B))) { return $false }
-  if (-not [string]::Equals([IO.Path]::GetPathRoot($A), [IO.Path]::GetPathRoot($B), [StringComparison]::OrdinalIgnoreCase)) { return $false }
-  $relative = $B.Substring([IO.Path]::GetPathRoot($B).Length - 1)
-  $links = & fsutil.exe hardlink list $A
-  if ($LASTEXITCODE -ne 0) { throw "No se pudo comprobar si $A y $B son el mismo fichero." }
-  foreach ($link in $links) {
-    if ([string]::Equals($link.Trim(), $relative, [StringComparison]::OrdinalIgnoreCase)) { return $true }
-  }
-  return $false
-}
-
-# Servicio parado y deshabilitado (también si no llega a existir).
+# El msi de osquery puede arrancar osqueryd al instalar, brevemente y sin los flags ni el token de esta
+# instalación (en reinstalación, con los flags previos). Se para y se verifica antes de configurar;
+# cualquier fallo aborta (sin silenciar errores) y no se ocultan los de la limpieza.
 function Disable-Osqueryd {
-  if (Get-Service -Name osqueryd -ErrorAction SilentlyContinue) {
-    Stop-Service -Name osqueryd -Force -ErrorAction SilentlyContinue
-    Set-Service -Name osqueryd -StartupType Disabled -ErrorAction SilentlyContinue
+  $service = Get-Service -Name osqueryd -ErrorAction Stop
+  if ($service.Status -ne [ServiceProcess.ServiceControllerStatus]::Stopped) {
+    Stop-Service -Name osqueryd -Force -ErrorAction Stop
+    $service.WaitForStatus([ServiceProcess.ServiceControllerStatus]::Stopped, [TimeSpan]::FromSeconds(30))
   }
+  $service.Refresh()
+  if ($service.Status -ne [ServiceProcess.ServiceControllerStatus]::Stopped) {
+    throw 'osqueryd no se ha parado; no se configura.'
+  }
+  Set-Service -Name osqueryd -StartupType Disabled -ErrorAction Stop
 }
 
 $principal = [Security.Principal.WindowsPrincipal][Security.Principal.WindowsIdentity]::GetCurrent()
@@ -66,15 +59,17 @@ if ($token.PSIsContainer -or ($token.Attributes -band [IO.FileAttributes]::Repar
   throw '--token-file debe ser un fichero normal, no un enlace ni un directorio.'
 }
 if ($token.Length -eq 0) { throw '--token-file está vacío.' }
-if (Test-SameFile $TokenFile $EnrollSecret) {
-  throw "el token debe estar en un fichero distinto de $EnrollSecret."
-}
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
 $WorkDir = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $WorkDir | Out-Null
 try {
   Set-ExclusiveAcl $WorkDir $true
+  # El token se lee del origen antes de crear o vaciar el destino: ningún alias del destino puede vaciarlo antes.
+  $TokenCopy = Join-Path $WorkDir 'token'
+  $secret = ([IO.File]::ReadAllText($TokenFile)).Trim()
+  if ($secret.Length -eq 0) { throw '--token-file no contiene ningún token.' }
+  [IO.File]::WriteAllText($TokenCopy, $secret, (New-Object Text.ASCIIEncoding))
   $PackageFile = Join-Path $WorkDir $FileName
   Invoke-WebRequest -UseBasicParsing -Uri $Url -OutFile $PackageFile -MaximumRedirection 5
   $actual = (Get-FileHash -Algorithm SHA256 -LiteralPath $PackageFile).Hash.ToLowerInvariant()
@@ -87,7 +82,7 @@ try {
       '/i', ('"' + $PackageFile + '"'), '/qn', '/norestart')
     if ($installer.ExitCode -ne 0) { throw "msiexec ha terminado con el código $($installer.ExitCode)." }
 
-    # El msi arranca el servicio al instalar: parado y deshabilitado hasta tener flags y token.
+    # Parado y verificado antes de escribir flags y token.
     Disable-Osqueryd
 
     $flags = @'
@@ -101,16 +96,16 @@ try {
     }
     New-Item -ItemType File -Path $EnrollSecret -Force | Out-Null
     Set-ExclusiveAcl $EnrollSecret $false
-    $secret = ([IO.File]::ReadAllText($TokenFile)).Trim()
-    [IO.File]::WriteAllText($EnrollSecret, $secret, (New-Object Text.ASCIIEncoding))
+    [IO.File]::WriteAllText($EnrollSecret, [IO.File]::ReadAllText($TokenCopy), (New-Object Text.ASCIIEncoding))
     if ((Get-Item -LiteralPath $EnrollSecret).Length -eq 0) { throw 'No se pudo copiar el token.' }
 
     Set-Service -Name osqueryd -StartupType Automatic
     Start-Service -Name osqueryd
     Write-Output "osquery @@VERSION@@ instalado y arrancado. Retira el token de $TokenFile cuando el equipo aparezca en agent hosts."
   } catch {
-    Disable-Osqueryd
-    throw
+    $failure = $_
+    try { Disable-Osqueryd } catch { Write-Error "No se pudo parar y deshabilitar osqueryd: $_" }
+    throw $failure
   }
 } finally {
   Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction SilentlyContinue
