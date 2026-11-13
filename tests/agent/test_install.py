@@ -497,3 +497,19 @@ def test_powershell_failure_after_the_msi_leaves_the_service_stopped_and_disable
     assert powershell.rindex("try {", 0, powershell.index("msiexec.exe")) > powershell.index(
         "Invoke-WebRequest"
     )
+
+
+def test_temp_dir_that_cannot_be_removed_is_reported_and_fails(sandbox):
+    sandbox._tool("rm", "exit 1")
+    result = sandbox.run(sandbox.render(), expected_sha=payload_sha(sandbox))
+    assert result.returncode != 0
+    assert "copia del token" in result.stderr
+    assert TOKEN not in result.stdout + result.stderr
+
+
+def test_powershell_temp_cleanup_is_never_silenced(powershell):
+    cleanup = powershell.split("finally")[1]
+    assert "SilentlyContinue" not in cleanup
+    assert "Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction Stop" in cleanup
+    assert "copia del token" in cleanup
+    assert "if ($ResidueLeft) { exit 1 }" in powershell

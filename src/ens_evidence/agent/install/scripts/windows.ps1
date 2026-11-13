@@ -61,6 +61,8 @@ if ($token.PSIsContainer -or ($token.Attributes -band [IO.FileAttributes]::Repar
 if ($token.Length -eq 0) { throw '--token-file está vacío.' }
 
 [Net.ServicePointManager]::SecurityProtocol = [Net.SecurityProtocolType]::Tls12
+$Residue = $null
+$ResidueLeft = $false
 $WorkDir = Join-Path ([IO.Path]::GetTempPath()) ([Guid]::NewGuid().ToString())
 New-Item -ItemType Directory -Path $WorkDir | Out-Null
 try {
@@ -108,5 +110,12 @@ try {
     throw $failure
   }
 } finally {
-  Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction SilentlyContinue
+  # El temporal guarda una copia del token: si no se borra, se dice dónde y la instalación no acaba en éxito.
+  try { Remove-Item -LiteralPath $WorkDir -Recurse -Force -ErrorAction Stop }
+  catch { $Residue = $_ }
+  if ($Residue -or (Test-Path -LiteralPath $WorkDir)) {
+    [Console]::Error.WriteLine("ATENCIÓN: no se pudo borrar $WorkDir, que contiene una copia del token. Bórralo a mano. $Residue")
+    $ResidueLeft = $true
+  }
 }
+if ($ResidueLeft) { exit 1 }

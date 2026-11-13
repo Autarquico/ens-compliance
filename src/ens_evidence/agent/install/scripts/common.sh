@@ -23,7 +23,7 @@ EXPECTED_SHA256=@@SHA256@@
 [ -s "$TOKEN_FILE" ] || die "--token-file está vacío."
 umask 077
 WORKDIR=$(mktemp -d) || die "no se pudo crear el directorio temporal."
-trap 'rm -rf "$WORKDIR"' EXIT
+trap 'rm -rf "$WORKDIR" || { echo "ATENCIÓN: no se pudo borrar $WORKDIR, que contiene una copia del token. Bórralo a mano." >&2; exit 1; }' EXIT
 PACKAGE_FILE="$WORKDIR/$FILENAME"
 
 # El token se lee del origen antes de crear o vaciar el destino: ningún alias del destino puede vaciarlo antes.
