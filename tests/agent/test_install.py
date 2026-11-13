@@ -345,6 +345,39 @@ def test_rpm_installs_with_rpm(sandbox):
     assert any(c.startswith("rpm -U ") for c in sandbox.calls)
 
 
+def test_rpm_install_is_repeatable_with_the_same_version(sandbox):
+    sandbox._tool(
+        "rpm",
+        'echo "rpm $*" >> "$LOG"\n'
+        'if [ -e "$LOG.rpm" ]; then case "$*" in *--replacepkgs*) ;; *) exit 1;; esac; fi\n'
+        'touch "$LOG.rpm"',
+    )
+    script = sandbox.render("linux", "rpm", "arm64")
+    for _ in range(2):
+        result = sandbox.run(script, expected_sha=payload_sha(sandbox))
+        assert result.returncode == 0, result.stderr
+    assert len([c for c in sandbox.calls if c.startswith("rpm -U --replacepkgs ")]) == 2
+
+
+def test_token_file_equal_to_the_destination_aborts_untouched(sandbox):
+    etc = sandbox.root / "etc-osquery"
+    etc.mkdir()
+    destination = etc / "enroll_secret"
+    destination.write_text(TOKEN + "\n")
+    hard_link = sandbox.work / "alias"
+    os.link(destination, hard_link)
+    for token_file in (destination, hard_link):
+        result = sandbox.run(
+            sandbox.render(token_file=token_file), expected_sha=payload_sha(sandbox)
+        )
+        assert result.returncode != 0
+        assert "distinto de" in result.stderr
+        assert destination.read_text() == TOKEN + "\n"
+        assert sorted(p.name for p in etc.iterdir()) == ["enroll_secret"]
+        assert not [c for c in sandbox.calls if c.startswith(("curl", "dpkg", "rpm", "systemctl"))]
+        assert TOKEN not in result.stdout + result.stderr
+
+
 def test_server_with_shell_metacharacters_never_reaches_the_script():
     with pytest.raises(InstallError):
         render(server="x.example.org'; touch /tmp/pwned; '")
@@ -379,8 +412,6 @@ def test_powershell_contract_at_text_level(powershell):
     assert "https://github.com/osquery/osquery/releases/download/5.24.1/osquery-5.24.1.msi" in (
         powershell
     )
-    assert "*S-1-5-18" in powershell and "*S-1-5-32-544" in powershell
-    assert "$LASTEXITCODE -ne 0" in powershell
     assert "$installer.ExitCode -ne 0" in powershell
     assert "ReparsePoint" in powershell
     assert "finally" in powershell and "Remove-Item" in powershell
@@ -391,12 +422,45 @@ def test_powershell_orders_check_install_stop_token_start(powershell):
     order = [
         "$actual -ne $ExpectedSha256",
         "msiexec.exe",
-        "Stop-Service",
-        "-StartupType Disabled",
+        "Disable-Osqueryd\n",
         "New-Item -ItemType File -Path $EnrollSecret",
-        "Restrict-ToSystemAndAdministrators $EnrollSecret",
+        "Set-ExclusiveAcl $EnrollSecret",
         "ReadAllText($TokenFile)",
         "Start-Service",
     ]
     positions = [powershell.index(fragment) for fragment in order]
     assert positions == sorted(positions)
+
+
+def test_powershell_acl_replaces_the_whole_dacl_with_well_known_sids(powershell):
+    assert "S-1-5-18" in powershell and "S-1-5-32-544" in powershell
+    assert "SetAccessRuleProtection($true, $false)" in powershell
+    assert "SetOwner($AdministratorsSid)" in powershell
+    assert "New-Object Security.AccessControl.FileSecurity" in powershell
+    assert "Set-Acl -LiteralPath $Path -AclObject $acl" in powershell
+    assert "icacls" not in powershell
+    assert "Set-ExclusiveAcl $WorkDir $true" in powershell
+    assert "Set-ExclusiveAcl $EnrollSecret $false" in powershell
+
+
+def test_powershell_acl_is_applied_before_the_token_is_written(powershell):
+    assert powershell.index("Set-ExclusiveAcl $EnrollSecret") < powershell.index(
+        "[IO.File]::WriteAllText($EnrollSecret"
+    )
+
+
+def test_powershell_rejects_token_file_equal_to_the_destination_before_downloading(powershell):
+    check = powershell.index("Test-SameFile $TokenFile $EnrollSecret")
+    assert "distinto de $EnrollSecret" in powershell
+    assert "hardlink list" in powershell
+    assert check < powershell.index("Invoke-WebRequest") < powershell.index("msiexec.exe")
+
+
+def test_powershell_failure_after_the_msi_leaves_the_service_stopped_and_disabled(powershell):
+    assert "Stop-Service -Name osqueryd -Force" in powershell
+    assert "Set-Service -Name osqueryd -StartupType Disabled" in powershell
+    body = powershell[powershell.index("msiexec.exe") :]
+    assert body.index("catch {") < body.index("Disable-Osqueryd\n    throw")
+    assert powershell.rindex("try {", 0, powershell.index("msiexec.exe")) > powershell.index(
+        "Invoke-WebRequest"
+    )

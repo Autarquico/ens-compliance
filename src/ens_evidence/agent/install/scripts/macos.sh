@@ -8,7 +8,7 @@ ENROLL_SECRET=/etc/osquery/enroll_secret
 ROOT_GROUP=wheel
 PLIST_SOURCE=/private/var/osquery/io.osquery.agent.plist
 PLIST=/Library/LaunchDaemons/io.osquery.agent.plist
-REQUIRED_TOOLS="id curl shasum cut mktemp rm tr cat chmod chown mkdir dirname cp installer launchctl"
+REQUIRED_TOOLS="id curl shasum cut mktemp rm tr cat chmod chown mkdir dirname find cp installer launchctl"
 
 sha256_of() {
   shasum -a 256 "$1" | cut -d ' ' -f 1

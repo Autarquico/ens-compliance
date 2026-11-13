@@ -101,8 +101,11 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
    el servicio): descarga a un directorio temporal privado, verifica el
    sha256 del mismo fichero que instala (aborta si no coincide, si la descarga
    está truncada o si falta una herramienta), instala, deja el servicio parado
-   hasta tener flags y token, crea el destino del token vacío y con permisos
-   restrictivos antes de copiarlo y arranca el servicio.
+   hasta tener flags y token (en Windows, cualquier fallo tras el msi lo deja
+   parado y deshabilitado), crea el destino del token vacío y con permisos
+   restrictivos antes de copiarlo (en Windows, DACL sin herencia solo para
+   SYSTEM y Administradores) y arranca el servicio. Aborta antes de modificar
+   nada si `--token-file` es el mismo fichero que el destino.
 
    | SO | Servicio | Flags | Token copiado para osquery |
    |---|---|---|---|
@@ -158,8 +161,10 @@ Si el equipo pierde la base de datos de osquery (reinstalación del sistema, bor
 `/var/osquery` o `C:\Program Files\osquery\osquery.db`) o el servidor
 pierde su estado (sección 7), el equipo debe inscribirse de nuevo:
 `agent admit` (token nuevo), llévalo al equipo y vuelve a ejecutar el script
-de la tabla anterior. El script es repetible: reinstala la misma versión,
-reescribe flags y token y reinicia el servicio. Un equipo revocado exige
+de la tabla anterior. El script es repetible: reinstala la misma versión
+(`rpm -U --replacepkgs`, `dpkg -i`), reescribe flags y token y reinicia el servicio.
+El `--token-file` debe ser un fichero distinto del destino del token (misma
+ruta o enlace duro): si no, el script aborta sin tocar nada. Un equipo revocado exige
 también `agent admit` (sección 4).
 
 ### Actualizar osquery

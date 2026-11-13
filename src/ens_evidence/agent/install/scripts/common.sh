@@ -21,6 +21,10 @@ EXPECTED_SHA256=@@SHA256@@
 [ ! -L "$TOKEN_FILE" ] || die "--token-file no puede ser un enlace simbólico."
 [ -f "$TOKEN_FILE" ] || die "--token-file no es un fichero normal."
 [ -s "$TOKEN_FILE" ] || die "--token-file está vacío."
+# Misma ruta, enlace duro o cualquier alias (mismo inodo): se aborta antes de tocar nada.
+if [ -e "$ENROLL_SECRET" ] && [ -n "$(find "$TOKEN_FILE" -samefile "$ENROLL_SECRET" 2>/dev/null)" ]; then
+  die "el token debe estar en un fichero distinto de $ENROLL_SECRET."
+fi
 
 umask 077
 WORKDIR=$(mktemp -d) || die "no se pudo crear el directorio temporal."

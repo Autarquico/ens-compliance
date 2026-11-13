@@ -7,7 +7,7 @@ FLAGS_FILE=/etc/osquery/osquery.flags
 ENROLL_SECRET=/etc/osquery/enroll_secret
 ROOT_GROUP=root
 PACKAGE=@@PACKAGE@@
-REQUIRED_TOOLS="id curl sha256sum cut mktemp rm tr cat chmod chown mkdir dirname systemctl"
+REQUIRED_TOOLS="id curl sha256sum cut mktemp rm tr cat chmod chown mkdir dirname find systemctl"
 
 sha256_of() {
   sha256sum "$1" | cut -d ' ' -f 1
@@ -17,7 +17,7 @@ sha256_of() {
 
 case "$PACKAGE" in
   deb) need dpkg && dpkg -i "$PACKAGE_FILE" ;;
-  rpm) need rpm && rpm -U "$PACKAGE_FILE" ;;
+  rpm) need rpm && rpm -U --replacepkgs "$PACKAGE_FILE" ;;
   *) die "paquete desconocido: $PACKAGE." ;;
 esac
 
