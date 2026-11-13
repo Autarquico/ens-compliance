@@ -57,6 +57,10 @@ iguales. El mensaje nombra la variable, nunca el valor.
 ## 2. Dar de alta un equipo
 
 El equipo debe estar inscrito en `connectors/endpoint.yaml` (uuid y hostname).
+La versión de osquery y los sha256 de sus paquetes están fijados en el código
+(`src/ens_evidence/agent/install/release.yaml`, osquery 5.24.1): el script que
+imprime `agent install` descarga el paquete oficial por HTTPS, verifica su
+sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
 
 1. Emite el token de alta (caduca en 24 h por defecto):
 
@@ -65,43 +69,137 @@ El equipo debe estar inscrito en `connectors/endpoint.yaml` (uuid y hostname).
      --asset portatil-01 --by "tu nombre" --hours 24
    ```
 
-   Imprime el token una sola vez. Entrégalo al equipo por un canal seguro.
-2. En el equipo, guarda el token en un fichero legible solo por root
-   (`/etc/osquery/enroll_secret`, modo 600) y configura osquery
-   (`osquery.flags`):
+   Imprime el token una sola vez en la salida estándar. Guárdalo en un fichero
+   (sin pasarlo como argumento ni por variable de entorno).
+2. Mueve el token al equipo por un canal seguro (gestor de contraseñas,
+   transferencia cifrada) y déjalo en un fichero que solo lean root o los
+   administradores. El script rechaza un `--token-file` que sea enlace
+   simbólico o no sea un fichero normal.
+3. Genera el script de instalación para ese equipo y ejecútalo allí como root
+   o administrador. `agent install` no lee ni escribe secretos; el script lee
+   el token desde `--token-file`. Genera el script en la caja (o donde tengas
+   el workspace), llévalo al equipo y ejecútalo:
 
+   | SO | Orden de `agent install` | Ejecución en el equipo |
+   |---|---|---|
+   | macOS | `--os macos` | `sudo sh instalar.sh` |
+   | Linux (Debian, Ubuntu) | `--os linux --package deb --arch amd64\|arm64` | `sudo sh instalar.sh` |
+   | Linux (RHEL, Fedora…) | `--os linux --package rpm --arch amd64\|arm64` | `sudo sh instalar.sh` |
+   | Windows (solo amd64) | `--os windows` | PowerShell como Administrador: `.\instalar.ps1` |
+
+   ```bash
+   docker compose -p ens-box --profile agents exec -T agent ens-evidence agent install \
+     --asset portatil-01 --os linux --package deb --arch amd64 \
+     --server agentes.example.org --token-file /root/enroll.token > instalar.sh
    ```
-   --tls_hostname=agentes.example.org
-   --host_identifier=uuid
-   --enroll_secret_path=/etc/osquery/enroll_secret
-   --enroll_tls_endpoint=/agent/enroll
-   --config_plugin=tls
-   --config_tls_endpoint=/agent/config
-   --logger_plugin=tls
-   --logger_tls_endpoint=/agent/log
-   --disable_distributed=false
-   --distributed_plugin=tls
-   --distributed_tls_read_endpoint=/agent/distributed/read
-   --distributed_tls_write_endpoint=/agent/distributed/write
-   ```
 
-   `--host_identifier=uuid` es obligatorio: el servidor exige que el
-   identificador sea el uuid de hardware inscrito; con `hostname` el alta
-   responde `node_invalid` sin más pista.
+   `--server` es el hostname público de agentes (sin esquema ni puerto).
+   Linux exige `--package` y `--arch` explícitos: no se deducen de la caja.
+   Una combinación no soportada da error con las disponibles.
 
-   **Prohibidos:** `--logger_tls_compress` (Caddy responde 415) y
-   `--tls_secret_always` (el servidor no lo contempla).
-3. Reinicia `osqueryd` y comprueba:
+   Qué hace el script (todo o nada: un paso fallido aborta antes de arrancar
+   el servicio): descarga a un directorio temporal privado, verifica el
+   sha256 del mismo fichero que instala (aborta si no coincide, si la descarga
+   está truncada o si falta una herramienta), instala, deja el servicio parado
+   hasta tener flags y token, crea el destino del token vacío y con permisos
+   restrictivos antes de copiarlo y arranca el servicio.
+
+   | SO | Servicio | Flags | Token copiado para osquery |
+   |---|---|---|---|
+   | macOS | `io.osquery.agent` (LaunchDaemon) | `/private/var/osquery/osquery.flags` | `/etc/osquery/enroll_secret` (600, root:wheel) |
+   | Linux | `osqueryd` (systemd) | `/etc/osquery/osquery.flags` | `/etc/osquery/enroll_secret` (600, root) |
+   | Windows | `osqueryd` (servicio) | `C:\Program Files\osquery\osquery.flags` | `C:\Program Files\osquery\enroll_secret` (solo SYSTEM y Administradores) |
+
+   Los flags clave son `--host_identifier=uuid` (obligatorio: el servidor
+   exige el uuid de hardware inscrito; con `hostname` el alta responde
+   `node_invalid` sin más pista), los endpoints `/agent/*` por TLS y, para
+   no perder datos ni saturar el servidor tras un corte, `--buffered_log_max=10000`
+   (registros; purga los más antiguos), `--logger_tls_period=60` y
+   `--logger_tls_backoff_max=3600`. **Prohibidos:** `--logger_tls_compress`
+   (Caddy responde 415), `--tls_secret_always` y `--enroll_secret_env`.
+4. Comprueba:
 
    ```bash
    docker compose -p ens-box --profile agents exec -T agent ens-evidence agent hosts
    ```
 
-   El equipo aparece con su último contacto. El primer lote de resultados
-   llega al cabo del intervalo (6 h) o al reiniciar osquery.
+   El equipo aparece con su último contacto y `admitido`. El primer lote de
+   resultados llega en torno a un minuto después de arrancar osquery (el
+   calendario corre al arrancar y el logger envía cada 60 s); después, cada
+   6 h.
+5. **Retira el token del equipo en cuanto aparezca en `agent hosts`:** borra
+   el fichero que pasaste a `--token-file` (y su copia en el gestor de
+   contraseñas o el canal de transferencia). La copia que escribió el script
+   (`enroll_secret`, tabla anterior) la lee osquery solo para inscribirse y
+   queda protegida; caduca con el token, no se reutiliza y se sobrescribe
+   en una nueva alta.
 
 Un token caducado o de otra generación da `node_invalid`: vuelve a ejecutar
-`agent admit`. Tras el alta, el token ya no hace falta.
+`agent admit`.
+
+### Readmisión tras perder el estado
+
+Si el equipo pierde la base de datos de osquery (reinstalación del sistema, borrado de
+`/var/osquery` o `C:\Program Files\osquery\osquery.db`) o el servidor
+pierde su estado (sección 7), el equipo debe inscribirse de nuevo:
+`agent admit` (token nuevo), llévalo al equipo y vuelve a ejecutar el script
+de la tabla anterior. El script es repetible: reinstala la misma versión,
+reescribe flags y token y reinicia el servicio. Un equipo revocado exige
+también `agent admit` (sección 4).
+
+### Actualizar osquery
+
+La versión se cambia en el repo, no en el equipo: una release nueva sube
+`release.yaml` (versión, URLs y sha256 de la API de releases de GitHub,
+`gh api repos/osquery/osquery/releases/tags/<versión>`) y pasa por revisión.
+Con la caja actualizada (`deploy/box.sh update <vX.Y.Z>`), repite en cada
+equipo los pasos 1 a 3 (token nuevo: el anterior habrá caducado) y el paso 5.
+El script reinstala encima (dpkg, rpm, `installer`, `msiexec`) y reescribe
+flags y token. Comprueba la versión
+tras actualizar: `osqueryd --version` (Linux, macOS) o
+`Get-Service osqueryd` y la versión del msi en Aplicaciones (Windows; la ruta del binario no está verificada).
+
+### Desinstalar
+
+Antes, revoca el equipo en el servidor (sección 4) y retira el activo de
+`connectors/endpoint.yaml` si ya no se evalúa.
+
+- **Linux:** `sudo systemctl disable --now osqueryd`; `sudo dpkg --purge osquery`
+  (deb) o `sudo rpm -e osquery` (rpm); `sudo rm -rf /var/osquery /etc/osquery`.
+- **macOS:** `sudo launchctl bootout system/io.osquery.agent`;
+  `sudo rm /Library/LaunchDaemons/io.osquery.agent.plist`;
+  `sudo rm -rf /opt/osquery /private/var/osquery /etc/osquery /var/log/osquery`;
+  `sudo pkgutil --forget io.osquery.agent`. Los ficheros exactos de macOS no están
+  verificados en un equipo real (pendiente del piloto).
+- **Windows (Administrador):** `Stop-Service osqueryd`; desinstala el msi
+  (Configuración, Aplicaciones, osquery; o `msiexec /x` con el msi de la
+  release); borra `C:\Program Files\osquery` si queda algo (incluye
+  `enroll_secret`).
+
+### Migración al paquete v2
+
+El paquete de consultas pasó a v2 (consultas de Windows y la columna
+`windows` en las genéricas). Los equipos con agente reciben la
+configuración nueva solos (`--config_refresh=3600`). Un paquete de script
+(`collect-endpoint`) **v1 pendiente de importar se rechaza** con un mensaje
+que pide repetir la recogida con el script nuevo: no se regenera, se vuelve
+a ejecutar el script v2 en el equipo y se importa el paquete nuevo. La
+evidencia `endpoint-script` v1 ya guardada sigue evaluándose.
+
+### Pilotos reales pendientes
+
+Esta versión se ha probado con osquery 5.24.1 en un contenedor Linux (test
+`tests/agent/test_osquery_e2e.py`, `pytest -m docker`), con las sustituciones
+que cita su cabecera. **Quedan pendientes de aceptación, con responsable el
+usuario, los pilotos reales** (no se dan por hechos por el test del
+contenedor; el script de macOS y el de Windows no se han ejecutado nunca en
+un equipo real). Evidencia que adjuntar al cerrar cada uno:
+
+| Piloto | Evidencia |
+|---|---|
+| macOS real (instalar osquery cambia el sistema: requiere aprobación) | Salida de `agent hosts` con contacto reciente; id de la evidencia `osquery-agent` y su snapshot; `osqueryctl`/`launchctl print system/io.osquery.agent`; confirmación de que el `.pkg` dejó `io.osquery.agent.plist` donde asume el script |
+| Linux real (deb o rpm, con systemd) | Salida de `agent hosts`; id del snapshot; `systemctl status osqueryd`; un corte del servidor de unos minutos y el snapshot actual guardado después |
+| Windows (VM) | Salida de `agent hosts`; id del snapshot con filas de `bitlocker_info`, `windows_security_center` y `programs`; `Get-Service osqueryd`; la ACL de `enroll_secret` (`icacls`) y que `--tls_server_certs` por defecto valida el certificado de Caddy |
 
 ## 3. Consultas en vivo
 
