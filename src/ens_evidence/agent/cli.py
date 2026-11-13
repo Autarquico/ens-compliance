@@ -9,6 +9,7 @@ from typing import Annotated
 
 import typer
 
+from ens_evidence.agent.install import render_install_script
 from ens_evidence.agent.node_key import issue_enroll_token, normalize_host_identifier
 from ens_evidence.agent.osquery_config import pack_queries
 from ens_evidence.agent.registry import (
@@ -35,7 +36,6 @@ agent_app.add_typer(query_app, name="query")
 
 MAX_ADMIT_HOURS = 168
 EXPIRES = re.compile(r"^(\d{1,4})([hd])$")
-ENROLL_SECRET_PATH = "/etc/osquery/enroll_secret"
 
 Asset = Annotated[
     str, typer.Option("--asset", help="Identificador del activo (connectors/endpoint.yaml).")
@@ -195,11 +195,34 @@ def admit(
     typer.echo(token)
     typer.echo(
         f"Alta de {asset} (generación {record.generation}) válida hasta {expires_at.isoformat()}.\n"
-        f"En el equipo, guarda el token en {ENROLL_SECRET_PATH} (modo 600, sin salto de línea "
-        f"final) y arranca osquery con --enroll_secret_path={ENROLL_SECRET_PATH}.\n"
+        "En el equipo, guarda el token en un fichero que solo lean root o los administradores "
+        "y genera el instalador con `ens-evidence agent install` (--token-file). osquery lo "
+        "lee con --enroll_secret_path: /etc/osquery/enroll_secret (macOS y Linux) o "
+        "C:\\Program Files\\osquery\\enroll_secret (Windows).\n"
         "No lo pases con --enroll_secret_env ni lo guardes en el repo.",
         err=True,
     )
+
+
+@agent_app.command()
+@handled
+def install(
+    ctx: typer.Context,
+    asset: Asset,
+    os_name: Annotated[str, typer.Option("--os", help="macos, linux o windows.")],
+    server: Annotated[str, typer.Option("--server", help="Nombre de host del servidor.")],
+    token_file: Annotated[
+        str, typer.Option("--token-file", help="Ruta, en el equipo, del fichero con el token.")
+    ],
+    package: Annotated[str | None, typer.Option("--package", help="Linux: deb o rpm.")] = None,
+    arch: Annotated[str | None, typer.Option("--arch", help="Linux: amd64 o arm64.")] = None,
+) -> None:
+    """Imprime el script que instala osquery (versión fijada, sha256 verificado) y lo configura
+    contra el servidor. Ejecútalo en el equipo como root o administrador. No lee ni escribe
+    secretos: el token lo lee el script desde --token-file."""
+    script = render_install_script(os_name, server, token_file, package, arch)
+    _enrolled(_endpoint_config(ctx), asset)
+    typer.echo(script, nl=False)
 
 
 @agent_app.command()

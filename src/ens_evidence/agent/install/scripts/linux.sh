@@ -1,0 +1,27 @@
+#!/bin/sh
+# ens-evidence agent install: osquery @@VERSION@@ (@@PACKAGE@@). Ejecutar como root.
+set -eu
+# Rutas del paquete oficial: tools/deployment/linux_packaging (osqueryd.sysconfig, osqueryd.service).
+CONFIG_DIR=/etc/osquery
+FLAGS_FILE=/etc/osquery/osquery.flags
+ENROLL_SECRET=/etc/osquery/enroll_secret
+ROOT_GROUP=root
+PACKAGE=@@PACKAGE@@
+REQUIRED_TOOLS="curl sha256sum mktemp tr chown systemctl"
+
+sha256_of() {
+  sha256sum "$1" | cut -d ' ' -f 1
+}
+
+@@COMMON@@
+
+case "$PACKAGE" in
+  deb) need dpkg && dpkg -i "$PACKAGE_FILE" ;;
+  rpm) need rpm && rpm -U "$PACKAGE_FILE" ;;
+  *) die "paquete desconocido: $PACKAGE." ;;
+esac
+
+systemctl disable --now osqueryd
+write_configuration
+systemctl enable --now osqueryd
+printf 'osquery @@VERSION@@ instalado y arrancado. Retira el token de %s cuando el equipo aparezca en agent hosts.\n' "$TOKEN_FILE"
