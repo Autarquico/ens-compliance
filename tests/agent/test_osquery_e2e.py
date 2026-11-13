@@ -14,6 +14,9 @@ Sustituciones respecto a un equipo real (las únicas):
     orden que la unidad del paquete (`--flagfile $FLAG_FILE --config_path $CONFIG_FILE`, de
     /etc/default/osqueryd) bajo un bucle que reintenta como `Restart=on-failure` y cuenta los
     reinicios. No emula `CPUQuota=20%`.
+  * Sin calendario inmediato: osquery 5.24.1 no ejecuta las consultas programadas al arrancar (la
+    primera pasada llega tras ~6 h con splay), así que los snapshots se provocan con consultas en
+    vivo del paquete (`agent query run`), que usan el mismo camino de resultados.
   * `--tls_server_certs=<CA de Caddy>` se añade al flagfile al arrancar (solo aquí): el script no
     lo lleva y un equipo real usa el almacén de certificados público.
   * El contenedor no tiene uuid de hardware (sin DMI): osquery genera uno y lo guarda en su base
@@ -45,7 +48,9 @@ REPO = Path(__file__).resolve().parents[2]
 pytestmark = pytest.mark.docker
 
 DEBIAN = "debian@sha256:268fb24c39bca92d326dd83ea3abebe4a3f7751c804ffef23bb6d857dd343ff8"
-CADDY = "caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5"
+CADDY = (
+    "caddy:2.11.7-alpine@sha256:e70b164da81ef698b3ad19af799ea6086ce6d9e48ed4079eb9fe26f6fbf14ee5"
+)
 # sha256 fijados aquí a propósito: si release.yaml cambia sin revisión, el test lo detecta.
 DEB_SHA256 = {
     "amd64": "c6a37aec1156712cce0fafeb01a3697a2b73a1863a2b39fc3473b07600aea68d",
@@ -133,7 +138,8 @@ stop_daemon() {{
 start_daemon() {{
   stop_daemon
   . /etc/default/osqueryd
-  grep -q '^--tls_server_certs=' "$FLAG_FILE" || {{ echo '--tls_server_certs={CA_PATH}'; echo --verbose; }} >>"$FLAG_FILE"
+  grep -q '^--tls_server_certs=' "$FLAG_FILE" ||
+    {{ echo '--tls_server_certs={CA_PATH}'; echo --verbose; }} >>"$FLAG_FILE"
   FLAG_FILE=$FLAG_FILE CONFIG_FILE=$CONFIG_FILE RESTARTS=$RESTARTS SUPERVISOR=$SUPERVISOR \\
     setsid sh -c '
       echo $$ >"$SUPERVISOR"
@@ -227,15 +233,32 @@ class Lab:
         match = re.search(r"último contacto: (\S+)", self.hosts_line())
         return None if match is None else datetime.fromisoformat(match[1])
 
-    def manifests(self) -> list[dict]:
+    def agent_results(self) -> list[dict]:
+        """Datos de cada evidencia osquery-agent (el artefacto crudo que apunta su manifiesto)."""
         script = (
-            "import glob, json, yaml; print(json.dumps([yaml.safe_load(open(f)) for f in "
-            "sorted(glob.glob('/data/workspace/evidence/manifests/*.yaml'))], default=str))"
+            "import glob, json, yaml\n"
+            "out = []\n"
+            "for f in sorted(glob.glob('/data/workspace/evidence/manifests/*.yaml')):\n"
+            "    m = yaml.safe_load(open(f))\n"
+            "    if m['source'] == 'osquery-agent':\n"
+            "        out.append(json.load(open('/data/workspace/' + m['artifact']['key'])))\n"
+            "print(json.dumps(out))\n"
         )
         return json.loads(self.exec("server", "python", "-I", "-c", script).stdout)
 
-    def agent_evidence(self) -> list[dict]:
-        return [m for m in self.manifests() if m["source"] == "osquery-agent"]
+    def live_query(self, query_id: str) -> str:
+        done = self.ens(
+            "agent", "query", "run", "--asset", ASSET, "--query", query_id, "--by", "e2e"
+        )
+        return re.search(r"live-[0-9a-f]+", done.stdout)[0]
+
+    def live_result(self, run_id: str) -> dict | None:
+        found = [
+            r["data"]
+            for r in self.agent_results()
+            if r["data"]["agent"].get("query_run_id") == run_id
+        ]
+        return found[0] if found else None
 
     def processes(self) -> tuple[int, int, set[str]]:
         count, ticks, *pids = self.osquery(PROCESS_PROBE).stdout.split()
@@ -388,15 +411,19 @@ def enrolled(lab) -> Enrolled:
     wait_for("el servidor responde", lambda: lab.ens("agent", "hosts", check=False).returncode == 0)
     ca = wait_for(
         "Caddy genera su CA",
-        lambda: run(
-            ["docker", "exec", lab.name("caddy"), "cat"]
-            + ["/data/caddy/pki/authorities/local/root.crt"],
-            check=False,
-        ).stdout,
+        lambda: (
+            run(
+                ["docker", "exec", lab.name("caddy"), "cat"]
+                + ["/data/caddy/pki/authorities/local/root.crt"],
+                check=False,
+            ).stdout
+        ),
     )
     lab.osquery(f"cat >{CA_PATH}", input=ca)
 
-    token = lab.ens("agent", "admit", "--asset", ASSET, "--by", "e2e", "--hours", "1").stdout.strip()
+    token = lab.ens(
+        "agent", "admit", "--asset", ASSET, "--by", "e2e", "--hours", "1"
+    ).stdout.strip()
     lab.osquery(f"umask 077; cat >{TOKEN_FILE}", input=token)
 
     script = lab.ens(
@@ -420,10 +447,17 @@ def test_el_equipo_se_inscribe_y_queda_con_contacto_reciente(lab, enrolled):
     assert "5.24.1" in lab.osquery("osqueryd --version").stdout
 
 
-def test_la_primera_instantanea_programada_llega_y_se_guarda(lab, enrolled):
-    stored = wait_for("una evidencia osquery-agent", lab.agent_evidence, lab=lab)
+def test_una_consulta_en_vivo_del_paquete_llega_y_se_guarda(lab, enrolled):
+    # El calendario de osquery 5.24.1 no ejecuta nada al arrancar: la primera pasada llega tras un
+    # intervalo con splay (~6 h, medido: ni en 25 s con osqueryd suelto ni en 5 min enrolado), así
+    # que el snapshot se provoca con una consulta en vivo del paquete, que sigue el mismo camino
+    # de resultados (distributed/write -> evidencia osquery-agent).
+    run_id = lab.live_query("os_version")
 
-    assert all(m["asset_id"] == ASSET for m in stored)
+    stored = wait_for("la consulta en vivo guardada", lambda: lab.live_result(run_id), lab=lab)
+
+    assert stored["agent"]["osquery_status"] == 0
+    assert stored["queries"]["os_version"]["rows"][0]["name"].startswith("Debian")
 
 
 def test_el_fichero_del_token_se_retira_y_osquery_sigue_contactando(lab, enrolled):
@@ -433,55 +467,55 @@ def test_el_fichero_del_token_se_retira_y_osquery_sigue_contactando(lab, enrolle
     lab.osquery(f"rm -f {TOKEN_FILE}")
 
     assert lab.osquery(f"test ! -e {TOKEN_FILE}", check=False).returncode == 0
-    assert (
-        lab.osquery(f"stat -c '%a %U' {ENROLL_SECRET}").stdout.strip() == "600 root"
-    ), "el token copiado para osquery debe seguir siendo solo de root"
+    assert lab.osquery(f"stat -c '%a %U' {ENROLL_SECRET}").stdout.strip() == "600 root", (
+        "el token copiado para osquery debe seguir siendo solo de root"
+    )
     wait_for("nuevo contacto", lambda: (lab.last_contact() or before) > before, lab=lab)
 
 
-def test_un_corte_del_servidor_no_tumba_osquery_y_el_snapshot_actual_se_guarda(lab, enrolled):
-    wait_for("una evidencia osquery-agent", lab.agent_evidence, lab=lab)
-    stored_before = len(lab.agent_evidence())
+def test_un_corte_del_servidor_no_tumba_osquery_y_al_volver_se_guarda_lo_actual(lab, enrolled):
+    wait_for("contacto", lab.last_contact, lab=lab)
     restarts_before = lab.restarts()
-    count, _, pids_before = lab.processes()
-    assert count >= 1
+    count_before, ticks_before, pids_before = lab.processes()
+    assert count_before >= 1
 
     run(["docker", "stop", "-t", "10", lab.name("server")])
-    outage_start = datetime.now(UTC)
-    # Un snapshot nuevo durante el corte: reiniciar osqueryd lo fuerza (el calendario corre al
-    # arrancar). Si la configuración remota no estuviera en caché, no habría calendario.
-    lab.osquery("systemctl restart osqueryd")
+    started = time.monotonic()
     time.sleep(OUTAGE_SECONDS)
     count, ticks_after, pids_after = lab.processes()
+    elapsed = time.monotonic() - started
 
-    # Medición del corte: CPU de todos los osqueryd, en % de un núcleo, desde el reinicio.
-    elapsed = OUTAGE_SECONDS + 1
+    # Medición del corte: CPU de todos los osqueryd, en % de un núcleo, solo durante el corte.
     ticks_per_second = int(lab.osquery("getconf CLK_TCK").stdout)
-    cpu_percent = ticks_after / ticks_per_second / elapsed * 100
+    cpu_percent = (ticks_after - ticks_before) / ticks_per_second / elapsed * 100
     print(
-        f"\n[medición] corte {OUTAGE_SECONDS}s: osqueryd vivos={count} "
-        f"pids antes={sorted(pids_before)} después={sorted(pids_after)} "
-        f"CPU={cpu_percent:.2f}% de un núcleo, reinicios del bucle={lab.restarts() - restarts_before}"
+        f"\n[medición] corte {elapsed:.0f}s: osqueryd vivos={count} pids antes="
+        f"{sorted(pids_before)} después={sorted(pids_after)} CPU={cpu_percent:.2f}% de un núcleo, "
+        f"reinicios del bucle={lab.restarts() - restarts_before}"
     )
-    assert count >= 1, "osqueryd debe seguir corriendo durante el corte"
-    assert lab.restarts() == restarts_before, "osqueryd no debe morir por el corte"
+    assert pids_after == pids_before, "osqueryd no debe morir ni reiniciarse por el corte"
+    assert lab.restarts() == restarts_before
     assert cpu_percent < 20, "por encima de la cuota CPUQuota=20% de la unidad del paquete"
 
     run(["docker", "start", lab.name("server")])
     wait_for("el servidor responde", lambda: lab.ens("agent", "hosts", check=False).returncode == 0)
-
-    def current_snapshot_stored():
-        return [
-            m
-            for m in lab.agent_evidence()
-            if datetime.fromisoformat(str(m["collected_at"])) > outage_start
-        ]
-
-    stored = wait_for(
-        "el snapshot generado durante el corte", current_snapshot_stored, seconds=900, lab=lab
+    recovered_at = datetime.now(UTC)
+    wait_for(
+        "contacto tras el corte",
+        lambda: (lab.last_contact() or recovered_at) > recovered_at,
+        seconds=900,
+        lab=lab,
     )
-    assert len(lab.agent_evidence()) > stored_before
-    assert all(m["asset_id"] == ASSET for m in stored)
+    run_id = lab.live_query("os_version")
+    stored = wait_for(
+        "el estado actual guardado tras el corte",
+        lambda: lab.live_result(run_id),
+        seconds=900,
+        lab=lab,
+    )
+
+    assert stored["queries"]["os_version"]["rows"]
+    assert lab.processes()[2] == pids_before, "osqueryd sigue siendo el mismo proceso"
     assert lab.restarts() == restarts_before
 
 

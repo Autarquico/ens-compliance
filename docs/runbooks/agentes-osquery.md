@@ -123,10 +123,9 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
    docker compose -p ens-box --profile agents exec -T agent ens-evidence agent hosts
    ```
 
-   El equipo aparece con su último contacto y `admitido`. El primer lote de
-   resultados llega en torno a un minuto después de arrancar osquery (el
-   calendario corre al arrancar y el logger envía cada 60 s); después, cada
-   6 h.
+   El equipo aparece con su último contacto y `admitido`. El primer snapshot
+   programado llega a las ~6 h de arrancar osquery (con splay del 10 %); para
+   tener datos antes, lanza una consulta en vivo (sección 3).
 5. **Retira el token del equipo en cuanto aparezca en `agent hosts`:** borra
    el fichero que pasaste a `--token-file` (y su copia en el gestor de
    contraseñas o el canal de transferencia). La copia que escribió el script
@@ -190,7 +189,10 @@ evidencia `endpoint-script` v1 ya guardada sigue evaluándose.
 
 Esta versión se ha probado con osquery 5.24.1 en un contenedor Linux (test
 `tests/agent/test_osquery_e2e.py`, `pytest -m docker`), con las sustituciones
-que cita su cabecera. **Quedan pendientes de aceptación, con responsable el
+que cita su cabecera. osquery 5.24.1 no ejecuta el calendario al arrancar: la
+primera pasada programada llega tras un intervalo con splay (en torno a 6 h),
+así que el test comprueba el camino de resultados con una consulta en vivo y
+la primera pasada programada real se confirma en los pilotos. **Quedan pendientes de aceptación, con responsable el
 usuario, los pilotos reales** (no se dan por hechos por el test del
 contenedor; el script de macOS y el de Windows no se han ejecutado nunca en
 un equipo real). Evidencia que adjuntar al cerrar cada uno:
