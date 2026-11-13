@@ -6,7 +6,7 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
 
-PACK_DIR = files("ens_evidence.endpoint") / "queries" / "v1"
+PACK_DIR = files("ens_evidence.endpoint") / "queries" / "v2"
 SCRIPT_NAME = "collect-endpoint.sh"
 MANIFEST_NAME = "pack.manifest"
 PACK_HASH_NAME = "pack.sha256"
@@ -17,7 +17,7 @@ class Query(BaseModel):
     model_config = ConfigDict(extra="forbid", frozen=True)
 
     id: str
-    platforms: tuple[Literal["darwin", "linux"], ...]
+    platforms: tuple[Literal["darwin", "linux", "windows"], ...]
     purpose: str
     verified: bool
     note: str

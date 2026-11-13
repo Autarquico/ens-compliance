@@ -3,20 +3,20 @@
 # con las versiones de osquery en uso (https://osquery.io/schema/); el check
 # que las consuma debe dar UNKNOWN ante error, tabla vacía o columna ausente.
 id: endpoint-queries
-version: 1
+version: 2
 queries:
   - id: system_info
-    platforms: [darwin, linux]
+    platforms: [darwin, linux, windows]
     purpose: HOST-001
     verified: false
     note: Identidad del host (hostname, uuid).
   - id: os_version
-    platforms: [darwin, linux]
+    platforms: [darwin, linux, windows]
     purpose: HOST-003
     verified: false
     note: Nombre, versión y build del sistema operativo.
   - id: osquery_info
-    platforms: [darwin, linux]
+    platforms: [darwin, linux, windows]
     purpose: HOST-005
     verified: false
     note: Versión de osquery; alf en macOS 15 exige osquery 5.14.1 o superior.
@@ -65,3 +65,23 @@ queries:
     purpose: HOST-007
     verified: false
     note: Solo hosts RPM; en hosts DEB la tabla falla o está vacía.
+  - id: bitlocker_info
+    platforms: [windows]
+    purpose: HOST-004
+    verified: false
+    note: >-
+      Cifrado BitLocker por volumen; protection_status 1 es protección activa.
+      Columnas contrastadas con specs/windows/bitlocker_info.table de osquery 5.24.1.
+  - id: windows_security_center
+    platforms: [windows]
+    purpose: HOST-005
+    verified: false
+    note: >-
+      Salud (Good, Poor, Snoozed, Not Monitored, Error) de firewall, antivirus y
+      actualizaciones automáticas. autoupdate es la salud del servicio de Windows
+      Update, no la política de actualizaciones; no demuestra que se apliquen.
+  - id: programs
+    platforms: [windows]
+    purpose: HOST-007
+    verified: false
+    note: Productos instalados con Windows Installer, no todo el software del equipo.
