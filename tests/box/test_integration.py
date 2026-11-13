@@ -111,14 +111,24 @@ CRASH_CMD = 'CMD ["sh", "-c", "exit 1"]'
 
 
 def remove_project_resources(project: str) -> None:
+    """Borra lo que Compose etiquetó con el proyecto y falla si algo sobrevive."""
     label = f"label=com.docker.compose.project={project}"
-    containers = run(["docker", "ps", "-aq", "--filter", label]).stdout.split()
-    if containers:
-        run(["docker", "rm", "-f", *containers])
-    for kind in ("network", "volume"):
-        names = run(["docker", kind, "ls", "-q", "--filter", label]).stdout.split()
-        if names:
-            run(["docker", kind, "rm", *(["-f"] if kind == "volume" else []), *names])
+    removals = (
+        (["docker", "ps", "-aq"], ["docker", "rm", "-f"]),
+        (["docker", "network", "ls", "-q"], ["docker", "network", "rm"]),
+        (["docker", "volume", "ls", "-q"], ["docker", "volume", "rm", "-f"]),
+    )
+    errors = []
+    for listing, removal in removals:
+        names = run([*listing, "--filter", label], check=True).stdout.split()
+        if names and (removed := run([*removal, *names])).returncode:
+            errors.append(removed.stderr.strip())
+    leftovers = [
+        name
+        for listing, _ in removals
+        for name in run([*listing, "--filter", label], check=True).stdout.split()
+    ]
+    assert not leftovers, f"quedan recursos de {project}: {leftovers}; {errors}"
 
 
 @pytest.fixture(scope="module")
