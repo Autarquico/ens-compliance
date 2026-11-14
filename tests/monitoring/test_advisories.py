@@ -44,7 +44,7 @@ def test_judge_fail_review_and_clear():
     assert judge(None, RepoFeed(NOW, (), None))[0] == "review"
 
 
-def test_fetch_caches_for_a_day_and_expires_after_48_hours(tmp_path):
+def test_fetch_caches_for_a_day_and_a_failed_refresh_is_never_a_verdict(tmp_path):
     calls = []
     source = feed(tmp_path, github_transport([ADVISORY], calls=calls))
 
@@ -54,8 +54,9 @@ def test_fetch_caches_for_a_day_and_expires_after_48_hours(tmp_path):
     assert first.advisories[0].ghsa_id == "GHSA-aaaa-bbbb-cccc"
     assert again == first and len(calls) == 2  # una consulta de avisos y una de releases
     offline = feed(tmp_path, unreachable_transport())
-    assert offline.get("openbao/openbao", NOW + timedelta(hours=40)) is not None
-    assert offline.get("openbao/openbao", NOW + timedelta(hours=49)) is None
+    assert offline.get("openbao/openbao", NOW + timedelta(hours=40)) is None  # fallo: no vigente
+    assert offline.reference("openbao/openbao", NOW + timedelta(hours=40)) == first
+    assert offline.reference("openbao/openbao", NOW + timedelta(hours=49)) is None
 
 
 def test_failure_without_cache_is_unknown_and_bad_repo_name_is_refused(tmp_path):

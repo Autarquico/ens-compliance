@@ -110,13 +110,15 @@ def _availability(
             id, GROUP_TOOLS, title, "Sin dato reciente del agente del VPS.", tool.help_slug
         )
     row = containers.get(SERVICE_BY_TOOL[tool.id])
-    if row is None:
-        return unknown(
+    if row is None:  # muestra vigente y válida, y la herramienta esperada no está: se ha caído
+        return Reading(
             id,
             GROUP_TOOLS,
             title,
-            "No hay contenedor de la herramienta en el proyecto.",
+            Status.FAIL,
+            "El contenedor de la herramienta ya no existe en el proyecto.",
             tool.help_slug,
+            observed_at=now,
         )
     status, detail = container_status(row)
     return Reading(
@@ -167,13 +169,20 @@ def security(
     now: datetime,
 ) -> Reading:
     id, title = f"tool:{tool.id}:security", _title(tool, "Seguridad")
-    data = feed.get(GITHUB_REPO[tool.id], now)
+    repo = GITHUB_REPO[tool.id]
+    data = feed.get(repo, now)
     if data is None:
+        old = feed.reference(repo, now)
+        past = (
+            f" Referencia, no vigente: consulta del {old.fetched_at:%Y-%m-%d %H:%M} UTC."
+            if old
+            else ""
+        )
         return unknown(
             id,
             GROUP_TOOLS,
             title,
-            "Sin avisos de GitHub (sin red o caché vencida); no se asume que no haya.",
+            "La consulta diaria de avisos de GitHub ha fallado; no se asume que no haya." + past,
             tool.help_slug,
         )
     version, warning = _installed_version(tool, containers, seal)
@@ -196,9 +205,16 @@ def tool_present(
     tool: KitTool,
     containers: dict[str, Any] | None,
     seal: OpenBaoSeal | None,
+    seen: frozenset[str] = frozenset(),
 ) -> bool:
-    """La herramienta existe en esta caja: tiene evidencia, contenedor o (OpenBao) responde."""
+    """La herramienta se espera en esta caja.
+
+    Señales persistentes: evidencia del conector o disponibilidad ya vista en el histórico de 30
+    días (`seen`). Si no, el contenedor o (OpenBao) la respuesta del almacén.
+    """
     if scan_runs(store, tool.connector).last(tool.connector) is not None:
+        return True
+    if f"tool:{tool.id}:up" in seen:
         return True
     if tool.id == "claves" and seal is not None:
         return True
@@ -212,6 +228,7 @@ def tool_readings(
     project: str,
     seal: OpenBaoSeal | None,
     now: datetime,
+    seen: frozenset[str] = frozenset(),
 ) -> list[Reading]:
     containers = project_containers(samples, project, now)
     sample: Sample | None = samples.get("mon_containers")
@@ -220,7 +237,7 @@ def tool_readings(
     for tool in KIT_TOOLS:
         if tool.id not in SERVICE_BY_TOOL or not tool.on_box:
             continue
-        if not tool_present(store, tool, containers, seal):
+        if not tool_present(store, tool, containers, seal, seen):
             continue
         readings += [
             _availability(

@@ -12,7 +12,7 @@ from ui.conftest import ORIGIN, UiConfig, auth, jwks_for, make_key, mint, seed_e
 
 from ens_evidence.agent.monitoring import MonitoringStore
 from ens_evidence.backup.runner import run_backup
-from ens_evidence.monitoring import Monitor, MonitorLoop, Status
+from ens_evidence.monitoring import Monitor, MonitorLoop, Status, load_snapshot
 from ens_evidence.monitoring.advisories import make_client
 from ens_evidence.monitoring.history import RETENTION_DAYS
 from ens_evidence.ui.app import create_ui_app
@@ -133,6 +133,23 @@ def test_panel_shows_two_reds_with_runbooks_mails_and_leaves_the_matrix_alone(st
     assert "Disco" in smtp.sent[0].get_content()
     assert workspace_contents(workspace) == contents_before
     assert matrix_rows(workspace, NOW) == rows_before
+
+
+def test_a_removed_container_turns_its_tool_red_since_it_disappeared(state, workspace, ui):
+    running = {**DOWN_BACKREST, "state": "running", "status": "Up 2 hours"}
+    MonitoringStore(state).record([sample("mon_containers", [running], at=NOW)])
+    run_one_tick(monitor(workspace, state))
+    later = NOW + timedelta(minutes=10)
+    MonitoringStore(state).record([sample("mon_containers", [], at=later)])
+    smtp = fake_smtp()
+
+    run_one_tick(monitor(workspace, state, env=SMTP_ENV, smtp=smtp, clock=lambda: later))
+    snapshot = load_snapshot(state, later)
+
+    tool = next(i for i in snapshot.items if i.id == "tool:copias:up")
+    assert tool.status is Status.FAIL and tool.since == later
+    assert "Copias de seguridad" in ui("/monitorizacion").text
+    assert len(smtp.sent) == 1
 
 
 def test_every_page_carries_the_failing_banner(state, workspace, ui):

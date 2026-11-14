@@ -112,23 +112,25 @@ class AdvisoryFeed:
         self._client = client
 
     def get(self, repo: str, now: datetime) -> RepoFeed | None:
+        """Avisos de menos de 24 h, refrescando si toca; `None` si la consulta diaria falla."""
         cache = self._read()
         cached = cache.get(repo)
         if cached is None or now - cached.fetched_at >= REFRESH_AFTER:
             try:
-                fresh = fetch_repo(self._client or make_client(), repo, now)
+                cached = fetch_repo(self._client or make_client(), repo, now)
             except (httpx.HTTPError, ValueError, KeyError):
                 _LOGGER.warning("avisos de GitHub no disponibles para %s", repo)
-            else:
-                cache[repo] = cached = fresh
-                self._write(cache)
-        if (
-            cached is None
-            or not cached.fetched_at <= now + timedelta(minutes=5)
-            or (now - cached.fetched_at > CACHE_TTL)
-        ):
+                return None
+            cache[repo] = cached
+            self._write(cache)
+        return cached if cached.fetched_at <= now + timedelta(minutes=5) else None
+
+    def reference(self, repo: str, now: datetime) -> RepoFeed | None:
+        """Último resultado guardado (hasta 48 h), solo como dato fechado; nunca como veredicto."""
+        cached = self._read().get(repo)
+        if cached is None or not cached.fetched_at <= now + timedelta(minutes=5):
             return None
-        return cached
+        return cached if now - cached.fetched_at <= CACHE_TTL else None
 
     def _read(self) -> dict[str, RepoFeed]:
         try:

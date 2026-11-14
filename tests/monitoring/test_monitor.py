@@ -174,6 +174,51 @@ def test_a_probe_that_explodes_does_not_stop_the_tick(store, state_env, monkeypa
     assert snapshot.group("vps")
 
 
+def test_a_probe_that_explodes_keeps_its_group_items_as_unknown(store, state_env, monkeypatch):
+    from ens_evidence.monitoring import vps
+
+    failing_world(state_env)
+    first = monitor(store, state_env).tick()
+    assert next(i for i in first.items if i.id == "vps:disk:/").status is Status.FAIL
+
+    def boom(*args):
+        raise RuntimeError("fallo interno")
+
+    monkeypatch.setattr(vps, "vps_readings", boom)
+    later = monitor(store, state_env, clock=lambda: NOW + timedelta(minutes=5)).tick()
+
+    assert {i.id for i in later.group("vps")} == {i.id for i in first.group("vps")}
+    assert {i.status for i in later.group("vps")} == {Status.UNKNOWN}
+    assert [i for i in later.group("herramientas") if i.id == "tool:copias:up"][
+        0
+    ].status is Status.FAIL
+
+
+def test_a_probe_that_explodes_without_history_leaves_an_unknown_placeholder(
+    store, state_env, monkeypatch
+):
+    from ens_evidence.monitoring import vps
+
+    monkeypatch.setattr(vps, "vps_readings", lambda *a: 1 / 0)
+
+    snapshot = monitor(store, state_env).tick()
+
+    assert [i.status for i in snapshot.group("vps")] == [Status.UNKNOWN]
+
+
+def test_failed_github_query_is_unknown_for_security_with_a_dated_reference(store, state_env):
+    feed_samples(state_env, sample("mon_containers", [DOWN_BACKREST]))
+    monitor(store, state_env).tick()  # caché de GitHub hoy
+    later = NOW + timedelta(hours=30)
+    feed_samples(state_env, sample("mon_containers", [DOWN_BACKREST], at=later))
+
+    snapshot = monitor(store, state_env, clock=lambda: later, github=unreachable_transport()).tick()
+
+    item = next(i for i in snapshot.items if i.id == "tool:copias:security")
+    assert item.status is Status.UNKNOWN
+    assert "Referencia, no vigente" in item.detail
+
+
 def test_loop_survives_a_failing_tick_and_stops_with_the_event(store, state_env, monkeypatch):
     mon = monitor(store, state_env)
     stop = threading.Event()

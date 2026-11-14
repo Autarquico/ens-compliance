@@ -16,8 +16,17 @@ from ens_evidence.monitoring.advisories import AdvisoryFeed
 from ens_evidence.monitoring.alerts import AlertBook
 from ens_evidence.monitoring.history import History
 from ens_evidence.monitoring.mail import SmtpFactory, SmtpSettings, send_alert
-from ens_evidence.monitoring.model import Item, Reading, Snapshot
-from ens_evidence.monitoring.snapshot import write_heartbeat, write_snapshot
+from ens_evidence.monitoring.model import (
+    GROUP_BOX,
+    GROUP_TOOLS,
+    GROUP_VPS,
+    Item,
+    Reading,
+    Snapshot,
+    Status,
+    unknown,
+)
+from ens_evidence.monitoring.snapshot import load_snapshot, write_heartbeat, write_snapshot
 from ens_evidence.monitoring.thresholds import load_thresholds
 from ens_evidence.workspace import WorkspaceStore
 from ens_evidence.workspace.cycle_lock import resolve_state_dir
@@ -101,18 +110,48 @@ class Monitor:
         seal = self._guarded(
             lambda: tools.probe_openbao(self._openbao_address(), self._openbao_transport), None
         )
+        seen = self._guarded(lambda: self._seen_up(now), frozenset())
         found: list[Reading] = []
-        found += self._guarded(
-            lambda: tools.tool_readings(self._store, samples, self._feed, project, seal, now), []
+        found += self._group(
+            GROUP_TOOLS,
+            lambda: tools.tool_readings(self._store, samples, self._feed, project, seal, now, seen),
+            now,
         )
-        found += self._guarded(
+        found += self._group(
+            GROUP_VPS,
             lambda: vps.vps_readings(
                 samples, config.tls_hostnames if config else [], project, limits, now
             ),
-            [],
+            now,
         )
-        found += self._guarded(lambda: _box(self._store, limits, now), [])
+        found += self._group(GROUP_BOX, lambda: _box(self._store, limits, now), now)
         return found
+
+    def _group(
+        self, group: str, probe: Callable[[], list[Reading]], now: datetime
+    ) -> list[Reading]:
+        """Si la sonda revienta, los elementos del grupo siguen ahí, como desconocidos."""
+        try:
+            return probe()
+        except Exception as error:  # noqa: BLE001 - el bucle no debe morir por una sonda
+            _LOGGER.warning("sonda fallida (%s)", type(error).__name__)
+        detail = "La sonda ha fallado en este ciclo; se desconoce el estado."
+        previous = load_snapshot(self._state_dir, now)
+        kept = previous.group(group) if previous else ()
+        if not kept:
+            return [unknown(f"{group}:sonda", group, f"Sonda de {group}", detail)]
+        return [unknown(i.id, group, i.title, detail, i.runbook) for i in kept]
+
+    def _seen_up(self, now: datetime) -> frozenset[str]:
+        """Disponibilidades de herramienta con dato (no desconocido) en 30 días."""
+        series = History(self._state_dir).series(now)
+        return frozenset(
+            id
+            for id, points in series.items()
+            if id.startswith("tool:")
+            and id.endswith(":up")
+            and any(p.status is not Status.UNKNOWN for p in points)
+        )
 
     def _openbao_address(self) -> str:
         try:
