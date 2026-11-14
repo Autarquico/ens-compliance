@@ -631,10 +631,10 @@ KIT_COMPOSE_SERVICE = {"copias": "backrest", "claves": "openbao", "contrasenas":
 
 
 def test_cada_herramienta_del_kit_tiene_su_servicio_de_compose():
-    assert set(KIT_COMPOSE_SERVICE) == {tool.id for tool in KIT_TOOLS}
+    assert set(KIT_COMPOSE_SERVICE) == {tool.id for tool in KIT_TOOLS if tool.on_box}
 
 
-@pytest.mark.parametrize("tool", KIT_TOOLS, ids=lambda t: t.id)
+@pytest.mark.parametrize("tool", [t for t in KIT_TOOLS if t.on_box], ids=lambda t: t.id)
 def test_toda_herramienta_del_kit_entra_solo_por_su_host_tras_access(tool, caddyfile, services):
     env = f"ENS_{tool.id.upper()}_HOST"
     assert re.search(rf"@{tool.id} host \{{\${env}:[^}}\s]+\}}", caddyfile), tool.id

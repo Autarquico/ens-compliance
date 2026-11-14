@@ -686,6 +686,7 @@ VIEW_CONTEXT = {
         "blockers": [HOSTILE],
         "kit_offer": {
             "name": "copias",
+            "on_box": True,
             "tool_name": HOSTILE,
             "cta": "Añadir las copias",
             "url": "/herramientas/copias",
@@ -723,6 +724,7 @@ VIEW_CONTEXT = {
         "tools": [
             {
                 "id": "copias",
+                "on_box": True,
                 "name": HOSTILE,
                 "purpose": HOSTILE,
                 "state": {
@@ -748,6 +750,7 @@ VIEW_CONTEXT = {
             },
             {
                 "id": "claves",
+                "on_box": True,
                 "name": "Claves y secretos",
                 "purpose": "x",
                 "state": {
