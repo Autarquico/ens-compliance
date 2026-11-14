@@ -172,6 +172,25 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
 Un token caducado o de otra generación da `node_invalid`: vuelve a ejecutar
 `agent admit`.
 
+### Inscribir el propio VPS de la caja
+
+El panel de monitorización (`monitorizacion.md`) lee del agente osquery del VPS
+la carga, la memoria, el disco, los certificados y el estado de los
+contenedores. Para eso el VPS se inscribe como un equipo más: activo de tipo
+`server` en `scope/assets.yaml`, alta con `agent admit` y script de instalación
+como en cualquier servidor Linux (pasos 1 a 5 de arriba). Después, pon su
+identificador de activo en la configuración de monitorización
+(`vps_asset_id`); solo los datos de ese equipo alimentan la salud del VPS.
+
+**Aviso:** el instalador no se toca ni se adapta. Si el VPS ya tiene un
+osquery gestionado por otra herramienta o por otra persona, no ejecutes
+`agent install`: reinstalaría encima, reescribiría flags y token y
+instalaría ClamAV. Resuelve primero con quien lo gestiona, o deja el panel sin
+datos del VPS (saldrán en gris, «desconocido»). Inscribir el VPS es instalar
+el agente de la caja como en cualquier servidor, con su ClamAV, y por tanto
+también lo cubren las secciones 6 y 7. Los datos de monitorización no son
+evidencia y no entran en la copia.
+
 ### Readmisión tras perder el estado
 
 Si el equipo pierde la base de datos de osquery (reinstalación del sistema, borrado de
