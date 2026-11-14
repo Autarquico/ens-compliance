@@ -204,9 +204,9 @@ KIT_TOOLS: tuple[KitTool, ...] = (
         name="Protección frente a código dañino",
         purpose=(
             "Instala ClamAV en tus servidores Linux (Debian, Ubuntu) y lee, con osquery, el "
-            "antimalware de cada equipo: ClamAV en Linux, Defender en Windows, XProtect y "
-            "Gatekeeper en macOS. No hay nada que desplegar en la caja: se instala en cada equipo "
-            "con el instalador de agentes."
+            "antimalware de cada equipo: ClamAV en Linux, el antivirus que muestre el Centro de "
+            "seguridad en Windows, XProtect y Gatekeeper en macOS. No hay nada que desplegar en la "
+            "caja: se instala en cada equipo con el instalador de agentes."
         ),
         connector="endpoint",
         measures=("op.exp.6",),
@@ -214,9 +214,12 @@ KIT_TOOLS: tuple[KitTool, ...] = (
         covers=(
             "En cada recogida comprueba que las firmas están al día (op.exp.6.4: en Linux la "
             "fecha de los ficheros de ClamAV y que freshclam esté activo; en macOS XProtect; en "
-            "Windows el estado de Defender) y que los puestos tienen protección en tiempo real "
-            "(op.exp.6.5: Gatekeeper y XProtect en macOS, Defender en Windows). Cubre una parte "
-            "de esas dos cláusulas; la fecha es la del fichero, no la versión de las firmas. "
+            "Windows lo que el Centro de seguridad informa del antivirus) y que los puestos "
+            "tienen protección en tiempo real (op.exp.6.5: Gatekeeper y XProtect en macOS; en "
+            "Windows solo detecta antivirus apagados, porque un antivirus activo no prueba el "
+            "tiempo real y queda en desconocido). Cubre una parte de esas dos cláusulas; la "
+            "fecha es la del fichero, no la versión de las firmas, y se revisa también al "
+            "evaluar. "
             "Windows se evalúa de extremo a extremo cuando llegue el colector de osquery; por "
             "ahora solo está probado con ejemplos."
         ),

@@ -333,6 +333,29 @@ def payload_sha(box: Sandbox) -> str:
     return hashlib.sha256(box.payload.read_bytes()).hexdigest()
 
 
+def isolated_path(box: Sandbox, tmp_path: Path) -> str:
+    """PATH solo con las utilidades básicas y las herramientas simuladas de la raíz falsa."""
+    shell = tmp_path / "shell"
+    shell.mkdir()
+    for tool in (
+        "sh",
+        "printf",
+        "cut",
+        "mktemp",
+        "rm",
+        "tr",
+        "cat",
+        "chmod",
+        "mkdir",
+        "dirname",
+        "cp",
+    ):
+        found = shutil.which(tool)
+        if found:
+            (shell / tool).symlink_to(found)
+    return f"{box.bin}:{shell}"
+
+
 def assert_nothing_installed_or_started(box: Sandbox, result) -> None:
     assert result.returncode != 0
     assert not [c for c in box.calls if c.startswith(("dpkg", "rpm", "systemctl", "apt-get"))]
@@ -379,7 +402,7 @@ def test_failed_download_aborts_before_the_installer(sandbox):
 def test_missing_tool_aborts_before_downloading(sandbox, tmp_path):
     # PATH aislado: el runner de CI tiene systemctl en /usr/bin y lo encontraría.
     (sandbox.bin / "systemctl").unlink()
-    for tool in ("cut", "mktemp", "rm", "tr", "cat", "chmod", "mkdir", "dirname"):
+    for tool in ("cut", "mktemp", "rm", "tr", "cat", "chmod", "mkdir", "dirname", "cp"):
         sandbox._tool(tool, "exit 0")
     shell = tmp_path / "shell"
     shell.mkdir()
@@ -413,13 +436,48 @@ def test_laptop_deb_never_touches_clamav(sandbox):
     assert not [c for c in sandbox.calls if "clamav" in c or c.startswith("apt-get")]
 
 
-def test_server_rpm_aborts_with_instructions_before_mutating(sandbox):
+def test_server_rpm_aborts_with_instructions_before_mutating(sandbox, tmp_path):
     script = sandbox.render("linux", "rpm", "amd64", with_antimalware=True)
-    result = sandbox.run(script, expected_sha=payload_sha(sandbox))
+    result = sandbox.run(
+        script,
+        expected_sha=payload_sha(sandbox),
+        env={"PATH": isolated_path(sandbox, tmp_path)},
+    )
     assert_nothing_installed_or_started(sandbox, result)
     assert "curl" not in sandbox.calls
     assert "EPEL" in result.stderr
     assert "clamav-update" in result.stderr
+
+
+def test_server_rpm_continues_when_clamav_was_installed_by_hand(sandbox, tmp_path):
+    script = sandbox.render("linux", "rpm", "amd64", with_antimalware=True)
+    env = {"PATH": isolated_path(sandbox, tmp_path)}
+    first = sandbox.run(script, expected_sha=payload_sha(sandbox), env=env)
+    assert first.returncode != 0
+    sandbox._tool("clamscan", "exit 0")
+    sandbox._tool("freshclam", "exit 0")
+    retry = sandbox.run(script, expected_sha=payload_sha(sandbox), env=env)
+    assert retry.returncode == 0, retry.stderr
+    assert any(c.startswith("rpm -U ") for c in sandbox.calls)
+    assert not [c for c in sandbox.calls if "clamav" in c or c.startswith("apt-get")]
+
+
+def test_server_deb_without_dpkg_aborts_before_touching_clamav(sandbox, tmp_path):
+    (sandbox.bin / "dpkg").unlink()
+    result = sandbox.run(
+        sandbox.render(with_antimalware=True),
+        expected_sha=payload_sha(sandbox),
+        env={"PATH": isolated_path(sandbox, tmp_path)},
+    )
+    assert_nothing_installed_or_started(sandbox, result)
+    assert "dpkg" in result.stderr
+
+
+def test_failure_after_clamav_install_reports_the_partial_state(sandbox):
+    sandbox._tool("dpkg", 'echo "dpkg $*" >> "$LOG"; exit 1')
+    result = sandbox.run(sandbox.render(with_antimalware=True), expected_sha=payload_sha(sandbox))
+    assert result.returncode != 0
+    assert "ClamAV ya está instalado y osquery no" in result.stderr
 
 
 def test_apt_update_failure_aborts_before_osquery(sandbox):
@@ -440,16 +498,10 @@ def test_clamav_failure_aborts_before_osquery(sandbox):
 
 def test_server_deb_without_apt_get_aborts_before_downloading(sandbox, tmp_path):
     (sandbox.bin / "apt-get").unlink()
-    shell = tmp_path / "shell"
-    shell.mkdir()
-    for tool in ("sh", "printf"):
-        found = shutil.which(tool)
-        if found:
-            (shell / tool).symlink_to(found)
     result = sandbox.run(
         sandbox.render(with_antimalware=True),
         expected_sha=payload_sha(sandbox),
-        env={"PATH": f"{sandbox.bin}:{shell}"},
+        env={"PATH": isolated_path(sandbox, tmp_path)},
     )
     assert_nothing_installed_or_started(sandbox, result)
     assert "curl" not in sandbox.calls

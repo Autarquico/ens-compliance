@@ -577,6 +577,19 @@ class SignatureDate:
         assert self.moment is not None
         return host.collected_at - self.moment > timedelta(days=max_age_days)
 
+    def outdated_at_evaluation(
+        self, host: Host, context: CheckContext, max_age_days: int
+    ) -> Outcome | None:
+        """UNKNOWN si, con la recogida aún vigente, las firmas ya superan la política hoy."""
+        assert self.moment is not None
+        if context.evaluated_at - self.moment <= timedelta(days=max_age_days):
+            return None
+        return _unknown(
+            f"las firmas del {self.moment:%Y-%m-%d} ({FILE_DATE_NOTE}) cumplían la política "
+            f"de {max_age_days} días al recoger, pero ya no al evaluar; recoge evidencia nueva",
+            "signatures_stale",
+        )
+
 
 def _signatures(host: Host, context: CheckContext) -> Outcome:
     match host.platform:
@@ -670,6 +683,9 @@ def _clamav_signatures(host: Host, context: CheckContext) -> Outcome:
             CheckStatus.FAIL,
             f"{ATTESTED}: {shown}, más antiguas que los {limit} días de la política",
         )
+    limit = context.config.max_signature_age_days
+    if (stale := date.outdated_at_evaluation(host, context, limit)) is not None:
+        return stale
     if (failed := _failed_query(host, ["clamav_units"], "servicio clamav-freshclam")) is not None:
         return failed
     units = [row for row in host.rows("clamav_units") if row.get("id") == FRESHCLAM_UNIT]
@@ -701,7 +717,8 @@ def _xprotect(host: Host, context: CheckContext) -> tuple[datetime | None, Outco
             f"{ATTESTED}: XProtect del {date.moment:%Y-%m-%d} ({FILE_DATE_NOTE}), "
             f"más antiguo que los {limit} días de la política",
         )
-    return date.moment, None
+    limit = context.config.max_xprotect_age_days
+    return date.moment, date.outdated_at_evaluation(host, context, limit)
 
 
 def _xprotect_signatures(host: Host, context: CheckContext) -> Outcome:
@@ -784,9 +801,11 @@ def _windows_realtime(host: Host) -> Outcome:
     if not rows:
         return _not_supported("sin productos antivirus en el Centro de seguridad")
     if _active(rows):
-        return Outcome(
-            CheckStatus.PASS,
-            f"{ATTESTED}: hay un antivirus activo; {SECURITY_CENTER_VIEW}",
+        return _unknown(
+            "el Centro de seguridad muestra un antivirus activo, pero eso no prueba la "
+            "protección en tiempo real y su correspondencia está pendiente de validar; "
+            f"{SECURITY_CENTER_VIEW}",
+            "realtime_unproven",
         )
     states = {str(row.get("state", "")).strip().casefold() for row in rows}
     if states <= ANTIVIRUS_OFF:
