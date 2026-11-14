@@ -22,6 +22,8 @@ from ens_evidence.agent.secrets import AgentSecrets, AgentSecretsError, load_age
 from ens_evidence.agent.state import AgentState
 from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.endpoint.config import CONFIG_NAME, EndpointConfig
+from ens_evidence.scope.inventory import load_assets
+from ens_evidence.scope.models import AssetType
 from ens_evidence.workspace import WorkspaceError
 from ens_evidence.workspace.cycle_lock import CycleLock
 
@@ -83,6 +85,16 @@ def _enrolled(config: EndpointConfig, asset: str) -> str:
     if asset not in config.hosts:
         raise _fail(f"El activo {asset} no está inscrito en connectors/endpoint.yaml.")
     return asset
+
+
+def _is_server(ctx: typer.Context, asset: str) -> bool:
+    assets, errors = load_assets(_cli().open_workspace(ctx))
+    if assets is None:
+        raise _fail("Error: no se pudo leer el inventario de activos:\n" + "\n".join(errors))
+    found = next((item for item in assets.assets if item.id == asset), None)
+    if found is None:
+        raise _fail(f"El activo {asset} no está en scope/assets.yaml; añádelo al inventario.")
+    return found.type is AssetType.SERVER
 
 
 def _expiry(raw: str, now: datetime) -> datetime:
@@ -219,9 +231,13 @@ def install(
 ) -> None:
     """Imprime el script que instala osquery (versión fijada, sha256 verificado) y lo configura
     contra el servidor. Ejecútalo en el equipo como root o administrador. No lee ni escribe
-    secretos: el token lo lee el script desde --token-file."""
-    script = render_install_script(os_name, server, token_file, package, arch)
+    secretos: el token lo lee el script desde --token-file. En servidores Linux Debian/Ubuntu
+    añade ClamAV con actualización de firmas (paquetes de la distribución)."""
     _enrolled(_endpoint_config(ctx), asset)
+    with_antimalware = _is_server(ctx, asset)
+    script = render_install_script(
+        os_name, server, token_file, package, arch, with_antimalware=with_antimalware
+    )
     typer.echo(script, nl=False)
 
 

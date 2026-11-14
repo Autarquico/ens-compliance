@@ -16,6 +16,7 @@ from ens_evidence.agent.install import InstallError, render_install_script
 from ens_evidence.agent.install.release import load_release
 
 from .protocol_support import LAPTOP
+from .protocol_support import SERVER as SERVER_ASSET
 from .test_cli_agent import ens, settings  # noqa: F401 -- fixture compartida
 
 SERVER = "agentes.example.org"
@@ -38,6 +39,32 @@ REQUIRED_FLAGS = (
 LINUX = ("linux", "deb", "amd64")
 
 
+ASSETS = """\
+assets:
+  - id: lap-ana
+    type: laptop
+    deployment: deployed
+    os: macOS 15
+    owner: Ana Ruiz
+    encrypted: true
+    usage: Desarrollo
+  - id: srv-app
+    type: server
+    deployment: deployed
+    hostname: srv-app.taller-norte.example
+    function: Aplicación
+    os: Debian 12
+    environment: production
+    location: VPS
+"""
+ASSETS_KEY = "scope/assets.yaml"
+
+
+@pytest.fixture(autouse=True)
+def inventory(world):
+    world.workspace.write_text(ASSETS_KEY, ASSETS)
+
+
 def install_args(os_name="linux", package="deb", arch="amd64", server=SERVER, asset=LAPTOP):
     args = ["install", "--asset", asset, "--os", os_name, "--server", server]
     args += ["--token-file", "/root/token"]
@@ -48,8 +75,17 @@ def install_args(os_name="linux", package="deb", arch="amd64", server=SERVER, as
     return args
 
 
-def render(os_name="linux", package="deb", arch="amd64", server=SERVER, token_file="/root/token"):
-    return render_install_script(os_name, server, token_file, package, arch)
+def render(
+    os_name="linux",
+    package="deb",
+    arch="amd64",
+    server=SERVER,
+    token_file="/root/token",
+    with_antimalware=False,
+):
+    return render_install_script(
+        os_name, server, token_file, package, arch, with_antimalware=with_antimalware
+    )
 
 
 # --- CLI ---------------------------------------------------------------------------------------
@@ -60,6 +96,27 @@ def test_prints_script_for_an_enrolled_asset_and_nothing_else(settings):
     assert result.exit_code == 0, result.output
     assert result.stdout.startswith("#!/bin/sh\n")
     assert "osquery 5.24.1" in result.stdout
+
+
+def test_server_script_installs_clamav_and_laptop_script_does_not(settings):
+    server = ens(settings, *install_args(asset=SERVER_ASSET)).stdout
+    laptop = ens(settings, *install_args(asset=LAPTOP)).stdout
+    assert "WITH_ANTIMALWARE=1" in server
+    assert "WITH_ANTIMALWARE=0" in laptop
+
+
+@pytest.mark.parametrize("os_name", ["macos", "windows"])
+def test_server_on_macos_or_windows_gets_no_clamav(settings, os_name):
+    out = ens(settings, *install_args(os_name, None, None, asset=SERVER_ASSET)).stdout
+    assert "clamav" not in out.lower()
+
+
+def test_asset_enrolled_but_missing_from_the_inventory_is_rejected(settings, world):
+    world.workspace.write_text(ASSETS_KEY, ASSETS.split("  - id: srv-app")[0])
+    result = ens(settings, *install_args(asset=SERVER_ASSET))
+    assert result.exit_code == 2
+    assert "scope/assets.yaml" in result.output
+    assert not result.stdout.startswith("#!")
 
 
 @pytest.mark.parametrize(
@@ -217,6 +274,7 @@ class Sandbox:
         self._tool("dpkg", 'echo "dpkg $*" >> "$LOG"')
         self._tool("rpm", 'echo "rpm $*" >> "$LOG"')
         self._tool("systemctl", 'echo "systemctl $*" >> "$LOG"')
+        self._tool("apt-get", 'echo "apt-get $*" >> "$LOG"')
 
     def _tool(self, name: str, body: str) -> None:
         path = self.bin / name
@@ -249,8 +307,17 @@ class Sandbox:
             ["sh", str(path)], capture_output=True, text=True, env=environ, check=False
         )
 
-    def render(self, *target: str | None, token_file: Path | None = None) -> str:
-        return render(*(target or LINUX), token_file=str(token_file or self.token))
+    def render(
+        self,
+        *target: str | None,
+        token_file: Path | None = None,
+        with_antimalware: bool = False,
+    ) -> str:
+        return render(
+            *(target or LINUX),
+            token_file=str(token_file or self.token),
+            with_antimalware=with_antimalware,
+        )
 
     @property
     def calls(self) -> list[str]:
@@ -268,7 +335,7 @@ def payload_sha(box: Sandbox) -> str:
 
 def assert_nothing_installed_or_started(box: Sandbox, result) -> None:
     assert result.returncode != 0
-    assert not [c for c in box.calls if c.startswith(("dpkg", "rpm", "systemctl"))]
+    assert not [c for c in box.calls if c.startswith(("dpkg", "rpm", "systemctl", "apt-get"))]
     assert not (box.root / "etc-osquery").exists()
     assert TOKEN not in result.stdout + result.stderr
 
@@ -325,6 +392,59 @@ def test_missing_tool_aborts_before_downloading(sandbox, tmp_path):
     assert_nothing_installed_or_started(sandbox, result)
     assert "curl" not in sandbox.calls
     assert "systemctl" in result.stderr
+
+
+def test_server_deb_installs_clamav_before_osquery(sandbox):
+    result = sandbox.run(sandbox.render(with_antimalware=True), expected_sha=payload_sha(sandbox))
+    assert result.returncode == 0, result.stderr
+    calls = sandbox.calls
+    clamav = calls.index("apt-get install -y clamav clamav-freshclam")
+    freshclam = calls.index("systemctl enable --now clamav-freshclam")
+    osquery = next(i for i, c in enumerate(calls) if c.startswith("dpkg -i "))
+    assert clamav < freshclam < osquery
+    assert osquery < calls.index("systemctl disable --now osqueryd")
+
+
+def test_laptop_deb_never_touches_clamav(sandbox):
+    result = sandbox.run(sandbox.render(), expected_sha=payload_sha(sandbox))
+    assert result.returncode == 0, result.stderr
+    assert not [c for c in sandbox.calls if "clamav" in c or c.startswith("apt-get")]
+
+
+def test_server_rpm_aborts_with_instructions_before_mutating(sandbox):
+    script = sandbox.render("linux", "rpm", "amd64", with_antimalware=True)
+    result = sandbox.run(script, expected_sha=payload_sha(sandbox))
+    assert_nothing_installed_or_started(sandbox, result)
+    assert "curl" not in sandbox.calls
+    assert "EPEL" in result.stderr
+    assert "clamav-update" in result.stderr
+
+
+def test_clamav_failure_aborts_before_osquery(sandbox):
+    sandbox._tool("apt-get", 'echo "apt-get $*" >> "$LOG"; exit 100')
+    result = sandbox.run(sandbox.render(with_antimalware=True), expected_sha=payload_sha(sandbox))
+    assert result.returncode != 0
+    assert "ClamAV" in result.stderr
+    assert not [c for c in sandbox.calls if c.startswith(("dpkg", "systemctl"))]
+    assert not (sandbox.root / "etc-osquery").exists()
+
+
+def test_server_deb_without_apt_get_aborts_before_downloading(sandbox, tmp_path):
+    (sandbox.bin / "apt-get").unlink()
+    shell = tmp_path / "shell"
+    shell.mkdir()
+    for tool in ("sh", "printf"):
+        found = shutil.which(tool)
+        if found:
+            (shell / tool).symlink_to(found)
+    result = sandbox.run(
+        sandbox.render(with_antimalware=True),
+        expected_sha=payload_sha(sandbox),
+        env={"PATH": f"{sandbox.bin}:{shell}"},
+    )
+    assert_nothing_installed_or_started(sandbox, result)
+    assert "curl" not in sandbox.calls
+    assert "apt-get" in result.stderr
 
 
 def test_installer_failure_never_starts_the_service(sandbox):

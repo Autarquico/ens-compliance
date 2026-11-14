@@ -53,7 +53,13 @@ def _fill(template: str, values: dict[str, str]) -> str:
 
 
 def render_install_script(
-    os_name: str, server: str, token_file: str, package: str | None, arch: str | None
+    os_name: str,
+    server: str,
+    token_file: str,
+    package: str | None,
+    arch: str | None,
+    *,
+    with_antimalware: bool = False,
 ) -> str:
     version, packages = load_release()
     entry = resolve_package(os_name, package, arch, packages)
@@ -70,6 +76,8 @@ def render_install_script(
         "TOKEN_FILE": quote(token),
         "FLAGS": flags.rstrip("\n"),
     }
+    if os_name == "linux":
+        values["WITH_ANTIMALWARE"] = "1" if with_antimalware else "0"
     if os_name != "windows":
         values["COMMON"] = _fill(_resource("scripts", "common.sh"), values)
     return _fill(_resource("scripts", SCRIPTS[os_name]), values)

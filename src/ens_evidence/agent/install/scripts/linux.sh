@@ -13,7 +13,28 @@ sha256_of() {
   sha256sum "$1" | cut -d ' ' -f 1
 }
 
+WITH_ANTIMALWARE=@@WITH_ANTIMALWARE@@
+
+# Antes de tocar nada: ClamAV solo se instala con el gestor de paquetes de la distribución.
+if [ "$WITH_ANTIMALWARE" = 1 ]; then
+  case "$PACKAGE" in
+    deb)
+      command -v apt-get >/dev/null 2>&1 || {
+        printf 'Error: falta apt-get, necesario para instalar ClamAV; no se ha instalado nada.\n' >&2
+        exit 1
+      } ;;
+    *)
+      printf 'Error: este equipo es un servidor y necesita ClamAV, pero el instalador no añade repositorios (EPEL). Instálalo a mano: habilita EPEL, instala clamav y clamav-update, activa la actualización de firmas y vuelve a ejecutar este script. No se ha instalado nada.\n' >&2
+      exit 1 ;;
+  esac
+fi
+
 @@COMMON@@
+
+if [ "$WITH_ANTIMALWARE" = 1 ]; then
+  apt-get install -y clamav clamav-freshclam || die "no se pudo instalar ClamAV."
+  systemctl enable --now clamav-freshclam || die "no se pudo activar clamav-freshclam."
+fi
 
 case "$PACKAGE" in
   deb) need dpkg && dpkg -i "$PACKAGE_FILE" ;;
