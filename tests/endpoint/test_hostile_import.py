@@ -149,7 +149,7 @@ def test_un_paquete_de_consultas_distinto_del_empaquetado_se_rechaza(store, lapt
 
 
 def test_una_version_de_paquete_de_consultas_distinta_se_rechaza(store, laptop_package):
-    rejected(store, rebuilt(laptop_package, meta={"pack_version": "2"}))
+    rejected(store, rebuilt(laptop_package, meta={"pack_version": "3"}))
 
 
 def test_collected_at_sin_zona_horaria_se_rechaza(store, laptop_package):

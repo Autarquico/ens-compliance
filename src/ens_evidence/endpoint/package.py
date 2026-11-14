@@ -54,7 +54,7 @@ class Meta(BaseModel):
     pack_version: str
     pack_sha256: str
     osquery_version: str
-    platform: Literal["darwin", "linux"]
+    platform: Literal["darwin", "linux"]  # el script no recoge en Windows
     hostname: str
     collected_at: AwareDatetime
     queries: list[QueryRun]
@@ -164,6 +164,11 @@ def _parse_meta(body: bytes) -> Meta:
 
 
 def _verify_meta(meta: Meta, pack: QueryPack, now: datetime) -> None:
+    if meta.pack_version == "1" and str(pack.version) != "1":
+        raise PackageRejected(
+            "el paquete es de la versión 1 de consultas; repite la recogida con el script "
+            "nuevo (`ens-evidence endpoint script`)"
+        )
     if meta.pack_sha256 != pack_sha256() or (meta.pack_id, meta.pack_version) != (
         pack.id,
         str(pack.version),

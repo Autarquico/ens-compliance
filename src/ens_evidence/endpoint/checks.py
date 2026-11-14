@@ -125,7 +125,13 @@ def _outcomes(
 ) -> dict[str, Outcome]:
     if item is None:
         if enrollment is not None:
-            return _without_evidence("no_evidence", "no hay evidencia importada de este equipo")
+            return _without_evidence(
+                "no_evidence",
+                (
+                    "falta la evidencia del script guiado (`endpoint script`) de este equipo; "
+                    "los resultados del agente aún no se evalúan (lo hará collector-osquery)"
+                ),
+            )
         return _without_evidence(
             "not_enrolled", "el equipo no está inscrito en `hosts` de connectors/endpoint.yaml"
         )

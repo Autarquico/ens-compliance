@@ -45,6 +45,15 @@ STORED_COLUMNS: dict[str, tuple[str, ...]] = {
     "apps": ("name", "bundle_identifier", "bundle_short_version", "bundle_version"),
     "deb_packages": ("name", "version", "arch", "status"),
     "rpm_packages": ("name", "version", "release", "arch"),
+    "bitlocker_info": (
+        "device_id",
+        "drive_letter",
+        "protection_status",
+        "conversion_status",
+        "encryption_method",
+    ),
+    "windows_security_center": ("firewall", "autoupdate", "antivirus"),
+    "programs": ("name", "version", "publisher", "install_date"),
 }
 
 ATTESTATION = (

@@ -34,7 +34,7 @@ from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 
 MAX_HOSTNAME_CHARS = 255
-KNOWN_PLATFORMS = frozenset({"darwin", "linux"})
+KNOWN_PLATFORMS = frozenset({"darwin", "linux", "windows"})
 # osquery desplaza cada intervalo hasta un 10 % (`--schedule_splay_percent`, 10 por defecto).
 SCHEDULE_SPLAY = 0.10
 # Un snapshot por consulta del paquete y equipo por intervalo de schedule, contado por su hora

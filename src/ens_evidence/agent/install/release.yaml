@@ -1,0 +1,11 @@
+# osquery fijado por versión. Cambiarlo es una decisión de revisión, no de ejecución.
+# sha256: campo `digest` de la API de releases de GitHub
+#   (gh api repos/osquery/osquery/releases/tags/5.24.1), no calculado al descargar.
+version: 5.24.1
+packages:
+  - {os: macos, package: pkg, arch: universal, filename: osquery-5.24.1.pkg, url: "https://github.com/osquery/osquery/releases/download/5.24.1/osquery-5.24.1.pkg", sha256: 950cc119f68c4d292f3e9407171205633e7174e13fc14ab593f48c75d907bd4f}
+  - {os: windows, package: msi, arch: amd64, filename: osquery-5.24.1.msi, url: "https://github.com/osquery/osquery/releases/download/5.24.1/osquery-5.24.1.msi", sha256: 36cc35dea559270c48040d894adde22785150bd2fcfe8f2489b86ead4688b004}
+  - {os: linux, package: deb, arch: amd64, filename: osquery_5.24.1-1.linux_amd64.deb, url: "https://github.com/osquery/osquery/releases/download/5.24.1/osquery_5.24.1-1.linux_amd64.deb", sha256: c6a37aec1156712cce0fafeb01a3697a2b73a1863a2b39fc3473b07600aea68d}
+  - {os: linux, package: deb, arch: arm64, filename: osquery_5.24.1-1.linux_arm64.deb, url: "https://github.com/osquery/osquery/releases/download/5.24.1/osquery_5.24.1-1.linux_arm64.deb", sha256: 6a14f55b8be802e1e9b10108295ce7df82437e02161f28030ce71711fbf27a64}
+  - {os: linux, package: rpm, arch: amd64, filename: osquery-5.24.1-1.linux.x86_64.rpm, url: "https://github.com/osquery/osquery/releases/download/5.24.1/osquery-5.24.1-1.linux.x86_64.rpm", sha256: e0ba6a45327a5abdfa42b4ae9f37637af5c4006d588061940668358f80d59244}
+  - {os: linux, package: rpm, arch: arm64, filename: osquery-5.24.1-1.linux.aarch64.rpm, url: "https://github.com/osquery/osquery/releases/download/5.24.1/osquery-5.24.1-1.linux.aarch64.rpm", sha256: e6cb11f99fde4329edfaf0000aa57997fe52365251848f9f47780e4446b8eea9}
