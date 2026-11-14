@@ -459,6 +459,25 @@ def stop_on_signals(stop: threading.Event) -> Iterator[None]:
             signal.signal(sig, handler)
 
 
+@contextmanager
+def monitoring_alongside(
+    store: WorkspaceStore, stop: threading.Event, env: Mapping[str, str] | None = None
+) -> Iterator[None]:
+    """Hilo de monitorización junto al planificador; para con el mismo `stop` y se espera."""
+    from ens_evidence.monitoring import (  # diferido: monitoring importa este módulo
+        Monitor,
+        MonitorLoop,
+    )
+
+    loop = MonitorLoop(Monitor(store, env=env), stop)
+    loop.start()
+    try:
+        yield
+    finally:
+        stop.set()
+        loop.join(timeout=10)
+
+
 def workspace_done_periods(store: WorkspaceStore, clock: Clock) -> Callable[[], set[Key]]:
     return lambda: finished_periods(store, clock.now())
 
