@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Despliegue de agentes osquery
 type: task
-status: active
+status: shipped
 priority: P1
 size: L
 issue: 9
