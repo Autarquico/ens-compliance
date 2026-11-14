@@ -21,6 +21,9 @@ class Thresholds(BaseModel):
     tls_days: int = Field(default=21, ge=1)
     agent_silence_hours: float = Field(default=3, gt=0)
     backup_hours: float = Field(default=26, gt=0)
+    backup_evidence_hours: float = Field(default=26, gt=0)
+    scheduler_heartbeat_minutes: float = Field(default=20, gt=0)
+    cycle_grace_minutes: float = Field(default=60, gt=0)
 
 
 def load_thresholds(store: WorkspaceStore) -> Thresholds:
