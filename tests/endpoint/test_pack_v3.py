@@ -83,6 +83,6 @@ def test_a_pending_v2_package_is_rejected_asking_to_repeat_the_collection(store,
 def test_the_antimalware_queries_belong_to_their_platforms():
     platforms = {q.id: q.platforms for q in load_pack().queries}
 
-    assert platforms["windows_security_products"] == ["windows"]
-    assert platforms["gatekeeper"] == platforms["xprotect_bundle"] == ["darwin"]
-    assert platforms["clamav_signatures"] == platforms["clamav_units"] == ["linux"]
+    assert platforms["windows_security_products"] == ("windows",)
+    assert platforms["gatekeeper"] == platforms["xprotect_bundle"] == ("darwin",)
+    assert platforms["clamav_signatures"] == platforms["clamav_units"] == ("linux",)
