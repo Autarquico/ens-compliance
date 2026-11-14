@@ -6,13 +6,13 @@ status: active
 priority: P2
 size: L
 issue: 72
-prs: []
+prs: [84]
 related_issues: [72]
 depends_on: [kit-access-panel]
 supersedes: []
 related_specs: [toolkit-server]
 created: 2026-11-09
-updated: 2026-11-09
+updated: 2026-11-14
 ---
 
 # Kit: panel de monitorización
