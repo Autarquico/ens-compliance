@@ -13,8 +13,6 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
-from ens_evidence.checks.store import scan_runs
-from ens_evidence.connectors.keystore.checks import SEALED_CODE, UNSEALED
 from ens_evidence.kit.backups import (
     ALLOWED_VOLUMES,
     DEFAULT_MIN_CHECK_READ_DATA_PERCENT,
@@ -26,7 +24,7 @@ from ens_evidence.kit.backups import (
     render_host_bundle,
 )
 from ens_evidence.kit.registry import KIT_TOOLS, KitTool, tool_for
-from ens_evidence.models.enums import CheckStatus
+from ens_evidence.kit.state import judge_kit
 from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.models import AssetType
 from ens_evidence.ui.audit import audit_write
@@ -36,7 +34,6 @@ from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
 
 CONNECTOR = "backups"
-KEYSTORE_CONNECTOR = "keystore"
 STEP = "copias"
 ENABLE_COMMAND = "deploy/box.sh kit enable copias <fichero>"
 
@@ -99,29 +96,9 @@ def kit_state(store: UiStore, connector: str, check_ids: tuple[str, ...] = ()) -
     """`ok`, `problems`, `down` o `nodata` (y `sealed` en claves), con la fecha de la última
     comprobación guardada del conector. Con `check_ids` solo juzga esos checks: el conector puede
     servir a más medidas que la herramienta."""
-    scan = scan_runs(store, connector)
-    last = scan.last(connector)
-    if last is None:
-        key = "problems" if connector in scan.unreadable else "nodata"
-        return _state(key, None)
-    run = last.run
-    if connector == KEYSTORE_CONNECTOR and _is_sealed(run.results):
-        return _state("sealed", run.finished_at)
-    results = [r for r in run.results if not check_ids or r.check_id in check_ids]
-    if check_ids and not results:
-        return _state("nodata", None)
-    unanswered = {CheckStatus.ERROR, CheckStatus.UNKNOWN}
-    if not run.complete or all(r.status in unanswered for r in results):
-        return _state("down", run.finished_at)
-    healthy = all(r.status is CheckStatus.PASS for r in results)
-    return _state("ok" if healthy else "problems", run.finished_at)
-
-
-def _is_sealed(results: list[Any]) -> bool:
-    return any(
-        r.check_id == UNSEALED and r.status is CheckStatus.FAIL and r.reason_code == SEALED_CODE
-        for r in results
-    )
+    judgment = judge_kit(store, connector, check_ids)
+    shown = judgment.checked_at if judgment.has_checks else None
+    return _state(judgment.key, shown)
 
 
 def _state(key: str, at: Any) -> dict[str, Any]:

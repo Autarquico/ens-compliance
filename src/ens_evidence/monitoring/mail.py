@@ -8,12 +8,14 @@ import smtplib
 import ssl
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
+from datetime import datetime
 from email.message import EmailMessage
 
 from ens_evidence.monitoring.model import Reading
 
 TIMEOUT_SECONDS = 30
 DEFAULT_PORT = 587
+Failing = list[tuple[Reading, datetime]]
 SmtpFactory = Callable[[str, int], smtplib.SMTP]
 
 
@@ -50,7 +52,7 @@ class SmtpSettings:
         )
 
 
-def alert_message(settings: SmtpSettings, failing: list[Reading]) -> EmailMessage:
+def alert_message(settings: SmtpSettings, failing: Failing) -> EmailMessage:
     message = EmailMessage()
     message["Subject"] = f"[ens-compliance] Monitorización: {len(failing)} elemento(s) en rojo"
     message["From"] = settings.sender
@@ -60,14 +62,20 @@ def alert_message(settings: SmtpSettings, failing: list[Reading]) -> EmailMessag
         "estado de ninguna medida ENS.",
         "",
     ]
-    for reading in failing:
-        lines.append(f"- {reading.title}: {reading.detail} (runbook: {reading.runbook})")
+    for reading, since in failing:
+        lines += [
+            f"- {reading.title}: {reading.detail}",
+            f"  Desde {since:%Y-%m-%d %H:%M} UTC.",
+            f"  Qué hacer: página /ayuda/{reading.runbook} de la interfaz web.",
+            "",
+        ]
+    lines.append("Panel: /monitorizacion en la interfaz web de la caja.")
     message.set_content("\n".join(lines) + "\n")
     return message
 
 
 def send_alert(
-    settings: SmtpSettings, failing: list[Reading], *, factory: SmtpFactory | None = None
+    settings: SmtpSettings, failing: Failing, *, factory: SmtpFactory | None = None
 ) -> str | None:
     """`None` si se envió; si no, el motivo saneado. Nunca lanza."""
     try:

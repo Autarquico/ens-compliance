@@ -59,18 +59,22 @@ def test_smtp_settings_are_all_or_nothing():
 def test_send_uses_starttls_before_login():
     smtp = fake_smtp()
 
-    error = send_alert(SmtpSettings.from_env(SMTP_ENV), [reading(Status.FAIL)], factory=smtp)
+    error = send_alert(SmtpSettings.from_env(SMTP_ENV), [(reading(Status.FAIL), NOW)], factory=smtp)
 
     assert error is None
     names = [call[0] for call in smtp.calls]
     assert names.index("starttls") < names.index("login")
-    assert "no cambia" in smtp.sent[0].get_content()
+    body = smtp.sent[0].get_content()
+    assert "no cambia" in body
+    assert "Desde 2" in body and "UTC" in body
+    assert "página /ayuda/" in body and "runbook:" not in body
+    assert "/monitorizacion" in body
 
 
 def test_no_starttls_means_no_login_and_a_sanitized_error():
     smtp = fake_smtp(starttls=False)
 
-    error = send_alert(SmtpSettings.from_env(SMTP_ENV), [reading(Status.FAIL)], factory=smtp)
+    error = send_alert(SmtpSettings.from_env(SMTP_ENV), [(reading(Status.FAIL), NOW)], factory=smtp)
 
     assert error == "SMTPNotSupportedError"
     assert all(call[0] != "login" for call in smtp.calls)

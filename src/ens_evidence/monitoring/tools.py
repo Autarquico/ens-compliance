@@ -1,8 +1,8 @@
 """Herramientas del kit: disponibilidad, dato clave y seguridad, tres señales separadas.
 
 Disponibilidad: OpenBao por HTTP (`sys/seal-status`); el resto, por su contenedor del proyecto de
-Compose. Dato clave: la última evidencia del conector (lectura equivalente a `kit_state` de la UI,
-reimplementada aquí para no depender de la UI). Seguridad: solo avisos de GitHub.
+Compose. Dato clave: la última evidencia del conector (mismo juicio que `kit_state` de la UI, vía
+`kit.state.judge_kit`). Seguridad: solo avisos de GitHub.
 """
 
 import re
@@ -14,7 +14,6 @@ import httpx
 
 from ens_evidence.agent.monitoring import Sample
 from ens_evidence.checks.store import scan_runs
-from ens_evidence.connectors.keystore.checks import SEALED_CODE, UNSEALED
 from ens_evidence.connectors.keystore.client import KeystoreClient, KeystoreError
 from ens_evidence.kit.registry import (
     CLAVES_IMAGE,
@@ -23,7 +22,7 @@ from ens_evidence.kit.registry import (
     KIT_TOOLS,
     KitTool,
 )
-from ens_evidence.models.enums import CheckStatus
+from ens_evidence.kit.state import judge_kit
 from ens_evidence.monitoring.advisories import AdvisoryFeed, judge
 from ens_evidence.monitoring.model import GROUP_TOOLS, Reading, Status, is_fresh, unknown
 from ens_evidence.monitoring.vps import Samples, container_status, project_containers
@@ -31,6 +30,13 @@ from ens_evidence.workspace import WorkspaceStore
 
 DEFAULT_OPENBAO = "http://openbao:8200"
 KEY_DATUM_TTL = timedelta(hours=26)
+_KEY_DATUM = {
+    "sealed": (Status.FAIL, "El almacén está sellado."),
+    "nodata": (Status.UNKNOWN, "La comprobación no incluye checks de esta herramienta."),
+    "down": (Status.WARN, "La app no ha podido leer la herramienta en la última recogida."),
+    "ok": (Status.OK, "Todas las comprobaciones de la herramienta pasan."),
+    "problems": (Status.FAIL, "Alguna comprobación de la herramienta falla."),
+}
 SERVICE_BY_TOOL = {"copias": "backrest", "claves": "openbao", "contrasenas": "vaultwarden"}
 PINNED_IMAGE = {"copias": COPIAS_IMAGE, "claves": CLAVES_IMAGE, "contrasenas": CONTRASENAS_IMAGE}
 GITHUB_REPO = {
@@ -121,13 +127,12 @@ def _availability(
 def key_datum(store: WorkspaceStore, tool: KitTool, now: datetime) -> Reading:
     """Estado de la última comprobación guardada del conector de la herramienta."""
     id, title = f"tool:{tool.id}:key", _title(tool, "Dato clave")
-    scan = scan_runs(store, tool.connector)
-    last = scan.last(tool.connector)
-    if last is None:
-        why = "evidencia ilegible" if tool.connector in scan.unreadable else "aún sin comprobación"
+    judgment = judge_kit(store, tool.connector, tool.check_ids)
+    at = judgment.checked_at
+    if at is None:
+        why = "evidencia ilegible" if judgment.key == "problems" else "aún sin comprobación"
         return unknown(id, GROUP_TOOLS, title, f"Sin dato: {why}.", tool.help_slug)
-    run = last.run
-    if not is_fresh(run.finished_at, KEY_DATUM_TTL, now):
+    if not is_fresh(at, KEY_DATUM_TTL, now):
         return Reading(
             id,
             GROUP_TOOLS,
@@ -135,30 +140,10 @@ def key_datum(store: WorkspaceStore, tool: KitTool, now: datetime) -> Reading:
             Status.UNKNOWN,
             "La última comprobación ha vencido (más de 26 h).",
             tool.help_slug,
-            observed_at=run.finished_at,
+            observed_at=at,
         )
-    results = [r for r in run.results if not tool.check_ids or r.check_id in tool.check_ids]
-    sealed = tool.connector == "keystore" and any(
-        r.check_id == UNSEALED and r.status is CheckStatus.FAIL and r.reason_code == SEALED_CODE
-        for r in run.results
-    )
-    unanswered = {CheckStatus.ERROR, CheckStatus.UNKNOWN}
-    if sealed:
-        status, detail = Status.FAIL, "El almacén está sellado."
-    elif not results:
-        status, detail = Status.UNKNOWN, "La comprobación no incluye checks de esta herramienta."
-    elif not run.complete or all(r.status in unanswered for r in results):
-        status, detail = (
-            Status.WARN,
-            "La app no ha podido leer la herramienta en la última recogida.",
-        )
-    elif all(r.status is CheckStatus.PASS for r in results):
-        status, detail = Status.OK, "Todas las comprobaciones de la herramienta pasan."
-    else:
-        status, detail = Status.FAIL, "Alguna comprobación de la herramienta falla."
-    return Reading(
-        id, GROUP_TOOLS, title, status, detail, tool.help_slug, observed_at=run.finished_at
-    )
+    status, detail = _KEY_DATUM[judgment.key]
+    return Reading(id, GROUP_TOOLS, title, status, detail, tool.help_slug, observed_at=at)
 
 
 def _installed_version(

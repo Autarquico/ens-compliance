@@ -7,8 +7,6 @@ lotes atrasados no tocan nada.
 """
 
 import json
-import os
-import tempfile
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from pathlib import Path
@@ -21,13 +19,13 @@ from ens_evidence.agent.monitoring.queries import (
 )
 from ens_evidence.endpoint.package import CLOCK_SKEW
 from ens_evidence.workspace.cycle_lock import resolve_state_dir
+from ens_evidence.workspace.state_files import write_json
 
 MONITORING_DIR = "monitoring"
 VPS_DIR = "vps"
 EARLIEST_EVENT = datetime(2000, 1, 1, tzinfo=UTC)
 MAX_VALUE_CHARS = 512
 MAX_EVENTS_PER_BATCH = 32
-_OTHERS_CAN_WRITE = 0o022
 
 
 @dataclass(frozen=True)
@@ -89,33 +87,10 @@ class MonitoringStore:
         return {query_id: s for query_id, s in found.items() if s is not None}
 
     def _write(self, sample: Sample) -> None:
-        self._dir.mkdir(parents=True, exist_ok=True, mode=0o700)
-        _require_private(self._dir)
-        text = json.dumps(
-            {
-                "observed_at": sample.observed_at.isoformat(),
-                "rows": list(sample.rows),
-            }
+        write_json(
+            self._dir / f"{sample.query_id}.json",
+            {"observed_at": sample.observed_at.isoformat(), "rows": list(sample.rows)},
         )
-        fd, tmp = tempfile.mkstemp(dir=self._dir, prefix=".tmp-")
-        try:
-            with os.fdopen(fd, "w", encoding="utf-8") as handle:
-                handle.write(text)
-                handle.flush()
-                os.fsync(handle.fileno())
-            os.replace(tmp, self._dir / f"{sample.query_id}.json")
-        except BaseException:
-            try:
-                os.unlink(tmp)
-            except FileNotFoundError:
-                pass
-            raise
-
-
-def _require_private(path: Path) -> None:
-    info = path.stat()
-    if info.st_uid != os.geteuid() or info.st_mode & _OTHERS_CAN_WRITE:
-        raise PermissionError("el directorio de estado debe ser del usuario y no escribible")
 
 
 def _sample(event: Any, host_identifier: str, now: datetime) -> Sample | None:

@@ -63,7 +63,9 @@ class Monitor:
         due = book.update(readings, now)
         smtp = SmtpSettings.from_env(self._env)
         if due and smtp is not None:
-            error = send_alert(smtp, due, factory=self._smtp_factory)
+            error = send_alert(
+                smtp, [(r, book.since(r.id) or now) for r in due], factory=self._smtp_factory
+            )
             book.record_mail(now, error is None, error)
             if error is None:
                 book.mark_notified([r.id for r in due], now)

@@ -6,9 +6,7 @@ Sin red o con respuesta inválida se conserva la caché hasta que caduca; despu�
 
 import json
 import logging
-import os
 import re
-import tempfile
 from dataclasses import dataclass
 from datetime import datetime, timedelta
 from pathlib import Path
@@ -16,6 +14,7 @@ from typing import Any
 
 import httpx
 
+from ens_evidence.monitoring.files import write_json
 from ens_evidence.monitoring.model import instant, parse_instant
 
 API = "https://api.github.com"
@@ -150,11 +149,7 @@ class AdvisoryFeed:
             }
             for repo, feed in cache.items()
         }
-        self._path.parent.mkdir(parents=True, exist_ok=True, mode=0o700)
-        fd, tmp = tempfile.mkstemp(dir=self._path.parent, prefix=".tmp-")
-        with os.fdopen(fd, "w", encoding="utf-8") as handle:
-            json.dump(document, handle)
-        os.replace(tmp, self._path)
+        write_json(self._path, document)
 
 
 def _feed(entry: dict[str, Any]) -> RepoFeed:
