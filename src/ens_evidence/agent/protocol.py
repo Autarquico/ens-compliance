@@ -4,6 +4,7 @@ Cualquier fallo de credencial lanza `NodeInvalid` antes de escribir nada (estado
 contacto); las rutas lo convierten siempre en la misma respuesta.
 """
 
+import logging
 import threading
 from collections.abc import Callable, Iterator
 from contextlib import contextmanager
@@ -11,6 +12,13 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from ens_evidence.agent.monitoring import (
+    MonitoringConfig,
+    MonitoringStore,
+    is_monitoring_event,
+    load_monitoring_config,
+    valid_samples,
+)
 from ens_evidence.agent.node_key import (
     issue_node_key,
     normalize_host_identifier,
@@ -33,6 +41,7 @@ from ens_evidence.endpoint.package import CLOCK_SKEW
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 
+_LOGGER = logging.getLogger("ens_evidence.agent")
 MAX_HOSTNAME_CHARS = 255
 KNOWN_PLATFORMS = frozenset({"darwin", "linux", "windows"})
 # osquery desplaza cada intervalo hasta un 10 % (`--schedule_splay_percent`, 10 por defecto).
@@ -94,6 +103,7 @@ class AgentService:
         state: AgentState,
         new_lock: Callable[[], CycleLock],
         now: Callable[[], datetime] = _utcnow,
+        monitoring: MonitoringStore | None = None,
     ) -> None:
         self._store = store
         self._secrets = secrets
@@ -101,6 +111,8 @@ class AgentService:
         self._new_lock = new_lock
         self._now = now
         self._writers = threading.Lock()
+        self._monitoring = monitoring
+        self._monitoring_writer = threading.Lock()
 
     def enroll(self, body: Any) -> Reply:
         fields = _mapping(body)
@@ -128,7 +140,10 @@ class AgentService:
     def config(self, body: Any) -> Reply:
         node = self._authenticate(body)
         self._touch(node)
-        return Reply({**build_config(), "node_invalid": False}, node)
+        vps = self._monitoring_config()
+        serves_monitoring = vps is not None and node.asset_id == vps.vps_asset_id
+        schedule = build_config(vps) if serves_monitoring else build_config()
+        return Reply({**schedule, "node_invalid": False}, node)
 
     def log(self, body: Any) -> Reply:
         node = self._authenticate(body)
@@ -138,6 +153,7 @@ class AgentService:
             if not isinstance(events, list):
                 raise MalformedBody(node)
             stored = self._store_snapshots(node, events)
+            self._store_monitoring(node, events)
         else:
             stored = True
         self._touch(node)
@@ -190,6 +206,32 @@ class AgentService:
                         node.asset_id, s.query_id, s.collected_at, now, RESULT_BOUND
                     )
         return len(fresh) == len(snapshots)
+
+    def _store_monitoring(self, node: Node, events: list[Any]) -> None:
+        """`mon_*` va solo al almacén de monitorización, y solo si viene del nodo del VPS."""
+        monitoring = [event for event in events if is_monitoring_event(event)]
+        if not monitoring:
+            return
+        config = self._monitoring_config()
+        if config is None or node.asset_id != config.vps_asset_id:
+            _LOGGER.warning(
+                "outcome=monitoring_dropped asset=%s events=%d", node.asset_id[:64], len(monitoring)
+            )
+            return
+        samples = valid_samples(
+            monitoring,
+            host_identifier=node.host_identifier,
+            platform=node.platform,
+            now=self._now(),
+        )
+        with self._monitoring_writer:
+            try:
+                (self._monitoring or MonitoringStore()).record(samples)
+            except OSError:
+                raise Unavailable from None
+
+    def _monitoring_config(self) -> MonitoringConfig | None:
+        return load_monitoring_config(self._store)
 
     def _store_answer(self, node: Node, run_id: str, rows: Any, status: Any) -> None:
         delivered = self._state.delivered_unanswered(node.asset_id, run_id)

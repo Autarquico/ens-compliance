@@ -1,7 +1,11 @@
-"""Configuración remota que se sirve a osquery: las consultas del paquete del repo, tal cual."""
+"""Configuración remota que se sirve a osquery: las consultas del paquete del repo, tal cual.
+
+Solo el nodo del VPS recibe además las consultas `mon_*` de monitorización (cada 15 min).
+"""
 
 from typing import Any
 
+from ens_evidence.agent.monitoring import MonitoringConfig, monitoring_schedule
 from ens_evidence.endpoint.pack import PACK_DIR, Query, load_pack
 
 SCHEDULE_INTERVAL_SECONDS = 6 * 60 * 60
@@ -17,7 +21,8 @@ def query_sql(query_id: str) -> str:
     return (PACK_DIR / f"{query_id}.sql").read_text("utf-8")
 
 
-def build_config() -> dict[str, Any]:
+def build_config(vps: MonitoringConfig | None = None) -> dict[str, Any]:
+    """`vps` solo se pasa al servir la configuración al nodo del VPS."""
     schedule = {
         query.id: {
             "query": query_sql(query.id),
@@ -27,4 +32,6 @@ def build_config() -> dict[str, Any]:
         }
         for query in load_pack().queries
     }
+    if vps is not None:
+        schedule |= monitoring_schedule(vps.tls_hostnames)
     return {"schedule": schedule, "options": {"logger_min_status": LOGGER_MIN_STATUS}}
