@@ -5,6 +5,7 @@ from datetime import timedelta
 from typer.testing import CliRunner
 
 from ens_evidence.cli import app
+from ens_evidence.endpoint.checks import HOST_CHECKS, WORKSTATION_ONLY_CHECKS
 
 from .support import collect, import_package, utc_now
 
@@ -26,9 +27,10 @@ def test_con_evidencia_vigente_imprime_un_resultado_por_activo_y_check_y_sale_co
     assert result.exit_code == 0, result.output
     lines = result.output.splitlines()
     assert "lap-ana  HOST-001  PASS" in result.output
-    assert (
-        len([line for line in lines if line.startswith(("lap-ana  HOST-", "srv-app  HOST-"))]) == 14
-    )
+    laptop_lines = [line for line in lines if line.startswith("lap-ana  HOST-")]
+    server_lines = [line for line in lines if line.startswith("srv-app  HOST-")]
+    assert len(laptop_lines) == len(HOST_CHECKS)
+    assert len(server_lines) == len(HOST_CHECKS) - len(WORKSTATION_ONLY_CHECKS)
     assert "caducada" not in result.output
 
 

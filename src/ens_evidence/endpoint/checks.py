@@ -568,10 +568,9 @@ class SignatureDate:
     row: dict[str, Any] | None = None
     blocked: Outcome | None = None
 
-    def age_exceeded(self, host: Host, context: CheckContext) -> bool:
+    def age_exceeded(self, host: Host, max_age_days: int) -> bool:
         assert self.moment is not None
-        limit = timedelta(days=context.config.max_signature_age_days)
-        return host.collected_at - self.moment > limit
+        return host.collected_at - self.moment > timedelta(days=max_age_days)
 
 
 def _signatures(host: Host, context: CheckContext) -> Outcome:
@@ -660,7 +659,7 @@ def _clamav_signatures(host: Host, context: CheckContext) -> Outcome:
     if not _positive(date.row.get("size")):
         return _unknown(f"el fichero de firmas de ClamAV está vacío o sin tamaño; {FILE_DATE_NOTE}")
     shown = f"firmas de ClamAV del {date.moment:%Y-%m-%d} ({FILE_DATE_NOTE})"
-    if date.age_exceeded(host, context):
+    if date.age_exceeded(host, context.config.max_signature_age_days):
         limit = context.config.max_signature_age_days
         return Outcome(
             CheckStatus.FAIL,
@@ -690,8 +689,8 @@ def _xprotect(host: Host, context: CheckContext) -> tuple[datetime | None, Outco
     date = _newest_file_date(host, rows, "XProtect")
     if date.blocked is not None or date.moment is None:
         return None, date.blocked
-    if date.age_exceeded(host, context):
-        limit = context.config.max_signature_age_days
+    if date.age_exceeded(host, context.config.max_xprotect_age_days):
+        limit = context.config.max_xprotect_age_days
         return date.moment, Outcome(
             CheckStatus.FAIL,
             f"{ATTESTED}: XProtect del {date.moment:%Y-%m-%d} ({FILE_DATE_NOTE}), "

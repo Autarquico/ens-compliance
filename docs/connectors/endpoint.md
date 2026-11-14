@@ -34,6 +34,7 @@ el nombre de quien la aporta.
    ```yaml
    max_evidence_age_days: 30          # antigüedad máxima: decisión de la organización
    max_signature_age_days: 7          # antigüedad máxima de las firmas antimalware (opcional; 7 por defecto)
+   max_xprotect_age_days: 30          # antigüedad máxima de XProtect en macOS (opcional; 30 por defecto)
    supported_os:                      # releases soportadas: decisión de la organización
      - {platform: darwin, name: macOS, release: "15", min_version: "15.3"}
      - {platform: darwin, name: macOS, release: "26"}
@@ -127,6 +128,8 @@ bloquea la preparación (`EXPIRED_EVIDENCE`) hasta que se vuelva a ejecutar.
 | HOST-007 inventario de software | hay inventario de software (con su recuento) | — |
 | HOST-008 firmas al día (op.exp.6.4; laptops y servidores) | Linux: `daily.*` de ClamAV no vacío, dentro de `max_signature_age_days` y `clamav-freshclam` activo. macOS: XProtect con versión y dentro de la política. Windows: único antivirus activo con `signatures_up_to_date` = 1 | ficheros más antiguos que la política (el motivo da la fecha) o Windows con `signatures_up_to_date` = 0 |
 | HOST-009 protección en tiempo real (op.exp.6.5; solo laptops) | macOS: Gatekeeper activo y XProtect presente y al día (protección integrada del sistema, cuya adecuación valora una persona). Windows: algún antivirus `On` en el Centro de seguridad | macOS: Gatekeeper desactivado. Windows: ningún antivirus `On` (todos `Off`, `Snoozed` o `Expired`) |
+
+La antigüedad de XProtect (macOS, HOST-008 y HOST-009) usa `max_xprotect_age_days`, no `max_signature_age_days`, porque Apple publica sus actualizaciones de forma irregular. El valor por defecto de 30 días no está verificado contra la cadencia real de Apple: ajústalo con datos de tus equipos.
 
 HOST-008 y HOST-009 con matices:
 
