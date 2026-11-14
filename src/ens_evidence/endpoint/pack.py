@@ -6,7 +6,7 @@ from typing import Literal
 import yaml
 from pydantic import BaseModel, ConfigDict, field_validator
 
-PACK_DIR = files("ens_evidence.endpoint") / "queries" / "v2"
+PACK_DIR = files("ens_evidence.endpoint") / "queries" / "v3"
 SCRIPT_NAME = "collect-endpoint.sh"
 MANIFEST_NAME = "pack.manifest"
 PACK_HASH_NAME = "pack.sha256"

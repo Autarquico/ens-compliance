@@ -16,10 +16,10 @@ from .test_hostile_import import rejected
 WINDOWS_QUERIES = ("bitlocker_info", "windows_security_center", "programs")
 
 
-def test_the_pack_is_version_2_and_has_the_windows_queries():
+def test_the_pack_is_version_3_and_has_the_windows_queries():
     pack = load_pack()
 
-    assert pack.version == 2
+    assert pack.version == 3
     windows = {q.id for q in pack.queries if "windows" in q.platforms}
     assert windows >= {*WINDOWS_QUERIES, "system_info", "os_version", "osquery_info"}
 
@@ -71,3 +71,18 @@ def test_stored_v1_script_evidence_still_evaluates(store, laptop_package):
         next(r for r in results if r.check_id == "HOST-003" and r.asset_id == "lap-ana").status.name
         == "PASS"
     )
+
+
+def test_a_pending_v2_package_is_rejected_asking_to_repeat_the_collection(store, laptop_package):
+    message = rejected(store, rebuilt(laptop_package, meta={"pack_version": "2"}))
+
+    assert "versión 2" in message
+    assert "repite la recogida" in message
+
+
+def test_the_antimalware_queries_belong_to_their_platforms():
+    platforms = {q.id: q.platforms for q in load_pack().queries}
+
+    assert platforms["windows_security_products"] == ["windows"]
+    assert platforms["gatekeeper"] == platforms["xprotect_bundle"] == ["darwin"]
+    assert platforms["clamav_signatures"] == platforms["clamav_units"] == ["linux"]
