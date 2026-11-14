@@ -95,9 +95,10 @@ class Rejected(Exception):
 # --- estado del kit (solo evidencia del workspace) -----------------------------------------------
 
 
-def kit_state(store: UiStore, connector: str) -> dict[str, Any]:
+def kit_state(store: UiStore, connector: str, check_ids: tuple[str, ...] = ()) -> dict[str, Any]:
     """`ok`, `problems`, `down` o `nodata` (y `sealed` en claves), con la fecha de la última
-    comprobación guardada del conector."""
+    comprobación guardada del conector. Con `check_ids` solo juzga esos checks: el conector puede
+    servir a más medidas que la herramienta."""
     scan = scan_runs(store, connector)
     last = scan.last(connector)
     if last is None:
@@ -106,10 +107,13 @@ def kit_state(store: UiStore, connector: str) -> dict[str, Any]:
     run = last.run
     if connector == KEYSTORE_CONNECTOR and _is_sealed(run.results):
         return _state("sealed", run.finished_at)
+    results = [r for r in run.results if not check_ids or r.check_id in check_ids]
+    if check_ids and not results:
+        return _state("nodata", None)
     unanswered = {CheckStatus.ERROR, CheckStatus.UNKNOWN}
-    if not run.complete or all(r.status in unanswered for r in run.results):
+    if not run.complete or all(r.status in unanswered for r in results):
         return _state("down", run.finished_at)
-    healthy = all(r.status is CheckStatus.PASS for r in run.results)
+    healthy = all(r.status is CheckStatus.PASS for r in results)
     return _state("ok" if healthy else "problems", run.finished_at)
 
 
@@ -145,7 +149,9 @@ def kit_offer(
         return [{"id": i, "text": texts.get(i)} for i in ids]
 
     tool = tool_for(measure_id)
-    if tool is None or not applicable or kit_state(store, tool.connector)["key"] != "nodata":
+    if tool is None or not applicable:
+        return None
+    if kit_state(store, tool.connector, tool.check_ids)["key"] != "nodata":
         return None
     return {
         "name": tool.id,
@@ -158,6 +164,7 @@ def kit_offer(
         "partial_clauses": clauses(tool.partial_clauses),
         "not_covered_clauses": clauses(tool.not_covered_clauses),
         "ram": tool.ram,
+        "on_box": tool.on_box,
     }
 
 
@@ -180,7 +187,7 @@ def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any
         "id": tool.id,
         "name": tool.name,
         "purpose": tool.purpose,
-        "state": kit_state(store, tool.connector),
+        "state": kit_state(store, tool.connector, tool.check_ids),
         "measures": list(tool.measures),
         "measures_note": tool.measures_note,
         "hints": tool.hints,
@@ -190,6 +197,7 @@ def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any
         "help_url": f"/ayuda/{tool.help_slug}",
         "help_label": tool.help_label,
         "ram": tool.ram,
+        "on_box": tool.on_box,
     }
 
 
