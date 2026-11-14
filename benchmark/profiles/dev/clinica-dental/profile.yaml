@@ -1,0 +1,292 @@
+format: ens-benchmark-profile/1
+fictional: true
+id: clinica-dental
+title: Clínica Dental Sonrisa Ficticia (pyme ficticia de la partición reservada)
+clock:
+  start: "2026-10-05T08:30:00+00:00"
+categorization: {C: BAJO, I: BAJO, T: BAJO, A: BAJO, D: BAJO}
+people:
+  - id: irene
+    name: Irene Esmalte
+    roles: [security_officer]
+  - id: jorge
+    name: Jorge Molar
+    roles: [system_owner, system_administrator]
+  - id: elena
+    name: Elena Muela
+    roles: [management, information_owner]
+  - id: hugo
+    name: Hugo Encía
+    roles: [service_owner]
+applicability:
+  - measure: mp.si.2
+    applicable: true
+    justification: >-
+      Seleccionada como adicional: la clínica entrega a pacientes y a otros profesionales discos
+      con radiografías, que salen del local y cuya pérdida expondría datos de salud de sus
+      pacientes.
+  - measure: op.pl.5
+    applicable: false
+    justification: >-
+      La clínica no compra productos de seguridad que necesiten certificación: el programa de
+      gestión, el componente más crítico, lo aporta un proveedor que acredita cada año su
+      conformidad con el ENS, y el antivirus gestionado, el cifrado de disco y el router son
+      productos estándar de mercado sin exigencia de certificación en categoría BÁSICA. El anexo
+      II no la exige en categoría BÁSICA.
+  - measure: op.acc.3
+    applicable: false
+    justification: >-
+      Con ocho personas no hay plantilla para repartir las tareas críticas entre varias
+      personas: el responsable de sistemas administra el servidor, los equipos y las copias, y
+      lo hace bajo la supervisión de la directora. Ninguna otra persona tiene perfil de administrador. No exigida en categoría
+      BÁSICA.
+  - measure: op.exp.5
+    applicable: false
+    justification: >-
+      No hay desarrollo propio ni cambios frecuentes de configuración: los cambios son las
+      actualizaciones mensuales del técnico externo, probadas antes en recepción y anotadas en el
+      parte de mantenimiento (op.exp.4), las reglas nuevas del router y las versiones nuevas del
+      programa de gestión, cada una con su propio circuito de autorización y aviso descrito en sus
+      procedimientos. La categoría BÁSICA no pide una gestión de cambios aparte.
+  - measure: op.ext.1
+    applicable: false
+    justification: >-
+      Los proveedores del programa de gestión, del mantenimiento y del almacenamiento externo de
+      copias entran con contrato y encargo de tratamiento según el proceso de autorización. Si el
+      programa de gestión cae, la clínica cubre la parada con la agenda en papel y el teléfono
+      durante el plazo que admite su disponibilidad BAJA (op.cont.2), sin que ningún proveedor
+      sostenga por sí solo la atención. No exigida en BÁSICA.
+  - measure: op.ext.2
+    applicable: false
+    justification: >-
+      La relación con los proveedores se reduce a la visita mensual del técnico externo, que
+      supervisa el responsable de sistemas, y a los avisos del proveedor del programa que revisa
+      el comité. Los servicios de terceros son el almacenamiento externo de copias cifradas y la
+      consola del antivirus gestionado, contratados con el proceso de autorización y sin una
+      supervisión diaria por parte de la clínica. BÁSICA no pide más.
+  - measure: op.ext.3
+    applicable: false
+    justification: >-
+      El único componente crítico de un tercero es el programa de gestión, cuyo proveedor entrega
+      cada año su certificado de conformidad con el ENS, como recoge el acta anual. Los demás
+      terceros no ven datos legibles ni sostienen la atención: el almacenamiento externo solo
+      recibe copias ya cifradas en la clínica, y el software de radiografía y el antivirus son
+      productos estándar autorizados en el proceso de autorización. No exigida en BÁSICA.
+  - measure: op.ext.4
+    applicable: false
+    justification: >-
+      El único enlace con otro sistema es la plataforma web del servicio de salud, autorizado en
+      el proceso de autorización; los informes se suben a mano por conexión cifrada, sin
+      intercambio automático de datos entre sistemas de información; el envío cifrado de copias
+      al almacenamiento contratado es un servicio de terceros autorizado como tal (org.4). El anexo II no la exige en categoría BÁSICA.
+  - measure: op.cont.1
+    applicable: false
+    justification: >-
+      La disponibilidad se valora en nivel BAJO y la política ya fija el objetivo que importa:
+      recuperar las historias en menos de un día y atender mientras con la agenda en papel. No se
+      hace un análisis de impacto aparte, que BÁSICA no pide.
+  - measure: op.cont.2
+    applicable: false
+    justification: >-
+      Sin plan de continuidad formal: con disponibilidad BAJA, la agenda en papel y el teléfono
+      cubren una parada de hasta un día, el plazo que la política fija para recuperar las
+      historias. No exigida en categoría BÁSICA.
+  - measure: op.cont.3
+    applicable: false
+    justification: >-
+      Al no haber plan de continuidad no hay plan que probar: la parada que admite la
+      disponibilidad BAJA se atiende con la agenda en papel y el teléfono, sin medios que ensayar.
+      La medida no se exige en BÁSICA.
+  - measure: op.cont.4
+    applicable: false
+    justification: >-
+      No se mantienen medios alternativos de tratamiento: si caen el servidor o las
+      comunicaciones, la clínica atiende con agenda en papel y teléfono, una parada que su
+      disponibilidad BAJA admite. El anexo II no la exige en BÁSICA.
+  - measure: mp.if.6
+    applicable: false
+    justification: >-
+      El cuarto técnico de la planta baja, donde está el servidor, no tiene conducciones de agua,
+      y los puestos de recepción y gabinetes no guardan datos locales. Medida no exigida en
+      categoría BÁSICA.
+  - measure: mp.per.1
+    applicable: false
+    justification: >-
+      Son puestos fijos (odontólogos, higienista, recepción, administración y sistemas), y a cada
+      persona se le informa de los deberes de su puesto al incorporarse (mp.per.2); no se redacta
+      una caracterización de puestos aparte, que BÁSICA no exige.
+  - measure: mp.eq.2
+    applicable: false
+    justification: >-
+      No se configura el bloqueo automático por inactividad: la normativa obliga a bloquear la
+      sesión al levantarse del puesto y la pantalla de recepción no mira a la sala de espera. No
+      es exigible en categoría BÁSICA.
+  - measure: mp.com.4
+    applicable: false
+    justification: >-
+      La única separación que necesita la red, la wifi de pacientes frente a la red de gabinetes,
+      ya la hace el router como parte de la protección perimetral (mp.com.1); no hay otros flujos
+      que segregar. No exigida en BÁSICA.
+  - measure: mp.si.1
+    applicable: false
+    justification: >-
+      No se adopta un esquema de marcado: el único soporte que sale de la clínica, el disco de
+      radiografías, ya lleva una etiqueta con el paciente, la fecha y «confidencial» y su entrega
+      se anota en el registro de soportes. No exigida en categoría BÁSICA.
+  - measure: mp.sw.1
+    applicable: false
+    justification: >-
+      La clínica no desarrolla aplicaciones: usa el programa de gestión y el software de
+      radiografía de sus proveedores, autorizados en el proceso de autorización. Sin desarrollo
+      propio la medida no procede y BÁSICA tampoco la exige.
+  - measure: mp.info.2
+    applicable: false
+    justification: >-
+      Toda la información del sistema se trata con el cuidado que pide la más sensible, la
+      historia clínica, así que no hace falta calificarla por niveles. El anexo II no la exige en
+      categoría BÁSICA.
+  - measure: mp.info.4
+    applicable: false
+    justification: >-
+      Ningún proceso necesita sellos de tiempo: la directora firma los informes desde su portátil
+      y el programa guarda la fecha y el autor de cada anotación en la historia. No exigida en
+      BÁSICA.
+  - measure: mp.s.4
+    applicable: false
+    justification: >-
+      Desde fuera solo es accesible el acceso remoto de la directora, con doble factor; los
+      pacientes piden cita por teléfono o en el mostrador. Una interrupción de horas se atiende
+      con la agenda en papel, que la disponibilidad BAJA admite. No exigida en BÁSICA.
+reinforcements:
+  op.acc.5: [R1]
+  op.acc.6: [R1]
+  mp.s.2: [R1]
+documents:
+  - {ref: politica-seguridad, approved_by: elena}
+  - {ref: normativa-seguridad, approved_by: elena}
+  - {ref: designacion-responsables, approved_by: elena}
+  - {ref: procedimientos-seguridad, approved_by: irene}
+  - {ref: proceso-autorizacion, approved_by: irene}
+  - {ref: procedimiento-incidentes, approved_by: irene}
+evidence:
+  - alias: inventario
+    file: evidence/inventario.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2027-03-31T00:00:00+00:00"
+    links:
+      - {measure: op.exp.1, covers: [base]}
+  - alias: analisis-riesgos
+    file: evidence/analisis-riesgos.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2027-09-30T00:00:00+00:00"
+    links:
+      - {measure: op.pl.1, covers: [base]}
+  - alias: revision-accesos
+    file: evidence/revision-accesos.txt
+    source: manual
+    asset: app-historias
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: op.acc.4, covers: [base]}
+  - alias: antivirus
+    file: evidence/antivirus.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2026-11-30T00:00:00+00:00"
+    links:
+      - {measure: op.exp.6, covers: [base]}
+  - alias: actualizaciones
+    file: evidence/actualizaciones.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2026-11-30T00:00:00+00:00"
+    links:
+      - {measure: op.exp.4, covers: [base]}
+  - alias: copias
+    file: evidence/copias.txt
+    source: manual
+    asset: db-pacientes
+    valid_until: "2026-12-31T00:00:00+00:00"
+    links:
+      - {measure: mp.info.6, covers: [base]}
+  - alias: formacion
+    file: evidence/formacion.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2027-09-30T00:00:00+00:00"
+    links:
+      - {measure: mp.per.4, covers: [base]}
+  - alias: acta-anual
+    file: evidence/acta-anual.txt
+    source: manual
+    asset: srv-clinica
+    valid_until: "2027-09-25T00:00:00+00:00"
+    links:
+      - {measure: org.1, covers: [base]}
+      - {measure: org.2, covers: [base]}
+      - {measure: org.3, covers: [base]}
+      - {measure: org.4, covers: [base]}
+      - {measure: op.pl.2, covers: [base]}
+      - {measure: op.pl.3, covers: [base]}
+      - {measure: op.pl.4, covers: [base]}
+      - {measure: op.acc.1, covers: [base]}
+      - {measure: op.acc.2, covers: [base]}
+      - {measure: op.acc.5, covers: [base, R1]}
+      - {measure: op.acc.6, covers: [base, R1, R8, R9]}
+      - {measure: op.exp.2, covers: [base]}
+      - {measure: op.exp.3, covers: [base]}
+      - {measure: op.exp.7, covers: [base]}
+      - {measure: op.exp.8, covers: [base]}
+      - {measure: op.exp.10, covers: [base]}
+      - {measure: op.nub.1, covers: [base]}
+      - {measure: op.mon.1, covers: [base]}
+      - {measure: op.mon.2, covers: [base]}
+      - {measure: op.mon.3, covers: [base]}
+      - {measure: mp.if.1, covers: [base]}
+      - {measure: mp.if.2, covers: [base]}
+      - {measure: mp.if.3, covers: [base]}
+      - {measure: mp.if.4, covers: [base]}
+      - {measure: mp.if.5, covers: [base]}
+      - {measure: mp.if.7, covers: [base]}
+      - {measure: mp.per.2, covers: [base]}
+      - {measure: mp.per.3, covers: [base]}
+      - {measure: mp.eq.1, covers: [base]}
+      - {measure: mp.eq.3, covers: [base]}
+      - {measure: mp.eq.4, covers: [base]}
+      - {measure: mp.com.1, covers: [base]}
+      - {measure: mp.com.2, covers: [base]}
+      - {measure: mp.com.3, covers: [base]}
+      - {measure: mp.si.3, covers: [base]}
+      - {measure: mp.si.2, covers: [base]}
+      - {measure: mp.si.4, covers: [base]}
+      - {measure: mp.si.5, covers: [base]}
+      - {measure: mp.sw.2, covers: [base]}
+      - {measure: mp.info.1, covers: [base]}
+      - {measure: mp.info.3, covers: [base]}
+      - {measure: mp.info.5, covers: [base]}
+      - {measure: mp.s.1, covers: [base]}
+      - {measure: mp.s.2, covers: [base, R1]}
+      - {measure: mp.s.3, covers: [base]}
+incident_drill:
+  alias: simulacro
+  by: irene
+  title: Simulacro de llamada que suplanta al proveedor del programa de gestión
+  action: Se cuelga la llamada, se cambia la contraseña del usuario afectado y se avisa al proveedor por su canal oficial
+  conclusion: El simulacro confirma que recepción reconoce la suplantación y avisa a la responsable de seguridad en menos de una hora.
+  auditable_events_detail: El registro de accesos del programa ya recoge los cambios de contraseña y los inicios de sesión fallidos.
+  links:
+    - {measure: op.exp.9, covers: [base]}
+document_links:
+  - {measure: org.1, document: politica-seguridad, covers: [base]}
+  - {measure: org.1, document: designacion-responsables, covers: [base]}
+  - {measure: org.2, document: normativa-seguridad, covers: [base]}
+  - {measure: org.3, document: procedimientos-seguridad, covers: [base]}
+  - {measure: org.4, document: proceso-autorizacion, covers: [base]}
+  - {measure: op.exp.7, document: procedimiento-incidentes, covers: [base]}
+matrix_defaults:
+  owner: irene
+  review_every_days: 365
+  reviewed_by: jorge
+  conclusion: Revisada con el acta anual de seguridad, los informes aportados y los documentos aprobados.

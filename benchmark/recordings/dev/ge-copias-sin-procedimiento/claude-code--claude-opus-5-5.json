@@ -1,39 +1,39 @@
 {
   "format": "ens-benchmark-recording/1",
   "case": "dev/ge-copias-sin-procedimiento",
-  "case_sha256": "0f676e219d0b1e1e8b86b2e0e37ed473525338af81ee3af7dcfb3eeda81b65a1",
+  "case_sha256": "d91dd4fd57329e180b1168440485716da9f318130ecd2cadd9eb9746dd83ab33",
   "provider": "claude-code",
   "model": "claude-opus-5-5",
-  "destination": "claude-code 2.1.317, sesión del usuario (plan contratado); ejecutable 2.1.317 (sha256 09f153b46b5df9e8b3454716d682a91901de020cbca630f61dec1a015b32b5e9); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "2.0.0",
-  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
-  "payload_sha256": "03a09ffacb35178f6705d9c7a2662c532c8d5d903f2b6264ea2a95080c051e09",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "e5cb454878a6eb8b641c24b6633e64a37abb6681bacd87c38d5579df697125ee",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T02:11:58.248258Z",
+  "recorded_at": "2026-11-06T23:37:39.544549Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T02:10:58.052283Z",
+      "at": "2026-11-06T23:36:38.921618Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"- Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado\"}], \"justifications\": [], \"reason\": \"El anexo II (mp.info.6.2) exige que los procedimientos de respaldo indiquen la frecuencia de las copias, los requisitos de almacenamiento en el propio lugar y en otros lugares, y los controles de acceso a las copias. La sección del procedimiento dedicada a las copias de los expedientes solo dice «cuando hay tiempo», sin fijar frecuencia, almacenamiento ni controles de acceso, aunque el informe de copias muestra una práctica diaria y definida.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"- Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado, con 30 días\\nde retención.\"}], \"justifications\": [], \"reason\": \"mp.info.6.2 exige que el procedimiento de respaldo indique la frecuencia de las copias, y en la sección de copias el procedimiento solo dice «cuando hay tiempo». Tampoco fija los requisitos de almacenamiento en el propio lugar y fuera de él ni los controles de acceso a las copias, aunque la evidencia muestra que en la práctica se hace una copia diaria con su retención.\"}, {\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"- Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"Copias: [administrador del sistema / responsable del sistema] presenta el estado de las copias local y externa del trimestre y la\\n   restauración de prueba del 18 de septiembre.\"}], \"justifications\": [], \"reason\": \"org.3.4 c) exige que se precise cómo hacer las copias de la información según su nivel de seguridad. El procedimiento no lo precisa de forma clara: se limita a decir que las copias se hacen «cuando hay tiempo».\"}]}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T02:11:17.533857Z",
+      "at": "2026-11-06T23:36:57.859040Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado\"}], \"justifications\": [], \"reason\": \"El anexo II (mp.info.6.2) exige que el procedimiento de respaldo indique la frecuencia de las copias, los requisitos de almacenamiento en el propio lugar y en otros lugares y los controles de acceso a las copias. En ese punto el procedimiento solo dice «cuando hay tiempo», mientras que la evidencia describe copias diarias, local y externa, con retención y acceso restringido que el documento no recoge.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado\"}], \"justifications\": [], \"reason\": \"mp.info.6.2 exige que el procedimiento de respaldo indique la frecuencia de las copias, los requisitos de almacenamiento en el propio lugar y en otros lugares y los controles de acceso a las copias. El procedimiento solo dice «cuando hay tiempo», así que no fija ninguna frecuencia y además contradice la copia diaria que recoge la evidencia.\"}, {\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"Copias: [administrador del sistema / responsable del sistema] presenta el estado de las copias local y externa del trimestre y la\"}], \"justifications\": [], \"reason\": \"org.3.4.c exige precisar cómo se hacen las copias de la información según su nivel de seguridad. El procedimiento no dice cómo ni con qué periodicidad se hacen; solo dice «cuando hay tiempo», aunque el acta habla de copias local y externa con un seguimiento regular.\"}]}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T02:11:37.650416Z",
+      "at": "2026-11-06T23:37:18.990759Z",
       "outcome": "response",
-      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado, con 30 días\"}], \"justifications\": [], \"reason\": \"mp.info.6.2 exige que los procedimientos de respaldo indiquen la frecuencia de las copias. En el apartado de realización de copias, el procedimiento solo dice «cuando hay tiempo»: no fija ninguna frecuencia y además choca con la copia diaria que recoge la evidencia. Tampoco precisa en ese punto los requisitos de almacenamiento ni los controles de acceso a las copias.\"}]}",
+      "response": "{\"findings\": [{\"criterion\": \"calidad-documental\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"- Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-f8e36cd8\", \"quote\": \"Copia local: diaria a las 22:00 del servidor de ficheros a un disco interno dedicado, con 30 días\"}], \"justifications\": [], \"reason\": \"mp.info.6.2 exige que el procedimiento de respaldo indique la frecuencia de las copias, los requisitos de almacenamiento en el propio lugar y fuera de él, y los controles de acceso a las copias. El procedimiento solo dice «cuando hay tiempo» y no recoge ninguno de esos extremos. Además, deja en manos de la disponibilidad lo que el informe de copias describe como una copia diaria.\"}, {\"criterion\": \"calidad-documental\", \"measure\": \"org.3\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"- Pasos: Se hacen copias cuando hay tiempo.\"}], \"evidence\": [{\"ref\": \"EV-20261001-dfdddbed\", \"quote\": \"presenta el estado de las copias local y externa del trimestre y la\"}], \"justifications\": [], \"reason\": \"org.3.4 c) exige que los procedimientos precisen cómo se hacen las copias de la información según su nivel de seguridad. «Se hacen copias cuando hay tiempo» no lo precisa de forma clara: no dice periodicidad, destino ni forma de hacerlas.\"}]}",
       "kind": null
     }
   ]

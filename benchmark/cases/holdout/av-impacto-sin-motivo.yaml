@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: av-impacto-sin-motivo
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: declare_not_applicable
+  measure: op.cont.1
+  justification: No tenemos tiempo para hacerlo.
+defects:
+- id: impacto-excluido-sin-razon
+  layer: judgment
+  measure: op.cont.1
+  target:
+    kind: justification
+  expected_criterion: solidez-justificacion-aplicabilidad
+  requirement:
+    measure: op.cont.1
+    clause: op.cont.1.1
+    quote: Se realizará un análisis de impacto
+  rationale: El análisis de impacto se excluye con una justificación que alude a la falta de tiempo y
+    no al riesgo.

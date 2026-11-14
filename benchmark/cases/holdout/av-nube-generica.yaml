@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: av-nube-generica
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: nube
+  file: nube.md
+defects:
+- id: nube-sin-requisitos
+  layer: judgment
+  measure: op.nub.1
+  target:
+    kind: evidence
+    alias: nube
+  expected_criterion: calidad-documental
+  requirement:
+    measure: op.nub.1
+    clause: op.nub.1.2
+    quote: Auditoría de pruebas de penetración (pentesting)
+  rationale: La evidencia no trata ninguno de los cuatro requisitos que cita la cláusula para los servicios
+    de terceros.

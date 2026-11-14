@@ -1,0 +1,33 @@
+format: ens-benchmark-case/1
+id: av-claves-alteradas
+partition: holdout
+profile: agencia-viajes
+kind: defective
+judgment: false
+mutations:
+- op: tamper_artifact
+  alias: claves
+defects:
+- id: claves-alteradas
+  layer: deterministic
+  measure: op.exp.10
+  target:
+    kind: evidence
+    alias: claves
+  expected_rule: HASH_MISMATCH
+  requirement:
+    measure: op.exp.10
+    clause: op.exp.10.1
+    quote: Las claves criptográficas se protegerán durante todo su ciclo de vida
+  rationale: El fichero guardado de la evidencia se altera a mano y su huella deja de cuadrar.
+- id: claves-sin-cobertura
+  layer: deterministic
+  measure: op.exp.10
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: op.exp.10
+    clause: op.exp.10.2
+    quote: Los medios de generación estarán aislados de los medios de explotación
+  rationale: Al dejar de valer la evidencia, la medida queda sin cobertura y las cláusulas sin evidencia.

@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ai-agua-sin-motivo
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: declare_not_applicable
+  measure: mp.if.6
+  justification: No creemos que sea importante.
+defects:
+- id: agua-excluida-sin-razon
+  layer: judgment
+  measure: mp.if.6
+  target:
+    kind: justification
+  expected_criterion: solidez-justificacion-aplicabilidad
+  requirement:
+    measure: mp.if.6
+    clause: mp.if.6.1
+    quote: se protegerán frente a incidentes causados por el agua
+  rationale: La protección frente al agua se excluye con una frase que no explica por qué deja de ser
+    necesaria.

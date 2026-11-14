@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: av-configuracion-abierta
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: configuracion
+  file: configuracion.md
+defects:
+- id: configuracion-sin-restriccion
+  layer: judgment
+  measure: op.exp.3
+  target:
+    kind: evidence
+    alias: configuracion
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: op.exp.3
+    clause: op.exp.3.6
+    quote: La configuración de seguridad solamente podrá editarse por personal debidamente autorizado
+  rationale: La evidencia permite a cualquier persona editar la configuración, frente a los procedimientos,
+    que la reservan al administrador del sistema.

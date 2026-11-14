@@ -1,0 +1,71 @@
+format: ens-benchmark-case/1
+id: comercio-despliegue-y-perimetro-expuestos
+partition: dev
+profile: comercio-online
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: pruebas-despliegue
+    file: pruebas-despliegue.txt
+  - op: replace_evidence_text
+    alias: perimetro
+    file: perimetro.txt
+defects:
+  - id: subida-por-ftp-sin-pruebas
+    layer: judgment
+    measure: mp.sw.2
+    target: {kind: evidence, alias: pruebas-despliegue}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: mp.sw.2
+      clause: mp.sw.2
+      quote: Antes de pasar a producción se comprobará el correcto funcionamiento de la aplicación.
+    rationale: >-
+      La política dice que nadie publica sin revisión y el procedimiento exige pruebas
+      automáticas; la evidencia muestra una subida directa por FTP con las pruebas apagadas que
+      rompió los pagos.
+  - id: base-de-datos-abierta-a-internet
+    layer: judgment
+    measure: mp.com.1
+    target: {kind: evidence, alias: perimetro}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: mp.com.1
+      clause: mp.com.1.1
+      quote: >-
+        Se dispondrá de un sistema de protección perimetral que separe la red interna del
+        exterior. Todo el tráfico deberá atravesar dicho sistema.
+    rationale: >-
+      Con el cortafuegos en «permitir todo», FTP y SSH abiertos a cualquier dirección y la base
+      de datos publicada, no hay separación entre la red interna y el exterior, frente a la normativa que restringe la
+      administración y los datos de clientes.
+  - id: desarrollo-excluido-con-subida-directa
+    layer: judgment
+    measure: mp.sw.1
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: mp.sw.1
+      clause: mp.sw.1.1
+      quote: >-
+        El desarrollo de aplicaciones se realizará sobre un sistema diferente y separado del de
+        producción, no debiendo existir herramientas o datos de desarrollo en el entorno de
+        producción, ni datos de producción en el de desarrollo.
+    rationale: >-
+      Consecuencia de la hoja de despliegues del caso: el perfil excluye el desarrollo de
+      aplicaciones porque el riesgo de cada cambio se trata en su aceptación y puesta en producción
+      (mp.sw.2), y la hoja muestra una subida directa por FTP a producción desde un portátil, sin
+      petición ni revisión y con las pruebas automáticas desactivadas.
+  - id: cambios-excluidos-con-subida-directa
+    layer: judgment
+    measure: op.exp.5
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.exp.5
+      clause: op.exp.5.4
+      quote: Mediante un análisis de riesgos se determinará si los cambios son relevantes para la seguridad del sistema.
+    rationale: >-
+      Consecuencia de la hoja de despliegues del caso: el perfil excluye la gestión de cambios
+      porque los cambios de la tienda se tratan en su aceptación y puesta en producción (mp.sw.2),
+      y la hoja muestra un cambio publicado sin petición ni revisión que rompió los pagos.

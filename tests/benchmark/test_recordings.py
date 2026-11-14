@@ -40,6 +40,7 @@ from ens_evidence.models.preaudit import LayerStatus, Provider
 from ens_evidence.preaudit import service
 from ens_evidence.preaudit.adapter import ProviderError, ProviderErrorKind
 from ens_evidence.preaudit.clients.anthropic import TOOL_NAME, AnthropicProvider
+from ens_evidence.preaudit.pack import load_pack
 from ens_evidence.workspace import PreAuditSettings
 
 FIXTURES = Path(__file__).parent / "fixtures"
@@ -82,7 +83,9 @@ def finding(reason: str) -> dict:
 @pytest.fixture(scope="module")
 def mini(tmp_path_factory) -> Build:
     """El perfil mini construido una vez; cada caso es una copia suya."""
-    return build_bench_profile(FIXTURES, "mini", tmp_path_factory.mktemp("mini") / "ws")
+    return build_bench_profile(
+        FIXTURES, Partition.DEV, "mini", tmp_path_factory.mktemp("mini") / "ws"
+    )
 
 
 def fork(mini: Build):
@@ -97,7 +100,7 @@ def bench(tmp_path, mini, monkeypatch) -> Path:
     """Un banco con el perfil mini, un caso correcto de juicio y uno solo determinista. Los
     casos se construyen copiando `mini` (sin pagar la construcción en cada test)."""
     root = tmp_path / "bench"
-    shutil.copytree(FIXTURES / "profiles" / "mini", root / "profiles" / "mini")
+    shutil.copytree(FIXTURES / "profiles" / "dev" / "mini", root / "profiles" / "dev" / "mini")
     for partition in Partition:
         directory = root / "cases" / partition.value
         directory.mkdir(parents=True)
@@ -392,7 +395,13 @@ def prepared_case(bench: Path, tmp_path: Path, mini: Build, factory=None):
     settings = PreAuditSettings(provider=Provider.ANTHROPIC, model=MODEL)
     judged, _ = load_judgment_cases(bench, Partition.DEV)
     partition = prepare_cases(
-        bench, judged, settings, tmp_path / "scratch", builder=fork(mini), client_factory=factory
+        bench,
+        judged,
+        settings,
+        load_pack().sha256,
+        tmp_path / "scratch",
+        builder=fork(mini),
+        client_factory=factory,
     )
     return settings, partition.cases[0]
 
@@ -509,3 +518,91 @@ def test_la_repeticion_exige_el_proveedor_el_modelo_y_la_repeticion_grabados(ben
 
 def case_settings(model: str = MODEL) -> PreAuditSettings:
     return PreAuditSettings(provider=Provider.ANTHROPIC, model=model)
+
+
+# --- --pending -------------------------------------------------------------------------------
+
+KEYS = ["dev/bueno", "dev/desligado", "dev/con-error", "dev/sin-grabar"]
+
+
+def pending_bench(bench: Path, monkeypatch) -> FakeAnthropic:
+    """Cuatro casos de juicio, todos grabados; después uno se desliga, otro queda con un
+    `provider_error` y otro sin fichero. Devuelve el fake con el contador de envíos a cero."""
+    for key in KEYS:
+        (bench / "cases" / "dev" / f"{key.split('/')[1]}.yaml").write_text(
+            CORRECT.format(partition="dev").replace("id: correcto", f"id: {key.split('/')[1]}")
+        )
+    fake = FakeAnthropic(monkeypatch, EMPTY)
+    assert record(bench, "anthropic", prepare(bench, "anthropic")).exit_code == 0
+    stale = recording_path(bench, "dev/desligado", Provider.ANTHROPIC, MODEL)
+    raw = json.loads(stale.read_text())
+    stale.write_text(json.dumps({**raw, "payload_sha256": "f" * 64}))
+    errored = recording_path(bench, "dev/con-error", Provider.ANTHROPIC, MODEL)
+    recording = load_recording(errored)
+    broken = recording.repetitions[1].model_copy(
+        update={
+            "outcome": RepetitionOutcome.PROVIDER_ERROR,
+            "kind": ProviderErrorKind.TIMEOUT,
+            "response": None,
+        }
+    )
+    reps = [recording.repetitions[0], broken, recording.repetitions[2]]
+    write_recording(bench, recording.model_copy(update={"repetitions": reps}), replace=True)
+    recording_path(bench, "dev/sin-grabar", Provider.ANTHROPIC, MODEL).unlink()
+    fake.requests.clear()
+    return fake
+
+
+def test_pending_selecciona_solo_desligadas_con_error_y_sin_grabar(bench, monkeypatch):
+    pending_bench(bench, monkeypatch)
+    result = invoke(
+        "prepare", "--cases", str(bench), "--provider", "anthropic", "--model", MODEL, "--pending"
+    )
+    assert result.exit_code == 0, result.output
+    listed = re.findall(r"^(dev/[a-z-]+)  [0-9a-f]{64}$", result.output, re.MULTILINE)
+    assert sorted(listed) == ["dev/con-error", "dev/desligado", "dev/sin-grabar"]
+    assert "--pending" in result.output.splitlines()[-1]
+
+
+def test_la_huella_pending_difiere_de_la_completa(bench, monkeypatch):
+    pending_bench(bench, monkeypatch)
+    assert prepare(bench, "anthropic", "--pending") != prepare(bench, "anthropic")
+
+
+def test_record_pending_envia_solo_lo_pendiente_y_no_toca_lo_bueno(bench, monkeypatch):
+    fake = pending_bench(bench, monkeypatch)
+    good = recording_path(bench, "dev/bueno", Provider.ANTHROPIC, MODEL)
+    before = good.read_bytes()
+    consent = prepare(bench, "anthropic", "--pending")
+    result = record(bench, "anthropic", consent, "--pending")
+    assert result.exit_code == 0, result.output
+    assert len(fake.requests) == 3 * 3
+    assert good.read_bytes() == before
+    for key in KEYS:
+        recording = load_recording(recording_path(bench, key, Provider.ANTHROPIC, MODEL))
+        assert {r.outcome for r in recording.repetitions} == {RepetitionOutcome.RESPONSE}
+    again = invoke(
+        "prepare", "--cases", str(bench), "--provider", "anthropic", "--model", MODEL, "--pending"
+    )
+    assert "nada pendiente" in again.output
+
+
+def test_record_pending_sin_nada_pendiente_lo_dice_y_no_envia(bench, monkeypatch):
+    fake = pending_bench(bench, monkeypatch)
+    consent = prepare(bench, "anthropic", "--pending")
+    assert record(bench, "anthropic", consent, "--pending").exit_code == 0
+    fake.requests.clear()
+    result = record(bench, "anthropic", "0" * 64, "--pending")
+    assert result.exit_code == 0, result.output
+    assert "nada pendiente" in result.output
+    assert fake.requests == []
+
+
+def test_record_pending_rechaza_la_huella_completa(bench, monkeypatch):
+    fake = pending_bench(bench, monkeypatch)
+    good = recording_path(bench, "dev/bueno", Provider.ANTHROPIC, MODEL)
+    before = good.read_bytes()
+    result = record(bench, "anthropic", prepare(bench, "anthropic"), "--pending")
+    assert result.exit_code == 1 and "No se ha enviado nada" in result.output
+    assert fake.requests == [] and good.read_bytes() == before
+    assert not recording_path(bench, "dev/sin-grabar", Provider.ANTHROPIC, MODEL).exists()

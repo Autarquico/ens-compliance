@@ -1,0 +1,270 @@
+organizacion: "Brújula Austral Viajes S.L., agencia de viajes minorista con cinco personas que vende viajes organizados y billetes a particulares y a pequeñas empresas"
+direccion: "La gerencia de la sociedad, ejercida por Rafael Ortuño Cabello"
+personas:
+  - nombre: Rafael Ortuño Cabello
+    cargo: Gerente
+    contacto: rafael.ortuno@brujula-austral.example
+  - nombre: Noelia Salvatierra Mena
+    cargo: Agente de viajes y responsable de la seguridad
+    contacto: noelia.salvatierra@brujula-austral.example
+  - nombre: Gonzalo Iglesias Pardo
+    cargo: Agente senior y administrador del sistema
+    contacto: gonzalo.iglesias@brujula-austral.example
+resp_informacion: Rafael Ortuño Cabello
+resp_informacion_funciones: "Decide qué datos de los viajeros se piden al reservar, cuánto tiempo se guardan los expedientes y quién puede consultarlos, y valora el daño que causaría su pérdida o difusión."
+resp_servicio: Rafael Ortuño Cabello
+resp_servicio_funciones: "Decide qué viajes y servicios vende la agencia, el horario de atención y cuánto tiempo puede estar parado el programa de reservas sin perjuicio para los clientes."
+resp_seguridad: Noelia Salvatierra Mena
+resp_seguridad_funciones: "Decide las medidas de seguridad que se aplican, comprueba cada trimestre su estado con el administrador del sistema, aprueba la categorización y propone a la gerencia los cambios de la política."
+resp_sistema: Gonzalo Iglesias Pardo
+resp_sistema_funciones: "Administra las cuentas, los portátiles, el servidor de archivos y las copias, atiende al proveedor del programa de reservas y decide cuándo se aplican las actualizaciones."
+designacion_procedimiento: "La gerencia nombra por escrito a cada responsable, informa a toda la plantilla en la reunión semanal de equipo y archiva el nombramiento firmado en el servidor de archivos, en la carpeta de seguridad."
+renovacion_procedimiento: "La gerencia revisa los nombramientos cada año en octubre. Si una persona se va o cambia de puesto, la gerencia nombra a su sustituta en un máximo de siete días laborables y deja constancia en la misma carpeta."
+coordinacion: "Los tres responsables se reúnen cada mes y siempre que haya un incidente de nivel medio o alto. Usan el canal de mensajería interno de la agencia y cada reunión deja un acta breve."
+resolucion_conflictos: "Decide la gerencia en un máximo de tres días laborables y anota su decisión en el acta de la siguiente reunión."
+relacion_seguridad_sistema: "distintas y sin dependencia jerárquica"
+firmante_direccion: Rafael Ortuño Cabello
+uso_equipos:
+  - "Los portátiles de la agencia solo se usan para el trabajo de la agencia."
+  - "Solo se instalan programas aprobados por el administrador del sistema."
+  - "Al apartarse del mostrador se bloquea el portátil y al cerrar la agencia se apagan todos los equipos."
+  - "Los portátiles que salen de la oficina llevan el disco cifrado y se anotan en el libro de salidas."
+uso_servicios:
+  - "El correo de la agencia solo se usa para comunicaciones de trabajo."
+  - "Los datos de viajeros se consultan solo en el programa de reservas y en el servidor de archivos."
+  - "Las contraseñas se guardan únicamente en el gestor de contraseñas de la agencia."
+uso_instalaciones:
+  - "La puerta de la oficina se cierra con llave al salir el último agente."
+  - "El cuarto técnico permanece cerrado y solo entra el administrador del sistema o quien él acompañe."
+  - "Los clientes no pasan detrás del mostrador."
+uso_indebido:
+  - "Compartir las credenciales con otra persona."
+  - "Copiar datos de viajeros a un dispositivo o a una cuenta personal."
+  - "Desactivar el antivirus o el cifrado de un portátil."
+  - "Enviar documentación de viajeros a un correo personal."
+derechos_personal:
+  - "Recibir formación en seguridad al incorporarse y cada año."
+  - "Consultar sus dudas sobre seguridad a la responsable de la seguridad."
+  - "Comunicar un incidente sin sufrir represalias."
+deberes_personal:
+  - "Custodiar sus credenciales y no compartirlas."
+  - "Comunicar de inmediato cualquier comportamiento anómalo o la pérdida de un equipo."
+  - "Guardar confidencialidad sobre los datos de los viajeros, también al dejar la agencia."
+medidas_disciplinarias: "El incumplimiento se trata conforme al convenio colectivo del sector y al Estatuto de los Trabajadores: la gerencia califica la falta como leve, grave o muy grave, oye a la persona afectada y decide la sanción, que se anota en su expediente."
+mision: "La agencia organiza viajes y gestiona reservas para unas mil doscientas personas y pequeñas empresas, y necesita que los datos de sus viajeros y la emisión de documentos estén disponibles y protegidos."
+objetivos_seguridad:
+  - "Proteger la confidencialidad de la documentación personal de los viajeros."
+  - "Poder emitir y modificar reservas durante el horario comercial sin interrupciones largas."
+  - "Recuperar los expedientes de los viajeros tras un fallo del servidor o un borrado accidental."
+marco_legal:
+  - "Reglamento General de Protección de Datos y Ley Orgánica 3/2018."
+  - "Real Decreto 311/2022, Esquema Nacional de Seguridad, que la agencia adopta de forma voluntaria como marco de referencia."
+  - "Condiciones de contratación de los mayoristas y del proveedor del programa de reservas."
+riesgos_datos_personales: "Trata documentos de identidad, datos de contacto y datos de pago de unas mil doscientas personas, incluidos menores que viajan con sus familias. Su pérdida o filtración expondría a los viajeros a suplantaciones y fraudes con un perjuicio reparable pero molesto."
+comite:
+  - nombre: Reunión mensual de seguridad
+    ambito: "Seguimiento de las medidas, de los incidentes y de los cambios del sistema"
+    integrantes: "Rafael Ortuño Cabello, Noelia Salvatierra Mena y Gonzalo Iglesias Pardo"
+    relacion: "Informa a la gerencia, que aprueba la política, y se apoya en el proveedor del programa de reservas para las intervenciones técnicas"
+documentacion_estructura: "La documentación comprende la política de seguridad, la normativa, los procedimientos, el proceso de autorización y el procedimiento de incidentes. La política es el documento superior, la normativa la desarrolla y los procedimientos la aplican."
+documentacion_gestion: "Gonzalo Iglesias Pardo custodia la carpeta de seguridad, la revisa cada año en octubre y añade a cada versión su fecha y un número para identificar la vigente."
+documentacion_acceso: "La documentación está en la carpeta de seguridad del servidor de archivos; todo el personal puede leerla y solo el administrador del sistema y la responsable de la seguridad pueden modificarla."
+difusion_personal: "La responsable de la seguridad entrega la política a cada persona al incorporarse y cuando cambia, la comenta en la reunión de equipo y cada persona firma una hoja de lectura que se archiva en la carpeta de seguridad."
+servicios_externalizados: "no"
+incidentes_alcance: "El procedimiento se aplica al programa de reservas, al servidor de archivos, al correo, a los portátiles y a las copias. Es un incidente cualquier suceso que comprometa la confidencialidad, integridad o disponibilidad de los datos o de esos servicios."
+incidentes_deteccion:
+  - "Avisos del antivirus de cada portátil, que recibe el administrador del sistema."
+  - "Avisos del servidor de archivos por correo ante accesos fallidos repetidos, que recibe el administrador del sistema."
+  - "Avisos del proveedor del programa de reservas o de los mayoristas, que recibe la responsable de la seguridad."
+  - "Avisos del personal o de clientes, que recibe quien atiende el mostrador."
+incidentes_informe_eventos: "Cualquier persona informa por teléfono o por correo al administrador del sistema, que anota quién avisa, cuándo, qué ha ocurrido y qué sistema afecta. Las debilidades observadas se comunican por el mismo canal."
+incidentes_niveles:
+  - nivel: Leve
+    criterio: "No hay pérdida de datos ni parada del servicio, como un correo sospechoso que no se abrió"
+    escalado: "Lo registra el administrador del sistema y lo comenta en la siguiente reunión mensual"
+  - nivel: Importante
+    criterio: "Hay parada de un servicio o un acceso no autorizado sin pérdida de datos"
+    escalado: "El administrador del sistema llama a la responsable de la seguridad en el mismo día"
+  - nivel: Crítico
+    criterio: "Hay pérdida o filtración de datos personales"
+    escalado: "La responsable de la seguridad avisa de inmediato a la gerencia y convoca una reunión extraordinaria"
+incidentes_analisis: "El administrador del sistema clasifica el incidente, lo contiene y busca su causa; la responsable de la seguridad dirige la resolución y lo da por resuelto cuando el servicio funciona y la causa está corregida."
+incidentes_comunicacion: "La responsable de la seguridad informa a los viajeros afectados, al proveedor, a los mayoristas y a las autoridades que corresponda, por teléfono o correo, con la autorización de la gerencia."
+incidentes_registro: "Las actuaciones se anotan en el registro de incidentes de ens-evidence incident: aviso inicial, avances, actuaciones de emergencia, cambios en el sistema y cierre."
+incidentes_mejora: "La responsable de la seguridad revisa los incidentes cerrados en la reunión mensual y propone las mejoras, que quedan anotadas en el acta."
+incidentes_datos_personales: "La responsable de la seguridad determina si el incidente afecta a datos personales, avisa a la gerencia, que consulta con la asesoría de protección de datos contratada, y deja anotada la decisión en el registro del incidente."
+incidentes_evidencia: "La gerencia decide qué evidencia se preserva y la asesoría jurídica externa de la agencia da el asesoramiento legal."
+incidentes_eventos_auditables: "La responsable de la seguridad revisa los eventos auditables al cerrar cada incidente y lo anota en el registro."
+autoridad_procedimientos: "la dirección"
+procedimientos:
+  - tarea: Alta y baja de usuarios
+    quien: Administrador del sistema
+    pasos: "Recibe la petición por escrito de la gerencia, crea o desactiva las cuentas del correo y del programa de reservas y avisa a la persona afectada."
+    herramienta: Paneles de administración del correo y del programa de reservas
+    evidencia: Correo de petición y registro de altas y bajas
+  - tarea: Copias de seguridad
+    quien: Administrador del sistema
+    pasos: "Revisa cada mañana el aviso de la copia nocturna del servidor de archivos y cada trimestre restaura una carpeta de prueba."
+    herramienta: Panel del servicio de copias
+    evidencia: Registro de copias y de pruebas de restauración
+anomalias_identificacion:
+  - "Correos sospechosos o con adjuntos inesperados."
+  - "Portátil lento sin motivo o con ventanas que nadie ha abierto."
+  - "Accesos al programa de reservas desde ubicaciones que la persona no reconoce."
+anomalias_comunicacion: "Al administrador del sistema, por teléfono o correo, en cuanto se detecta y como máximo el mismo día laborable."
+anomalias_registro: "El administrador del sistema anota la fecha, quién avisa y qué ha ocurrido en el registro de incidentes."
+info_acceso:
+  - informacion: Expedientes de viajeros
+    quien: Administrador del sistema
+    pasos: "La gerencia decide los derechos de acceso a cada carpeta y aplicación, el administrador del sistema concede, cambia o anula los permisos, y ambos los revisan cada seis meses."
+    herramienta: Permisos del servidor de archivos y del programa de reservas
+    evidencia: Registro de permisos concedidos y revisados
+info_almacenamiento:
+  - informacion: Expedientes de viajeros
+    quien: Administrador del sistema
+    pasos: "Los expedientes se guardan solo en el servidor de archivos, cuyos discos están cifrados, y en el programa de reservas."
+    herramienta: Servidor de archivos y programa de reservas
+    evidencia: Configuración del cifrado del servidor
+info_copias:
+  - informacion: Expedientes de viajeros
+    quien: Administrador del sistema
+    pasos: "Copia nocturna del servidor de archivos a un almacenamiento cifrado fuera de la oficina y una copia mensual en un disco guardado en la caja fuerte de la gerencia; cada trimestre se prueba una restauración y solo el administrador del sistema y la responsable de la seguridad acceden a las copias."
+    herramienta: Servicio de copias y disco externo cifrado
+    evidencia: Registro de copias y de pruebas de restauración
+info_etiquetado:
+  - informacion: Soportes con expedientes de viajeros
+    quien: Administrador del sistema
+    pasos: "El disco de la copia mensual lleva una etiqueta con la palabra «Confidencial» y el mes de uso."
+    herramienta: Etiquetas impresas
+    evidencia: Inventario de soportes
+info_transmision:
+  - informacion: Expedientes de viajeros
+    quien: Agentes de viajes
+    pasos: "La documentación se envía solo desde el correo de la agencia con conexión cifrada o por el portal del mayorista; no se envía por mensajería personal."
+    herramienta: Correo de la agencia y portales de mayoristas
+    evidencia: Normativa de uso de servicios
+info_otras:
+  - informacion: Papeles con datos de viajeros
+    quien: Agentes de viajes
+    pasos: "Los papeles se destruyen con una trituradora al terminar cada viaje."
+    herramienta: Trituradora de la oficina
+    evidencia: Anotación en el registro de destrucción
+analisis_riesgos:
+  - ambito: Programa de reservas y expedientes de viajeros
+    quien: Responsable de la seguridad
+    pasos: "Identifica los activos más valiosos, las amenazas más probables, las salvaguardas y los riesgos residuales, y lo revisa cada año en octubre."
+    herramienta: Documento de análisis de riesgos en la carpeta de seguridad
+    evidencia: Documento de análisis de riesgos firmado
+inventario_activos:
+  - ambito: Todos los elementos del sistema
+    quien: Administrador del sistema
+    pasos: "Mantiene la lista de equipos, aplicaciones y servicios con su naturaleza y su responsable; la actualiza al dar de alta o de baja un equipo y la revisa cada seis meses."
+    herramienta: Hoja de inventario en la carpeta de seguridad
+    evidencia: Inventario con fecha de la última revisión
+gestion_cuentas:
+  - ambito: Programa de reservas, servidor de archivos y correo
+    quien: Administrador del sistema
+    pasos: "Cada cuenta tiene un identificador único; se inhabilita cuando la persona deja la agencia, cesa en su función o la gerencia lo ordena, y se retiene dieciocho meses para la trazabilidad de los registros."
+    herramienta: Paneles de administración de cada sistema
+    evidencia: Registro de altas y bajas con las fechas de retención
+credenciales:
+  - ambito: Personal de la agencia
+    quien: Administrador del sistema
+    pasos: "Antes de entregar una credencial, la persona acepta la política, firma el acuse de recibo y de sus obligaciones, cambia la contraseña cada seis meses y se inhabilita la credencial si se pierde, se compromete o termina la relación."
+    herramienta: Gestor de contraseñas
+    evidencia: Acuse firmado por cada persona
+actualizaciones:
+  - ambito: Portátiles y servidor de archivos
+    quien: Administrador del sistema
+    pasos: "Sigue los avisos de defectos de los fabricantes, analiza cada actualización según el riesgo, aplica las críticas en cinco días y el resto en la ventana mensual; solo personal autorizado realiza el mantenimiento."
+    herramienta: Actualizaciones automáticas de los sistemas y panel del servidor
+    evidencia: Registro mensual de actualizaciones aplicadas
+codigo_danino:
+  - ambito: Portátiles y servidor de archivos
+    quien: Administrador del sistema
+    pasos: "Instala el antivirus en todos los equipos, actualiza sus firmas de forma permanente según el fabricante, activa la protección en tiempo real y analiza cualquier fichero externo antes de abrirlo."
+    herramienta: Antivirus del sistema operativo y del servidor
+    evidencia: Informe del estado del antivirus
+registro_actividad:
+  - ambito: Servidor de archivos y programa de reservas
+    quien: Administrador del sistema
+    pasos: "Cada sistema registra usuario, fecha y hora, información afectada, tipo de evento y resultado; los registros se guardan un año y los consulta el administrador del sistema."
+    herramienta: Registros del servidor de archivos y del programa de reservas
+    evidencia: Configuración del registro de actividad
+perimetro:
+  - ambito: Red de la oficina
+    quien: Administrador del sistema
+    pasos: "La responsable de la seguridad autoriza por escrito cada regla nueva del cortafuegos del proveedor de conectividad; el administrador del sistema la solicita al proveedor y anota la petición."
+    herramienta: Cortafuegos del router gestionado por el proveedor de conectividad
+    evidencia: Registro de reglas autorizadas
+puesta_en_produccion:
+  - ambito: Aplicaciones y servicios nuevos
+    quien: Administrador del sistema
+    pasos: "Antes de usar una aplicación nueva comprueba su funcionamiento con datos de prueba, verifica que cumple los criterios de seguridad de la agencia y que no deteriora la seguridad de otros componentes del servicio."
+    herramienta: Cuenta de pruebas del proveedor
+    evidencia: Acta de aceptación
+informacion_deberes:
+  - ambito: Todo el personal
+    quien: Responsable de la seguridad
+    pasos: "Informa a cada persona de los deberes de su puesto, de las medidas disciplinarias, de las obligaciones al terminar o cambiar de puesto y del deber de confidencialidad al incorporarse, al cambiar de puesto y al salir."
+    herramienta: Documento de deberes firmado
+    evidencia: Documento firmado por cada persona
+concienciacion:
+  - ambito: Todo el personal
+    quien: Responsable de la seguridad
+    pasos: "Cada mes, en la reunión de equipo, recuerda la normativa de buen uso de los equipos, las técnicas de ingeniería social habituales, cómo reconocer comportamientos sospechosos y cómo informar de incidentes, reales o falsas alarmas."
+    herramienta: Reunión de equipo y correo
+    evidencia: Acta de la reunión
+formacion:
+  - ambito: Todo el personal
+    quien: Responsable de la seguridad
+    pasos: "Cada año forma a cada puesto en configuración de sistemas, detección y reacción ante incidentes y gestión de la información en cualquier soporte, y evalúa la eficacia con un cuestionario."
+    herramienta: Sesión interna y cuestionario
+    evidencia: Registro de asistencia y resultados del cuestionario
+aut_instalaciones:
+  - elemento: Oficina y cuarto técnico
+    quien: Gerencia
+    solicitud: "Por correo a la gerencia"
+    registro: "Respuesta archivada en la carpeta de autorizaciones"
+aut_instalaciones_alt:
+  not_applicable: true
+  reason: "La agencia no usa locales alternativos y no hay teletrabajo habitual."
+aut_equipos:
+  - elemento: Portátiles, servidor de archivos y equipos de red
+    quien: Administrador del sistema
+    solicitud: "Por correo al administrador del sistema"
+    registro: "Entrada en el inventario"
+aut_criptografia:
+  not_applicable: true
+  reason: "No hay equipos de criptografía distintos del cifrado de disco de los sistemas operativos."
+aut_aplicaciones:
+  - elemento: Programas y servicios nuevos
+    quien: Responsable de la seguridad
+    solicitud: "Por correo a la responsable de la seguridad"
+    registro: "Respuesta archivada en la carpeta de autorizaciones"
+aut_enlaces:
+  not_applicable: true
+  reason: "La agencia no tiene enlaces permanentes con sistemas de terceros; accede a los portales de los mayoristas por internet."
+aut_comunicaciones:
+  - elemento: Correo y videoconferencia
+    quien: Gerencia
+    solicitud: "Por correo a la gerencia"
+    registro: "Respuesta archivada en la carpeta de autorizaciones"
+aut_comunicaciones_alt:
+  not_applicable: true
+  reason: "El teléfono móvil de la gerencia hace de medio alternativo sin necesidad de autorización adicional."
+aut_soportes:
+  - elemento: Disco externo de la copia mensual
+    quien: Administrador del sistema
+    solicitud: "Por correo al administrador del sistema"
+    registro: "Entrada en el inventario de soportes"
+aut_moviles:
+  - elemento: Portátiles de la agencia
+    quien: Administrador del sistema
+    solicitud: "Por correo al administrador del sistema"
+    registro: "Entrada en el inventario"
+aut_terceros:
+  - elemento: Proveedor del programa de reservas y proveedor de copias
+    quien: Gerencia
+    solicitud: "Por correo a la gerencia con el presupuesto"
+    registro: "Contrato archivado en la carpeta de contratos"

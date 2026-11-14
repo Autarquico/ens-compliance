@@ -20,3 +20,16 @@ defects:
     rationale: >-
       La política deja la renovación de los responsables a una decisión futura sin plazo, sin
       causa ni forma: no precisa el procedimiento de renovación que exige org.1.3.
+  - id: renovacion-indefinida-en-designacion
+    layer: judgment
+    measure: org.1
+    target: {kind: document, ref: designacion-responsables}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.1
+      clause: org.1.3
+      quote: así como el procedimiento para su designación y renovación
+    rationale: >-
+      Del mismo hecho que renovacion-indefinida: la misma respuesta se renderiza también en la
+      designación de responsables, que deja la renovación a una decisión futura sin plazo, causa ni
+      forma. Se declara aparte porque el documento de designación es el que debe recoger el procedimiento de designación y renovación (org.1.3) y lo deja a una decisión futura.

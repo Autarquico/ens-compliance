@@ -1,0 +1,27 @@
+format: ens-benchmark-case/1
+id: comercio-repositorio-publico
+partition: dev
+profile: comercio-online
+kind: defective
+mutations:
+  - op: set_answer
+    key: credenciales.0.pasos
+    value: "Antes de dar acceso, la persona confirma por correo que ha leído la normativa y sus obligaciones con las credenciales (custodiarlas con diligencia, no revelarlas y avisar en el momento si las pierde); la contraseña inicial se comparte por el gestor de contraseñas y se cambia en el primer acceso, cuando se activa el doble factor. Las contraseñas se cambian cada año, en la revisión de septiembre, y ante cualquier sospecha, y la cuenta se bloquea en el día si se pierde un portátil o el móvil del doble factor o si termina la relación con la empresa. Las claves y los secretos de la tienda no se guardan en el código, y todos los repositorios de la organización son privados: ninguno se publica, para que lo que hubiera por error en el historial no quede a la vista de nadie."
+  - op: collected_override
+    alias: github
+    file: github.json
+defects:
+  - id: repositorio-publico-contra-procedimiento
+    layer: judgment
+    measure: op.acc.6
+    target: {kind: evidence, alias: github}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.acc.6
+      clause: op.acc.6.5
+      quote: "Las credenciales serán inhabilitadas -pudiendo ser regeneradas, en su caso-, cuando conste o se sospeche su pérdida, compromiso o revelación a entidades (personas, equipos o procesos) no autorizadas."
+    rationale: >-
+      El procedimiento de credenciales declara que todos los repositorios de la organización son
+      privados para que los secretos del historial no queden a la vista, y la recogida del 3 de
+      octubre muestra el repositorio de la tienda como público. Se ata a op.acc.6 y al procedimiento de credenciales, y no a la normativa, porque solo un documento enlazado a la misma medida que la evidencia de github es citable (validate.py:229-252) y la normativa solo enlaza a org.2; la revelación de credenciales de op.acc.6.5 es la medida más cercana a secretos expuestos en un historial público. Ningún check determinista compara
+      la visibilidad: el único check sobre esta evidencia en op.acc.6 es el doble factor.

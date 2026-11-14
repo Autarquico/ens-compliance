@@ -1,0 +1,16 @@
+services:
+  - id: matricula-alumnado
+    name: Matrícula y gestión del alumnado
+    assets:
+      - app-matricula
+      - bd-alumnado
+      - proveedor-alojamiento
+      - copias-semanales
+      - portatil-secretaria
+  - id: administracion-academia
+    name: Administración y comunicaciones de la academia
+    assets:
+      - cuentas-correo
+      - gestor-claves
+      - portatil-direccion
+      - proveedor-conectividad

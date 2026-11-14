@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: av-servidor-expuesto
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: arquitectura
+  file: arquitectura.md
+defects:
+- id: servidor-publicado
+  layer: judgment
+  measure: op.pl.2
+  target:
+    kind: evidence
+    alias: arquitectura
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: op.pl.2
+    clause: op.pl.2.3
+    quote: cortafuegos, DMZ, etc.
+  rationale: La arquitectura publica el servidor de archivos en internet, frente a la política de acceso
+    remoto y al resto de la documentación, que lo limitan a la red de la oficina.

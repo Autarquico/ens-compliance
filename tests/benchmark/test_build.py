@@ -38,6 +38,7 @@ BUILD_AND_DIGEST = """
 import hashlib, json, sys
 from pathlib import Path
 from ens_evidence.benchmark.build import build_bench_profile
+from ens_evidence.benchmark.model import Partition
 
 from ens_evidence.benchmark.build import inspect
 from ens_evidence.models.preaudit import Provider
@@ -45,7 +46,7 @@ from ens_evidence.preaudit import service
 from ens_evidence.workspace.settings import PreAuditSettings
 
 root, destination = Path(sys.argv[1]), Path(sys.argv[2])
-build = build_bench_profile(root, "mini", destination)
+build = build_bench_profile(root, Partition.DEV, "mini", destination)
 inspection = inspect(build)
 settings = PreAuditSettings(provider=Provider.ANTHROPIC, model="modelo")
 prepared = service.prepare(build.store, build.dossier, None, settings, now=build.tick())
@@ -67,7 +68,9 @@ runner = CliRunner()
 @pytest.fixture(scope="module")
 def mini(tmp_path_factory) -> Build:
     """El perfil mini construido una vez por módulo; los tests que escriben usan su copia."""
-    return build_bench_profile(FIXTURES, PROFILE, tmp_path_factory.mktemp("mini") / "ws")
+    return build_bench_profile(
+        FIXTURES, Partition.DEV, PROFILE, tmp_path_factory.mktemp("mini") / "ws"
+    )
 
 
 SETTINGS = PreAuditSettings(provider=Provider.ANTHROPIC, model="modelo")
@@ -138,8 +141,8 @@ def test_dos_procesos_con_directorios_distintos_construyen_los_mismos_bytes(tmp_
 
 
 def test_la_semilla_cambia_los_ids_y_nada_mas_del_formato(tmp_path):
-    first = build_bench_profile(FIXTURES, PROFILE, tmp_path / "a", seed="caso-a")
-    second = build_bench_profile(FIXTURES, PROFILE, tmp_path / "b", seed="caso-b")
+    first = build_bench_profile(FIXTURES, Partition.DEV, PROFILE, tmp_path / "a", seed="caso-a")
+    second = build_bench_profile(FIXTURES, Partition.DEV, PROFILE, tmp_path / "b", seed="caso-b")
 
     assert first.evidence_ids.keys() == second.evidence_ids.keys()
     assert set(first.evidence_ids.values()).isdisjoint(second.evidence_ids.values())
@@ -158,7 +161,7 @@ def test_los_ids_sembrados_son_una_secuencia_reproducible():
 def edited_bench(tmp_path: Path, edit) -> Path:
     root = tmp_path / "bench"
     shutil.copytree(FIXTURES, root)
-    path = root / "profiles/mini/profile.yaml"
+    path = root / "profiles/dev/mini/profile.yaml"
     data = yaml.safe_load(path.read_text(encoding="utf-8"))
     edit(data)
     path.write_text(yaml.safe_dump(data, allow_unicode=True), encoding="utf-8")
@@ -240,7 +243,7 @@ def test_un_perfil_que_no_se_puede_construir_falla_con_el_paso_y_el_motivo(
 ):
     root = edited_bench(tmp_path, edit)
     with pytest.raises(BenchError) as raised:
-        build_bench_profile(root, PROFILE, tmp_path / "ws")
+        build_bench_profile(root, Partition.DEV, PROFILE, tmp_path / "ws")
     assert any(p.startswith(expected) for p in raised.value.problems), raised.value.problems
 
 
@@ -249,32 +252,32 @@ def test_no_construye_sobre_un_destino_con_contenido(tmp_path):
     destination.mkdir()
     (destination / "algo.txt").write_text("previo", encoding="utf-8")
     with pytest.raises(BenchError, match="el destino no está vacío"):
-        build_bench_profile(FIXTURES, PROFILE, destination)
+        build_bench_profile(FIXTURES, Partition.DEV, PROFILE, destination)
 
 
 def test_una_evidencia_enlazada_fuera_del_banco_no_se_lee(tmp_path):
     root = tmp_path / "bench"
-    shutil.copytree(FIXTURES / "profiles" / PROFILE, root / "profiles" / PROFILE)
-    first = yaml.safe_load((root / "profiles" / PROFILE / "profile.yaml").read_text())
-    evidence = root / "profiles" / PROFILE / "files" / first["evidence"][0]["file"]
+    shutil.copytree(FIXTURES / "profiles" / "dev" / PROFILE, root / "profiles" / "dev" / PROFILE)
+    first = yaml.safe_load((root / "profiles" / "dev" / PROFILE / "profile.yaml").read_text())
+    evidence = root / "profiles" / "dev" / PROFILE / "files" / first["evidence"][0]["file"]
     outside = tmp_path / "fuera.txt"
     shutil.move(evidence, outside)
     evidence.symlink_to(outside)
 
     with pytest.raises(BenchError, match="enlace simbólico o queda fuera del banco"):
-        build_bench_profile(root, PROFILE, tmp_path / "ws")
+        build_bench_profile(root, Partition.DEV, PROFILE, tmp_path / "ws")
     assert any("enlace simbólico" in p for p in validate_bench(root, Partition.DEV))
 
 
 def test_un_directorio_de_ficheros_enlazado_fuera_del_banco_no_se_lee(tmp_path):
     root = tmp_path / "bench"
-    shutil.copytree(FIXTURES / "profiles" / PROFILE, root / "profiles" / PROFILE)
-    files = root / "profiles" / PROFILE / "files"
+    shutil.copytree(FIXTURES / "profiles" / "dev" / PROFILE, root / "profiles" / "dev" / PROFILE)
+    files = root / "profiles" / "dev" / PROFILE / "files"
     shutil.move(files, tmp_path / "fuera")
     files.symlink_to(tmp_path / "fuera", target_is_directory=True)
 
     with pytest.raises(BenchError, match="enlace simbólico o queda fuera del banco"):
-        build_bench_profile(root, PROFILE, tmp_path / "ws")
+        build_bench_profile(root, Partition.DEV, PROFILE, tmp_path / "ws")
     assert not (tmp_path / "ws").exists()
     assert any("enlace simbólico" in p for p in validate_bench(root, Partition.DEV))
 
@@ -282,7 +285,7 @@ def test_un_directorio_de_ficheros_enlazado_fuera_del_banco_no_se_lee(tmp_path):
 def test_el_perfil_invalido_por_esquema_no_llega_a_construirse(tmp_path):
     root = edited_bench(tmp_path, lambda data: data.update(fictional=False))
     with pytest.raises(BenchError):
-        build_bench_profile(root, PROFILE, tmp_path / "ws")
+        build_bench_profile(root, Partition.DEV, PROFILE, tmp_path / "ws")
     assert not (tmp_path / "ws").exists()
 
 
@@ -329,6 +332,8 @@ def test_prepare_acepta_el_expediente_y_da_la_huella_de_inspect(mini, tmp_path):
 def bench_with_case(tmp_path: Path, partition: str, **changes) -> Path:
     root = tmp_path / "bench"
     shutil.copytree(FIXTURES, root)
+    if partition != "dev":
+        shutil.copytree(root / "profiles/dev", root / "profiles" / partition)
     case = {
         "format": "ens-benchmark-case/1",
         "id": "correcto",

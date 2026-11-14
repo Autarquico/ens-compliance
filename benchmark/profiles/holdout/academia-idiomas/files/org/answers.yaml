@@ -1,0 +1,269 @@
+organizacion: "Academia Cala Verde S.L., academia de idiomas para niños, jóvenes y adultos con ocho personas en plantilla"
+direccion: "La gerencia de la sociedad, ejercida por Marta Quirós Vidal"
+personas:
+  - nombre: Marta Quirós Vidal
+    cargo: Gerente
+    contacto: marta.quiros@academia-calaverde.example
+  - nombre: Íñigo Paredes Lasa
+    cargo: Coordinador académico y responsable de la seguridad
+    contacto: inigo.paredes@academia-calaverde.example
+  - nombre: Lucía Barrios Soto
+    cargo: Responsable de secretaría y administradora del sistema
+    contacto: lucia.barrios@academia-calaverde.example
+resp_informacion: Marta Quirós Vidal
+resp_informacion_funciones: "Decide qué datos del alumnado se recogen en la matrícula, durante cuánto tiempo se conservan y quién puede consultarlos, y valora qué perjuicio causaría su pérdida o su difusión."
+resp_servicio: Marta Quirós Vidal
+resp_servicio_funciones: "Decide qué servicios presta la academia (cursos, matrícula en línea, comunicación con las familias), con qué horarios de atención y qué interrupciones son tolerables."
+resp_seguridad: Íñigo Paredes Lasa
+resp_seguridad_funciones: "Decide las medidas de seguridad que se aplican, revisa cada trimestre el estado de las medidas con la responsable del sistema, aprueba la categorización y propone a la gerencia los cambios de la política."
+resp_sistema: Lucía Barrios Soto
+resp_sistema_funciones: "Administra las cuentas, los equipos y las copias de seguridad, coordina las intervenciones del proveedor de alojamiento y decide cuándo se aplican las actualizaciones."
+designacion_procedimiento: "La gerencia nombra por escrito a cada responsable, lo comunica por correo a toda la plantilla y el nombramiento queda archivado en la carpeta de documentación de seguridad de la academia."
+renovacion_procedimiento: "La gerencia revisa los nombramientos cada año en septiembre. Si una persona se va, cambia de puesto o no puede ejercer, la gerencia designa a su sustituto en un plazo máximo de diez días laborables y lo anota en la misma carpeta."
+coordinacion: "El comité de seguridad se reúne cada trimestre y de forma extraordinaria ante un incidente grave. Se coordina por el canal interno de mensajería de la academia y cada reunión deja un acta con los acuerdos."
+resolucion_conflictos: "Decide la gerencia en un plazo máximo de cinco días laborables y la decisión se anota en el acta del comité de seguridad."
+relacion_seguridad_sistema: "distintas y sin dependencia jerárquica"
+firmante_direccion: Marta Quirós Vidal
+uso_equipos:
+  - "Los ordenadores de la academia solo se usan para tareas de la academia."
+  - "No se instala ningún programa sin permiso de la responsable del sistema."
+  - "El equipo se bloquea al levantarse del puesto y se cierra la sesión al terminar la jornada."
+  - "Los portátiles salen de la oficina solo con autorización de la responsable del sistema y con el disco cifrado."
+uso_servicios:
+  - "El correo de la academia solo se usa para comunicaciones de la academia."
+  - "Los datos del alumnado solo se consultan desde la aplicación de matrícula, nunca desde hojas de cálculo personales."
+  - "Las contraseñas se guardan únicamente en el gestor de contraseñas de la academia."
+uso_instalaciones:
+  - "La puerta de la secretaría se cierra con llave al terminar la jornada."
+  - "Las visitas y las familias esperan en el recibidor y no pasan a la secretaría sin acompañante."
+  - "Los papeles con datos de alumnado no se dejan sobre la mesa al salir."
+uso_indebido:
+  - "Compartir las credenciales de acceso con otra persona."
+  - "Copiar datos del alumnado a un dispositivo o a una cuenta personal."
+  - "Desactivar el antivirus o el cifrado de un equipo."
+  - "Reenviar correos de la academia a cuentas externas sin autorización."
+derechos_personal:
+  - "Recibir formación en seguridad al incorporarse y cada año."
+  - "Consultar sus dudas sobre seguridad al responsable de la seguridad."
+  - "Comunicar un incidente sin sufrir represalias."
+deberes_personal:
+  - "Custodiar sus credenciales y no compartirlas."
+  - "Comunicar de inmediato cualquier comportamiento anómalo o pérdida de un equipo."
+  - "Guardar confidencialidad sobre los datos del alumnado, también al terminar la relación con la academia."
+medidas_disciplinarias: "El incumplimiento se trata conforme al convenio colectivo aplicable y al Estatuto de los Trabajadores: la gerencia califica la falta como leve, grave o muy grave, oye a la persona afectada y decide la sanción, que se anota en su expediente."
+mision: "La academia ofrece cursos de inglés, francés y alemán a unas trescientas familias y adultos de la comarca y necesita que sus datos y su matrícula estén disponibles y protegidos."
+objetivos_seguridad:
+  - "Proteger la confidencialidad de los datos personales del alumnado y de sus familias."
+  - "Mantener disponible la matrícula en línea durante los periodos de inscripción."
+  - "Poder recuperar la información de alumnado tras un fallo o un borrado accidental."
+marco_legal:
+  - "Reglamento General de Protección de Datos y Ley Orgánica 3/2018."
+  - "Real Decreto 311/2022, Esquema Nacional de Seguridad, que la academia adopta de forma voluntaria como marco de referencia."
+  - "Condiciones de contratación del proveedor de alojamiento."
+riesgos_datos_personales: "Trata datos identificativos, de contacto y de pago de unas trescientas familias y las calificaciones de alumnado, con un número relevante de menores. Su pérdida o filtración expondría a menores y familias a suplantaciones y a un daño reparable pero molesto."
+comite:
+  - nombre: Comité de seguridad
+    ambito: "Seguimiento de las medidas de seguridad, de los incidentes y de los cambios del sistema"
+    integrantes: "Marta Quirós Vidal, Íñigo Paredes Lasa y Lucía Barrios Soto"
+    relacion: "Informa a la gerencia, que es quien aprueba la política, y se apoya en el proveedor de alojamiento para las intervenciones técnicas"
+documentacion_estructura: "La documentación se organiza en la política de seguridad, la normativa de seguridad, los procedimientos de seguridad, el proceso de autorización y el procedimiento de incidentes. La política manda sobre la normativa, y la normativa sobre los procedimientos."
+documentacion_gestion: "Lucía Barrios Soto custodia la carpeta de documentación, la revisa cada año en septiembre y numera cada versión con su fecha para saber cuál es la vigente."
+documentacion_acceso: "La documentación está en una carpeta compartida de solo lectura para toda la plantilla; solo la responsable del sistema y el responsable de la seguridad pueden modificarla."
+difusion_personal: "La política se envía por correo a cada persona al incorporarse y tras cada cambio, y cada persona responde confirmando su lectura; las respuestas se archivan en la carpeta de documentación."
+servicios_externalizados: "no"
+incidentes_alcance: "El procedimiento se aplica a la aplicación de matrícula, su base de datos, el correo, los portátiles y las copias. Es un incidente cualquier suceso que comprometa la confidencialidad, integridad o disponibilidad de los datos o de esos servicios."
+incidentes_deteccion:
+  - "Avisos del antivirus de cada portátil, que recibe la responsable del sistema."
+  - "Avisos del proveedor de alojamiento sobre accesos o caídas anómalas, que recibe la responsable del sistema."
+  - "Avisos del personal o de las familias por teléfono o correo, que recibe la secretaría."
+incidentes_informe_eventos: "Cualquier persona informa por correo o por teléfono a la responsable del sistema, que anota quién avisa, cuándo, qué ha ocurrido y qué sistema afecta. Las debilidades observadas se comunican por el mismo canal."
+incidentes_niveles:
+  - nivel: Bajo
+    criterio: "No hay pérdida de datos ni interrupción del servicio, por ejemplo un correo sospechoso que no se abrió"
+    escalado: "Lo registra la responsable del sistema y lo comunica al responsable de la seguridad en la siguiente reunión"
+  - nivel: Medio
+    criterio: "Hay interrupción de un servicio o un acceso no autorizado sin pérdida de datos"
+    escalado: "La responsable del sistema avisa por teléfono al responsable de la seguridad el mismo día"
+  - nivel: Alto
+    criterio: "Hay pérdida o filtración de datos personales"
+    escalado: "El responsable de la seguridad avisa a la gerencia de inmediato y convoca el comité de seguridad"
+incidentes_analisis: "La responsable del sistema clasifica el incidente, lo contiene y analiza su causa; el responsable de la seguridad dirige la resolución y da el incidente por resuelto cuando el servicio funciona y se ha corregido la causa."
+incidentes_comunicacion: "El responsable de la seguridad comunica a las familias afectadas, al proveedor y a las autoridades que corresponda, por correo o teléfono, con la autorización de la gerencia."
+incidentes_registro: "Las actuaciones se anotan en el registro de incidentes de ens-evidence incident: aviso inicial, avances, actuaciones de emergencia, cambios en el sistema y cierre."
+incidentes_mejora: "El responsable de la seguridad revisa los incidentes cerrados en la reunión trimestral del comité y propone las mejoras que se anotan en el acta."
+incidentes_datos_personales: "El responsable de la seguridad determina si el incidente afecta a datos personales, avisa a la gerencia, que consulta con la asesoría de protección de datos, y deja anotada la decisión en el registro del incidente."
+incidentes_evidencia: "La gerencia decide qué evidencia se preserva y la asesoría jurídica externa de la academia da el asesoramiento legal."
+incidentes_eventos_auditables: "El responsable de la seguridad revisa los eventos auditables al cerrar cada incidente y lo anota en el registro."
+autoridad_procedimientos: "el responsable de la seguridad"
+procedimientos:
+  - tarea: Alta y baja de usuarios
+    quien: Responsable del sistema
+    pasos: "Recibe la petición por escrito de la gerencia, crea o desactiva la cuenta y comunica el cambio a la persona afectada."
+    herramienta: Panel de administración del correo
+    evidencia: Correo de petición y registro de altas y bajas
+  - tarea: Copias de seguridad
+    quien: Responsable del sistema
+    pasos: "Comprueba cada semana que la copia diaria del proveedor se ha hecho, realiza la copia semanal en el disco externo y la guarda en la caja de la oficina."
+    herramienta: Panel del proveedor de alojamiento y disco externo cifrado
+    evidencia: Registro de copias
+anomalias_identificacion:
+  - "Correos sospechosos o con adjuntos inesperados."
+  - "Equipo lento sin motivo o con ventanas que no se han abierto."
+  - "Accesos a la aplicación de matrícula que la persona no reconoce."
+anomalias_comunicacion: "A la responsable del sistema, por teléfono o por correo, en cuanto se detecta y como máximo el mismo día laborable."
+anomalias_registro: "La responsable del sistema anota la fecha, quién avisa y qué ha ocurrido en el registro de incidentes."
+info_acceso:
+  - informacion: Datos del alumnado
+    quien: Responsable del sistema
+    pasos: "La gerencia decide los derechos de acceso a cada recurso, la responsable del sistema concede, cambia o anula los permisos y ambas revisan los permisos cada seis meses."
+    herramienta: Panel de administración de la aplicación de matrícula
+    evidencia: Registro de permisos concedidos y revisados
+info_almacenamiento:
+  - informacion: Datos del alumnado
+    quien: Responsable del sistema
+    pasos: "Los datos se guardan solo en la base de datos de la aplicación de matrícula, cuyo disco está cifrado por el proveedor."
+    herramienta: Base de datos gestionada del proveedor de alojamiento
+    evidencia: Condiciones del proveedor sobre cifrado
+info_copias:
+  - informacion: Datos del alumnado
+    quien: Responsable del sistema
+    pasos: "Copia diaria en el proveedor y copia semanal en el disco externo cifrado de la oficina; cada trimestre se prueba una restauración y solo la responsable del sistema y el responsable de la seguridad acceden a las copias."
+    herramienta: Panel del proveedor y disco externo cifrado
+    evidencia: Registro de copias y de pruebas de restauración
+info_etiquetado:
+  - informacion: Soportes con datos del alumnado
+    quien: Responsable del sistema
+    pasos: "El disco externo de copias lleva una etiqueta con la palabra «Confidencial» y el año de uso."
+    herramienta: Etiquetas impresas
+    evidencia: Inventario de soportes
+info_transmision:
+  - informacion: Datos del alumnado
+    quien: Secretaría
+    pasos: "La información solo se envía por la aplicación de matrícula o por el correo de la academia con conexión cifrada; no se envía por mensajería personal."
+    herramienta: Correo de la academia y aplicación de matrícula
+    evidencia: Normativa de uso de servicios
+info_otras:
+  - informacion: Papeles con datos del alumnado
+    quien: Secretaría
+    pasos: "Los papeles se destruyen con una trituradora al terminar el curso."
+    herramienta: Trituradora de la secretaría
+    evidencia: Anotación en el registro de destrucción
+analisis_riesgos:
+  - ambito: Aplicación de matrícula y datos del alumnado
+    quien: Responsable de la seguridad
+    pasos: "Identifica los activos más valiosos, las amenazas más probables, las salvaguardas existentes y los riesgos residuales, y lo revisa cada año en septiembre."
+    herramienta: Documento de análisis de riesgos en la carpeta de documentación
+    evidencia: Documento de análisis de riesgos firmado
+inventario_activos:
+  - ambito: Todos los elementos del sistema
+    quien: Responsable del sistema
+    pasos: "Mantiene la lista de equipos, aplicaciones y servicios con su naturaleza y su responsable; la actualiza al dar de alta o de baja un equipo y la revisa cada seis meses."
+    herramienta: Hoja de inventario en la carpeta de documentación
+    evidencia: Inventario con fecha de la última revisión
+gestion_cuentas:
+  - ambito: Aplicación de matrícula y correo
+    quien: Responsable del sistema
+    pasos: "Cada cuenta tiene un identificador único; se inhabilita cuando la persona deja la organización, cesa en su función o la gerencia lo ordena, y se retiene un año para la trazabilidad de los registros."
+    herramienta: Paneles de administración del correo y de la aplicación
+    evidencia: Registro de altas y bajas con las fechas de retención
+credenciales:
+  - ambito: Personal de la academia
+    quien: Responsable del sistema
+    pasos: "Antes de entregar una credencial, la persona acepta la política, firma el acuse de recibo y de sus obligaciones, cambia la contraseña cada doce meses y se inhabilita la credencial si se pierde, se compromete o termina la relación."
+    herramienta: Gestor de contraseñas
+    evidencia: Acuse firmado por cada persona
+actualizaciones:
+  - ambito: Portátiles y aplicación de matrícula
+    quien: Responsable del sistema
+    pasos: "Sigue los avisos de defectos de los fabricantes, analiza cada actualización según el riesgo, aplica las críticas en siete días y el resto en el mantenimiento mensual; solo el personal autorizado realiza el mantenimiento."
+    herramienta: Actualizaciones automáticas de Windows y panel del proveedor
+    evidencia: Registro mensual de actualizaciones aplicadas
+codigo_danino:
+  - ambito: Portátiles y correo
+    quien: Responsable del sistema
+    pasos: "Instala el antivirus en todos los equipos, actualiza sus firmas de forma permanente según el fabricante, activa la protección en tiempo real y analiza cualquier fichero externo antes de abrirlo."
+    herramienta: Antivirus del sistema operativo
+    evidencia: Informe del estado del antivirus
+registro_actividad:
+  - ambito: Aplicación de matrícula
+    quien: Responsable del sistema
+    pasos: "La aplicación registra usuario, fecha y hora, información afectada, tipo de evento y resultado; los registros se guardan un año en el servidor del proveedor y los consulta la responsable del sistema."
+    herramienta: Registros de la aplicación en el proveedor de alojamiento
+    evidencia: Configuración del registro de actividad
+perimetro:
+  - ambito: Red de la oficina y servidor del proveedor
+    quien: Responsable del sistema
+    pasos: "El responsable de la seguridad autoriza por escrito cada regla nueva de los cortafuegos del proveedor de conectividad o del proveedor de alojamiento; la responsable del sistema la configura y anota la petición."
+    herramienta: Cortafuegos del router gestionado por el proveedor de conectividad y cortafuegos del proveedor de alojamiento
+    evidencia: Registro de reglas autorizadas
+puesta_en_produccion:
+  - ambito: Aplicación de matrícula
+    quien: Responsable del sistema
+    pasos: "Antes de pasar a producción, prueba el funcionamiento, comprueba los criterios de seguridad y verifica que no se deteriora la seguridad de otros componentes del servicio."
+    herramienta: Entorno de pruebas del proveedor
+    evidencia: Acta de aceptación
+informacion_deberes:
+  - ambito: Todo el personal
+    quien: Responsable de la seguridad
+    pasos: "Informa a cada persona de los deberes de su puesto, de las medidas disciplinarias, de las obligaciones al terminar o cambiar de puesto y del deber de confidencialidad al incorporarse, al cambiar de puesto y al salir."
+    herramienta: Documento de deberes firmado
+    evidencia: Documento firmado por cada persona
+concienciacion:
+  - ambito: Todo el personal
+    quien: Responsable de la seguridad
+    pasos: "Cada trimestre recuerda la normativa de buen uso de los equipos, las técnicas de ingeniería social habituales, cómo reconocer comportamientos sospechosos y cómo informar de incidentes, reales o falsas alarmas."
+    herramienta: Correo y reunión trimestral
+    evidencia: Registro de asistencia
+formacion:
+  - ambito: Todo el personal
+    quien: Responsable de la seguridad
+    pasos: "Cada año forma a cada puesto en configuración de sistemas, detección y reacción ante incidentes y gestión de la información en cualquier soporte, y evalúa la eficacia con un cuestionario."
+    herramienta: Sesión interna y cuestionario
+    evidencia: Registro de asistencia y resultados del cuestionario
+aut_instalaciones:
+  - elemento: Oficinas habituales
+    quien: Gerencia
+    solicitud: "Por correo a la gerencia"
+    registro: "Respuesta archivada en la carpeta de autorizaciones"
+aut_instalaciones_alt:
+  not_applicable: true
+  reason: "La academia no usa locales alternativos ni teletrabajo habitual."
+aut_equipos:
+  - elemento: Ordenadores y equipos de red de la oficina
+    quien: Responsable del sistema
+    solicitud: "Por correo a la responsable del sistema"
+    registro: "Entrada en el inventario"
+aut_criptografia:
+  not_applicable: true
+  reason: "No hay equipos de criptografía distintos del cifrado de disco del sistema operativo."
+aut_aplicaciones:
+  - elemento: Programas y servicios nuevos
+    quien: Responsable de la seguridad
+    solicitud: "Por correo al responsable de la seguridad"
+    registro: "Respuesta archivada en la carpeta de autorizaciones"
+aut_enlaces:
+  not_applicable: true
+  reason: "La academia no tiene enlaces permanentes con sistemas de terceros."
+aut_comunicaciones:
+  - elemento: Correo y videoconferencia
+    quien: Gerencia
+    solicitud: "Por correo a la gerencia"
+    registro: "Respuesta archivada en la carpeta de autorizaciones"
+aut_comunicaciones_alt:
+  not_applicable: true
+  reason: "El teléfono móvil de la gerencia hace de medio alternativo sin necesidad de autorización adicional."
+aut_soportes:
+  - elemento: Disco externo de copias
+    quien: Responsable del sistema
+    solicitud: "Por correo a la responsable del sistema"
+    registro: "Entrada en el inventario de soportes"
+aut_moviles:
+  - elemento: Portátiles de la academia
+    quien: Responsable del sistema
+    solicitud: "Por correo a la responsable del sistema"
+    registro: "Entrada en el inventario"
+aut_terceros:
+  - elemento: Proveedor de alojamiento
+    quien: Gerencia
+    solicitud: "Por correo a la gerencia con el presupuesto"
+    registro: "Contrato archivado en la carpeta de contratos"

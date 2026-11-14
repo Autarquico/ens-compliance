@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/av-bloqueo-ausente",
+  "case_sha256": "afc912e9d00b761ce2e81732724a8d71a605eef1486ede60a2bd6dc222a56802",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "da5a2f0e170895bde4cf02a96fb572e6f08169624ff138a50b8a683a56da9279",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-08T15:37:56.566901Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-08T15:35:06.023780Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-08T15:36:04.050293Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-08T15:37:01.159682Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.si.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.si.1\", \"quote\": \"no exige esta medida para la categoría BÁSICA ni para el nivel BAJO de las dimensiones afectadas, y la agencia no la adopta de forma voluntaria.\"}], \"reason\": \"La justificación no da una razón propia del marcado de soportes y afirma que la agencia no adopta la medida, mientras que el documento procedimientos-seguridad (no enlazado a esta medida) indica que el disco de la copia mensual lleva una etiqueta con la palabra «Confidencial» y el mes de uso. El expediente queda incoherente sobre si los soportes se marcan.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.si.2\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.si.2\", \"quote\": \"no exige esta medida para la categoría BÁSICA ni para el nivel BAJO de las dimensiones afectadas, y la agencia no la adopta de forma voluntaria.\"}], \"reason\": \"La justificación no da una razón propia de la criptografía en soportes y afirma que la agencia no adopta la medida, mientras que la evidencia EV-20261012-1f5398fb (enlazada a otras medidas, no a esta) declara que el único soporte extraíble es un disco externo cifrado. El expediente queda incoherente sobre si la medida se aplica.\"}]}",
+      "kind": null
+    }
+  ]
+}

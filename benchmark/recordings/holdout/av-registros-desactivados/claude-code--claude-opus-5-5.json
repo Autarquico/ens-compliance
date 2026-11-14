@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/av-registros-desactivados",
+  "case_sha256": "2d7a877b5569d1bdad371f4ea24bba2566d93b6d39555a9dcd4f235b774e85f1",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "dabc396dbde6b5a68b6a13de2377a2b97c75a5ecc5e2b48876783c9cea9fd7dc",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-08T16:13:04.030105Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-08T16:10:49.610193Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.exp.8\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Cada sistema registra usuario, fecha y hora, información afectada, tipo de evento y resultado; los registros se guardan un año y los consulta el administrador del sistema.\"}], \"evidence\": [{\"ref\": \"EV-20261012-38d708bc\", \"quote\": \"En el servidor de archivos los registros de actividad están desactivados para ahorrar espacio en disco.\"}], \"justifications\": [], \"reason\": \"El procedimiento, cuyo ámbito incluye el servidor de archivos, afirma que cada sistema registra la actividad y la conserva un año, pero la evidencia enlazada declara que en ese servidor los registros están desactivados. Se propone como fallo parcial en la implantación de la medida, limitado a ese servidor, ya que en los del proveedor del programa de reservas sí están activados.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-08T16:11:34.191395Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.exp.8\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"### Servidor de archivos y programa de reservas\\n\\n- Quién: Administrador del sistema\\n- Pasos: Cada sistema registra usuario, fecha y hora, información afectada, tipo de evento y resultado; los registros se guardan un año y los consulta el administrador del sistema.\"}], \"evidence\": [{\"ref\": \"EV-20261012-38d708bc\", \"quote\": \"En el servidor de archivos los registros de actividad están desactivados para ahorrar espacio en disco. En los servidores del proveedor del programa de reservas están activados.\"}], \"justifications\": [], \"reason\": \"El procedimiento afirma que el servidor de archivos registra la actividad y conserva los registros un año, pero la evidencia enlazada declara que en ese servidor los registros están desactivados. Se propone como fallo de implantación de un requisito de la medida en uno de los dos sistemas, ya que en el programa de reservas sí constan activados.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-08T16:12:24.684186Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.exp.8\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Cada sistema registra usuario, fecha y hora, información afectada, tipo de evento y resultado; los registros se guardan un año y los consulta el administrador del sistema.\"}, {\"ref\": \"procedimientos-seguridad\", \"quote\": \"Herramienta o canal: Registros del servidor de archivos y del programa de reservas\"}], \"evidence\": [{\"ref\": \"EV-20261012-38d708bc\", \"quote\": \"En el servidor de archivos los registros de actividad están desactivados para ahorrar espacio en disco. En los servidores del proveedor del programa de reservas están activados.\"}], \"justifications\": [], \"reason\": \"El procedimiento afirma que el servidor de archivos registra la actividad y conserva los registros un año, pero la evidencia enlazada declara que en ese servidor los registros están desactivados. Se propone como fallo parcial de implantación de la medida, limitado al servidor de archivos, porque en los servidores del proveedor sí están activados.\"}]}",
+      "kind": null
+    }
+  ]
+}

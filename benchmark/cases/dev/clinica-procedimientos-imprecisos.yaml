@@ -1,0 +1,95 @@
+format: ens-benchmark-case/1
+id: clinica-procedimientos-imprecisos
+partition: dev
+profile: clinica-dental
+kind: defective
+mutations:
+  - op: set_answer
+    key: procedimientos.0.quien
+    value: Cualquiera de la clínica que tenga un rato
+  - op: set_answer
+    key: procedimientos.0.pasos
+    value: Se da de alta o de baja al usuario cuando alguien se acuerda.
+  - op: set_answer
+    key: procedimientos.1.quien
+    value: El primero que llegue por la mañana, si sabe
+  - op: set_answer
+    key: procedimientos.1.pasos
+    value: Se mira si la copia ha salido bien y, si no, ya se verá.
+  - op: set_answer
+    key: gestion_cuentas.0.quien
+    value: Cualquiera de la clínica que tenga un rato
+  - op: set_answer
+    key: gestion_cuentas.0.pasos
+    value: Se crea o se quita la cuenta cuando alguien se acuerda.
+  - op: set_answer
+    key: incidentes_informe_eventos
+    value: Si alguien ve algo raro en un ordenador, que lo comente en el café.
+  - op: set_answer
+    key: incidentes_registro
+    value: No se apunta nada salvo que la directora lo pida expresamente.
+defects:
+  - id: tareas-sin-responsable-definido
+    layer: judgment
+    measure: org.3
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: org.3
+      clause: org.3.2
+      quote: Quién debe hacer cada tarea.
+    rationale: >-
+      En los procedimientos aprobados las altas de usuarios y la comprobación de copias quedan a
+      cargo de «cualquiera» o «el primero que llegue», con pasos que dependen de que alguien se
+      acuerde: no dicen quién hace cada tarea ni cómo.
+  - id: eventos-sin-canal-de-informe
+    layer: judgment
+    measure: op.exp.7
+    target: {kind: document, ref: procedimiento-incidentes}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.exp.7
+      clause: op.exp.7.1
+      quote: >-
+        Se dispondrá de un proceso integral para hacer frente a los incidentes que puedan tener
+        un impacto en la seguridad del sistema, que incluya el informe de eventos de seguridad y
+        debilidades, detallando los criterios de clasificación y el escalado de la notificación.
+    rationale: >-
+      El procedimiento de incidentes de la clínica reduce el aviso de eventos a comentarlo «en
+      el café» y deja sin anotar lo ocurrido salvo petición expresa: no hay un informe de eventos
+      ni de debilidades con destinatario y registro.
+  - id: altas-de-usuarios-sin-competencia
+    layer: judgment
+    measure: op.acc.4
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.acc.4
+      clause: op.acc.4.4
+      quote: >-
+        Capacidad de autorizar: Exclusivamente el personal con competencia para ello podrá
+        conceder, alterar o anular la autorización de acceso a los recursos, conforme a los
+        criterios establecidos por su responsable.
+    rationale: >-
+      Las tareas de los procedimientos dejan dar de alta o de baja a los usuarios del programa a
+      «cualquiera de la clínica que tenga un rato», sin petición de la directora: conceder y
+      anular el acceso no queda reservado a personal con competencia, y contradice el apartado
+      de control de acceso del mismo documento, que lo reserva al responsable de sistemas a
+      petición de la directora.
+  - id: cuentas-sin-inhabilitacion-ni-retencion
+    layer: judgment
+    measure: op.acc.1
+    target: {kind: document, ref: procedimientos-seguridad}
+    expected_criterion: calidad-documental
+    requirement:
+      measure: op.acc.1
+      clause: op.acc.1.4
+      quote: >-
+        Las cuentas deben ser inhabilitadas en los siguientes casos: cuando el usuario deja la
+        organización; cuando el usuario cesa en la función para la cual se requería la cuenta de
+        usuario; o, cuando la persona que la autorizó da orden en sentido contrario.
+    rationale: >-
+      El apartado de gestión de cuentas de los procedimientos deja crear y quitar cuentas a
+      «cualquiera de la clínica que tenga un rato» «cuando alguien se acuerda»: no recoge la
+      inhabilitación de la cuenta al dejar la organización o cesar en su función, ni fija el
+      periodo de retención de las cuentas.

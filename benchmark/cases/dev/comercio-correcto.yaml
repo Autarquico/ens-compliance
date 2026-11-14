@@ -1,0 +1,5 @@
+format: ens-benchmark-case/1
+id: comercio-correcto
+partition: dev
+profile: comercio-online
+kind: correct

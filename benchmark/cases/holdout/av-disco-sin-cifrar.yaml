@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: av-disco-sin-cifrar
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: soportes
+  file: soportes.md
+defects:
+- id: disco-sin-cifrado
+  layer: judgment
+  measure: mp.si.4
+  target:
+    kind: evidence
+    alias: soportes
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: mp.si.4
+    clause: mp.si.4.3
+    quote: Se utilizarán los medios de protección criptográfica
+  rationale: La evidencia dice que el disco no se cifra, frente al inventario y a los procedimientos de
+    copias, que lo declaran cifrado.

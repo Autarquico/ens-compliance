@@ -21,6 +21,10 @@ visibles las miradas hechas con la herramienta; no impide mirarla por otros
 medios. No abras sus ficheros ni ajustes el pack con lo que muestre
 (`AGENT.md`).
 
+Los perfiles se parten igual que los casos: `profiles/<partición>/<perfil>/`.
+Cada orden de una partición lee solo los perfiles de esa partición; un caso
+que nombra un perfil de la otra da «no existe».
+
 ## 1. Valida el banco
 
 ```bash
@@ -44,7 +48,7 @@ eso construye cada caso grabado).
 
 ```bash
 uv run ens-evidence benchmark build dev/ct-copias-desenlazadas
-uv run ens-evidence benchmark build consultora-tic          # un perfil
+uv run ens-evidence benchmark build consultora-tic          # un perfil de dev (`--partition`)
 uv run ens-evidence benchmark build dev/<caso> --out /tmp/ws-caso
 ```
 
@@ -116,8 +120,10 @@ anotarlo (§ 5).
 
 ## 3. Graba
 
-Graba cada caso de juicio de la partición con los dos pares que son puerta
-de v0.1: `claude-code/claude-opus-5-5` y `codex/gpt-6.1-sol`. Es un envío
+Graba cada caso de juicio de la partición con el par que es puerta de v0.1,
+`claude-code/claude-opus-5-5`. `codex/gpt-6.1-sol` está pospuesto por cuota
+(ADR 0018, enmienda de 2026-11-08): se puede grabar e informar, pero no es
+puerta hasta su seguimiento. Es un envío
 real: los payloads (ficticios) salen hacia Anthropic u OpenAI.
 
 El banco no lee el fichero de ajustes: el proveedor y el modelo vienen de
@@ -185,6 +191,31 @@ Qué hace `record`:
 | 0 | Todas las grabaciones escritas |
 | 1 | Huella que no coincide, shell sin `--accept-shell-risk`, grabaciones que ya existen sin `--replace`, envío rechazado por el producto o alguna grabación no escrita |
 | 2 | Entrada no válida: `--by` vacío o con un dato personal, `--model` vacío, pack no íntegro, caso que no se construye o que el producto no deja preparar |
+
+#### Solo lo pendiente (`--pending`)
+
+Una grabación completa cuesta todos los casos de juicio × 3 repeticiones por
+par. Para iterar, añade `--pending` a `prepare` y a `record`: restringe el
+trabajo a los casos de la partición cuya grabación de ese proveedor y modelo
+está en alguno de estos estados:
+
+- no existe, o no se puede leer;
+- está desligada del pack o del payload actuales (la misma comprobación que
+  `validate --recordings`);
+- alguna repetición es `provider_error`.
+
+```bash
+uv run ens-evidence benchmark prepare --provider codex --model gpt-6.1-sol --pending
+uv run ens-evidence benchmark record --provider codex --model gpt-6.1-sol --pending \
+  --consent <huella combinada> --by "<tu nombre>" --accept-shell-risk
+```
+
+La huella combinada cubre exactamente ese subconjunto, así que difiere de la
+completa: `record --pending` solo acepta la que imprimió `prepare --pending`.
+`prepare` sigue construyendo todos los casos (sin red) para saber qué payload
+corresponde a cada uno. `--replace` está implícito: esos ficheros ya no sirven.
+Una grabación ligada y toda `response` no se toca. Si no hay nada pendiente,
+`prepare` lo dice y `record` no envía nada.
 
 Antes de commitear, lee el diff de `benchmark/recordings/`: las grabaciones
 no van firmadas y la revisión del diff es lo que las protege.
@@ -264,6 +295,19 @@ la puerta del CI falla. Una retirada solo cubre la versión cuya huella anota:
 si el mismo id vuelve a cambiar en otro PR, sustituye su `sha256` por la nueva
 que imprime la puerta.
 
+**Retirar un par** (proveedor y modelo) que la línea base de la rama base
+tenía: la puerta lo rechaza (`falta <proveedor>/<modelo>, que la línea base
+tenía, sin una entrada retired`) e imprime la huella de su entrada. Anótala
+igual, con el par como `id`:
+
+```json
+{"id": "codex/gpt-6.1-sol", "sha256": "<huella de la entrada del par>",
+ "reason": "<por qué sale>"}
+```
+
+Solo cubre esa entrada: si la línea base del par cambia, hay que anotar la
+nueva huella. Si el par vuelve a grabarse, la retirada sobra y se borra.
+
 **Añadir un caso o un defecto** no necesita anotación ni cuenta como
 regresión, aunque el pack no lo detecte o dé una falsa alarma en él: la
 puerta compara la detección y las tasas A y B solo sobre lo que no ha
@@ -296,7 +340,7 @@ texto, quita `--format json --out bench.json`. Para un solo par:
 Solo cuando el usuario decide medir. Cada orden lleva `--measurement` y deja
 su línea en `benchmark/measurements.jsonl`.
 
-1. Graba la reservada con los dos pares (§ 3.1), añadiendo
+1. Graba la reservada con el par que es puerta (§ 3.1), añadiendo
    `--partition holdout --measurement` a `prepare` y a `record`:
 
    ```bash
@@ -305,7 +349,7 @@ su línea en `benchmark/measurements.jsonl`.
    uv run ens-evidence benchmark record --partition holdout --measurement \
      --provider claude-code --model claude-opus-5-5 \
      --consent <huella combinada> --by "<tu nombre>"
-   # igual con codex/gpt-6.1-sol y --accept-shell-risk
+   # opcional, informativo: igual con codex/gpt-6.1-sol y --accept-shell-risk
    ```
 
 2. Mide:
@@ -315,12 +359,12 @@ su línea en `benchmark/measurements.jsonl`.
      --all-recorded --gate threshold
    ```
 
-   Con `--all-recorded`, deciden los dos pares de v0.1; los demás grabados se
+   Con `--all-recorded`, decide el par de v0.1 (hoy solo Anthropic); los demás grabados se
    informan. Por par: 100 % de los deterministas, ≥ 80 % de los de juicio,
    tasa A ≤ 20 % y tasa B ≤ 20 %, sobre al menos 20 defectos de juicio, 10
    deterministas y 3 expedientes correctos.
 
-   - **0:** los dos pares pasan el umbral del banco.
+   - **0:** los pares que son puerta pasan el umbral del banco.
    - **1:** algún par no llega. v0.1 no cierra. El informe dice qué falla.
    - **2:** opción no válida (por ejemplo, sin `--measurement`).
    - **3:** falta la grabación de un par que es puerta, o una está desligada.
@@ -332,10 +376,41 @@ Si no pasa, no se ajustan prompts ni criterios con lo visto en la reservada.
 Se ajusta con la de desarrollo y se vuelve a medir; la nueva mirada queda
 anotada.
 
+### Rotar la reservada
+
+Una reservada que se ha mirado deja de medir. Para renovarla:
+
+1. Mueve sus casos a desarrollo, con sus ficheros y el campo `partition`:
+
+   ```bash
+   git mv benchmark/cases/holdout/<caso>.yaml benchmark/cases/dev/
+   git mv benchmark/cases/holdout/files/<caso> benchmark/cases/dev/files/
+   # y en cada YAML movido: partition: dev
+   ```
+
+   Mueve igual los perfiles que usaban: `git mv benchmark/profiles/holdout/<perfil>
+   benchmark/profiles/dev/`. Un perfil no se comparte entre particiones.
+2. Retira `benchmark/recordings/holdout/`. Las grabaciones de la reservada
+   antigua no valen para dev: regraba (§ 4).
+3. No toques `benchmark/measurements.jsonl`: es de solo adición.
+4. Crea la reservada nueva a ciegas, sin leer dev: perfiles en
+   `benchmark/profiles/holdout/` y casos en `benchmark/cases/holdout/`, solo
+   de categoría BÁSICA.
+5. Comprueba los recuentos de D7 antes de medir:
+
+   ```bash
+   uv run ens-evidence benchmark validate --partition holdout --measurement
+   ```
+
+   Valida la reservada, imprime los defectos de juicio, deterministas y
+   expedientes correctos, y sale con 2 por debajo del mínimo (20, 10 y 3) o si
+   un perfil no es BÁSICA. Cuenta como mirada: queda en `measurements.jsonl`.
+6. Mide (§ 7).
+
 ## 8. Variantes reales de Autarqui fuera del repo (U3)
 
 `--cases` acepta un banco fuera del repo, con la misma disposición
-(`profiles/`, `cases/dev/`, `recordings/`), y todas las órdenes funcionan
+(`profiles/dev/`, `cases/dev/`, `recordings/`), y todas las órdenes funcionan
 igual:
 
 ```bash
