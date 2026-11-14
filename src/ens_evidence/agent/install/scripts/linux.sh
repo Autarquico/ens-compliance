@@ -32,7 +32,8 @@ fi
 @@COMMON@@
 
 if [ "$WITH_ANTIMALWARE" = 1 ]; then
-  apt-get install -y clamav clamav-freshclam || die "no se pudo instalar ClamAV."
+  DEBIAN_FRONTEND=noninteractive apt-get update || die "no se pudo actualizar el índice de paquetes."
+  DEBIAN_FRONTEND=noninteractive apt-get install -y clamav clamav-freshclam || die "no se pudo instalar ClamAV."
   systemctl enable --now clamav-freshclam || die "no se pudo activar clamav-freshclam."
 fi
 

@@ -13,6 +13,7 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from ens_evidence.checks.catalog import CHECKS, ENDPOINT_CONNECTOR, SubjectKind
 from ens_evidence.connectors.sections import worst
 from ens_evidence.endpoint.config import (
     EndpointConfig,
@@ -48,7 +49,11 @@ HOST_CHECKS = (
     SIGNATURES,
     REALTIME,
 )
-WORKSTATION_ONLY_CHECKS = frozenset({REALTIME})
+WORKSTATION_ONLY_CHECKS = frozenset(
+    check_id
+    for check_id, spec in CHECKS.items()
+    if spec.connector == ENDPOINT_CONNECTOR and spec.subjects is SubjectKind.WORKSTATION
+)
 
 ATTESTED = "Según atestación manual del host"
 APPS_COVERAGE = "`apps` solo cubre aplicaciones conocidas de macOS, no todo el software"
@@ -720,9 +725,8 @@ def _gatekeeper(host: Host, context: CheckContext) -> Outcome:
         return _unknown("`gatekeeper.assessments_enabled` ausente, múltiple o no reconocido")
     moment, problem = _xprotect(host, context)
     if problem is not None:
-        return _unknown(
-            f"Gatekeeper activo, pero XProtect no consta presente y al día: {problem.reason}"
-        )
+        cause = problem.reason.removeprefix(f"{ATTESTED}: ")
+        return _unknown(f"Gatekeeper activo, pero XProtect no consta presente y al día: {cause}")
     return Outcome(
         CheckStatus.PASS,
         f"{ATTESTED}: Gatekeeper activo y XProtect del {moment:%Y-%m-%d} ({FILE_DATE_NOTE}); "

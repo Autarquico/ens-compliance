@@ -398,7 +398,9 @@ def test_server_deb_installs_clamav_before_osquery(sandbox):
     result = sandbox.run(sandbox.render(with_antimalware=True), expected_sha=payload_sha(sandbox))
     assert result.returncode == 0, result.stderr
     calls = sandbox.calls
+    index = calls.index("apt-get update")
     clamav = calls.index("apt-get install -y clamav clamav-freshclam")
+    assert index < clamav
     freshclam = calls.index("systemctl enable --now clamav-freshclam")
     osquery = next(i for i, c in enumerate(calls) if c.startswith("dpkg -i "))
     assert clamav < freshclam < osquery
@@ -420,8 +422,15 @@ def test_server_rpm_aborts_with_instructions_before_mutating(sandbox):
     assert "clamav-update" in result.stderr
 
 
-def test_clamav_failure_aborts_before_osquery(sandbox):
+def test_apt_update_failure_aborts_before_osquery(sandbox):
     sandbox._tool("apt-get", 'echo "apt-get $*" >> "$LOG"; exit 100')
+    result = sandbox.run(sandbox.render(with_antimalware=True), expected_sha=payload_sha(sandbox))
+    assert result.returncode != 0
+    assert not [c for c in sandbox.calls if c.startswith(("dpkg", "systemctl", "apt-get install"))]
+
+
+def test_clamav_failure_aborts_before_osquery(sandbox):
+    sandbox._tool("apt-get", 'echo "apt-get $*" >> "$LOG"; [ "$1" = install ] && exit 100; exit 0')
     result = sandbox.run(sandbox.render(with_antimalware=True), expected_sha=payload_sha(sandbox))
     assert result.returncode != 0
     assert "ClamAV" in result.stderr
