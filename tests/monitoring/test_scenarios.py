@@ -1,6 +1,7 @@
 """Criterios de aceptación de `kit-monitoring`, de punta a punta con transportes falsos."""
 
 import json
+import os
 import threading
 from datetime import timedelta
 from pathlib import Path
@@ -44,6 +45,10 @@ NOW = UI_NOW
 def state(tmp_path, monkeypatch) -> Path:
     path = tmp_path / "state"
     monkeypatch.setenv("ENS_STATE_DIR", str(path))
+    beat = tmp_path / "scheduler-heartbeat"
+    beat.write_text("1\n")
+    os.utime(beat, (NOW.timestamp(), NOW.timestamp()))
+    monkeypatch.setenv("ENS_HEARTBEAT_FILE", str(beat))
     return path
 
 
@@ -207,6 +212,7 @@ def test_a_restarted_loop_does_not_repeat_the_mail_within_24_hours(state, worksp
 
     restarted_smtp = fake_smtp()
     later = NOW + timedelta(hours=1)
+    os.utime(os.environ["ENS_HEARTBEAT_FILE"], (later.timestamp(), later.timestamp()))
     MonitoringStore(state).record(
         [
             sample("mon_containers", [DOWN_BACKREST], at=later),
