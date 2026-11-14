@@ -1,7 +1,8 @@
 """Configuración de la evidencia de endpoints (`connectors/endpoint.yaml`, ADR 0006).
 
-La antigüedad máxima y las versiones soportadas son decisiones de la organización:
-no tienen valor por defecto. La inscripción de cada equipo (uuid y nombre) es
+La antigüedad máxima de la evidencia y las versiones soportadas son decisiones de la
+organización: no tienen valor por defecto. La antigüedad máxima de las firmas antimalware
+(`max_signature_age_days`) sí: 7 días. La inscripción de cada equipo (uuid y nombre) es
 independiente del paquete que se importa y no contiene credenciales.
 """
 
@@ -83,6 +84,7 @@ class HostEnrollment(_Strict):
 
 class EndpointConfig(_Strict):
     max_evidence_age_days: Days
+    max_signature_age_days: Days = 7
     supported_os: list[SupportedOs]
     hosts: dict[Text, HostEnrollment]
 

@@ -19,6 +19,7 @@ class SubjectKind(StrEnum):
     ORGANIZATION = "organization"
     REPOSITORY = "repository"
     HOST = "host"
+    WORKSTATION = "workstation"  # solo laptops: puestos de usuario, nunca servidores
     SELF_REPORTED = "self_reported"  # sin sujetos de inventario: la completitud la decide el check
 
 
@@ -74,6 +75,8 @@ CHECKS: Mapping[str, CheckSpec] = MappingProxyType(
         "HOST-005": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
         "HOST-006": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
         "HOST-007": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
+        "HOST-008": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.HOST),
+        "HOST-009": CheckSpec(ENDPOINT_CONNECTOR, SubjectKind.WORKSTATION),
     }
 )
 

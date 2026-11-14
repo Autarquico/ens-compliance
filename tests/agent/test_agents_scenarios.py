@@ -63,6 +63,8 @@ def test_windows_host_that_delivers_results_gets_unknown_on_every_host_check(wor
     assert set(mine) == set(HOST_CHECKS)
     assert CheckStatus.PASS not in {r.status for r in mine.values()}
     assert all(r.reason_code == "no_evidence" for r in mine.values())
+    # HOST-008 y HOST-009 (laptop) también salen, UNKNOWN y sin evidencia.
+    assert {"HOST-008", "HOST-009"} <= set(mine)
     # Sin evidencia (`_without_evidence`, endpoint/checks.py): HOST-001 sale FAIL por cobertura,
     # el resto UNKNOWN, nunca PASS.
     assert mine["HOST-001"].status is CheckStatus.FAIL
@@ -79,7 +81,8 @@ def token_file(tmp_path, content=SENTINEL):
 
 
 @pytest.mark.parametrize(("os_name", "package", "arch"), ALL_TARGETS)
-def test_install_output_never_contains_the_token(settings, tmp_path, os_name, package, arch):
+def test_install_output_never_contains_the_token(world, settings, tmp_path, os_name, package, arch):
+    world.workspace.write_text("scope/assets.yaml", ASSETS)
     path = token_file(tmp_path)
     args = ["install", "--asset", LAPTOP, "--os", os_name, "--server", SERVER_HOST]
     args += ["--token-file", str(path)]
