@@ -3,7 +3,7 @@
 # con las versiones de osquery en uso (https://osquery.io/schema/); el check
 # que las consuma debe dar UNKNOWN ante error, tabla vacía o columna ausente.
 id: endpoint-queries
-version: 2
+version: 3
 queries:
   - id: system_info
     platforms: [darwin, linux, windows]
@@ -85,3 +85,36 @@ queries:
     purpose: HOST-007
     verified: false
     note: Productos instalados con Windows Installer, no todo el software del equipo.
+  - id: windows_security_products
+    platforms: [windows]
+    purpose: HOST-008
+    verified: false
+    note: >-
+      Productos del Centro de seguridad de Windows filtrados a antivirus; vacía en
+      Windows Server. Columnas contrastadas con specs/windows/windows_security_products.table
+      de osquery 5.24.1; no demuestra por sí sola que el producto funcione.
+  - id: gatekeeper
+    platforms: [darwin]
+    purpose: HOST-009
+    verified: false
+    note: Estado de Gatekeeper; assessments_enabled 1 es activo.
+  - id: xprotect_bundle
+    platforms: [darwin]
+    purpose: HOST-008
+    verified: false
+    note: >-
+      Versión (CFBundleShortVersionString) y fecha de modificación del Info.plist
+      de XProtect en las dos rutas conocidas; la fecha es la del fichero, no la de
+      las firmas.
+  - id: clamav_signatures
+    platforms: [linux]
+    purpose: HOST-008
+    verified: false
+    note: >-
+      Fecha y tamaño de las bases de firmas de ClamAV en /var/lib/clamav; la fecha
+      es la del fichero, no la versión de las firmas.
+  - id: clamav_units
+    platforms: [linux]
+    purpose: HOST-008
+    verified: false
+    note: Unidades systemd clamav-*; sirve para comprobar que freshclam está activo.

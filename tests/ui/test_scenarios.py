@@ -486,7 +486,8 @@ def test_con_todas_las_herramientas_desplegadas_cada_tarjeta_da_su_estado_y_abri
 
     from . import test_tools, test_tools_claves, test_tools_contrasenas
 
-    hosts = {tool.id: f"{tool.id}.example.org" for tool in KIT_TOOLS}
+    on_box = [tool for tool in KIT_TOOLS if tool.on_box]
+    hosts = {tool.id: f"{tool.id}.example.org" for tool in on_box}
     test_tools.record(example_store, CheckStatus.PASS)
     test_tools_claves.record(example_store, test_tools_claves.UNSEALED_OK)
     test_tools_contrasenas.record(example_store, test_tools_contrasenas.SECOND_OK)
@@ -498,7 +499,8 @@ def test_con_todas_las_herramientas_desplegadas_cada_tarjeta_da_su_estado_y_abri
         r'<section class="card" aria-labelledby="h-(\w+)">(.*?)</section>', html, re.S
     )
     assert [tool_id for tool_id, _ in cards] == [tool.id for tool in KIT_TOOLS]
-    for (tool_id, body), tool in zip(cards, KIT_TOOLS, strict=True):
+    for tool in on_box:
+        tool_id, body = next(card for card in cards if card[0] == tool.id)
         assert tool.name in body
         assert "Al día" in body, tool_id
         assert f'href="https://{hosts[tool_id]}"' in body and ">Abrir<" in body, tool_id

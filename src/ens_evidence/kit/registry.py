@@ -49,6 +49,8 @@ class KitTool:
     help_label: str
     hints: dict[str, str]
     ram: MeasuredRam | None
+    on_box: bool = True
+    check_ids: tuple[str, ...] = ()
 
 
 KIT_TOOLS: tuple[KitTool, ...] = (
@@ -196,6 +198,66 @@ KIT_TOOLS: tuple[KitTool, ...] = (
             conditions="Vaultwarden (30 MiB) y su exportador (51 MiB) en reposo, base de prueba con"
             " tres usuarios, Docker Desktop arm64",
         ),
+    ),
+    KitTool(
+        id="antimalware",
+        name="Protección frente a código dañino",
+        purpose=(
+            "Instala ClamAV en tus servidores Linux (Debian, Ubuntu) y lee, con osquery, el "
+            "antimalware de cada equipo: ClamAV en Linux, el antivirus que muestre el Centro de "
+            "seguridad en Windows, XProtect y Gatekeeper en macOS. No hay nada que desplegar en la "
+            "caja: se instala en cada equipo con el instalador de agentes."
+        ),
+        connector="endpoint",
+        measures=("op.exp.6",),
+        measures_note="Instalar el antimalware no cumple la medida: lo valora una persona.",
+        covers=(
+            "En cada recogida comprueba que las firmas están al día (op.exp.6.4: en Linux la "
+            "fecha de los ficheros de ClamAV y que freshclam esté activo; en macOS XProtect; en "
+            "Windows lo que el Centro de seguridad informa del antivirus) y que los puestos "
+            "tienen protección en tiempo real (op.exp.6.5: Gatekeeper y XProtect en macOS; en "
+            "Windows solo detecta antivirus apagados, porque un antivirus activo no prueba el "
+            "tiempo real y queda en desconocido). Cubre una parte de esas dos cláusulas; la "
+            "fecha es la del fichero, no la versión de las firmas, y se revisa también al "
+            "evaluar. "
+            "Windows se evalúa de extremo a extremo cuando llegue el colector de osquery; por "
+            "ahora solo está probado con ejemplos."
+        ),
+        not_covers=(
+            "No es un EDR ni responde a incidentes, y no lanza análisis bajo demanda. No analiza "
+            "los ficheros que llegan de fuera antes de abrirlos (op.exp.6.3), ni comprueba el "
+            "escaneo periódico, el análisis al arrancar, la lista blanca de aplicaciones ni el "
+            "EDR de los niveles MEDIO y ALTO. En servidores RPM el instalador no añade "
+            "repositorios: ClamAV se instala a mano. En Linux de puesto no hay protección en "
+            "tiempo real evidenciable. No decide que la medida esté cubierta: eso lo valora una "
+            "persona."
+        ),
+        covers_clauses=(),
+        partial_clauses=("op.exp.6.4", "op.exp.6.5"),
+        not_covered_clauses=(
+            "op.exp.6.3",
+            "op.exp.6.r1.1",
+            "op.exp.6.r2.1",
+            "op.exp.6.r3.1",
+            "op.exp.6.r4.1",
+        ),
+        wizard_url="/ayuda/kit-antimalware",
+        cta="Ver cómo se instala",
+        help_slug="kit-antimalware",
+        help_label="Qué hacer cuando falla: runbook de la protección frente a código dañino",
+        hints={
+            "down": (
+                "La app no ha podido evaluar las firmas ni la protección de ningún equipo: no "
+                "hay evidencia reciente o falta alguna consulta."
+            ),
+            "problems": (
+                "Alguna comprobación de firmas o de tiempo real ha fallado o no se ha podido "
+                "evaluar en algún equipo."
+            ),
+        },
+        ram=None,
+        on_box=False,
+        check_ids=("HOST-008", "HOST-009"),
     ),
 )
 

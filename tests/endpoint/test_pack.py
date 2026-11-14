@@ -68,9 +68,9 @@ def test_el_wheel_incluye_las_consultas_y_el_script(tmp_path):
     with zipfile.ZipFile(wheel) as archive:
         names = set(archive.namelist())
     expected = {
-        "ens_evidence/endpoint/queries/v2/pack.yaml",
+        "ens_evidence/endpoint/queries/v3/pack.yaml",
         f"ens_evidence/endpoint/{SCRIPT_NAME}",
-        *(f"ens_evidence/endpoint/queries/v2/{query.id}.sql" for query in load_pack().queries),
+        *(f"ens_evidence/endpoint/queries/v3/{query.id}.sql" for query in load_pack().queries),
     }
     assert expected <= names
 

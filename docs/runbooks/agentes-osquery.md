@@ -56,7 +56,9 @@ iguales. El mensaje nombra la variable, nunca el valor.
 
 ## 2. Dar de alta un equipo
 
-El equipo debe estar inscrito en `connectors/endpoint.yaml` (uuid y hostname).
+El equipo debe estar inscrito en `connectors/endpoint.yaml` (uuid y hostname) y
+figurar en `scope/assets.yaml`: `agent install` lee su tipo del inventario y
+aborta si el activo no está.
 La versión de osquery y los sha256 de sus paquetes están fijados en el código
 (`src/ens_evidence/agent/install/release.yaml`, osquery 5.24.1): el script que
 imprime `agent install` descarga el paquete oficial por HTTPS, verifica su
@@ -96,6 +98,17 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
    `--server` es el hostname público de agentes (sin esquema ni puerto).
    Linux exige `--package` y `--arch` explícitos: no se deducen de la caja.
    Una combinación no soportada da error con las disponibles.
+
+   **Servidores Linux (activo de tipo `server`):** el script instala además
+   ClamAV con actualización de firmas, con el gestor de paquetes de la
+   distribución y antes de instalar osquery (`apt-get install -y clamav
+   clamav-freshclam` y `systemctl enable --now clamav-freshclam`). Al inicio,
+   antes de tocar nada, comprueba que hay `apt-get`. En un servidor RPM
+   (`--package rpm`) el script se detiene sin instalar nada: el instalador no
+   añade repositorios; habilita EPEL, instala `clamav` y `clamav-update` a mano,
+   activa la actualización de firmas y vuelve a ejecutar el script. Portátiles,
+   macOS y Windows no instalan ClamAV. Instalar ClamAV no acredita que la
+   protección frente a código dañino se cumpla (ver `kit-antimalware`).
 
    Qué hace el script (todo o nada: un paso fallido aborta antes de arrancar
    el servicio): descarga a un directorio temporal privado, verifica el

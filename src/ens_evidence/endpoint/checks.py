@@ -1,4 +1,4 @@
-"""Checks HOST-001…007 sobre la evidencia de endpoints (atestación manual).
+"""Checks HOST-001…009 sobre la evidencia de endpoints (atestación manual).
 
 Funciones puras. `PASS` solo con evidencia positiva y vigente de la última ejecución del
 host; tabla vacía, ambigua o sin privilegios es `UNKNOWN`; el resto de estados de recogida
@@ -10,9 +10,10 @@ activo evaluado.
 import re
 from collections.abc import Iterable, Sequence
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import UTC, datetime, timedelta
 from typing import Any
 
+from ens_evidence.checks.catalog import CHECKS, ENDPOINT_CONNECTOR, SubjectKind
 from ens_evidence.connectors.sections import worst
 from ens_evidence.endpoint.config import (
     EndpointConfig,
@@ -26,7 +27,7 @@ from ens_evidence.endpoint.importer import ENDPOINT_ASSET_TYPES
 from ens_evidence.endpoint.package import CLOCK_SKEW
 from ens_evidence.models.contracts import CheckResult, translate_collection
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
-from ens_evidence.scope.models import Asset
+from ens_evidence.scope.models import Asset, AssetType
 
 COVERAGE = "HOST-001"
 AGENT = "HOST-002"
@@ -35,6 +36,8 @@ DISK_ENCRYPTION = "HOST-004"
 FIREWALL = "HOST-005"
 AUTO_UPDATES = "HOST-006"
 SOFTWARE_INVENTORY = "HOST-007"
+SIGNATURES = "HOST-008"
+REALTIME = "HOST-009"
 HOST_CHECKS = (
     COVERAGE,
     AGENT,
@@ -43,6 +46,13 @@ HOST_CHECKS = (
     FIREWALL,
     AUTO_UPDATES,
     SOFTWARE_INVENTORY,
+    SIGNATURES,
+    REALTIME,
+)
+WORKSTATION_ONLY_CHECKS = frozenset(
+    check_id
+    for check_id, spec in CHECKS.items()
+    if spec.connector == ENDPOINT_CONNECTOR and spec.subjects is SubjectKind.WORKSTATION
 )
 
 ATTESTED = "Según atestación manual del host"
@@ -69,6 +79,7 @@ class Host:
     evidence: HostEvidence
     platform: str
     queries: dict[str, Any]
+    collected_at: datetime
 
     def rows(self, query_id: str) -> list[dict[str, Any]]:
         return [
@@ -95,7 +106,9 @@ def evaluate_host_checks(
     evaluated_at: datetime,
     unreadable: Sequence[str] = (),
 ) -> list[CheckResult]:
-    """HOST-001…007 de cada laptop/server del alcance, sobre su última ejecución.
+    """HOST-001…009 de cada laptop/server del alcance, sobre su última ejecución.
+
+    HOST-009 (protección en tiempo real) solo se emite para laptops, en todos los caminos.
 
     Con evidencia `unreadable` no se sabe cuál es la última ejecución de ningún host (un
     manifiesto ilegible no dice de qué activo es): todos dan UNKNOWN, nunca la anterior.
@@ -116,6 +129,7 @@ def evaluate_host_checks(
         results += [
             _result(check_id, asset.id, outcomes[check_id], item, evaluated_at)
             for check_id in HOST_CHECKS
+            if asset.type is AssetType.LAPTOP or check_id not in WORKSTATION_ONLY_CHECKS
         ]
     return results
 
@@ -147,6 +161,7 @@ def _outcomes(
         item,
         str(_dict(item.result.data.get("package")).get("platform")),
         _dict(item.result.data.get("queries")),
+        item.collected_at,
     )
     return {
         COVERAGE: Outcome(
@@ -164,6 +179,8 @@ def _outcomes(
         FIREWALL: _firewall(host),
         AUTO_UPDATES: _auto_updates(host),
         SOFTWARE_INVENTORY: _software_inventory(host),
+        SIGNATURES: _signatures(host, context),
+        REALTIME: _realtime(host, context),
     }
 
 
@@ -533,6 +550,271 @@ def _is_software(row: dict[str, Any], query_id: str) -> bool:
     if query_id == "deb_packages" and row.get("status") != DEB_INSTALLED:
         return False
     return bool(name and version)
+
+
+# HOST-008 y HOST-009 ----------------------------------------------------------------------
+
+SECURITY_CENTER_VIEW = (
+    "es la vista del Centro de seguridad de Windows, no el indicador de tiempo real de Defender"
+)
+FILE_DATE_NOTE = "la fecha es la del fichero, no la versión de las firmas"
+BUILT_IN_NOTE = (
+    "protección integrada del sistema (XProtect y Gatekeeper); su adecuación la valora una persona"
+)
+FRESHCLAM_UNIT = "clamav-freshclam.service"
+ANTIVIRUS_OFF = frozenset({"off", "snoozed", "expired"})
+
+
+@dataclass(frozen=True)
+class SignatureDate:
+    """Fecha de un fichero de firmas ya validada, o el resultado que impide usarla."""
+
+    moment: datetime | None = None
+    row: dict[str, Any] | None = None
+    blocked: Outcome | None = None
+
+    def age_exceeded(self, host: Host, max_age_days: int) -> bool:
+        assert self.moment is not None
+        return host.collected_at - self.moment > timedelta(days=max_age_days)
+
+    def outdated_at_evaluation(
+        self, host: Host, context: CheckContext, max_age_days: int
+    ) -> Outcome | None:
+        """UNKNOWN si, con la recogida aún vigente, las firmas ya superan la política hoy."""
+        assert self.moment is not None
+        if context.evaluated_at - self.moment <= timedelta(days=max_age_days):
+            return None
+        return _unknown(
+            f"las firmas del {self.moment:%Y-%m-%d} ({FILE_DATE_NOTE}) cumplían la política "
+            f"de {max_age_days} días al recoger, pero ya no al evaluar; recoge evidencia nueva",
+            "signatures_stale",
+        )
+
+
+def _signatures(host: Host, context: CheckContext) -> Outcome:
+    match host.platform:
+        case "linux":
+            return _clamav_signatures(host, context)
+        case "darwin":
+            return _xprotect_signatures(host, context)
+        case "windows":
+            return _windows_signatures(host)
+    return _not_supported("sin consulta de firmas antimalware para esta plataforma")
+
+
+def _realtime(host: Host, context: CheckContext) -> Outcome:
+    match host.platform:
+        case "darwin":
+            return _gatekeeper(host, context)
+        case "windows":
+            return _windows_realtime(host)
+        case "linux":
+            return _not_supported(
+                "sin protección en tiempo real evidenciable en Linux: ClamAV no analiza en acceso"
+            )
+    return _not_supported("sin consulta de protección en tiempo real para esta plataforma")
+
+
+def _not_supported(reason: str) -> Outcome:
+    return Outcome(
+        CheckStatus.UNKNOWN,
+        f"{ATTESTED}: {reason}",
+        CollectionStatus.NOT_SUPPORTED,
+        "not_supported",
+        cite=False,
+    )
+
+
+def _epoch(raw: Any) -> datetime | None:
+    try:
+        seconds = int(str(raw).strip())
+    except ValueError:
+        return None
+    if seconds <= 0:
+        return None
+    try:
+        return datetime.fromtimestamp(seconds, tz=UTC)
+    except (OverflowError, OSError, ValueError):
+        return None
+
+
+def _newest_file_date(host: Host, rows: list[dict[str, Any]], what: str) -> SignatureDate:
+    """Fecha del fichero más reciente de `rows`; UNKNOWN si falta, es ilegible o es futura."""
+    dated = [(_epoch(row.get("mtime")), row) for row in rows]
+    if not dated:
+        return SignatureDate(blocked=_unknown(f"no constan ficheros de {what}"))
+    if any(moment is None for moment, _ in dated):
+        return SignatureDate(blocked=_unknown(f"un fichero de {what} no informa su fecha"))
+    moment, row = max(((m, r) for m, r in dated if m is not None), key=lambda pair: pair[0])
+    if moment > host.collected_at + CLOCK_SKEW:
+        return SignatureDate(
+            blocked=_unknown(
+                f"el fichero de {what} tiene fecha futura ({moment:%Y-%m-%d}); {FILE_DATE_NOTE}"
+            )
+        )
+    return SignatureDate(moment=moment, row=row)
+
+
+def _positive(raw: Any) -> bool:
+    try:
+        return int(str(raw).strip()) > 0
+    except ValueError:
+        return False
+
+
+def _clamav_signatures(host: Host, context: CheckContext) -> Outcome:
+    if (failed := _failed_query(host, ["clamav_signatures"], "firmas de ClamAV")) is not None:
+        return failed
+    daily = [
+        row
+        for row in host.rows("clamav_signatures")
+        if str(row.get("path", "")).rsplit("/", 1)[-1].startswith("daily.")
+    ]
+    date = _newest_file_date(host, daily, "firmas de ClamAV (`daily.*`)")
+    if date.blocked is not None:
+        return date.blocked
+    assert date.moment is not None and date.row is not None
+    if not _positive(date.row.get("size")):
+        return _unknown(f"el fichero de firmas de ClamAV está vacío o sin tamaño; {FILE_DATE_NOTE}")
+    shown = f"firmas de ClamAV del {date.moment:%Y-%m-%d} ({FILE_DATE_NOTE})"
+    if date.age_exceeded(host, context.config.max_signature_age_days):
+        limit = context.config.max_signature_age_days
+        return Outcome(
+            CheckStatus.FAIL,
+            f"{ATTESTED}: {shown}, más antiguas que los {limit} días de la política",
+        )
+    limit = context.config.max_signature_age_days
+    if (stale := date.outdated_at_evaluation(host, context, limit)) is not None:
+        return stale
+    if (failed := _failed_query(host, ["clamav_units"], "servicio clamav-freshclam")) is not None:
+        return failed
+    units = [row for row in host.rows("clamav_units") if row.get("id") == FRESHCLAM_UNIT]
+    if len(units) != 1 or str(units[0].get("active_state", "")).strip() != "active":
+        return _unknown(
+            f"{shown}; `{FRESHCLAM_UNIT}` no consta activo, así que no se garantiza que "
+            "se sigan actualizando",
+            "freshclam_inactive",
+        )
+    return Outcome(
+        CheckStatus.PASS, f"{ATTESTED}: {shown}, dentro de la política y con freshclam activo"
+    )
+
+
+def _xprotect(host: Host, context: CheckContext) -> tuple[datetime | None, Outcome | None]:
+    """Fecha del XProtect más reciente y, si no se puede usar o está caducado, el resultado."""
+    if (failed := _failed_query(host, ["xprotect_bundle"], "XProtect")) is not None:
+        return None, failed
+    rows = host.rows("xprotect_bundle")
+    if any(not str(row.get("bundle_short_version", "")).strip() for row in rows):
+        return None, _unknown("XProtect sin versión (`CFBundleShortVersionString`) legible")
+    date = _newest_file_date(host, rows, "XProtect")
+    if date.blocked is not None or date.moment is None:
+        return None, date.blocked
+    if date.age_exceeded(host, context.config.max_xprotect_age_days):
+        limit = context.config.max_xprotect_age_days
+        return date.moment, Outcome(
+            CheckStatus.FAIL,
+            f"{ATTESTED}: XProtect del {date.moment:%Y-%m-%d} ({FILE_DATE_NOTE}), "
+            f"más antiguo que los {limit} días de la política",
+        )
+    limit = context.config.max_xprotect_age_days
+    return date.moment, date.outdated_at_evaluation(host, context, limit)
+
+
+def _xprotect_signatures(host: Host, context: CheckContext) -> Outcome:
+    moment, problem = _xprotect(host, context)
+    if problem is not None:
+        return problem
+    return Outcome(
+        CheckStatus.PASS,
+        f"{ATTESTED}: XProtect del {moment:%Y-%m-%d} ({FILE_DATE_NOTE}), dentro de la política",
+    )
+
+
+def _gatekeeper(host: Host, context: CheckContext) -> Outcome:
+    if (failed := _failed_query(host, ["gatekeeper"], "Gatekeeper")) is not None:
+        return failed
+    row = _single_row(host, "gatekeeper")
+    state = str(row.get("assessments_enabled", "")).strip() if row else ""
+    if state == "0":
+        return Outcome(CheckStatus.FAIL, f"{ATTESTED}: Gatekeeper desactivado")
+    if state != "1":
+        return _unknown("`gatekeeper.assessments_enabled` ausente, múltiple o no reconocido")
+    moment, problem = _xprotect(host, context)
+    if problem is not None:
+        cause = problem.reason.removeprefix(f"{ATTESTED}: ")
+        return _unknown(f"Gatekeeper activo, pero XProtect no consta presente y al día: {cause}")
+    return Outcome(
+        CheckStatus.PASS,
+        f"{ATTESTED}: Gatekeeper activo y XProtect del {moment:%Y-%m-%d} ({FILE_DATE_NOTE}); "
+        f"{BUILT_IN_NOTE}",
+    )
+
+
+def _antivirus_rows(host: Host) -> list[dict[str, Any]]:
+    return [
+        row
+        for row in host.rows("windows_security_products")
+        if str(row.get("type", "")).strip().casefold() == "antivirus"
+    ]
+
+
+def _active(rows: list[dict[str, Any]]) -> list[dict[str, Any]]:
+    return [row for row in rows if str(row.get("state", "")).strip().casefold() == "on"]
+
+
+def _windows_signatures(host: Host) -> Outcome:
+    query = "windows_security_products"
+    if (failed := _failed_query(host, [query], "productos de seguridad")) is not None:
+        return failed
+    rows = _antivirus_rows(host)
+    if not rows:
+        return _not_supported(
+            "sin productos antivirus en el Centro de seguridad (p. ej. Windows Server, "
+            "donde `windows_security_products` no es compatible)"
+        )
+    active = _active(rows)
+    if len(active) > 1:
+        return _unknown("varios antivirus activos en el Centro de seguridad", "ambiguous")
+    if not active:
+        return _unknown("ningún antivirus activo en el Centro de seguridad", "no_data")
+    name = active[0].get("name") or "antivirus"
+    flag = str(active[0].get("signatures_up_to_date", "")).strip()
+    if flag == "1":
+        return Outcome(
+            CheckStatus.PASS,
+            f"{ATTESTED}: {name} con firmas al día; {SECURITY_CENTER_VIEW}",
+        )
+    if flag == "0":
+        return Outcome(
+            CheckStatus.FAIL,
+            f"{ATTESTED}: {name} con firmas desactualizadas; {SECURITY_CENTER_VIEW}",
+        )
+    return _unknown(f"`signatures_up_to_date` ausente o no reconocido; {SECURITY_CENTER_VIEW}")
+
+
+def _windows_realtime(host: Host) -> Outcome:
+    query = "windows_security_products"
+    if (failed := _failed_query(host, [query], "productos de seguridad")) is not None:
+        return failed
+    rows = _antivirus_rows(host)
+    if not rows:
+        return _not_supported("sin productos antivirus en el Centro de seguridad")
+    if _active(rows):
+        return _unknown(
+            "el Centro de seguridad muestra un antivirus activo, pero eso no prueba la "
+            "protección en tiempo real y su correspondencia está pendiente de validar; "
+            f"{SECURITY_CENTER_VIEW}",
+            "realtime_unproven",
+        )
+    states = {str(row.get("state", "")).strip().casefold() for row in rows}
+    if states <= ANTIVIRUS_OFF:
+        return Outcome(
+            CheckStatus.FAIL,
+            f"{ATTESTED}: ningún antivirus activo (estado {', '.join(sorted(states))}); "
+            f"{SECURITY_CENTER_VIEW}",
+        )
+    return _unknown(f"estado de antivirus no reconocido; {SECURITY_CENTER_VIEW}")
 
 
 # helpers ----------------------------------------------------------------------------------

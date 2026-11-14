@@ -3,7 +3,7 @@
 En v0.1 no hay agente ni servidor osquery. La evidencia del Mac y de los
 servidores se obtiene ejecutando en cada equipo un script que lanza un
 conjunto fijo de consultas osquery y entrega un paquete que se importa en la
-caja. Los checks HOST-001…007 se evalúan sobre ese paquete.
+caja. Los checks HOST-001…009 se evalúan sobre ese paquete.
 
 Spec: [endpoint-evidence](../specs/endpoint-evidence.md).
 
@@ -33,6 +33,8 @@ el nombre de quien la aporta.
 
    ```yaml
    max_evidence_age_days: 30          # antigüedad máxima: decisión de la organización
+   max_signature_age_days: 7          # antigüedad máxima de las firmas antimalware (opcional; 7 por defecto)
+   max_xprotect_age_days: 30          # antigüedad máxima de XProtect en macOS (opcional; 30 por defecto)
    supported_os:                      # releases soportadas: decisión de la organización
      - {platform: darwin, name: macOS, release: "15", min_version: "15.3"}
      - {platform: darwin, name: macOS, release: "26"}
@@ -92,7 +94,7 @@ el nombre de quien la aporta.
    ```
 
    Lee la configuración, el inventario y la evidencia del workspace, evalúa
-   HOST-001…007 con la fecha actual (`--at` fija otra, con zona horaria) e
+   HOST-001…009 con la fecha actual (`--at` fija otra, con zona horaria) e
    imprime una línea por activo y check con su estado y motivo. Si la
    evidencia de un activo está caducada, lo indica al final: bloquearía la
    preparación. Salida: `0` sin FAIL ni evidencia caducada; `4` si hay algún
@@ -124,6 +126,24 @@ bloquea la preparación (`EXPIRED_EVIDENCE`) hasta que se vuelva a ejecutar.
 | HOST-005 firewall | macOS: firewall activo | macOS: firewall desactivado |
 | HOST-006 actualizaciones | una preferencia gestionada activa la instalación automática | la preferencia gestionada la desactiva |
 | HOST-007 inventario de software | hay inventario de software (con su recuento) | — |
+| HOST-008 firmas al día (op.exp.6.4; laptops y servidores) | Linux: `daily.*` de ClamAV no vacío, dentro de `max_signature_age_days` y `clamav-freshclam` activo. macOS: XProtect con versión y dentro de la política. Windows: único antivirus activo con `signatures_up_to_date` = 1 | ficheros más antiguos que la política (el motivo da la fecha) o Windows con `signatures_up_to_date` = 0 |
+| HOST-009 protección en tiempo real (op.exp.6.5; solo laptops) | macOS: Gatekeeper activo y XProtect presente y al día (protección integrada del sistema, cuya adecuación valora una persona). Windows: algún antivirus `On` en el Centro de seguridad | macOS: Gatekeeper desactivado. Windows: ningún antivirus `On` (todos `Off`, `Snoozed` o `Expired`) |
+
+La antigüedad de XProtect (macOS, HOST-008 y HOST-009) usa `max_xprotect_age_days`, no `max_signature_age_days`, porque Apple publica sus actualizaciones de forma irregular. El valor por defecto de 30 días no está verificado contra la cadencia real de Apple: ajústalo con datos de tus equipos.
+
+HOST-008 y HOST-009 con matices:
+
+- HOST-009 no se emite para servidores. En un portátil Linux es siempre `UNKNOWN`
+  (`not_supported`): ClamAV no analiza en acceso.
+- La fecha de las firmas es la del fichero (`mtime`) en el momento de la recogida,
+  no la versión de las firmas: osquery no lee el contenido de las bases. Fichero
+  vacío, fecha futura, fecha ilegible, sin `daily.*` o `clamav-freshclam` no activo
+  dan `UNKNOWN`, nunca `PASS`.
+- En Windows la evidencia es la vista del Centro de seguridad
+  (`windows_security_products`), no el indicador de tiempo real de Defender; que
+  desactivar el tiempo real se refleje como un estado distinto de `On` no está
+  verificado. Con tabla vacía (Windows Server) da `UNKNOWN`. La lógica está probada
+  sobre fixtures; la evaluación de extremo a extremo llega con `collector-osquery`.
 
 Todo lo que no se puede demostrar da `UNKNOWN`: consulta sin filas, tabla no
 disponible en ese sistema (el script marca `unsupported_hint` en `meta.json`

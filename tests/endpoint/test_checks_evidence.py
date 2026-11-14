@@ -4,7 +4,7 @@ from datetime import timedelta
 
 import pytest
 
-from ens_evidence.endpoint.checks import HOST_CHECKS, evaluate_host_checks
+from ens_evidence.endpoint.checks import HOST_CHECKS, WORKSTATION_ONLY_CHECKS, evaluate_host_checks
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 
@@ -260,7 +260,11 @@ def test_con_evidencia_ilegible_ningun_host_vuelve_a_la_ejecucion_anterior_que_p
 
     results = evaluate_host_checks(assets(*ids), [previous], config(), AT, ["EV-1: YAML no válido"])
 
-    assert len(results) == len(ids) * len(HOST_CHECKS)
+    expected = sum(
+        len(HOST_CHECKS) - (0 if asset_id == LAPTOP else len(WORKSTATION_ONLY_CHECKS))
+        for asset_id in ids
+    )
+    assert len(results) == expected
     assert {r.status for r in results} == {CheckStatus.UNKNOWN}
     assert {r.reason_code for r in results} == {"unreadable_evidence"}
     assert all("EV-1: YAML no válido" in r.reason and not r.evidence_ids for r in results)

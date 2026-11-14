@@ -1,0 +1,1 @@
+SELECT p.path, p.value AS bundle_short_version, f.mtime FROM plist AS p JOIN file AS f ON f.path = p.path WHERE p.path IN ('/Library/Apple/System/Library/CoreServices/XProtect.bundle/Contents/Info.plist', '/private/var/protected/xprotect/XProtect.bundle/Contents/Info.plist') AND p.key = 'CFBundleShortVersionString';

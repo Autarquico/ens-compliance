@@ -720,7 +720,7 @@ def endpoint_check(
         str | None, typer.Option("--at", help="Momento de la evaluación (por defecto, ahora).")
     ] = None,
 ) -> None:
-    """Evalúa HOST-001…007 por activo. Salida: 0 sin FAIL ni evidencia caducada, 4 si hay
+    """Evalúa HOST-001…009 por activo. Salida: 0 sin FAIL ni evidencia caducada, 4 si hay
     algún FAIL o evidencia caducada, 2 error de configuración o de lectura."""
     evaluated_at = parse_instant("--at", at) or datetime.now(UTC)
     evaluation = evaluate_workspace(open_workspace(ctx), evaluated_at)

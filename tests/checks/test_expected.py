@@ -195,8 +195,11 @@ def test_endpoint_expects_every_laptop_and_server_of_the_inventory(store):
     found = expected_subjects("endpoint", object(), inventory(store), None)  # type: ignore[arg-type]
 
     assert set(found) == set(HOST_CHECKS)
-    for hosts in found.values():
-        assert hosts == ["lap-ana", "lap-personal", "srv-app"]
+    for check_id, hosts in found.items():
+        if check_id == "HOST-009":  # protección en tiempo real: solo puestos
+            assert hosts == ["lap-ana", "lap-personal"]
+        else:
+            assert hosts == ["lap-ana", "lap-personal", "srv-app"]
 
 
 @pytest.mark.parametrize("connector", ["cloudflare", "google-workspace", "restic"])
