@@ -13,10 +13,9 @@ from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
 from ens_evidence.monitoring.model import GROUPS, Item, Snapshot, Status
-from ens_evidence.monitoring.snapshot import load_snapshot
+from ens_evidence.ui.monitoring_banner import current_snapshot
 from ens_evidence.ui.pages import page_context, render
 from ens_evidence.ui.views import NO_DATE, format_instant
-from ens_evidence.workspace.cycle_lock import resolve_state_dir
 
 RUNBOOK_URL = "/ayuda/monitorizacion"
 GROUP_TITLES = {
@@ -32,23 +31,6 @@ STATUS_VIEW = {
 }
 SPARK_STEP = 2
 SPARK_HEIGHT = 16
-
-
-def current_snapshot(request: Request) -> Snapshot | None:
-    return load_snapshot(resolve_state_dir(), request.app.state.clock())
-
-
-def banner_for(request: Request) -> dict[str, Any] | None:
-    """El aviso común de todas las páginas: datos desactualizados o elementos en fallo."""
-    snapshot = current_snapshot(request)
-    if snapshot is None:
-        return None
-    if snapshot.stale:
-        return {"kind": "stale", "titles": []}
-    failing = snapshot.failing()
-    if not failing:
-        return None
-    return {"kind": "failing", "titles": [item.title for item in failing]}
 
 
 def _spark(item: Item, stale: bool) -> dict[str, Any]:

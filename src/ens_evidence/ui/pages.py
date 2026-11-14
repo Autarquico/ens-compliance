@@ -7,6 +7,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from ens_evidence.ui.access import Identity
+from ens_evidence.ui.monitoring_banner import banner_for
 
 PRODUCT_NAME = "ens-compliance"
 
@@ -23,8 +24,6 @@ def render(request: Request, template: str, status_code: int = 200, **context: A
 
 
 def page_context(request: Request, nav_active: str, page_title: str) -> dict[str, Any]:
-    from ens_evidence.ui.views.monitoring import banner_for  # importa `pages`: ciclo si es global
-
     return {
         "product_name": PRODUCT_NAME,
         "identity_email": identity_of(request).email,

@@ -10,7 +10,7 @@ import pytest
 from ens_evidence.monitoring.model import Item, MailState, Point, Snapshot, Status
 from ens_evidence.monitoring.snapshot import write_heartbeat, write_snapshot
 from ens_evidence.ui.app import TEMPLATES_DIR
-from ens_evidence.ui.views.monitoring import banner_for
+from ens_evidence.ui.monitoring_banner import banner_for
 from ens_evidence.workspace.cycle_lock import STATE_DIR_ENV
 
 from .conftest import NOW, Session
