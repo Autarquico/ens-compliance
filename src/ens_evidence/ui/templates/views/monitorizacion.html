@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Monitorización</h1>
+<p class="lead">Si lo que tienes desplegado responde y está sano. Es un panel de operación: un verde aquí no cambia ninguna medida de la matriz ni sustituye la evidencia.</p>
+{% if snapshot is none %}
+<section class="notice notice-warn" aria-labelledby="h-sin-datos">
+  <h2 id="h-sin-datos">El monitor aún no ha corrido</h2>
+  <p>No hay ninguna medición guardada. El monitor se ejecuta dentro del programador de la caja y mide cada 15 minutos; la primera medición tarda unos 30 segundos desde que arranca.</p>
+  <p>Comprueba que el programador está en marcha y espera unos minutos. <a href="{{ runbook_url }}">Cómo ponerlo en marcha</a>.</p>
+</section>
+{% else %}
+{% if stale %}
+<section class="notice notice-warn" aria-labelledby="h-obsoleto">
+  <h2 id="h-obsoleto">Datos desactualizados</h2>
+  <p>El monitor no ha reportado en los últimos {{ interval_minutes * 2 }} minutos (última medición: <span class="mono">{{ generated_at }}</span>). Hasta que vuelva, todo se muestra como desconocido, aunque antes estuviera bien. <a href="{{ runbook_url }}">Qué hacer</a>.</p>
+</section>
+{% else %}
+<p class="muted">Última medición: <span class="mono">{{ generated_at }}</span>, cada {{ interval_minutes }} min.</p>
+{% endif %}
+{{ m.revision_humana() }}
+{%- for group in groups %}
+<section class="section" aria-labelledby="h-{{ group.key }}">
+  <h2 id="h-{{ group.key }}">{{ group.title }}</h2>
+  {% if not group.rows %}<p class="muted">Nada que mostrar en este grupo todavía.</p>{% else %}
+  <ul class="monitor-list">
+    {%- for row in group.rows %}
+    <li class="monitor-item card">
+      <div class="monitor-head">
+        <h3>{{ row.title }}</h3>
+        <span class="badge tone-{{ row.tone }}">{{ m.icon(m.TONE_ICON[row.tone]) }}<span>{{ row.label }}</span></span>
+      </div>
+      <p>{{ row.detail }}</p>
+      {% if row.since %}<p class="muted">Desde <span class="mono">{{ row.since }}</span>.</p>{% endif %}
+      <div class="monitor-foot">
+        {% if row.spark %}<svg class="spark" role="img" width="{{ row.spark.width }}" height="{{ row.spark.height }}" viewBox="0 0 {{ row.spark.width }} {{ row.spark.height }}" aria-label="Últimos 30 días: {{ row.spark.summary }}">
+          {%- for bar in row.spark.bars %}<rect class="spark-{{ bar.tone }}" x="{{ bar.x }}" y="0" width="1" height="{{ row.spark.height }}" />{% endfor -%}
+        </svg>{% else %}<span class="muted">Sin histórico todavía</span>{% endif %}
+        <a href="{{ row.runbook_url }}">Qué hacer</a>
+      </div>
+    </li>
+    {%- endfor %}
+  </ul>
+  {% endif %}
+</section>
+{%- endfor %}
+<section class="section" aria-labelledby="h-correo">
+  <h2 id="h-correo">Avisos por correo</h2>
+  {% if mail_configured %}
+  <p><span class="badge tone-ok">{{ m.icon("check") }}<span>Correo configurado</span></span></p>
+  <p>Cuando algo falla, además de verse aquí, se envía un correo.</p>
+  {% if mail_last_failed %}<p class="muted">El último envío falló ({{ mail_last_error or "sin detalle" }}) el <span class="mono">{{ mail_last_attempt }}</span>; se reintenta en la siguiente medición.</p>{% endif %}
+  {% else %}
+  <p><span class="badge tone-neutral">{{ m.icon("help") }}<span>Correo sin configurar</span></span></p>
+  <p>Los avisos solo se ven en la web. Para recibirlos por correo hay que configurar el SMTP de la caja. <a href="{{ runbook_url }}">Cómo hacerlo</a>.</p>
+  {% endif %}
+</section>
+{% endif %}
+{% endblock %}
