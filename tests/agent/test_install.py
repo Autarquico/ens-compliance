@@ -3,6 +3,7 @@
 
 import hashlib
 import os
+import shutil
 import subprocess
 import sys
 import zipfile
@@ -308,12 +309,18 @@ def test_failed_download_aborts_before_the_installer(sandbox):
     assert_nothing_installed_or_started(sandbox, result)
 
 
-def test_missing_tool_aborts_before_downloading(sandbox):
+def test_missing_tool_aborts_before_downloading(sandbox, tmp_path):
+    # PATH aislado: el runner de CI tiene systemctl en /usr/bin y lo encontraría.
     (sandbox.bin / "systemctl").unlink()
+    for tool in ("cut", "mktemp", "rm", "tr", "cat", "chmod", "mkdir", "dirname"):
+        sandbox._tool(tool, "exit 0")
+    shell = tmp_path / "shell"
+    shell.mkdir()
+    (shell / "sh").symlink_to(shutil.which("sh"))
     result = sandbox.run(
         render(*LINUX),
         expected_sha=payload_sha(sandbox),
-        env={"PATH": f"{sandbox.bin}:/usr/bin:/bin"},
+        env={"PATH": f"{sandbox.bin}:{shell}"},
     )
     assert_nothing_installed_or_started(sandbox, result)
     assert "curl" not in sandbox.calls
