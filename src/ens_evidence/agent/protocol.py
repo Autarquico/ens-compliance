@@ -282,25 +282,27 @@ class AgentService:
         Con el workspace ocupado o ilegible no se escribe ni se marca: la siguiente lo reintenta.
         """
         interval = CONTACT_EVIDENCE_INTERVAL
-        if not self._state.contact_evidence_due(node.asset_id, now, interval):
+        if not self._state.contact_evidence_due(node.asset_id, node.generation, now, interval):
             return
         try:
             with self._workspace_lock():
-                if not self._state.contact_evidence_due(node.asset_id, now, interval):
+                if not self._state.contact_evidence_due(
+                    node.asset_id, node.generation, now, interval
+                ):
                     return
                 result = contact_result(
                     node.asset_id, node.host_identifier, node.platform, node.generation, now=now
                 )
                 write_result(self._store, result, now=now)
-                self._mark_contact_evidence(node.asset_id, now)
+                self._mark_contact_evidence(node.asset_id, node.generation, now)
         except (Busy, Unavailable):
             _LOGGER.warning("outcome=contact_evidence_skipped asset=%s", node.asset_id[:64])
 
-    def _mark_contact_evidence(self, asset_id: str, now: datetime) -> None:
+    def _mark_contact_evidence(self, asset_id: str, generation: int, now: datetime) -> None:
         """La evidencia ya está escrita: si la marca falla (estado mal configurado) no se rompe
         la petición, y el límite queda en memoria hasta reiniciar."""
         try:
-            self._state.record_contact_evidence(asset_id, now)
+            self._state.record_contact_evidence(asset_id, generation, now)
         except OSError:
             _LOGGER.warning("outcome=contact_mark_failed asset=%s", asset_id[:64])
 

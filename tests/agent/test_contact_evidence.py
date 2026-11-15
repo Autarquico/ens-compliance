@@ -168,3 +168,47 @@ def test_result_evidence_carries_full_identity_and_platform(world):
     assert agent["platform"] == "darwin"
     assert agent["host_identifier"] == IDENTITY[:8]
     assert LAPTOP_UUID not in json.dumps(artifact(world, result)).lower()
+
+
+def readmitted(world) -> str:
+    """Revoca y readmite el equipo; devuelve el node_key de la generación nueva."""
+    world.revoke()
+    world.admit()
+    body = request_for("enroll", world.credentials(generation=2))
+    return world.post("enroll", body).json()["node_key"]
+
+
+def generations(world):
+    return sorted(artifact(world, m)["data"]["agent"]["generation"] for m in contacts(world))
+
+
+def test_the_first_contact_after_readmission_is_written_within_the_interval(world):
+    old_key = world.enroll()
+    world.post("config", {"node_key": old_key})
+    world.clock.advance(minutes=5)
+
+    new_key = readmitted(world)
+    world.clock.advance(minutes=5)
+    world.post("config", {"node_key": new_key})
+
+    assert generations(world) == [1, 2]
+
+
+def test_the_first_contact_after_readmission_is_written_after_a_restart(world):
+    old_key = world.enroll()
+    world.post("config", {"node_key": old_key})
+    world.clock.advance(minutes=5)
+    new_key = readmitted(world)
+    world.clock.advance(minutes=5)
+
+    restarted = AgentService(
+        world.workspace,
+        SECRETS,
+        AgentState(world.state_dir),
+        lambda: world.lock(),
+        now=world.clock,
+    )
+    client = TestClient(create_app(routes(restarted)))
+    assert client.post("/agent/config", json={"node_key": new_key}).status_code == 200
+
+    assert generations(world) == [1, 2]

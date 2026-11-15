@@ -43,6 +43,7 @@ class HostContact(_Model):
 
 class ContactEvidenceMark(_Model):
     written_at: AwareDatetime
+    generation: int | None = None
 
 
 class Run(_Model):
@@ -101,7 +102,7 @@ class AgentState:
     def __init__(self, state_dir: Path | None = None) -> None:
         self._root = (state_dir or resolve_state_dir()) / AGENT_DIR
         self._written: dict[str, tuple[datetime, str | None]] = {}
-        self._contact_written: dict[str, datetime] = {}
+        self._contact_written: dict[str, tuple[datetime, int | None]] = {}
         self._results: dict[tuple[str, str], _ResultSlot] = {}
         self._guard = threading.Lock()
 
@@ -137,8 +138,11 @@ class AgentState:
 
     # --- evidencia de contacto -------------------------------------------------------------
 
-    def contact_evidence_due(self, asset_id: str, now: datetime, interval: timedelta) -> bool:
-        """`True` si no se escribió evidencia de contacto de este activo en el último `interval`.
+    def contact_evidence_due(
+        self, asset_id: str, generation: int, now: datetime, interval: timedelta
+    ) -> bool:
+        """`True` si no se escribió evidencia de contacto de esta generación del activo en el
+        último `interval`: el primer contacto tras readmitir siempre se escribe.
 
         La marca está en disco: el límite sobrevive al reinicio. Perderla solo repite una escritura.
         """
@@ -147,17 +151,19 @@ class AgentState:
             written = self._contact_written.get(asset_id)
             if written is None:
                 mark = self._read(self._contact_mark(asset_id), ContactEvidenceMark)
-                written = mark.written_at if mark else None
-                if written is not None:
+                if mark is not None:
+                    written = (mark.written_at, mark.generation)
                     self._contact_written[asset_id] = written
-        return written is None or now - written >= interval
+        if written is None or written[1] != generation:
+            return True
+        return now - written[0] >= interval
 
-    def record_contact_evidence(self, asset_id: str, now: datetime) -> None:
+    def record_contact_evidence(self, asset_id: str, generation: int, now: datetime) -> None:
         _safe(asset_id)
         # Primero en memoria: aunque falle el disco, no se reescribe la evidencia en cada petición.
         with self._guard:
-            self._contact_written[asset_id] = now
-        mark = ContactEvidenceMark(written_at=now)
+            self._contact_written[asset_id] = (now, generation)
+        mark = ContactEvidenceMark(written_at=now, generation=generation)
         self._replace(self._contact_mark(asset_id), mark.model_dump_json())
 
     def _contact_mark(self, asset_id: str) -> Path:
