@@ -6,7 +6,7 @@ from typing import Any
 import yaml
 
 
-class _UniqueKeysLoader(yaml.SafeLoader):
+class _UniqueKeysLoader(yaml.CSafeLoader):
     """`safe_load` que rechaza las claves repetidas, también anidadas: PyYAML se queda con la
     última y un valor favorable añadido al final taparía el desfavorable que había antes."""
 
