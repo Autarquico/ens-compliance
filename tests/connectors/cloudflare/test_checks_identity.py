@@ -23,6 +23,7 @@ from .check_data import (
 )
 
 PASS, FAIL, UNKNOWN = CheckStatus.PASS, CheckStatus.FAIL, CheckStatus.UNKNOWN
+ERROR = CheckStatus.ERROR
 OTP = idp("otp", "onetimepin", "Código por correo")
 WS = idp("ws", "google-apps", "Workspace pyme")
 AZ = idp("az", "azureAD", "Entra pyme")
@@ -330,14 +331,31 @@ def test_403_en_proveedores_es_unknown_con_el_permiso_que_falta():
     assert check.subject is None
 
 
-def test_error_al_leer_proveedores_nunca_es_pass():
+def test_error_al_leer_proveedores_no_atribuye_el_permiso():
     result = build_identity(
         [iapp("a", policies=[allow(login("ws"))])],
         [],
         identity_section=section(status="ERROR", reason="fallo"),
     )
 
-    assert only(run_identity(result)).status is not PASS
+    check = only(run_identity(result))
+
+    assert (check.status, check.reason_code) == (ERROR, None)
+    assert "fallo" in check.reason
+    assert "Access: Organizations" not in check.reason
+
+
+def test_proveedores_not_supported_es_un_resultado_valido():
+    result = build_identity(
+        [iapp("a", policies=[allow(login("ws"))])],
+        [],
+        identity_section=section(status="NOT_SUPPORTED", reason="no disponible"),
+    )
+
+    check = only(run_identity(result))
+
+    assert_result(check, UNKNOWN, "not_supported")
+    assert "Access: Organizations" not in check.reason
 
 
 def test_sin_proveedores_de_identidad_es_unknown():
@@ -457,3 +475,11 @@ def test_tunnel_requires_access_no_cambia_con_la_poblacion_extraida():
     result = build_identity([iapp("a")], ACCOUNT)
 
     assert only(run(result)).subject == f"t-1 {HOST}/*"
+
+
+def test_proveedor_sin_tipo_se_etiqueta_sin_parentesis_vacios():
+    typeless = {"id": "ws", "name": "Sin tipo"}
+    check = evaluate(allow(sel("everyone")), idps=[typeless, OTP])
+
+    assert_result(check, FAIL, "otp_or_consumer_idp")
+    assert "None" not in check.reason
