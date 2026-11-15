@@ -5,6 +5,7 @@ Compose. Dato clave: la última evidencia del conector (mismo juicio que `kit_st
 `kit.state.judge_kit`). Seguridad: solo avisos de GitHub.
 """
 
+import os
 import re
 from dataclasses import dataclass
 from datetime import datetime, timedelta
@@ -200,6 +201,12 @@ def security(
     )
 
 
+def enabled_profiles() -> frozenset[str] | None:
+    """Perfiles activos del despliegue; `None` si la caja no los publica."""
+    raw = os.environ.get("ENS_KIT_PROFILES")
+    return None if raw is None else frozenset(p.strip() for p in raw.split(",") if p.strip())
+
+
 def tool_present(
     store: WorkspaceStore,
     tool: KitTool,
@@ -209,9 +216,14 @@ def tool_present(
 ) -> bool:
     """La herramienta se espera en esta caja.
 
-    Señales persistentes: evidencia del conector o disponibilidad ya vista en el histórico de 30
-    días (`seen`). Si no, el contenedor o (OpenBao) la respuesta del almacén.
+    Con `ENS_KIT_PROFILES` (perfiles de Compose activos, escritos por `deploy/box.sh`) manda la
+    configuración del despliegue. Sin ella (desarrollo, despliegues antiguos), señales
+    persistentes: evidencia del conector o disponibilidad ya vista en el histórico de 30 días
+    (`seen`); si no, el contenedor o (OpenBao) la respuesta del almacén.
     """
+    profiles = enabled_profiles()
+    if profiles is not None:
+        return tool.id in profiles  # el perfil de Compose de cada herramienta es su id
     if scan_runs(store, tool.connector).last(tool.connector) is not None:
         return True
     if f"tool:{tool.id}:up" in seen:

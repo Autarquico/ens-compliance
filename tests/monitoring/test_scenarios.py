@@ -157,6 +157,60 @@ def test_a_removed_container_turns_its_tool_red_since_it_disappeared(state, work
     assert len(smtp.sent) == 1
 
 
+def _copias_rows(state, workspace) -> list:
+    run_one_tick(monitor(workspace, state))
+    return [i for i in load_snapshot(state, NOW).items if i.id.startswith("tool:copias")]
+
+
+def test_an_enabled_tool_without_history_or_checks_and_no_container_is_red(
+    state, workspace, monkeypatch
+):
+    monkeypatch.setenv("ENS_KIT_PROFILES", "copias")
+    MonitoringStore(state).record([sample("mon_containers", [], at=NOW)])
+
+    rows = _copias_rows(state, workspace)
+
+    up = next(i for i in rows if i.id == "tool:copias:up")
+    assert up.status is Status.FAIL and up.since == NOW
+
+
+def test_an_enabled_tool_without_a_fresh_sample_is_unknown(state, workspace, monkeypatch):
+    monkeypatch.setenv("ENS_KIT_PROFILES", "copias")
+
+    rows = _copias_rows(state, workspace)
+
+    assert next(i for i in rows if i.id == "tool:copias:up").status is Status.UNKNOWN
+
+
+def test_a_tool_not_in_the_profiles_is_not_shown_even_with_its_container(
+    state, workspace, monkeypatch
+):
+    monkeypatch.setenv("ENS_KIT_PROFILES", "")
+    running = {**DOWN_BACKREST, "state": "running", "status": "Up 2 hours"}
+    MonitoringStore(state).record([sample("mon_containers", [running], at=NOW)])
+
+    assert _copias_rows(state, workspace) == []
+
+
+def test_without_the_variable_a_missing_container_without_history_is_not_shown(
+    state, workspace, monkeypatch
+):
+    monkeypatch.delenv("ENS_KIT_PROFILES", raising=False)
+    MonitoringStore(state).record([sample("mon_containers", [], at=NOW)])
+
+    assert _copias_rows(state, workspace) == []
+
+
+def test_without_the_variable_a_present_container_still_shows_the_tool(
+    state, workspace, monkeypatch
+):
+    monkeypatch.delenv("ENS_KIT_PROFILES", raising=False)
+    running = {**DOWN_BACKREST, "state": "running", "status": "Up 2 hours"}
+    MonitoringStore(state).record([sample("mon_containers", [running], at=NOW)])
+
+    assert _copias_rows(state, workspace) != []
+
+
 def test_every_page_carries_the_failing_banner(state, workspace, ui):
     feed_failing_world(state)
     run_one_tick(monitor(workspace, state))
