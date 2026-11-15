@@ -98,11 +98,11 @@ def access_idp_restricted(
     results = []
     if scope.incomplete:
         results.append(build(None, _unknown(SCOPE_INCOMPLETE, _scope_reason(scope.incomplete))))
-    if not scope.apps:
-        return results
     account = _account(sections)
     if isinstance(account, Outcome):
         return [*results, build(None, account)]
+    if not scope.apps:
+        return results
     policies = _read(sections, "access_policies")
     items = {item["app_id"]: item for item in policies.items}
     for scoped in scope.apps:
