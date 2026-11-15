@@ -11,6 +11,7 @@
 <!-- pm-sync:done-this-week -->
 - #9 Despliegue de agentes osquery
 - #28 Servidor osquery embebido
+- #62 UI web: base con Cloudflare Access, alcance y categorización
 - #63 UI web: el flujo completo, de los riesgos a la pre-auditoría
 - #66 Kit: copias de seguridad con restic y Backrest
 - #67 Kit: almacén de claves y secretos con OpenBao
