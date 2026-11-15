@@ -182,14 +182,12 @@ def test_an_enabled_tool_without_a_fresh_sample_is_unknown(state, workspace, mon
     assert next(i for i in rows if i.id == "tool:copias:up").status is Status.UNKNOWN
 
 
-def test_a_tool_not_in_the_profiles_is_not_shown_even_with_its_container(
-    state, workspace, monkeypatch
-):
-    monkeypatch.setenv("ENS_KIT_PROFILES", "")
+def test_stale_profiles_never_hide_a_tool_with_its_container(state, workspace, monkeypatch):
+    monkeypatch.setenv("ENS_KIT_PROFILES", "")  # `app` creada antes de activar la herramienta
     running = {**DOWN_BACKREST, "state": "running", "status": "Up 2 hours"}
     MonitoringStore(state).record([sample("mon_containers", [running], at=NOW)])
 
-    assert _copias_rows(state, workspace) == []
+    assert _copias_rows(state, workspace) != []
 
 
 def test_without_the_variable_a_missing_container_without_history_is_not_shown(
@@ -327,3 +325,24 @@ def test_state_monitoring_is_outside_the_workspace_even_with_a_default_state_dir
 
     assert not list(workspace.list("state"))
     assert (state / "monitoring").is_dir()
+
+
+def test_listed_profiles_do_not_hide_vaultwarden_present_with_history(workspace, monkeypatch):
+    from ens_evidence.monitoring.tools import KIT_TOOLS, tool_present
+
+    monkeypatch.setenv("ENS_KIT_PROFILES", "ui,agents")
+    tool = next(t for t in KIT_TOOLS if t.id == "contrasenas")
+    containers = {"vaultwarden": {"image": "x"}}
+
+    assert tool_present(workspace, tool, containers, None, frozenset({"tool:contrasenas:up"}))
+    assert tool_present(workspace, tool, containers, None)
+
+
+def test_a_listed_tool_is_expected_even_with_nothing_else(workspace, monkeypatch):
+    from ens_evidence.monitoring.tools import KIT_TOOLS, tool_present
+
+    tool = next(t for t in KIT_TOOLS if t.id == "contrasenas")
+    monkeypatch.setenv("ENS_KIT_PROFILES", "contrasenas")
+    assert tool_present(workspace, tool, {}, None)
+    monkeypatch.delenv("ENS_KIT_PROFILES")
+    assert not tool_present(workspace, tool, {}, None)

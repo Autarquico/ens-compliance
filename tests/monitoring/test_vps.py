@@ -31,11 +31,46 @@ def test_disk_prefix_is_by_path_component_not_by_string():
         {"path": "/", "blocks": "100", "blocks_available": "50"},
         {"path": "/var/lib/dock", "blocks": "100", "blocks_available": "1"},
     ]
-    samples = {"mon_disk": sample("mon_disk", mounts)}
+    samples = {
+        "mon_disk": sample("mon_disk", mounts),
+        "mon_docker_root": sample("mon_docker_root", [{"root_dir": "/var/lib/docker"}]),
+    }
 
     readings = vps.disks(samples, LIMITS, NOW)
 
-    assert [r.id for r in readings] == ["vps:disk:/"]
+    assert [r.id for r in readings] == ["vps:disk:/"]  # /var/lib/docker cae en "/"
+
+
+def _custom_root_samples(root_at=None, with_root=True):
+    mounts = [
+        {"path": "/", "blocks": "100", "blocks_available": "80"},
+        {"path": "/srv/docker", "blocks": "100", "blocks_available": "1"},
+    ]
+    samples = {"mon_disk": sample("mon_disk", mounts)}
+    if with_root:
+        samples["mon_docker_root"] = sample(
+            "mon_docker_root", [{"root_dir": "/srv/docker"}], at=root_at or NOW
+        )
+    return samples
+
+
+def test_a_custom_docker_root_at_99_percent_fails():
+    readings = {r.id: r for r in vps.disks(_custom_root_samples(), LIMITS, NOW)}
+
+    assert readings["vps:disk:/srv/docker"].status is Status.FAIL
+
+
+def test_an_unaccredited_docker_root_is_unknown_never_hidden():
+    old = NOW - vps.VPS_TTL - timedelta(seconds=1)
+    for samples in (
+        _custom_root_samples(with_root=False),
+        _custom_root_samples(root_at=old),
+    ):
+        readings = {r.id: r for r in vps.disks(samples, LIMITS, NOW)}
+
+        assert readings["vps:disk:/"].status is Status.OK
+        assert readings[vps.DOCKER_DISK_UNKNOWN_ID].status is Status.UNKNOWN
+        assert "vps:disk:/srv/docker" not in readings
 
 
 def test_stale_or_missing_samples_are_unknown_never_green():

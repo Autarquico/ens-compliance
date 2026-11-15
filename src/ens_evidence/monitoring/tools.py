@@ -214,16 +214,17 @@ def tool_present(
     seal: OpenBaoSeal | None,
     seen: frozenset[str] = frozenset(),
 ) -> bool:
-    """La herramienta se espera en esta caja.
+    """La herramienta se espera en esta caja: unión de la configuración y de las señales.
 
-    Con `ENS_KIT_PROFILES` (perfiles de Compose activos, escritos por `deploy/box.sh`) manda la
-    configuración del despliegue. Sin ella (desarrollo, despliegues antiguos), señales
-    persistentes: evidencia del conector o disponibilidad ya vista en el histórico de 30 días
-    (`seen`); si no, el contenedor o (OpenBao) la respuesta del almacén.
+    `ENS_KIT_PROFILES` (perfiles de Compose activos, escritos por `deploy/box.sh`) se fija al
+    crear `app` y puede quedar atrasada al activar herramientas después; por eso solo suma. Las
+    señales persistentes también la hacen esperada: evidencia del conector, disponibilidad ya
+    vista en el histórico de 30 días (`seen`), la respuesta del almacén (OpenBao) o el contenedor.
+    Nunca se oculta una herramienta con alguna señal.
     """
     profiles = enabled_profiles()
-    if profiles is not None:
-        return tool.id in profiles  # el perfil de Compose de cada herramienta es su id
+    if profiles is not None and tool.id in profiles:  # el perfil de cada herramienta es su id
+        return True
     if scan_runs(store, tool.connector).last(tool.connector) is not None:
         return True
     if f"tool:{tool.id}:up" in seen:

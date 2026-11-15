@@ -653,7 +653,7 @@ def test_without_docker_or_network_the_empty_results_become_unknown_never_ok(
     for query_id, prefix in READINGS_OF.items():
         mine = {id: s for id, s in vps.items() if id.startswith(prefix)}
         assert mine, f"{query_id} no alimenta ninguna lectura"
-        if not results[query_id] and query_id != "mon_docker_root":
+        if not results[query_id]:
             assert set(mine.values()) == {Status.UNKNOWN}, (query_id, mine)
     # Los indicios de actualizaciones nunca son verdes, ni con datos.
     assert vps["vps:updates"] is not Status.OK

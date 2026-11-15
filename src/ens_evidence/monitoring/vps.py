@@ -15,7 +15,7 @@ from ens_evidence.monitoring.model import (
 from ens_evidence.monitoring.thresholds import Thresholds
 
 VPS_TTL = timedelta(seconds=3 * INTERVAL_SECONDS)
-DEFAULT_DOCKER_ROOT = "/var/lib/docker"
+DOCKER_DISK_UNKNOWN_ID = "vps:disk:docker"
 APT_STAMP_MAX_AGE = timedelta(days=7)
 _MONTHS = {
     m: i
@@ -99,8 +99,10 @@ def _mount_for(path: str, mounts: tuple[dict[str, str], ...]) -> dict[str, str] 
 def disks(samples: Samples, limits: Thresholds, now: datetime) -> list[Reading]:
     mounts = _fresh_rows(samples, "mon_disk", now)
     root_row = _row(samples, "mon_docker_root", now)
-    docker_root = (root_row or {}).get("root_dir") or DEFAULT_DOCKER_ROOT
-    targets = {"/": "Disco (raíz)", docker_root: "Disco (Docker)"}
+    docker_root = (root_row or {}).get("root_dir")
+    targets = {"/": "Disco (raíz)"}
+    if docker_root:
+        targets[docker_root] = "Disco (Docker)"
     found: dict[str, dict[str, str] | None] = {
         path: _mount_for(path, mounts) if mounts else None for path in targets
     }
@@ -118,6 +120,15 @@ def disks(samples: Samples, limits: Thresholds, now: datetime) -> list[Reading]:
             continue
         seen.add(point)
         readings.append(_disk(mount, title, limits, samples["mon_disk"].observed_at))
+    if not docker_root:  # sin ubicación acreditada no se presupone una: el disco no se oculta
+        readings.append(
+            unknown(
+                DOCKER_DISK_UNKNOWN_ID,
+                GROUP_VPS,
+                "Disco (Docker)",
+                "Ubicación de Docker sin acreditar.",
+            )
+        )
     return readings
 
 
