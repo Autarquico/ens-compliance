@@ -142,6 +142,9 @@ def _account(sections: dict[str, Any]) -> _Account | Outcome:
     )
 
 
+_BYPASS = (BYPASS, "tiene una política bypass: deja entrar sin identidad")
+
+
 def _evaluate(
     scoped: ScopedApp,
     items: dict[str, dict[str, Any]],
@@ -153,8 +156,13 @@ def _evaluate(
     if "allowed_idps_form" not in app:
         return _unknown(STALE_EVIDENCE, f"aplicación «{name}»: {_STALE}")
     try:
-        base = _base(app, account)
         item = _policy_item(items, policies, app["id"])
+        try:
+            base = _base(app, account)
+        except _Unresolved:
+            if any(p.get("decision") == "bypass" for p in item["policies"]):
+                return _report(CheckStatus.FAIL, name, [_BYPASS])
+            raise
         return _outcome(name, scoped.uncertain, base, item["policies"], account)
     except _Unresolved as exc:
         return _unknown(exc.code, f"aplicación «{name}»: {exc.detail}")
@@ -287,7 +295,7 @@ def _outcome(
     for policy in policies:
         decision = policy.get("decision")
         if decision == "bypass":
-            fails.append((BYPASS, "tiene una política bypass: deja entrar sin identidad"))
+            fails.append(_BYPASS)
         elif decision == "non_identity":
             unknowns.append(
                 (

@@ -79,6 +79,13 @@ def test_allowed_idps_ausente_o_nulo_nunca_es_pass(form):
         assert_result(result, UNKNOWN, "idp_review", "allowed_idps", "revísalo en la consola")
 
 
+@pytest.mark.parametrize("form", ["absent", None, "malformed"])
+def test_bypass_confirmado_es_fail_aunque_allowed_idps_no_se_sepa(form):
+    result = evaluate(ipolicy("bypass", [sel("everyone")]), allowed=form)
+
+    assert_result(result, FAIL, "bypass", "deja entrar sin identidad")
+
+
 def test_allowed_idps_vacio_sin_otp_en_la_cuenta_y_un_directorio_es_pass():
     result = evaluate(allow(sel("email_domain")), idps=[WS], allowed=[])
 
