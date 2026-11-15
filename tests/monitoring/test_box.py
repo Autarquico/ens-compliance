@@ -75,16 +75,18 @@ def test_failed_backup_stage_of_the_last_cycle_warns(store, heartbeat):
     assert "copia" in reading.detail
 
 
-def repository(*, backend="remote", exists=True, snapshots=(), declaration=True):
+def repository(
+    *, backend="remote", exists=True, snapshots=(), declaration=True, name="externa", expired=False
+):
     snapshot_items = [{"id": f"s{i}", "time": t.isoformat()} for i, t in enumerate(snapshots)]
     return {
-        "id": "externa",
-        "asset_id": "backup-externo",
+        "id": name,
+        "asset_id": f"backup-{name}",
         "collection_status": "SUCCESS",
         "offsite": (
             {
                 "reviewed_at": (NOW - timedelta(days=10)).isoformat(),
-                "valid_until": (NOW + timedelta(days=100)).isoformat(),
+                "valid_until": (NOW + timedelta(days=-1 if expired else 100)).isoformat(),
             }
             if declaration
             else None
@@ -157,4 +159,42 @@ def test_a_fresh_local_copy_does_not_hide_a_stale_external_one(store):
         repository(backend="local", snapshots=[NOW]),
         repository(snapshots=[NOW - timedelta(hours=40)]),
     )
+    assert offsite(store, NOW).status is Status.FAIL
+
+
+def failed_collection(name):
+    entry = repository(name=name)
+    return {**entry, "collection_status": "ERROR", "sections": {}}
+
+
+def test_several_good_destinations_are_green(store):
+    fresh = [NOW - timedelta(hours=2)]
+    store_backups(
+        store, repository(name="a", snapshots=fresh), repository(name="b", snapshots=fresh)
+    )
+    assert offsite(store, NOW).status is Status.OK
+
+
+def test_a_failed_collection_of_a_declared_destination_is_never_green(store):
+    store_backups(
+        store,
+        repository(name="a", snapshots=[NOW - timedelta(hours=2)]),
+        failed_collection("b"),
+    )
+    reading = offsite(store, NOW)
+    assert reading.status is Status.UNKNOWN
+    assert "backup-b" in reading.detail
+
+
+def test_an_expired_declaration_of_a_destination_is_never_green(store):
+    store_backups(
+        store,
+        repository(name="a", snapshots=[NOW - timedelta(hours=2)]),
+        repository(name="b", snapshots=[NOW - timedelta(hours=2)], expired=True),
+    )
+    assert offsite(store, NOW).status is Status.UNKNOWN
+
+
+def test_a_red_destination_wins_over_an_unknown_one(store):
+    store_backups(store, failed_collection("a"), repository(name="b", snapshots=[]))
     assert offsite(store, NOW).status is Status.FAIL

@@ -214,10 +214,16 @@ def offsite_backup(store: WorkspaceStore, limits: Thresholds, now: datetime) -> 
             f"Los datos de las copias tienen más de {limits.backup_evidence_hours:g} h.",
             collected,
         )
-    entries = [e for e in _entries(result) if _is_remote(e) and _declared_offsite(e, now)]
+    entries = [e for e in _entries(result) if _is_expected_offsite(e)]
     if not entries:
         return reading(Status.UNKNOWN, "No hay un destino externo declarado y vigente.", collected)
-    verdicts = [_destination_verdict(e, timedelta(hours=limits.backup_hours), now) for e in entries]
+    limit = timedelta(hours=limits.backup_hours)
+    verdicts = [
+        _destination_verdict(e, limit, now)
+        if _declared_offsite(e, now)
+        else (Status.UNKNOWN, f"{e.get('asset_id', 'destino')}: la declaración no está vigente")
+        for e in entries
+    ]
     status = worst(v for v, _ in verdicts)
     return reading(status, "; ".join(d for _, d in verdicts) + ".", collected)
 
@@ -227,6 +233,10 @@ def _entries(result: CollectionResult) -> list[dict[str, Any]]:
     return [e for e in entries if isinstance(e, dict)] if isinstance(entries, list) else []
 
 
-def _is_remote(entry: dict[str, Any]) -> bool:
+def _is_expected_offsite(entry: dict[str, Any]) -> bool:
+    """Destino que el operador declaró externo. La declaración persiste aunque la recogida falle,
+    así que un repositorio ilegible sigue esperándose; uno legible solo si es `remote`."""
+    if not _dict(entry.get("offsite")):
+        return False
     repository = _section_items(entry, "repository")
-    return bool(repository) and repository[0].get("backend") == "remote"
+    return not repository or repository[0].get("backend") == "remote"
