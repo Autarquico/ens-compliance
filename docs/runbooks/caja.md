@@ -106,7 +106,9 @@ camino listo y comprobar que no se ve nada desde fuera.
 3. En el túnel, añade un hostname público que apunte al servicio
    `http://caddy:8080`.
 4. Crea una aplicación de Access para ese hostname, con una política que
-   permita solo a las personas autorizadas.
+   permita solo a las personas autorizadas. Con el proveedor de identidad de la
+   pyme y sin código por correo:
+   [acceso con proveedor de identidad](acceso-con-proveedor-de-identidad.md).
 5. Arranca `cloudflared`. Con `deploy/tunnel.env` presente, `box.sh` activa el
    perfil `tunnel`; `status` muestra si quedó en marcha:
 
