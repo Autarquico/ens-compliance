@@ -6,10 +6,45 @@
     {
       "id": "grp-1",
       "name": "Equipo",
-      "include": [{"email": {"email": "grupo-CANARY@example.invalid"}}],
-      "exclude": [{"ip": {"ip": "203.0.113.0/24"}}],
-      "require": [{"group": {"id": "grp-2"}}]
+      "include": [
+        {
+          "email": {
+            "email": "grupo-CANARY@example.invalid"
+          }
+        },
+        {
+          "login_method": {
+            "id": "idp-1"
+          }
+        }
+      ],
+      "exclude": [
+        {
+          "ip": {
+            "ip": "203.0.113.0/24"
+          }
+        }
+      ],
+      "require": [
+        {
+          "group": {
+            "id": "grp-2"
+          }
+        },
+        {
+          "okta": {
+            "name": "okta-CANARY",
+            "identity_provider_id": "idp-3"
+          }
+        }
+      ]
     }
   ],
-  "result_info": {"page": 1, "per_page": 100, "total_pages": 1, "count": 1, "total_count": 1}
+  "result_info": {
+    "page": 1,
+    "per_page": 100,
+    "total_pages": 1,
+    "count": 1,
+    "total_count": 1
+  }
 }

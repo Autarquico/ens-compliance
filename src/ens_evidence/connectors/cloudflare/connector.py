@@ -111,6 +111,7 @@ class CloudflareConnector(Connector):
         )
         collected["access_policies"] = sections.collect_access_policies(client, config, apps)
         collected["access_groups"] = sections.collect_access_groups(client, config)
+        collected["identity_providers"] = sections.collect_identity_providers(client, config)
         collected["tunnels"] = sections.collect_tunnels(client, config, dns)
         collected["audit_logs"] = sections.collect_audit_logs(client, config, now)
         verify()

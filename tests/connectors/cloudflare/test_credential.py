@@ -15,6 +15,7 @@ SECTIONS = {
     "access_applications",
     "access_policies",
     "access_groups",
+    "identity_providers",
     "tunnels",
     "audit_logs",
 }
