@@ -18,6 +18,7 @@
 - #69 Kit: gestor de contraseñas del equipo con Vaultwarden
 - #70 Kit: identidad y doble factor (Authentik o Keycloak)
 - #71 Kit: protección frente a código dañino
+- #72 Kit: panel de monitorización
 <!-- /pm-sync:done-this-week -->
 
 ---
