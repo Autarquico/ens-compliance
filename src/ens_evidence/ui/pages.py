@@ -7,6 +7,7 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from ens_evidence.ui.access import Identity
+from ens_evidence.ui.monitoring_banner import banner_for
 
 PRODUCT_NAME = "ens-compliance"
 
@@ -28,6 +29,7 @@ def page_context(request: Request, nav_active: str, page_title: str) -> dict[str
         "identity_email": identity_of(request).email,
         "nav_active": nav_active,
         "page_title": page_title,
+        "monitoring_banner": banner_for(request),
     }
 
 

@@ -60,6 +60,7 @@ VIEW_TEMPLATES = [
     "views/incidente_nuevo.html",
     "views/incidente.html",
     "views/herramientas.html",
+    "views/monitorizacion.html",
     "views/herramientas_copias.html",
     "views/herramientas_claves.html",
     "views/herramientas_contrasenas.html",
@@ -686,6 +687,7 @@ VIEW_CONTEXT = {
         "blockers": [HOSTILE],
         "kit_offer": {
             "name": "copias",
+            "on_box": True,
             "tool_name": HOSTILE,
             "cta": "Añadir las copias",
             "url": "/herramientas/copias",
@@ -719,10 +721,46 @@ VIEW_CONTEXT = {
         "uncovered": [HOSTILE],
         "saved": True,
     },
+    "views/monitorizacion.html": {
+        "snapshot": object(),
+        "stale": False,
+        "generated_at": "2026-11-08 10:00 UTC",
+        "interval_minutes": 15,
+        "groups": [
+            {
+                "key": "vps",
+                "title": "Servidor (VPS)",
+                "rows": [
+                    {
+                        "id": "vps:disk",
+                        "title": HOSTILE,
+                        "tone": "bad",
+                        "label": "Fallo",
+                        "detail": HOSTILE,
+                        "since": "2026-11-08 07:00 UTC",
+                        "runbook_url": "/ayuda/monitorizacion",
+                        "spark": {
+                            "bars": [{"x": 0, "tone": "bad"}],
+                            "width": 2,
+                            "height": 16,
+                            "summary": HOSTILE,
+                        },
+                        "observed_at": "—",
+                    }
+                ],
+            }
+        ],
+        "mail_configured": True,
+        "mail_last_attempt": "—",
+        "mail_last_failed": True,
+        "mail_last_error": HOSTILE,
+        "runbook_url": "/ayuda/monitorizacion",
+    },
     "views/herramientas.html": {
         "tools": [
             {
                 "id": "copias",
+                "on_box": True,
                 "name": HOSTILE,
                 "purpose": HOSTILE,
                 "state": {
@@ -748,6 +786,7 @@ VIEW_CONTEXT = {
             },
             {
                 "id": "claves",
+                "on_box": True,
                 "name": "Claves y secretos",
                 "purpose": "x",
                 "state": {

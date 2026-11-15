@@ -78,6 +78,33 @@ def record(store, *statuses: CheckStatus, complete: bool = True) -> None:
     record_run(store, run, NOW)
 
 
+def record_endpoint(store, checks: list[tuple[str, CheckStatus]]) -> None:
+    results = [
+        CheckResult(
+            check_id=check_id,
+            asset_id="srv-01",
+            status=status,
+            evaluated_at=NOW - timedelta(hours=1),
+            evidence_ids=["EV-20261108-aaaaaaaa"],
+            reason="r",
+        )
+        for check_id, status in checks
+    ]
+    run = StoredCheckRun(
+        seq=1,
+        connector="endpoint",
+        engine_version="1",
+        started_at=NOW - timedelta(hours=2),
+        finished_at=NOW - timedelta(hours=1),
+        complete=True,
+        scope_fingerprint=SHA,
+        config_sha256=SHA,
+        inputs=[CheckInput(evidence_id="EV-20261108-aaaaaaaa", manifest_sha256=SHA)],
+        results=results,
+    )
+    record_run(store, run, NOW)
+
+
 def members(body: bytes) -> dict[str, bytes]:
     with tarfile.open(fileobj=io.BytesIO(body), mode="r:gz") as tar:
         return {m.name: tar.extractfile(m).read() for m in tar.getmembers() if m.isfile()}
@@ -144,7 +171,7 @@ def test_panel_abre_backrest_en_el_host_configurado(config, example_store, key, 
 def test_panel_muestra_la_ram_medida_de_cada_herramienta(session):
     text = tail(session.get("/herramientas").text)
 
-    for tool in KIT_TOOLS:
+    for tool in (t for t in KIT_TOOLS if t.on_box):
         assert tool.ram is not None
         assert f"≈{tool.ram.mib} MiB (medido el {tool.ram.measured_on}, " in text
         assert tool.ram.conditions in text
@@ -161,6 +188,33 @@ def test_panel_dibuja_una_tarjeta_por_herramienta_en_orden_del_registro(session)
 @pytest.mark.parametrize("tool", KIT_TOOLS, ids=lambda t: t.id)
 def test_las_pistas_de_cada_herramienta_son_estados_conocidos(tool):
     assert set(tool.hints) <= set(STATES)
+
+
+def test_la_tarjeta_de_antimalware_no_tiene_contenedor_y_remite_al_runbook(session):
+    html = session.get("/herramientas").text
+
+    card = html.split('id="h-antimalware"', 1)[1].split("</section>", 1)[0]
+    assert 'href="/matriz/op.exp.6"' in card
+    assert 'href="/ayuda/kit-antimalware"' in card and ">Ver cómo se instala<" in card
+    assert "Memoria" not in card and "RAM sin medir" not in card
+    assert "Abrir" not in card and "Aún no está desplegado" not in card
+    assert not re.search(r"certific|garantiza el cumplimiento|cumple el ENS", card, re.I)
+
+
+def test_antimalware_solo_juzga_host_008_y_host_009(example_store):
+    from ens_evidence.ui.views.tools import kit_state
+
+    tool = next(t for t in KIT_TOOLS if t.id == "antimalware")
+    record_endpoint(example_store, [("HOST-001", CheckStatus.FAIL), ("HOST-008", CheckStatus.PASS)])
+    assert kit_state(example_store, "endpoint")["key"] == "problems"
+    assert kit_state(example_store, "endpoint", tool.check_ids)["key"] == "ok"
+
+
+def test_antimalware_sin_resultados_de_sus_checks_es_sin_datos(example_store):
+    from ens_evidence.ui.views.tools import kit_state
+
+    record_endpoint(example_store, [("HOST-001", CheckStatus.PASS)])
+    assert kit_state(example_store, "endpoint", ("HOST-008", "HOST-009"))["key"] == "nodata"
 
 
 def test_la_navegacion_enlaza_herramientas(session):

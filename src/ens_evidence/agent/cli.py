@@ -9,6 +9,7 @@ from typing import Annotated
 
 import typer
 
+from ens_evidence.agent.install import render_install_script
 from ens_evidence.agent.node_key import issue_enroll_token, normalize_host_identifier
 from ens_evidence.agent.osquery_config import pack_queries
 from ens_evidence.agent.registry import (
@@ -21,6 +22,8 @@ from ens_evidence.agent.secrets import AgentSecrets, AgentSecretsError, load_age
 from ens_evidence.agent.state import AgentState
 from ens_evidence.connectors.config import load_connector_config
 from ens_evidence.endpoint.config import CONFIG_NAME, EndpointConfig
+from ens_evidence.scope.inventory import load_assets
+from ens_evidence.scope.models import AssetType
 from ens_evidence.workspace import WorkspaceError
 from ens_evidence.workspace.cycle_lock import CycleLock
 
@@ -35,7 +38,6 @@ agent_app.add_typer(query_app, name="query")
 
 MAX_ADMIT_HOURS = 168
 EXPIRES = re.compile(r"^(\d{1,4})([hd])$")
-ENROLL_SECRET_PATH = "/etc/osquery/enroll_secret"
 
 Asset = Annotated[
     str, typer.Option("--asset", help="Identificador del activo (connectors/endpoint.yaml).")
@@ -83,6 +85,16 @@ def _enrolled(config: EndpointConfig, asset: str) -> str:
     if asset not in config.hosts:
         raise _fail(f"El activo {asset} no está inscrito en connectors/endpoint.yaml.")
     return asset
+
+
+def _is_server(ctx: typer.Context, asset: str) -> bool:
+    assets, errors = load_assets(_cli().open_workspace(ctx))
+    if assets is None:
+        raise _fail("Error: no se pudo leer el inventario de activos:\n" + "\n".join(errors))
+    found = next((item for item in assets.assets if item.id == asset), None)
+    if found is None:
+        raise _fail(f"El activo {asset} no está en scope/assets.yaml; añádelo al inventario.")
+    return found.type is AssetType.SERVER
 
 
 def _expiry(raw: str, now: datetime) -> datetime:
@@ -195,11 +207,38 @@ def admit(
     typer.echo(token)
     typer.echo(
         f"Alta de {asset} (generación {record.generation}) válida hasta {expires_at.isoformat()}.\n"
-        f"En el equipo, guarda el token en {ENROLL_SECRET_PATH} (modo 600, sin salto de línea "
-        f"final) y arranca osquery con --enroll_secret_path={ENROLL_SECRET_PATH}.\n"
+        "En el equipo, guarda el token en un fichero que solo lean root o los administradores "
+        "y genera el instalador con `ens-evidence agent install` (--token-file). osquery lo "
+        "lee con --enroll_secret_path: /etc/osquery/enroll_secret (macOS y Linux) o "
+        "C:\\Program Files\\osquery\\enroll_secret (Windows).\n"
         "No lo pases con --enroll_secret_env ni lo guardes en el repo.",
         err=True,
     )
+
+
+@agent_app.command()
+@handled
+def install(
+    ctx: typer.Context,
+    asset: Asset,
+    os_name: Annotated[str, typer.Option("--os", help="macos, linux o windows.")],
+    server: Annotated[str, typer.Option("--server", help="Nombre de host del servidor.")],
+    token_file: Annotated[
+        str, typer.Option("--token-file", help="Ruta, en el equipo, del fichero con el token.")
+    ],
+    package: Annotated[str | None, typer.Option("--package", help="Linux: deb o rpm.")] = None,
+    arch: Annotated[str | None, typer.Option("--arch", help="Linux: amd64 o arm64.")] = None,
+) -> None:
+    """Imprime el script que instala osquery (versión fijada, sha256 verificado) y lo configura
+    contra el servidor. Ejecútalo en el equipo como root o administrador. No lee ni escribe
+    secretos: el token lo lee el script desde --token-file. En servidores Linux Debian/Ubuntu
+    añade ClamAV con actualización de firmas (paquetes de la distribución)."""
+    _enrolled(_endpoint_config(ctx), asset)
+    with_antimalware = _is_server(ctx, asset)
+    script = render_install_script(
+        os_name, server, token_file, package, arch, with_antimalware=with_antimalware
+    )
+    typer.echo(script, nl=False)
 
 
 @agent_app.command()

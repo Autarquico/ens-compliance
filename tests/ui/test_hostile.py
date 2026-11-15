@@ -32,7 +32,7 @@ from .test_tools import FORM as COPIAS_FORM
 from .test_tools import SENTINELS as COPIAS_SECRETS
 from .test_tools_claves import FORM as CLAVES_FORM
 
-VIEWS = ["/", "/matriz", "/evidencias", "/expediente", "/preauditoria"]
+VIEWS = ["/", "/matriz", "/evidencias", "/expediente", "/preauditoria", "/monitorizacion"]
 STEP_PATHS = [f"/asistente/{s.slug}" for s in STEPS]
 KIT_PATHS = ["/herramientas", "/herramientas/claves", "/herramientas/claves/custodios"]
 ALL_PAGES = [*VIEWS, "/asistente", *STEP_PATHS, *KIT_PATHS]

@@ -293,6 +293,7 @@ from ens_evidence.scheduling.scheduler import (
     CycleExecutor,
     Scheduler,
     file_heartbeat,
+    monitoring_alongside,
     render_status,
     scheduler_status,
     stop_on_signals,
@@ -349,6 +350,7 @@ contrasenas_app = typer.Typer(help="Kit de contraseñas.", no_args_is_help=True)
 kit_app.add_typer(contrasenas_app, name="contrasenas")
 report_app = typer.Typer(help="Informes.", no_args_is_help=True)
 scheduler_app = typer.Typer(help="Planificador de informes.", no_args_is_help=True)
+monitoring_app = typer.Typer(help="Monitorización de la caja.", no_args_is_help=True)
 assessment_app = typer.Typer(help="Evaluación.", no_args_is_help=True)
 evidence_app = typer.Typer(help="Evidencias.", no_args_is_help=True)
 schema_app = typer.Typer(help="Esquemas de los contratos.", no_args_is_help=True)
@@ -390,6 +392,7 @@ preaudit_app = typer.Typer(
 assessment_app.add_typer(dossier_app, name="dossier")
 app.add_typer(report_app, name="report")
 app.add_typer(scheduler_app, name="scheduler")
+app.add_typer(monitoring_app, name="monitoring")
 app.add_typer(assessment_app, name="assessment")
 app.add_typer(evidence_app, name="evidence")
 app.add_typer(schema_app, name="schema")
@@ -720,7 +723,7 @@ def endpoint_check(
         str | None, typer.Option("--at", help="Momento de la evaluación (por defecto, ahora).")
     ] = None,
 ) -> None:
-    """Evalúa HOST-001…007 por activo. Salida: 0 sin FAIL ni evidencia caducada, 4 si hay
+    """Evalúa HOST-001…009 por activo. Salida: 0 sin FAIL ni evidencia caducada, 4 si hay
     algún FAIL o evidencia caducada, 2 error de configuración o de lectura."""
     evaluated_at = parse_instant("--at", at) or datetime.now(UTC)
     evaluation = evaluate_workspace(open_workspace(ctx), evaluated_at)
@@ -3270,7 +3273,7 @@ def scheduler_run(ctx: typer.Context) -> None:
         heartbeat=heartbeat,
         requests=executor.pending_requests,
     )
-    with stop_on_signals(stop):
+    with stop_on_signals(stop), monitoring_alongside(store, stop):
         scheduler.run()
 
 
@@ -3282,6 +3285,21 @@ def scheduler_show_status(ctx: typer.Context) -> None:
     store = open_workspace(ctx)
     status = scheduler_status(store, load_schedule_config(store), clock())
     typer.echo(render_status(status), nl=False)
+
+
+@monitoring_app.command("status")
+@handled
+def monitoring_show_status() -> None:
+    """Última instantánea de monitorización y si hay correo configurado. Solo lectura."""
+    from ens_evidence.monitoring import load_snapshot, render_status
+    from ens_evidence.monitoring.mail import SmtpSettings
+    from ens_evidence.workspace.cycle_lock import resolve_state_dir
+
+    now = clock()
+    snapshot = load_snapshot(resolve_state_dir(), now)
+    typer.echo(
+        render_status(snapshot, SmtpSettings.from_env(os.environ) is not None, now), nl=False
+    )
 
 
 class StatusFormat(StrEnum):

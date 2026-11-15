@@ -8,6 +8,7 @@ import pytest
 import yaml
 
 from ens_evidence.catalog.load import load_catalog
+from ens_evidence.checks.catalog import ENDPOINT_CONNECTOR
 from ens_evidence.connectors.registry import ConnectorRegistry
 from ens_evidence.kit.registry import KIT_TOOLS, KitTool, tool_for
 from ens_evidence.ui.config import load_ui_config
@@ -42,6 +43,8 @@ def test_las_clausulas_existen_y_son_de_una_medida_de_la_herramienta(tool):
 
 
 def test_el_conector_esta_registrado(tool):
+    if tool.connector == ENDPOINT_CONNECTOR:  # el endpoint no es un entry point: lo evalúa el motor
+        return
     registry = ConnectorRegistry()
     registry.load_entry_points()
     assert tool.connector in registry.names()
@@ -72,11 +75,26 @@ def test_contrasenas_no_declara_cobertura_de_ninguna_clausula():
     assert not re.search(r"certific|garantiza el cumplimiento|cumple el ENS", tool.covers, re.I)
 
 
+def test_antimalware_no_es_un_contenedor_y_solo_juzga_sus_checks():
+    tool = BY_ID["antimalware"]
+    assert tool_for("op.exp.6") is tool
+    assert not tool.on_box and tool.ram is None
+    assert tool.check_ids == ("HOST-008", "HOST-009")
+    assert set(tool.partial_clauses) == {"op.exp.6.4", "op.exp.6.5"}
+    assert "op.exp.6.3" in tool.not_covered_clauses
+    assert tool.covers_clauses == ()
+    text = tool.purpose + tool.covers + tool.not_covers + tool.measures_note
+    assert not re.search(r"certific|garantiza el cumplimiento|cumple el ENS", text, re.I)
+
+
 def test_los_ids_del_registro_son_unicos():
     assert len(BY_ID) == len(KIT_TOOLS)
 
 
 def test_la_imagen_de_la_ram_es_la_de_compose(tool):
+    if not tool.on_box:
+        assert tool.ram is None, "sin contenedor no hay imagen cuya RAM medir"
+        return
     compose = yaml.safe_load((ROOT / "compose.yaml").read_text(encoding="utf-8"))
     images = {s["image"] for s in compose["services"].values() if "image" in s}
     assert tool.ram is not None
@@ -91,6 +109,9 @@ def test_cada_herramienta_tiene_clave_en_los_hosts_de_la_config(tool):
         "ENS_UI_ACCESS_TEAM_DOMAIN": "acme.cloudflareaccess.com",
         "ENS_UI_ACCESS_JWKS_FILE": "/x",
     }
+    if not tool.on_box:
+        assert tool.id not in load_ui_config(env).kit_hosts, "sin contenedor no hay host"
+        return
     assert load_ui_config(env).kit_hosts[tool.id] is None
     with_host = load_ui_config({**env, f"ENS_{tool.id.upper()}_HOST": "Kit.Example.org"})
     assert with_host.kit_hosts[tool.id] == "kit.example.org"

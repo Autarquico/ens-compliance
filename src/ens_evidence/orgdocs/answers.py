@@ -3,6 +3,7 @@
 import re
 import unicodedata
 from dataclasses import dataclass, field
+from functools import lru_cache
 from typing import Any
 
 import yaml
@@ -82,6 +83,7 @@ class AnswersReport:
         return [p for p in self.problems if owner(p) in question_ids or owner(p) not in self.values]
 
 
+@lru_cache(maxsize=8192)
 def squash(text: str) -> str:
     """Forma comparable: sin tildes, mayúsculas, signos ni espacios."""
     folded = unicodedata.normalize("NFKD", text)

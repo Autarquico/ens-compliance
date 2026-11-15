@@ -6,13 +6,13 @@ status: shipped
 priority: P0
 size: M
 issue: 27
-prs: [53]
+prs: [53, 79]
 related_issues: [27]
 depends_on: [repo-foundation, reports-scheduling, evidence-storage]
 supersedes: []
 related_specs: []
 created: 2026-10-16
-updated: 2026-11-04
+updated: 2026-11-13
 ---
 
 # Caja mínima en Docker Compose

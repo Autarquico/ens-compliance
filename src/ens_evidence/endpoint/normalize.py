@@ -45,6 +45,26 @@ STORED_COLUMNS: dict[str, tuple[str, ...]] = {
     "apps": ("name", "bundle_identifier", "bundle_short_version", "bundle_version"),
     "deb_packages": ("name", "version", "arch", "status"),
     "rpm_packages": ("name", "version", "release", "arch"),
+    "bitlocker_info": (
+        "device_id",
+        "drive_letter",
+        "protection_status",
+        "conversion_status",
+        "encryption_method",
+    ),
+    "windows_security_center": ("firewall", "autoupdate", "antivirus"),
+    "programs": ("name", "version", "publisher", "install_date"),
+    "windows_security_products": (
+        "type",
+        "name",
+        "state",
+        "state_timestamp",
+        "signatures_up_to_date",
+    ),
+    "gatekeeper": ("assessments_enabled", "dev_id_enabled", "version", "opaque_version"),
+    "xprotect_bundle": ("path", "bundle_short_version", "mtime"),
+    "clamav_signatures": ("path", "mtime", "size"),
+    "clamav_units": ("id", "active_state", "sub_state", "unit_file_state"),
 }
 
 ATTESTATION = (

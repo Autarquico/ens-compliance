@@ -33,7 +33,7 @@
     {%- for c in kit_offer.not_covered_clauses %}<li><span class="mono">{{ c.id }}</span>: no cubierta.{% if c.text %} {{ c.text }}{% endif %}</li>{% endfor %}
   </ul>
   {% endif %}
-  <p class="muted">{% if kit_offer.ram %}Memoria: ≈{{ kit_offer.ram.mib }} MiB (medido el {{ kit_offer.ram.measured_on }}, {{ kit_offer.ram.conditions }}).{% else %}RAM sin medir.{% endif %}</p>
+  {% if kit_offer.on_box %}<p class="muted">{% if kit_offer.ram %}Memoria: ≈{{ kit_offer.ram.mib }} MiB (medido el {{ kit_offer.ram.measured_on }}, {{ kit_offer.ram.conditions }}).{% else %}RAM sin medir.{% endif %}</p>{% endif %}
   <p><a class="btn" href="{{ kit_offer.url }}">{{ kit_offer.cta }}</a></p>
 </section>
 {% endif %}

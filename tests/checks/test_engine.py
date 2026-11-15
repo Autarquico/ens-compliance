@@ -404,8 +404,10 @@ def test_endpoint_evaluates_every_laptop_and_server_of_the_inventory(endpoint_st
     run = evaluate(endpoint_store, "endpoint")
 
     hosts = ["lap-ana", "lap-personal", "srv-app"]
-    assert len(run.results) == len(HOST_CHECKS) * len(hosts)
-    assert all(run.expected_subjects[c] == hosts for c in HOST_CHECKS)
+    assert len(run.results) == len(HOST_CHECKS) * len(hosts) - 1  # sin HOST-009 del servidor
+    assert all(run.expected_subjects[c] == hosts for c in HOST_CHECKS if c != "HOST-009")
+    assert run.expected_subjects["HOST-009"] == ["lap-ana", "lap-personal"]
+    assert [r.subject for r in by_check(run)["HOST-009"]] == ["lap-ana", "lap-personal"]
     coverage = {r.subject: r for r in by_check(run)["HOST-001"]}
     assert coverage["lap-ana"].status is CheckStatus.PASS
     assert coverage["lap-personal"].status is CheckStatus.FAIL
@@ -447,7 +449,7 @@ def test_endpoint_crash_gives_unknown_check_crashed_for_every_check_and_host(
 
     run = evaluate(endpoint_store, "endpoint")
 
-    assert len(run.results) == len(HOST_CHECKS) * 3
+    assert len(run.results) == len(HOST_CHECKS) * 3 - 1
     assert {r.reason_code for r in run.results} == {CHECK_CRASHED}
     assert {r.status for r in run.results} == {CheckStatus.UNKNOWN}
     assert run.errors == [f"{CHECK_CRASHED}:endpoint:ValueError"]

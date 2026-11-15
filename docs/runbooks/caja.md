@@ -192,6 +192,17 @@ política). Despliegue, comprobación del acceso, certificados, rollback y
 recuperación: `docs/runbooks/interfaz-web.md`. Los agentes también se enrutan
 por host: `ENS_AGENT_HOST` en `deploy/agent.env`.
 
+## 4.3 Panel de monitorización
+
+La página `/monitorizacion` de la interfaz web resume la salud de la caja, sus
+herramientas y el VPS (`monitorizacion.md`). La app no monta el socket de
+Docker ni se une a más redes que `backend` y `claves-app`: el estado de los
+contenedores lo da el agente osquery del propio VPS, inscrito como un equipo
+más (`agentes-osquery.md`, «Inscribir el propio VPS de la caja»). Los avisos
+por correo usan `ENS_SMTP_*` en `deploy/.env`, que solo recibe la app; sin
+ellos, los avisos son solo web. Tras cambiar `deploy/.env`:
+`deploy/box.sh restart app`.
+
 ## 5. Inscribir la caja como activo del alcance
 
 La caja es un activo más del sistema y se declara en el inventario del
@@ -381,6 +392,8 @@ docker compose -p ens-box exec app stat -c %y /tmp/scheduler-heartbeat
   sana».
 - Caddy se sondea por su API de administración local; cualquier ruta pública
   da 403.
+- La vista conjunta, con histórico de 30 días y avisos, está en
+  `/monitorizacion` (sección 4.3).
 
 ## 10. Salida de red
 

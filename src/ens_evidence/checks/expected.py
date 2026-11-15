@@ -3,8 +3,8 @@
 GitHub: la organización para `org_2fa_required`; los repositorios del inventario para el resto,
 sin los archivados en los checks con `skip_archived`. El archivado y la grafía del nombre salen
 de la evidencia recogida (la API manda sobre el inventario). Endpoint: laptops y servidores del
-inventario. Los demás conectores no tienen sujetos de inventario: la completitud la deciden sus
-propios checks.
+inventario (solo laptops en los checks de puesto). Los demás conectores no tienen sujetos de
+inventario: la completitud la deciden sus propios checks.
 """
 
 from typing import Any
@@ -52,6 +52,10 @@ def expected_subjects(
             case SubjectKind.HOST:
                 expected[check_id] = sorted(
                     a.id for a in inventory.assets.assets if a.type in ENDPOINT_ASSET_TYPES
+                )
+            case SubjectKind.WORKSTATION:
+                expected[check_id] = sorted(
+                    a.id for a in inventory.assets.assets if a.type is AssetType.LAPTOP
                 )
             case SubjectKind.SELF_REPORTED:
                 expected[check_id] = []

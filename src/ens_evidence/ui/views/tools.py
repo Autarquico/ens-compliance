@@ -13,8 +13,6 @@ from starlette.requests import Request
 from starlette.responses import Response
 from starlette.routing import BaseRoute, Route
 
-from ens_evidence.checks.store import scan_runs
-from ens_evidence.connectors.keystore.checks import SEALED_CODE, UNSEALED
 from ens_evidence.kit.backups import (
     ALLOWED_VOLUMES,
     DEFAULT_MIN_CHECK_READ_DATA_PERCENT,
@@ -26,7 +24,7 @@ from ens_evidence.kit.backups import (
     render_host_bundle,
 )
 from ens_evidence.kit.registry import KIT_TOOLS, KitTool, tool_for
-from ens_evidence.models.enums import CheckStatus
+from ens_evidence.kit.state import judge_kit
 from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.models import AssetType
 from ens_evidence.ui.audit import audit_write
@@ -36,7 +34,6 @@ from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
 
 CONNECTOR = "backups"
-KEYSTORE_CONNECTOR = "keystore"
 STEP = "copias"
 ENABLE_COMMAND = "deploy/box.sh kit enable copias <fichero>"
 
@@ -95,29 +92,13 @@ class Rejected(Exception):
 # --- estado del kit (solo evidencia del workspace) -----------------------------------------------
 
 
-def kit_state(store: UiStore, connector: str) -> dict[str, Any]:
+def kit_state(store: UiStore, connector: str, check_ids: tuple[str, ...] = ()) -> dict[str, Any]:
     """`ok`, `problems`, `down` o `nodata` (y `sealed` en claves), con la fecha de la última
-    comprobación guardada del conector."""
-    scan = scan_runs(store, connector)
-    last = scan.last(connector)
-    if last is None:
-        key = "problems" if connector in scan.unreadable else "nodata"
-        return _state(key, None)
-    run = last.run
-    if connector == KEYSTORE_CONNECTOR and _is_sealed(run.results):
-        return _state("sealed", run.finished_at)
-    unanswered = {CheckStatus.ERROR, CheckStatus.UNKNOWN}
-    if not run.complete or all(r.status in unanswered for r in run.results):
-        return _state("down", run.finished_at)
-    healthy = all(r.status is CheckStatus.PASS for r in run.results)
-    return _state("ok" if healthy else "problems", run.finished_at)
-
-
-def _is_sealed(results: list[Any]) -> bool:
-    return any(
-        r.check_id == UNSEALED and r.status is CheckStatus.FAIL and r.reason_code == SEALED_CODE
-        for r in results
-    )
+    comprobación guardada del conector. Con `check_ids` solo juzga esos checks: el conector puede
+    servir a más medidas que la herramienta."""
+    judgment = judge_kit(store, connector, check_ids)
+    shown = judgment.checked_at if judgment.has_checks else None
+    return _state(judgment.key, shown)
 
 
 def _state(key: str, at: Any) -> dict[str, Any]:
@@ -145,7 +126,9 @@ def kit_offer(
         return [{"id": i, "text": texts.get(i)} for i in ids]
 
     tool = tool_for(measure_id)
-    if tool is None or not applicable or kit_state(store, tool.connector)["key"] != "nodata":
+    if tool is None or not applicable:
+        return None
+    if kit_state(store, tool.connector, tool.check_ids)["key"] != "nodata":
         return None
     return {
         "name": tool.id,
@@ -158,6 +141,7 @@ def kit_offer(
         "partial_clauses": clauses(tool.partial_clauses),
         "not_covered_clauses": clauses(tool.not_covered_clauses),
         "ram": tool.ram,
+        "on_box": tool.on_box,
     }
 
 
@@ -180,7 +164,7 @@ def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any
         "id": tool.id,
         "name": tool.name,
         "purpose": tool.purpose,
-        "state": kit_state(store, tool.connector),
+        "state": kit_state(store, tool.connector, tool.check_ids),
         "measures": list(tool.measures),
         "measures_note": tool.measures_note,
         "hints": tool.hints,
@@ -190,6 +174,7 @@ def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any
         "help_url": f"/ayuda/{tool.help_slug}",
         "help_label": tool.help_label,
         "ram": tool.ram,
+        "on_box": tool.on_box,
     }
 
 
