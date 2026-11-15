@@ -96,10 +96,10 @@ declaradas) y qué métodos de inicio de sesión admite.
 |-----------|--------|---------------------------|
 | PASS | | La aplicación solo admite un proveedor de directorio, el nombrado en el motivo. **No prueba** que sea el de la pyme ni que exija doble factor: una persona comprueba en la consola que ese proveedor es el de su organización. |
 | FAIL | `otp_or_consumer_idp` | Admite código por correo o un proveedor personal. Quítalo (sección 3). |
-| FAIL | `bypass` | Hay una política `Bypass`. Quítala o declara la ruta como pública si lo es por diseño. |
+| FAIL | `bypass` | Hay una política `Bypass`. Sustitúyela por una política `Allow` ligada al proveedor de la pyme (sección 3). |
 | Desconocido | `permission_denied` | El token no puede leer los proveedores. Añade el permiso de Access. |
 | Desconocido | `no_identity_providers` | La cuenta no tiene proveedores de identidad: sección 2. |
-| Desconocido | `idp_review` | Admite SAML, OIDC u otro proveedor, o más de un directorio. Una persona revisa si es el esperado. |
+| Desconocido | `idp_review` | Una persona revisa la aplicación. Se emite si: admite SAML, OIDC u otro proveedor, o más de un directorio; no tiene ninguna política `Allow` o sus `Allow` no admiten ningún proveedor; una política `Deny` menciona un método de código o personal; hay una política con decisión, selector o grupo de Access desconocido, sin recoger o en ciclo; o `allowed_idps` es ilegible o cita un proveedor que no consta en la cuenta. |
 | Desconocido | `non_identity` | Hay acceso por token de servicio. Una persona confirma que es solo para máquinas. |
 | Desconocido | `scope_incomplete` | Faltan datos de túneles, aplicaciones o políticas. Corrige el permiso o el destino ilegible y recoge de nuevo. |
 | Desconocido | `stale_evidence` | La recogida es anterior a este check. Recoge de nuevo. |
@@ -118,8 +118,15 @@ La web **sigue cerrada**. Por orden:
 2. **Solo si la web es imprescindible**, y con la aprobación del responsable del
    sistema, añade temporalmente el código por correo **solo en la aplicación de
    la web**, con una política que admita una o dos direcciones con nombre.
-   Nunca «todos», nunca un dominio entero, nunca `Bypass`. Sesión corta (la más
-   baja que permita la consola).
+   Nunca «todos», nunca un dominio entero, nunca `Bypass`. Para ello, vuelve a
+   activar el método «One-time PIN» en la cuenta (sección 3) y quítalo de la
+   cuenta al terminar.
+   **Vigencia máxima:** duración de sesión la más baja que permita la consola y
+   un plazo fijo de 24 h fijado en la política (caducidad). Si hace falta más,
+   el responsable del sistema lo renueva de forma explícita y la renovación se
+   anota en el registro del incidente (`ens-evidence incident`). Al vencer el
+   plazo se retira, aunque el proveedor no haya vuelto; luego se renueva si
+   procede.
 3. Regístralo como incidente, antes o durante:
 
    ```bash
@@ -128,8 +135,8 @@ La web **sigue cerrada**. Por orden:
      --severity medio --asset <activo> --personal-data unknown
    ```
 
-4. Al volver el proveedor, **retira** el código por correo y las direcciones
-   temporales, y ejecuta `ens-evidence collect cloudflare` y
+4. Al volver el proveedor, o al vencer el plazo, **retira** el código por correo
+   (en la aplicación y en la cuenta) y las direcciones temporales, y ejecuta `ens-evidence collect cloudflare` y
    `ens-evidence check --all`. Mientras el código esté puesto, el check da FAIL:
    es lo esperado y avisa de que falta retirarlo.
 5. El responsable del sistema revisa lo ocurrido y cierra el incidente

@@ -28,6 +28,7 @@ from ens_evidence.connectors.cloudflare.checks import (
     _why,
     published_scope,
 )
+from ens_evidence.connectors.cloudflare.sections import _IDP_BOUND_KINDS
 from ens_evidence.models.contracts import CheckResult, CollectionResult
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 
@@ -44,7 +45,6 @@ TOKEN_PERMISSION = "Access: Organizations, Identity Providers, and Groups Read"
 _CONSUMER_TYPES = frozenset({"onetimepin", "google", "facebook", "linkedin"})
 _DIRECTORY_TYPES = frozenset({"google-apps", "azureAD"})
 _LOGIN_METHOD = "login_method"
-_IDP_BOUND = frozenset({"azureAD", "gsuite", "okta", "saml", "oidc"})
 _KNOWN_KINDS = _IDENTITY_SELECTORS | _OTHER_KNOWN_SELECTORS | {_LOGIN_METHOD}
 _DECISIONS = frozenset({"allow", "deny", "non_identity", "bypass"})
 _STALE = "la evidencia es anterior a esta comprobación: recoge de nuevo con ens-evidence collect"
@@ -67,7 +67,8 @@ class _Account:
     groups: dict[str, dict[str, Any]]
 
     def label(self, idp_id: str) -> str:
-        return f"{self.names.get(idp_id) or idp_id} ({self.types[idp_id]})"
+        name = self.names.get(idp_id) or idp_id
+        return f"{name} ({self.types[idp_id]})" if self.types[idp_id] else name
 
 
 def access_idp_restricted(
@@ -127,19 +128,15 @@ def _account(sections: dict[str, Any]) -> _Account | Outcome:
         return _unknown(STALE_EVIDENCE, f"sin sección identity_providers: {_STALE}")
     providers = _read(sections, "identity_providers")
     if providers.status is not CollectionStatus.SUCCESS:
-        reason = (
-            f"proveedores de identidad no recogidos: {_why(providers)}; el token necesita el "
-            f"permiso «{TOKEN_PERMISSION}»"
-        )
-        outcome = _unrecovered(providers.status, reason)
-        if outcome.code is None:
-            return outcome
-        return Outcome(outcome.status, reason, outcome.collection, PERMISSION_DENIED)
+        reason = f"proveedores de identidad no recogidos: {_why(providers)}"
+        if providers.status is CollectionStatus.PERMISSION_DENIED:
+            reason += f"; el token necesita el permiso «{TOKEN_PERMISSION}»"
+        return _unrecovered(providers.status, reason)
     if not providers.items:
         return _unknown(NO_IDENTITY_PROVIDERS, "la cuenta no tiene proveedores de identidad")
     groups = _read(sections, "access_groups")
     return _Account(
-        {p["id"]: p["type"] for p in providers.items},
+        {p["id"]: p.get("type") or "" for p in providers.items},
         {p["id"]: p.get("name") or "" for p in providers.items},
         {g["id"]: g for g in groups.items},
     )
@@ -217,7 +214,7 @@ def _bound_idp(selector: Selector, base: frozenset[str], account: _Account) -> f
 
 
 def _is_bound(selector: Selector) -> bool:
-    return selector["kind"] == _LOGIN_METHOD or selector["kind"] in _IDP_BOUND
+    return selector["kind"] == _LOGIN_METHOD or selector["kind"] in _IDP_BOUND_KINDS
 
 
 def _check_kind(selector: Selector) -> None:

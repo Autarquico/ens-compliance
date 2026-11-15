@@ -673,7 +673,6 @@ class TunnelPopulation:
     """Rutas publicadas por un túnel; `failure` si no se pueden conocer (ingress no recogido)."""
 
     routes: list[Route]  # sin duplicados (host, path)
-    local: bool
     unscoped_paths: list[str]
     failure: Outcome | None = None
     unresolved: Outcome | None = None  # túnel local: cobertura del DNS sin resolver
@@ -685,13 +684,13 @@ def tunnel_population(tunnel: dict[str, Any], evaluator: _Evaluator) -> TunnelPo
     if not local and status is not CollectionStatus.SUCCESS:
         reason = tunnel.get("reason") or status.value
         failure = _unrecovered(status, f"ingress no recogido: {reason}")
-        return TunnelPopulation([], False, [], failure=failure)
+        return TunnelPopulation([], [], failure=failure)
     unique: dict[tuple[str, str], Route] = {}
     for route in _local_routes(tunnel) if local else _remote_routes(tunnel):
         unique.setdefault((route.hostname.lower(), route.display_path), route)
     unscoped = list(dict.fromkeys([] if local else _unscoped_rules(tunnel)))
     unresolved = _unresolved_coverage(tunnel, evaluator) if local else None
-    return TunnelPopulation(list(unique.values()), local, unscoped, unresolved=unresolved)
+    return TunnelPopulation(list(unique.values()), unscoped, unresolved=unresolved)
 
 
 def _tunnel_checks(

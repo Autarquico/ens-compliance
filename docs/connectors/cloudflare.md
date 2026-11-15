@@ -135,7 +135,11 @@ cuenta (menos las `public_routes`, la misma población que
 - `FAIL` con código de motivo `otp_or_consumer_idp` (código por correo o
   proveedor personal) o `bypass`.
 - `UNKNOWN` con `permission_denied`, `no_identity_providers`, `idp_review`,
-  `non_identity`, `scope_incomplete` o `stale_evidence`. Nunca `PASS` con datos
+  `non_identity`, `scope_incomplete` o `stale_evidence`. `idp_review` cubre
+  varios motivos: SAML, OIDC u otro proveedor o más de un directorio; sin
+  política `allow` o sin proveedor admitido; `deny` que menciona un método de
+  código o personal; y decisión, selector, grupo o `allowed_idps` desconocido,
+  ilegible o ausente de la evidencia. Nunca `PASS` con datos
   incompletos; la lista de proveedores permitidos vacía admite todos los de la
   cuenta.
 
