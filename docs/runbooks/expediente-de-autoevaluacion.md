@@ -47,6 +47,8 @@ En MEDIA o ALTA se genera también un paquete por medida para el auditor
 
 ## 2. Autoevaluación
 
+El cierre de v0.1 (pruebas de validación, caja y estados) está en el [runbook de validación y cierre](validacion-y-cierre.md).
+
 ```bash
 ens-evidence assessment dossier self-assess <id> --by "Ana Pérez" --role system_administrator
 ```

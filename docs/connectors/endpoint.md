@@ -1,7 +1,8 @@
 # Evidencia de endpoints con script guiado
 
-En v0.1 no hay agente ni servidor osquery. La evidencia del Mac y de los
-servidores se obtiene ejecutando en cada equipo un script que lanza un
+La caja ya trae servidor y agentes osquery ([agentes osquery](../runbooks/agentes-osquery.md)),
+pero sus resultados aún no alimentan estos checks (lo hará collector-osquery).
+La evidencia del Mac y de los servidores para los checks HOST se obtiene ejecutando en cada equipo un script que lanza un
 conjunto fijo de consultas osquery y entrega un paquete que se importa en la
 caja. Los checks HOST-001…009 se evalúan sobre ese paquete.
 
@@ -120,7 +121,7 @@ bloquea la preparación (`EXPIRED_EVIDENCE`) hasta que se vuelva a ejecutar.
 | Check | `PASS` solo si | `FAIL` si |
 |-------|----------------|-----------|
 | HOST-001 inventariado | el equipo del alcance está inscrito y tiene evidencia vigente | no tiene evidencia o no está inscrito |
-| HOST-002 agente activo | — (siempre `UNKNOWN` en v0.1: no hay agente) | — |
+| HOST-002 agente activo | — (siempre `UNKNOWN` en v0.1: los checks aún no leen el agente) | — |
 | HOST-003 SO soportado | la release del equipo tiene entrada en `supported_os`, cumple su versión mínima y no ha pasado su fin de soporte | versión menor que la mínima de su release o fuera de soporte |
 | HOST-004 cifrado | el volumen raíz (FileVault en macOS) está cifrado | el volumen raíz no está cifrado |
 | HOST-005 firewall | macOS: firewall activo | macOS: firewall desactivado |

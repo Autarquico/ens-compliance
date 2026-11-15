@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: L
 issue: 18
-prs: []
+prs: [87]
 related_issues: [18]
 depends_on: [audit-benchmark, box-packaging]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-10-15
+updated: 2026-11-15
 ---
 
 # Validación y cierre de la autoevaluación
