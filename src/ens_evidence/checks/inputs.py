@@ -6,19 +6,28 @@ evidencia anterior, porque no se sabría si era la última.
 """
 
 import json
+from collections.abc import Mapping
 from dataclasses import dataclass, field
 from datetime import datetime
 
 from pydantic import BaseModel, ValidationError
 
+from ens_evidence.agent.registry import RegistryError, load_registry
 from ens_evidence.checks.model import StoredCheckRun
 from ens_evidence.connectors.config import (
     ConnectorConfigError,
     connector_config_key,
     load_connector_config,
 )
+from ens_evidence.endpoint.agent_view import Admission, build_views
 from ens_evidence.endpoint.config import CONFIG_NAME as ENDPOINT
-from ens_evidence.endpoint.evidence import HostEvidence, latest_by_host, load_host_evidence
+from ens_evidence.endpoint.config import EndpointConfig, HostEnrollment
+from ens_evidence.endpoint.evidence import (
+    AGENT_SOURCES,
+    HostEvidence,
+    latest_by_host,
+    load_host_evidence,
+)
 from ens_evidence.endpoint.normalize import SOURCE as ENDPOINT_SOURCE
 from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.layout import sha256_hex
@@ -33,6 +42,7 @@ EVIDENCE_INCONSISTENT = "evidence_inconsistent"
 MISSING_RUN = "check_run_missing"
 CHECK_EVIDENCE_INCONSISTENT = "check_evidence_inconsistent"
 CHECK_EVIDENCE_UNVERIFIED = "check_evidence_unverified"
+_ENDPOINT_SOURCES = frozenset({ENDPOINT_SOURCE, *AGENT_SOURCES})
 _NOT_A_RESULT = "el artefacto no es un CollectionResult válido"
 
 
@@ -197,23 +207,51 @@ class EndpointInput:
 class EndpointInputs:
     """Evidencia de endpoints por su cargador: válida, incoherente con su manifiesto o ilegible.
 
-    Con `unreadable` no vacío no se sabe cuál es la última ejecución de cada host.
+    `valid` es la del script guiado; `agent`, la del agente osquery (resultados programados,
+    respuestas en vivo y contactos); `admissions`, las altas no revocadas del registro.
+    Con `unreadable` no vacío (incluido el registro) no se sabe cuál es la última evidencia de
+    cada host.
     """
 
     valid: list[EndpointInput] = field(default_factory=list)
     inconsistent: list[str] = field(default_factory=list)
     unreadable: list[str] = field(default_factory=list)
+    agent: list[EndpointInput] = field(default_factory=list)
+    admissions: dict[str, Admission] = field(default_factory=dict)
+
+    def manifest_shas(self) -> dict[str, str]:
+        return {i.evidence.evidence_id: i.manifest_sha256 for i in (*self.valid, *self.agent)}
 
 
 def load_endpoint_inputs(store: WorkspaceStore) -> EndpointInputs:
     """Usa `load_host_evidence`: sin exigir procedencia COLLECTOR (el paquete es manual)."""
     loaded = load_host_evidence(store)
     manifests = {m.id: m for m in list_manifests(store).manifests}
-    valid: list[EndpointInput] = []
     inconsistent: list[str] = [
         f"{EVIDENCE_INCONSISTENT}:{m.id}: source" for m in _disguised_endpoint_packages(store)
     ]
-    for item in loaded.items:
+    unreadable = list(loaded.unreadable)
+    admissions: dict[str, Admission] = {}
+    try:
+        registry = load_registry(store)
+    except RegistryError as exc:
+        unreadable.append(str(exc))
+    else:
+        admissions = {
+            asset_id: Admission(record.last_admission_at, record.generation)
+            for asset_id, record in registry.agents.items()
+            if not record.revoked
+        }
+    valid = _consistent(loaded.items, manifests, inconsistent)
+    agent = _consistent(loaded.agent, manifests, inconsistent)
+    return EndpointInputs(valid, inconsistent, unreadable, agent, admissions)
+
+
+def _consistent(
+    items: list[HostEvidence], manifests: dict[str, EvidenceManifest], inconsistent: list[str]
+) -> list[EndpointInput]:
+    valid: list[EndpointInput] = []
+    for item in items:
         manifest = manifests.get(item.evidence_id)
         mismatches = (
             ["manifiesto"] if manifest is None else _identity_mismatches(manifest, item.result)
@@ -225,7 +263,23 @@ def load_endpoint_inputs(store: WorkspaceStore) -> EndpointInputs:
         else:
             assert manifest is not None
             valid.append(EndpointInput(item, manifest_sha256(manifest)))
-    return EndpointInputs(valid, inconsistent, list(loaded.unreadable))
+    return valid
+
+
+def used_endpoint_evidence(
+    loaded: EndpointInputs, hosts: Mapping[str, HostEnrollment], at: datetime | None = None
+) -> set[str]:
+    """Las evidencias de las que sale el resultado de cada host: la última del script y, del
+    agente, el último snapshot de cada consulta y el último contacto. Con `at`, solo lo recogido
+    hasta entonces."""
+    script = [i.evidence for i in loaded.valid if at is None or i.evidence.collected_at <= at]
+    agent = [i.evidence for i in loaded.agent if at is None or i.evidence.collected_at <= at]
+    used = {e.evidence_id for e in latest_by_host(script).values()}
+    for view in build_views(agent, hosts).values():
+        used.update(s.evidence_id for s in view.snapshots.values())
+        if view.contacts:
+            used.add(max(view.contacts, key=lambda c: (c.collected_at, c.evidence_id)).evidence_id)
+    return used
 
 
 def _disguised_endpoint_packages(store: WorkspaceStore) -> list[EvidenceManifest]:
@@ -233,10 +287,10 @@ def _disguised_endpoint_packages(store: WorkspaceStore) -> list[EvidenceManifest
     otra cosa: el cargador los salta por el `source`, que se puede editar."""
     found = []
     for manifest in list_manifests(store).manifests:
-        if manifest.source == ENDPOINT_SOURCE:
+        if manifest.source in _ENDPOINT_SOURCES:
             continue
         result = _read_result(store, manifest)
-        if isinstance(result, CollectionResult) and result.source == ENDPOINT_SOURCE:
+        if isinstance(result, CollectionResult) and result.source in _ENDPOINT_SOURCES:
             found.append(manifest)
     return found
 
@@ -293,8 +347,9 @@ def evidence_after_run(
             return EVIDENCE_UNREADABLE
         if loaded.inconsistent:
             return CHECK_EVIDENCE_INCONSISTENT
-        seen = [i.evidence for i in loaded.valid if i.evidence.collected_at <= at]
-        newer = any(e.evidence_id not in cited for e in latest_by_host(seen).values())
+        config = load_engine_config(store, ENDPOINT, EndpointConfig).config
+        hosts = config.hosts if config is not None else {}
+        newer = used_endpoint_evidence(loaded, hosts, at) - cited
         return MISSING_RUN if newer else None
     assert asset_id is not None
     selection = select_collector_input(store, connector, asset_id, at)

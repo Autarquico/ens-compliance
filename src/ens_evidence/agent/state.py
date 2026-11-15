@@ -41,6 +41,10 @@ class HostContact(_Model):
     platform: str | None = None
 
 
+class ContactEvidenceMark(_Model):
+    written_at: AwareDatetime
+
+
 class Run(_Model):
     run_id: str
     query_id: str
@@ -97,6 +101,7 @@ class AgentState:
     def __init__(self, state_dir: Path | None = None) -> None:
         self._root = (state_dir or resolve_state_dir()) / AGENT_DIR
         self._written: dict[str, tuple[datetime, str | None]] = {}
+        self._contact_written: dict[str, datetime] = {}
         self._results: dict[tuple[str, str], _ResultSlot] = {}
         self._guard = threading.Lock()
 
@@ -129,6 +134,33 @@ class AgentState:
     def _cached(self, asset_id: str) -> tuple[datetime, str | None] | None:
         stored = self.host(asset_id)
         return (stored.last_contact, stored.platform) if stored else None
+
+    # --- evidencia de contacto -------------------------------------------------------------
+
+    def contact_evidence_due(self, asset_id: str, now: datetime, interval: timedelta) -> bool:
+        """`True` si no se escribió evidencia de contacto de este activo en el último `interval`.
+
+        La marca está en disco: el límite sobrevive al reinicio. Perderla solo repite una escritura.
+        """
+        _safe(asset_id)
+        with self._guard:
+            written = self._contact_written.get(asset_id)
+            if written is None:
+                mark = self._read(self._contact_mark(asset_id), ContactEvidenceMark)
+                written = mark.written_at if mark else None
+                if written is not None:
+                    self._contact_written[asset_id] = written
+        return written is None or now - written >= interval
+
+    def record_contact_evidence(self, asset_id: str, now: datetime) -> None:
+        _safe(asset_id)
+        mark = ContactEvidenceMark(written_at=now)
+        self._replace(self._contact_mark(asset_id), mark.model_dump_json())
+        with self._guard:
+            self._contact_written[asset_id] = now
+
+    def _contact_mark(self, asset_id: str) -> Path:
+        return self._root / "contact-evidence" / f"{asset_id}.json"
 
     # --- cota de resultados programados ----------------------------------------------------
 

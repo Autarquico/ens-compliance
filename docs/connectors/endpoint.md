@@ -1,7 +1,8 @@
 # Evidencia de endpoints con script guiado
 
-La caja ya trae servidor y agentes osquery ([agentes osquery](../runbooks/agentes-osquery.md)),
-pero sus resultados aún no alimentan estos checks (lo hará collector-osquery).
+La caja ya trae servidor y agentes osquery ([agentes osquery](../runbooks/agentes-osquery.md)):
+sus resultados programados y sus contactos alimentan estos checks junto al paquete del script
+(véase «Fuentes: script y agente»).
 La evidencia del Mac y de los servidores para los checks HOST se obtiene ejecutando en cada equipo un script que lanza un
 conjunto fijo de consultas osquery y entrega un paquete que se importa en la
 caja. Los checks HOST-001…009 se evalúan sobre ese paquete.
@@ -35,6 +36,7 @@ el nombre de quien la aporta.
    ```yaml
    max_evidence_age_days: 30          # antigüedad máxima: decisión de la organización
    max_signature_age_days: 7          # antigüedad máxima de las firmas antimalware (opcional; 7 por defecto)
+   max_agent_silence_hours: 24        # silencio máximo del agente osquery para HOST-002 (opcional; 24 por defecto)
    max_xprotect_age_days: 30          # antigüedad máxima de XProtect en macOS (opcional; 30 por defecto)
    supported_os:                      # releases soportadas: decisión de la organización
      - {platform: darwin, name: macOS, release: "15", min_version: "15.3"}
@@ -121,7 +123,7 @@ bloquea la preparación (`EXPIRED_EVIDENCE`) hasta que se vuelva a ejecutar.
 | Check | `PASS` solo si | `FAIL` si |
 |-------|----------------|-----------|
 | HOST-001 inventariado | el equipo del alcance está inscrito y tiene evidencia vigente | no tiene evidencia o no está inscrito |
-| HOST-002 agente activo | — (siempre `UNKNOWN` en v0.1: los checks aún no leen el agente) | — |
+| HOST-002 agente activo | el equipo tiene alta no revocada y su último contacto autenticado (evidencia `osquery-agent-contact`) es de hace `max_agent_silence_hours` o menos (24 h por defecto); cita esa evidencia | el último contacto es más antiguo que el umbral, o no hay contacto y el alta es más antigua que el umbral (el motivo da la fecha) |
 | HOST-003 SO soportado | la release del equipo tiene entrada en `supported_os`, cumple su versión mínima y no ha pasado su fin de soporte | versión menor que la mínima de su release o fuera de soporte |
 | HOST-004 cifrado | el volumen raíz (FileVault en macOS) está cifrado | el volumen raíz no está cifrado |
 | HOST-005 firewall | macOS: firewall activo | macOS: firewall desactivado |
@@ -165,7 +167,58 @@ Dos casos de `UNKNOWN` que afectan a varios equipos y cómo salir de ellos:
   es de un usuario o de todo el equipo. Vuelve a ejecutar el script con el
   paquete de consultas actual.
 
+## Fuentes: script y agente
+
+Cada check HOST-003…009 se evalúa sobre una sola fuente por equipo: la que tenga la
+observación más reciente de las consultas que ese check lee. Gana la más nueva
+aunque dé `FAIL`; no se vuelve a la otra si la elegida está caducada (`UNKNOWN`,
+`evidence_expired`). En empate gana el script. El motivo lo dice: «Según atestación
+manual del host» (script) o «Según el agente osquery». HOST-001 da `PASS` si alguna
+fuente está vigente y cita las que usa.
+
+- **Caducidad por consulta.** Cada consulta del agente caduca a los
+  `max_evidence_age_days` de su propia recogida o al vencimiento de su manifiesto
+  (lo primero). Primero se toma la última lectura y después se valida: nunca se
+  recupera una anterior. Las fechas de firmas (XProtect, ClamAV) comparan con la
+  recogida de su propia consulta.
+- **Consulta sin lectura del agente.** Si el agente aún no ha enviado una consulta
+  que el check necesita: `UNKNOWN` con motivo `no_data`.
+- **Consultas en vivo excluidas.** Las respuestas a `agent query run` no alimentan
+  ningún check; solo cuentan los resultados programados.
+- **Evidencia del agente sin identidad, ignorada.** La anterior a la identidad
+  verificable (sin `identity_sha256`) no se puede atar a un equipo y no se usa; lo
+  mismo si la identidad no coincide con el `hardware_uuid` inscrito.
+- **Cambio solo de hostname.** La evaluación no lo ve; lo detecta el alta
+  (`agent admit` exige uuid y hostname inscritos) cuando se vuelve a dar de alta.
+- **HOST-002 solo existe por agente.** Un equipo solo con script no tiene agente:
+  `UNKNOWN` con motivo `no_agent` (no se demuestra su ausencia). Sin contacto y con
+  alta reciente, `UNKNOWN` (`no_contact`); contacto con fecha futura, `UNKNOWN`.
+  La evidencia de contacto se escribe como mucho cada 6 h por equipo con la hora
+  del servidor, así que el último contacto puede ir hasta 6 h por detrás del real.
+  Por eso `max_agent_silence_hours` (por defecto 24) debe ser holgadamente mayor.
+- **Windows con agente.** HOST-003…009 dan `UNKNOWN` (`not_supported`, «checks de
+  Windows pendientes»); HOST-001 y HOST-002 sí se evalúan. El script de Windows no
+  cambia.
+- **Alcance de la lectura.** `endpoint check` y `checks run` (y con él
+  `assessment status`) leen el agente: resultados, contactos y altas del registro.
+
+### Ver un equipo: `agent hosts show`
+
+```bash
+ens-evidence agent hosts show <activo>
+```
+
+Solo lee. Para un activo inscrito imprime: su alta (registro); el último contacto
+en evidencia (con su id) y el del estado del servicio, que se rotula como no
+evidencia; la última lectura programada de cada consulta del paquete (fecha de
+recogida, número de filas, id de evidencia, o «sin datos»); y el resultado de
+HOST-001…009 del activo con su motivo. `ens-evidence agent hosts` sin argumentos
+sigue listando los equipos como antes. Un activo no inscrito sale con código `2`.
+
 ## Sin verificar
+
+El comportamiento de los checks con evidencia del agente se prueba sobre fixtures;
+no está verificado en equipos reales (macOS, Linux ni Windows).
 
 Las tablas y columnas de osquery del paquete v1 (marcadas `verified: false`
 en `src/ens_evidence/endpoint/queries/v1/pack.yaml`) no se han contrastado

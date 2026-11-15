@@ -19,9 +19,12 @@ from ens_evidence.agent.registry import (
     record_revocation,
 )
 from ens_evidence.agent.secrets import AgentSecrets, AgentSecretsError, load_agent_secrets
-from ens_evidence.agent.state import AgentState
+from ens_evidence.agent.state import AgentState, HostContact
 from ens_evidence.connectors.config import load_connector_config
+from ens_evidence.endpoint.agent_view import AgentView, build_views
 from ens_evidence.endpoint.config import CONFIG_NAME, EndpointConfig
+from ens_evidence.endpoint.evaluate import evaluate_workspace
+from ens_evidence.endpoint.evidence import load_host_evidence
 from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.models import AssetType
 from ens_evidence.workspace import WorkspaceError
@@ -35,6 +38,11 @@ query_app = typer.Typer(
     help="Consultas bajo demanda del paquete a los equipos.", no_args_is_help=True
 )
 agent_app.add_typer(query_app, name="query")
+hosts_app = typer.Typer(
+    help="Equipos inscritos: sin subcomando, el listado; `show <activo>`, el detalle.",
+    invoke_without_command=True,
+)
+agent_app.add_typer(hosts_app, name="hosts")
 
 MAX_ADMIT_HOURS = 168
 EXPIRES = re.compile(r"^(\d{1,4})([hd])$")
@@ -166,10 +174,12 @@ def _state_of(registry: AgentRegistry, asset: str) -> str:
     return f"admitido (generación {record.generation})"
 
 
-@agent_app.command()
+@hosts_app.callback(invoke_without_command=True)
 @handled
 def hosts(ctx: typer.Context) -> None:
     """Muestra, por equipo inscrito, el último contacto y su estado de alta."""
+    if ctx.invoked_subcommand is not None:
+        return
     config = _endpoint_config(ctx)
     registry = load_registry(_cli().open_workspace(ctx))
     contacts = {contact.asset_id: contact for contact in AgentState().list_hosts()}
@@ -177,6 +187,47 @@ def hosts(ctx: typer.Context) -> None:
         contact = contacts.get(asset)
         last = contact.last_contact.isoformat() if contact else "nunca"
         typer.echo(f"{asset}\túltimo contacto: {last}\t{_state_of(registry, asset)}")
+
+
+@hosts_app.command("show")
+@handled
+def hosts_show(ctx: typer.Context, asset: Annotated[str, typer.Argument(help="Activo.")]) -> None:
+    """Detalle de un equipo inscrito: alta, último contacto, última lectura por consulta y
+    resultados HOST. Solo lee."""
+    config = _endpoint_config(ctx)
+    _enrolled(config, asset)
+    store = _cli().open_workspace(ctx)
+    registry = load_registry(store)
+    view = build_views(load_host_evidence(store).agent, config.hosts).get(asset, AgentView())
+    typer.echo(f"{asset}\t{_state_of(registry, asset)}")
+    _echo_contact(view, AgentState().host(asset))
+    typer.echo("Consultas programadas (última lectura):")
+    for query_id in pack_queries():
+        snapshot = view.snapshots.get(query_id)
+        if snapshot is None:
+            typer.echo(f"  {query_id}\tsin datos")
+            continue
+        typer.echo(
+            f"  {query_id}\trecogida {snapshot.collected_at.isoformat()}\t"
+            f"filas: {snapshot.data.get('row_count', '-')}\tevidencia: {snapshot.evidence_id}"
+        )
+    typer.echo("Resultados HOST (evaluación en este momento):")
+    results = evaluate_workspace(store, _cli().clock()).results
+    for result in sorted((r for r in results if r.asset_id == asset), key=lambda r: r.check_id):
+        typer.echo(f"  {result.check_id}\t{result.status.value}\t{result.reason}")
+
+
+def _echo_contact(view: AgentView, state: HostContact | None) -> None:
+    latest = max(view.contacts, key=lambda c: (c.collected_at, c.evidence_id), default=None)
+    if latest is None:
+        typer.echo("Último contacto (evidencia): sin datos")
+    else:
+        typer.echo(
+            f"Último contacto (evidencia): {latest.collected_at.isoformat()}\t"
+            f"evidencia: {latest.evidence_id}"
+        )
+    seen = state.last_contact.isoformat() if state else "nunca"
+    typer.echo(f"Último contacto (estado del servicio, no es evidencia): {seen}")
 
 
 @agent_app.command()

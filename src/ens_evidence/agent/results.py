@@ -3,6 +3,7 @@
 Los resultados tienen la forma de `queries.{id}` de `endpoint-script` más un bloque `agent`.
 """
 
+import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -22,6 +23,7 @@ from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.workspace import WorkspaceStore
 
 SOURCE = "osquery-agent"
+CONTACT_SOURCE = "osquery-agent-contact"
 # Ningún osquery legítimo reporta antes de esto; un reloj a cero o negativo no es una lectura.
 EARLIEST_EVENT = datetime(2000, 1, 1, tzinfo=UTC)
 
@@ -50,7 +52,7 @@ def snapshots_from_events(
 
 
 def scheduled_result(
-    asset_id: str, host_identifier: str, snapshots: list[Snapshot]
+    asset_id: str, host_identifier: str, platform: str | None, snapshots: list[Snapshot]
 ) -> CollectionResult:
     """`collected_at` es el del snapshot más antiguo: nunca aparenta ser más fresco de lo que es."""
     return CollectionResult(
@@ -66,7 +68,7 @@ def scheduled_result(
                 )
                 for s in snapshots
             },
-            "agent": _agent(host_identifier),
+            "agent": _agent(host_identifier, platform),
         },
     )
 
@@ -74,6 +76,7 @@ def scheduled_result(
 def live_result(
     asset_id: str,
     host_identifier: str,
+    platform: str | None,
     *,
     run_id: str,
     query_id: str,
@@ -92,9 +95,38 @@ def live_result(
         collection_status=outcome,
         data={
             "queries": {query_id: _query_data(outcome, query_id, rows or [], collected_at)},
-            "agent": {**_agent(host_identifier), "query_run_id": run_id, "osquery_status": status},
+            "agent": {
+                **_agent(host_identifier, platform),
+                "query_run_id": run_id,
+                "osquery_status": status,
+            },
         },
     )
+
+
+def contact_result(
+    asset_id: str, host_identifier: str, platform: str | None, generation: int, *, now: datetime
+) -> CollectionResult:
+    """Contacto autenticado: `collected_at` es la hora del servidor, no la que declara el equipo."""
+    return CollectionResult(
+        source=CONTACT_SOURCE,
+        collector=CONTACT_SOURCE,
+        collected_at=now,
+        asset_id=asset_id,
+        collection_status=CollectionStatus.SUCCESS,
+        data={
+            "agent": {
+                "identity_sha256": identity_sha256(host_identifier),
+                "platform": platform,
+                "generation": generation,
+            }
+        },
+    )
+
+
+def identity_sha256(host_identifier: str) -> str:
+    """Digest completo del uuid normalizado: prueba de identidad sin guardar el uuid."""
+    return hashlib.sha256(host_identifier.encode("utf-8")).hexdigest()
 
 
 def write_result(store: WorkspaceStore, result: CollectionResult, *, now: datetime) -> str:
@@ -187,5 +219,10 @@ def _query_data(
     }
 
 
-def _agent(host_identifier: str) -> dict[str, str]:
-    return {"host_identifier": host_hash(host_identifier), "pack_sha256": pack_sha256()}
+def _agent(host_identifier: str, platform: str | None) -> dict[str, str | None]:
+    return {
+        "host_identifier": host_hash(host_identifier),
+        "identity_sha256": identity_sha256(host_identifier),
+        "platform": platform,
+        "pack_sha256": pack_sha256(),
+    }

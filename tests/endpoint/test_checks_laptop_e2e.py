@@ -157,7 +157,7 @@ def test_la_evidencia_caducada_deja_todos_los_checks_unknown_y_bloquea_la_prepar
     readiness = readiness_at(store, valid_until)
 
     assert {r.status for r in results.values()} == {CheckStatus.UNKNOWN}
-    assert {r.reason_code for r in results.values()} == {"evidence_expired"}
+    assert {r.reason_code for c, r in results.items() if c != "HOST-002"} == {"evidence_expired"}
     assert readiness.readiness is Readiness.NOT_READY
     assert [b.kind for b in readiness.blockers] == [BlockerKind.EXPIRED_EVIDENCE]
 

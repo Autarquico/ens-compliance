@@ -5,7 +5,6 @@ import re
 import pytest
 
 from ens_evidence.cli import exclusive_cycle
-from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.verify import verify_all
 from ens_evidence.workspace import load_settings
 
@@ -19,6 +18,7 @@ from .protocol_support import (
     Credentials,
     enroll_body,
     request_for,
+    result_manifests,
     snapshot_event,
 )
 
@@ -50,7 +50,7 @@ def without_lock_files(listing: dict[str, str]) -> dict[str, str]:
 
 
 def stored_evidence(world) -> list:
-    return list_manifests(world.workspace).manifests
+    return result_manifests(world)
 
 
 def test_alta_valida_el_host_inscrito_con_token_vigente_recibe_node_key(world, settings):

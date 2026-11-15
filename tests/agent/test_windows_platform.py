@@ -1,8 +1,6 @@
 import json
 
-from ens_evidence.evidence import list_manifests
-
-from .protocol_support import LAPTOP, snapshot_event
+from .protocol_support import LAPTOP, result_manifests, snapshot_event
 
 BITLOCKER_ROW = {
     "device_id": "\\\\?\\Volume{1}",
@@ -15,7 +13,7 @@ BITLOCKER_ROW = {
 
 
 def stored_queries(world):
-    (manifest,) = list_manifests(world.workspace).manifests
+    (manifest,) = result_manifests(world)
     return json.loads(world.workspace.read_bytes(manifest.artifact.key))["data"]["queries"]
 
 

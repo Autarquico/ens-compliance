@@ -4,10 +4,17 @@ from datetime import timedelta
 import pytest
 
 from ens_evidence.agent.osquery_config import query_sql
-from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.verify import verify_all
 
-from .protocol_support import LAPTOP, OS_VERSION_ROW, SERVER, SERVER_HOST, SERVER_UUID
+from .protocol_support import (
+    LAPTOP,
+    OS_VERSION_ROW,
+    SERVER,
+    SERVER_HOST,
+    SERVER_UUID,
+    result_manifests,
+    workspace_keys,
+)
 
 
 def enqueue(world, assets=(LAPTOP,), query_id="os_version", hours=1):
@@ -31,7 +38,7 @@ def write(world, node_key, run_id, rows=(OS_VERSION_ROW,), status=0):
 
 
 def manifests(world):
-    return list_manifests(world.workspace).manifests
+    return result_manifests(world)
 
 
 def test_read_without_runs_returns_no_queries(world):
@@ -104,12 +111,12 @@ def test_answers_for_runs_not_delivered_to_this_host_are_ignored(world):
     undelivered = enqueue(world)
     for_server = enqueue(world, assets=[SERVER])
     read(world, server_key)
-    before = world.workspace.list("")
+    before = workspace_keys(world)
 
     for run_id in (undelivered.run_id, for_server.run_id, "live-0000000000000000", "../x", 7):
         assert write(world, laptop_key, run_id).status_code == 200
 
-    assert world.workspace.list("") == before
+    assert workspace_keys(world) == before
     assert world.state.show_run(undelivered.run_id).hosts[0].answer is None
 
 

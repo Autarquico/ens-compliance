@@ -443,7 +443,7 @@ def test_endpoint_crash_gives_unknown_check_crashed_for_every_check_and_host(
 ):
     import_host(endpoint_store)
 
-    def boom(*_):
+    def boom(*_, **__):
         raise ValueError("secreto-del-host")
 
     monkeypatch.setattr(engine, "evaluate_host_checks", boom)

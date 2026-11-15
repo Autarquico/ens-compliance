@@ -100,12 +100,13 @@ runbook las hace por ti.
 
 ### 2.2 Desconectar agente: cobertura perdida
 
-La caja ya trae el agente osquery ([agentes osquery](agentes-osquery.md)),
-pero en v0.1 sus resultados no alimentan los checks HOST: estos solo leen el
-paquete que importas ([endpoint](../connectors/endpoint.md)). Por eso la
-cobertura perdida se prueba de dos formas: por caducidad del paquete (pasos 1
-a 5, la que bloquea el expediente) y, si tienes agentes, por el aviso de
-agente sin reportar (paso 6).
+La caja ya trae el agente osquery ([agentes osquery](agentes-osquery.md)) y
+`endpoint check` lee sus resultados y sus contactos junto al paquete que
+importas ([endpoint](../connectors/endpoint.md)). La cobertura perdida se
+prueba de tres formas: por caducidad del paquete (pasos 1 a 5, la que bloquea
+el expediente), por silencio del agente en HOST-002 y por el aviso de agente
+sin reportar (paso 6). `checks run`, y con él `assessment status`, también los
+leen; sin verificar en equipos reales.
 
 1. Prepara: un equipo de prueba inscrito, con un paquete importado.
 2. Haz que caduque: espera a `max_evidence_age_days` o evalúa en una fecha
@@ -126,11 +127,16 @@ agente sin reportar (paso 6).
    (`sudo systemctl stop osqueryd` en Linux,
    `sudo launchctl bootout system/io.osquery.agent` en macOS,
    `Stop-Service osqueryd` como Administrador en Windows) y espera más
-   de 3 h. Qué miras: en `agent hosts`
-   ([agentes osquery, sección 2](agentes-osquery.md)) el último contacto deja
-   de avanzar, y el [panel de monitorización](monitorizacion.md) marca
-   «Agente sin reportar». Registra: nota manual con la salida de
-   `agent hosts` y la hora. Vuelta atrás: arranca de nuevo `osqueryd`
+   de 3 h. Qué miras: en `agent hosts show <activo>`
+   ([agentes osquery, sección 2](agentes-osquery.md)) el último contacto
+   (en evidencia y en el estado del servicio) deja de avanzar, y el
+   [panel de monitorización](monitorizacion.md) marca «Agente sin reportar».
+   La evidencia de contacto se escribe como mucho cada 6 h, por lo que el
+   último contacto en evidencia puede ir hasta 6 h por detrás del real. Para
+   ver HOST-002 en `FAIL` hace falta que pase `max_agent_silence_hours` (24 h
+   por defecto) desde ese contacto: evalúa con `endpoint check --at <fecha>`.
+   Registra: nota manual con la salida de `agent hosts show <activo>` y la
+   hora. Vuelta atrás: arranca de nuevo `osqueryd`
    (`sudo systemctl start osqueryd`; `sudo launchctl bootstrap system
    /Library/LaunchDaemons/io.osquery.agent.plist` en macOS, no verificado en
    equipo real; `Start-Service osqueryd` en Windows) y comprueba que el último
