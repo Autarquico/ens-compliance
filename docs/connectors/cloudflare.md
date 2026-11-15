@@ -138,10 +138,11 @@ cuenta (menos las `public_routes`, la misma población que
   `non_identity`, `scope_incomplete` o `stale_evidence`. `idp_review` cubre
   varios motivos: SAML, OIDC u otro proveedor o más de un directorio; sin
   política `allow` o sin proveedor admitido; `deny` que menciona un método de
-  código o personal; y decisión, selector, grupo o `allowed_idps` desconocido,
-  ilegible o ausente de la evidencia. Nunca `PASS` con datos
-  incompletos; la lista de proveedores permitidos vacía admite todos los de la
-  cuenta.
+  código o personal; decisión, selector, grupo o `allowed_idps` desconocido,
+  ilegible o ausente de la evidencia; y `allowed_idps` ausente o `null` en la
+  respuesta de Cloudflare («la respuesta no indica qué proveedores admite la
+  aplicación»). Nunca `PASS` con datos incompletos; la lista de proveedores
+  permitidos vacía admite todos los de la cuenta.
 
 Guía de configuración y de acceso de emergencia:
 [acceso con proveedor de identidad](../runbooks/acceso-con-proveedor-de-identidad.md).
@@ -153,9 +154,15 @@ código no lo crea. Cobertura declarada por cláusula:
 
 | Cláusula | Cobertura |
 |----------|-----------|
-| op.acc.6.6 | Parcial: restringe el método de acceso de las aplicaciones de la caja |
+| op.acc.6.6 | No cubre |
 | op.acc.6.r2.1 | No cubre |
 | Resto de op.acc.6 | No cubre |
+
+op.acc.6.6 pide inhabilitar las credenciales cuando el usuario termina su
+relación con el sistema. Limitar las aplicaciones al proveedor de la pyme
+centraliza en ese proveedor la baja de cuentas, pero el check no evidencia que
+las bajas se hagan: solo observa qué métodos de inicio de sesión admite cada
+aplicación.
 
 Fuente: documentación de la API de Cloudflare, 2026-11-15; no probado contra una
 cuenta real. Siguen sin verificar: el campo ausente en la lista de aplicaciones,
