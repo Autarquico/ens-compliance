@@ -5,8 +5,11 @@ from typing import Any
 
 import yaml
 
+# El parser de libyaml cuando PyYAML lo trae; si no, el de Python, con el mismo resultado.
+_SafeLoader = getattr(yaml, "CSafeLoader", yaml.SafeLoader)
 
-class _UniqueKeysLoader(yaml.SafeLoader):
+
+class _UniqueKeysLoader(_SafeLoader):
     """`safe_load` que rechaza las claves repetidas, también anidadas: PyYAML se queda con la
     última y un valor favorable añadido al final taparía el desfavorable que había antes."""
 
