@@ -39,10 +39,22 @@ from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from pathlib import Path
 
+import httpx
 import pytest
 import yaml
 
 from ens_evidence.agent.install.release import resolve_package
+from ens_evidence.agent.monitoring import MonitoringStore
+from ens_evidence.agent.monitoring.queries import (
+    MONITORING_QUERIES,
+    PLATFORM,
+    monitoring_schedule,
+)
+from ens_evidence.agent.monitoring.store import valid_samples
+from ens_evidence.monitoring import Monitor, Status
+from ens_evidence.monitoring.advisories import make_client
+
+from .protocol_support import snapshot_event
 
 REPO = Path(__file__).resolve().parents[2]
 pytestmark = pytest.mark.docker
@@ -523,3 +535,129 @@ def test_no_queda_nada_de_la_prueba_en_los_ficheros_del_equipo_ni_en_el_log(lab,
     log = lab.osquery("cat /var/log/osqueryd-stub.log")
     token_copy = lab.osquery(f"cat {ENROLL_SECRET}").stdout
     assert token_copy and token_copy not in log.stdout
+
+
+# --- Consultas mon_* contra osquery 5.24.1 real -------------------------------------------------
+# Un contenedor Debian suelto (red interna: sin salida a Internet, así que curl_certificate no
+# llega a ningún servidor y el caso "sin red" queda determinista) con el .deb extraído, sin
+# instalarlo. Sin socket de Docker ni systemd: es justo el caso de "dato ausente".
+
+TLS_PLACEHOLDER = "tls-probe.example.org"
+SAMPLE_HOST = "00000000-aaaa-bbbb-cccc-000000000001"
+SQL_ERROR = re.compile(r"no such (table|column)|syntax error|^Error:|misuse", re.M)
+OSQUERYD = "/tmp/deb/opt/osquery/bin/osqueryd"
+# Lectura de cada consulta en el monitor: prefijo de los `Reading.id` que alimenta.
+READINGS_OF = {
+    "mon_load": "vps:load",
+    "mon_memory": "vps:memory",
+    "mon_disk": "vps:disk:",
+    "mon_docker_root": "vps:disk:",
+    "mon_containers": "vps:containers",
+    "mon_updates": "vps:updates",
+    "mon_tls": "vps:tls:",
+}
+
+
+@pytest.fixture(scope="module")
+def osqueryi(request):
+    arch = docker_arch()
+    prefix = f"ensoq{secrets.token_hex(3)}"
+    with ExitStack() as stack:
+        stack.callback(remove_everything, prefix)
+        deb = cached_deb(Path(request.config.cache.mkdir("osquery-5.24.1")), arch)
+        run(["docker", "network", "create", "--internal", f"{prefix}-net"])
+        container = f"{prefix}-osq"
+        run(
+            ["docker", "run", "-d", "--name", container, "--network", f"{prefix}-net"]
+            + ["-v", f"{deb.parent}:/cache:ro", DEBIAN, "sleep", "infinity"]
+        )
+        extract = f"mkdir /tmp/deb && dpkg-deb -x /cache/{deb.name} /tmp/deb"
+        run(["docker", "exec", container, "sh", "-c", extract])
+        yield lambda sql: _shell(container, sql)
+    assert survivors(prefix) == {}, "quedaron recursos del test"
+
+
+def _shell(container: str, sql: str) -> list[dict[str, str]]:
+    done = run(
+        ["docker", "exec", container, OSQUERYD, "-S", "--database_path=/tmp/osq.db"]
+        + ["--json", sql],
+        check=False,
+    )
+    assert done.returncode == 0, f"osquery rechazó la consulta: {done.stderr}\n{sql}"
+    # Los avisos de entorno (sin dbus, sin socket de Docker) no son errores de SQL ni de tabla.
+    assert not SQL_ERROR.search(done.stderr), done.stderr
+    return json.loads(done.stdout or "[]")
+
+
+@pytest.fixture(scope="module")
+def pack() -> dict[str, str]:
+    """El SQL tal y como lo entrega el servidor al agente (incluido el TLS con hostname)."""
+    return {q: spec["query"] for q, spec in monitoring_schedule([TLS_PLACEHOLDER]).items()}
+
+
+@pytest.fixture(scope="module")
+def results(osqueryi, pack) -> dict[str, list[dict[str, str]]]:
+    return {query_id: osqueryi(sql) for query_id, sql in pack.items()}
+
+
+def test_the_pack_covers_every_monitoring_query(pack):
+    assert set(pack) == set(MONITORING_QUERIES)
+
+
+@pytest.mark.parametrize("query_id", sorted(MONITORING_QUERIES))
+def test_each_query_runs_on_osquery_5_24_1_and_returns_only_allowlisted_columns(results, query_id):
+    spec = MONITORING_QUERIES[query_id]
+    rows = results[query_id]
+
+    assert len(rows) <= spec.max_rows
+    for row in rows:
+        assert set(row) <= set(spec.columns)
+        # Las columnas que lee el monitor están todas (osquery devuelve "" para NULL).
+        assert set(row) == set(spec.columns)
+        assert all(isinstance(value, str) for value in row.values())
+
+
+def test_without_docker_or_network_the_empty_results_become_unknown_never_ok(
+    results, store, tmp_path
+):
+    now = datetime.now(UTC)
+    store.write_text(
+        "connectors/monitoring.yaml",
+        yaml.safe_dump({"vps_asset_id": ASSET, "tls_hostnames": [TLS_PLACEHOLDER]}),
+    )
+    events = [snapshot_event(q, rows, unix=now, host=SAMPLE_HOST) for q, rows in results.items()]
+    samples = valid_samples(events, host_identifier=SAMPLE_HOST, platform=PLATFORM, now=now)
+    # Todo lo que osquery devolvió pasa la normalización real, también las listas vacías.
+    assert {s.query_id for s in samples} == set(results)
+    state = tmp_path / "state"
+    MonitoringStore(state).record(samples)
+
+    def offline(request: httpx.Request) -> httpx.Response:
+        raise httpx.ConnectError("sin red")
+
+    snapshot = Monitor(
+        store,
+        state_dir=state,
+        env={},
+        clock=lambda: now,
+        github=make_client(httpx.MockTransport(offline)),
+        openbao_transport=httpx.MockTransport(offline),
+    ).tick()
+
+    vps = {i.id: i.status for i in snapshot.items if i.id.startswith("vps:")}
+    # Sin socket de Docker no hay contenedores ni raíz de Docker; sin red no hay certificado.
+    assert results["mon_docker_root"] == [] and results["mon_containers"] == []
+    assert vps["vps:containers"] is Status.UNKNOWN
+    assert vps[f"vps:tls:{TLS_PLACEHOLDER}"] is Status.UNKNOWN or results["mon_tls"]
+    # Regla general: consulta vacía -> sus lecturas, desconocidas; nunca verdes.
+    for query_id, prefix in READINGS_OF.items():
+        mine = {id: s for id, s in vps.items() if id.startswith(prefix)}
+        assert mine, f"{query_id} no alimenta ninguna lectura"
+        if not results[query_id] and query_id != "mon_docker_root":
+            assert set(mine.values()) == {Status.UNKNOWN}, (query_id, mine)
+    # Los indicios de actualizaciones nunca son verdes, ni con datos.
+    assert vps["vps:updates"] is not Status.OK
+    # Lo que sí hay (carga y memoria del contenedor) se normaliza a un valor, no a desconocido.
+    for query_id in ("mon_load", "mon_memory"):
+        assert results[query_id], f"{query_id} sin filas en osquery real"
+        assert vps[READINGS_OF[query_id]] in {Status.OK, Status.FAIL}
