@@ -208,13 +208,17 @@ def _coverage(
     script_problem = _freshness(script, context) if script is not None else None
     if script is not None and script_problem is not None:
         script_problem = replace(script_problem, evidence_ids=(script.evidence_id,))
-    agent_problem = _agent_freshness(agent.snapshots.values(), context) if agent else None
+    read = _read_snapshots(agent)
+    agent_problem = _agent_freshness(read, context) if read else None
+    if agent is not None and not read:
+        agent_problem = _agent_outcome(
+            _unknown("el agente aún no ha enviado consultas de los checks")
+        )
     used: list[tuple[str, str, datetime, tuple[str, ...]]] = []
     if script is not None and script_problem is None:
         used.append(("script", ATTESTED, script.collected_at, (script.evidence_id,)))
-    if agent is not None and agent_problem is None:
-        latest = max(snapshot.collected_at for snapshot in agent.snapshots.values())
-        used.append(("agente", AGENT_SAYS, latest, _ids(agent.snapshots.values())))
+    if read and agent_problem is None:
+        used.append(("agente", AGENT_SAYS, max(s.collected_at for s in read), _ids(read)))
     if not used:
         problem = script_problem or agent_problem
         assert problem is not None
@@ -227,6 +231,16 @@ def _coverage(
         detail = ", ".join(f"{who} del {moment:%Y-%m-%d}" for who, _, moment, _ in used)
         reason = f"{ATTESTED} y del agente osquery: hay evidencia vigente ({detail})"
     return Outcome(CheckStatus.PASS, reason, evidence_ids=ids)
+
+
+def _read_snapshots(agent: AgentView | None) -> list[QuerySnapshot]:
+    """Los snapshots del agente que algún check lee: solo ellos deciden la vigencia de HOST-001.
+    Sin checks para su plataforma (Windows, desconocida) cuentan todos: es lo único que lo cubre."""
+    if agent is None:
+        return []
+    if agent.platform not in NEEDED_PLATFORMS:
+        return list(agent.snapshots.values())
+    return [s for query, s in agent.snapshots.items() if query in READ_QUERIES]
 
 
 def _by_freshest_source(
@@ -271,13 +285,10 @@ def _from_agent(check_id: str, agent: AgentView, context: CheckContext) -> Outco
     if platform is None:
         return _agent_outcome(_unknown("el agente no informa la plataforma del equipo"))
     groups = _needed_queries(check_id, platform)
-    if any(not any(query in agent.snapshots for query in group) for group in groups):
-        missing = ", ".join(
-            " o ".join(f"`{query}`" for query in group)
-            for group in groups
-            if not any(query in agent.snapshots for query in group)
-        )
-        return _agent_outcome(_unknown(f"el agente aún no ha enviado {missing}"))
+    missing = [group for group in groups if not any(query in agent.snapshots for query in group)]
+    if missing:
+        listed = ", ".join(" o ".join(f"`{query}`" for query in group) for group in missing)
+        return _agent_outcome(_unknown(f"el agente aún no ha enviado {listed}"))
     used = {
         query: agent.snapshots[query]
         for group in groups
@@ -289,7 +300,7 @@ def _from_agent(check_id: str, agent: AgentView, context: CheckContext) -> Outco
     host = Host(
         platform,
         {query: snapshot.data for query, snapshot in used.items()},
-        max(snapshot.collected_at for snapshot in agent.snapshots.values()),
+        max((snapshot.collected_at for snapshot in used.values()), default=context.evaluated_at),
         {query: snapshot.collected_at for query, snapshot in used.items()},
     )
     outcome = RUNNERS[check_id](host, context)
@@ -314,7 +325,7 @@ def _agent_freshness(snapshots: Iterable[QuerySnapshot], context: CheckContext) 
             return _agent_outcome(
                 Outcome(
                     CheckStatus.UNKNOWN,
-                    f"{ATTESTED}: la consulta `{snapshot.query_id}` tiene fecha futura "
+                    f"la consulta `{snapshot.query_id}` tiene fecha futura "
                     f"({snapshot.collected_at.isoformat()})",
                     code="evidence_in_future",
                     evidence_ids=(snapshot.evidence_id,),
@@ -326,8 +337,7 @@ def _agent_freshness(snapshots: Iterable[QuerySnapshot], context: CheckContext) 
             return _agent_outcome(
                 Outcome(
                     CheckStatus.UNKNOWN,
-                    f"{ATTESTED}: la última consulta `{snapshot.query_id}` caducó el "
-                    f"{expires.isoformat()}",
+                    f"la última consulta `{snapshot.query_id}` caducó el {expires.isoformat()}",
                     code="evidence_expired",
                     evidence_ids=(snapshot.evidence_id,),
                 )
@@ -352,8 +362,8 @@ def _agent_contact(
         )
     evaluated_at = context.evaluated_at
     limit = timedelta(hours=context.config.max_agent_silence_hours)
-    contacts = [c for c in (view.contacts if view else []) if c.generation == admission.generation]
-    if not contacts:
+    last = view.latest_contact(admission.generation) if view else None
+    if last is None:
         if admission.admitted_at is not None and evaluated_at - admission.admitted_at > limit:
             return Outcome(
                 CheckStatus.FAIL,
@@ -369,7 +379,6 @@ def _agent_contact(
             code="no_contact",
             cite=False,
         )
-    last = max(contacts, key=lambda contact: (contact.collected_at, contact.evidence_id))
     cited = (last.evidence_id,)
     if last.collected_at > evaluated_at + CLOCK_SKEW:
         return Outcome(
@@ -397,39 +406,37 @@ def _moment(moment: datetime) -> str:
     return f"{moment.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
 
 
-# Consultas que lee cada check (constante: decide qué fuente tiene la observación más reciente)
-# y, por plataforma, grupos de los que hace falta al menos una consulta para poder concluir.
-CHECK_QUERIES: dict[str, tuple[str, ...]] = {
-    OS_SUPPORTED: ("os_version",),
-    DISK_ENCRYPTION: ("root_mount", "disk_encryption", "disk_encryption_darwin"),
-    FIREWALL: ("alf", "os_version", "osquery_info"),
-    AUTO_UPDATES: ("software_update_policy",),
-    SOFTWARE_INVENTORY: ("apps", "deb_packages", "rpm_packages"),
-    SIGNATURES: ("clamav_signatures", "clamav_units", "xprotect_bundle"),
-    REALTIME: ("gatekeeper", "xprotect_bundle"),
+# Por check y plataforma, grupos de los que hace falta al menos una consulta para poder concluir.
+NEEDED: dict[str, dict[str, tuple[tuple[str, ...], ...]]] = {
+    OS_SUPPORTED: {"darwin": (("os_version",),), "linux": (("os_version",),)},
+    DISK_ENCRYPTION: {
+        "darwin": (("root_mount",), ("disk_encryption_darwin",)),
+        "linux": (("root_mount",), ("disk_encryption",)),
+    },
+    FIREWALL: {"darwin": (("alf",), ("os_version",), ("osquery_info",))},
+    AUTO_UPDATES: {"darwin": (("software_update_policy",),)},
+    SOFTWARE_INVENTORY: {
+        "darwin": (("apps",),),
+        "linux": (("deb_packages", "rpm_packages"),),
+    },
+    SIGNATURES: {
+        "darwin": (("xprotect_bundle",),),
+        "linux": (("clamav_signatures",), ("clamav_units",)),
+    },
+    REALTIME: {"darwin": (("gatekeeper",), ("xprotect_bundle",))},
 }
+
+# Consultas que lee algún check: decide qué fuente tiene la observación más reciente.
+CHECK_QUERIES: dict[str, frozenset[str]] = {
+    check_id: frozenset(q for groups in by_platform.values() for group in groups for q in group)
+    for check_id, by_platform in NEEDED.items()
+}
+NEEDED_PLATFORMS = frozenset({"darwin", "linux"})
+READ_QUERIES = frozenset().union(*CHECK_QUERIES.values())
 
 
 def _needed_queries(check_id: str, platform: str) -> tuple[tuple[str, ...], ...]:
-    darwin = platform == "darwin"
-    match check_id:
-        case "HOST-003":
-            return (("os_version",),)
-        case "HOST-004":
-            return (("root_mount",), ("disk_encryption_darwin" if darwin else "disk_encryption",))
-        case "HOST-005":
-            return (("alf",), ("os_version",), ("osquery_info",)) if darwin else ()
-        case "HOST-006":
-            return (("software_update_policy",),) if darwin else ()
-        case "HOST-007":
-            return (("apps",),) if darwin else (("deb_packages", "rpm_packages"),)
-        case "HOST-008":
-            return (
-                (("xprotect_bundle",),) if darwin else (("clamav_signatures",), ("clamav_units",))
-            )
-        case "HOST-009":
-            return (("gatekeeper",), ("xprotect_bundle",)) if darwin else ()
-    return ()
+    return NEEDED.get(check_id, {}).get("darwin" if platform == "darwin" else "linux", ())
 
 
 def _all_unknown(reason: str) -> dict[str, Outcome]:

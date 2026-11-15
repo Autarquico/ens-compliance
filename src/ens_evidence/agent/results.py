@@ -3,14 +3,13 @@
 Los resultados tienen la forma de `queries.{id}` de `endpoint-script` más un bloque `agent`.
 """
 
-import hashlib
 import json
 from dataclasses import dataclass
 from datetime import UTC, datetime
 from typing import Any
 
 from ens_evidence import __version__
-from ens_evidence.agent.node_key import host_hash
+from ens_evidence.agent.node_key import host_hash, identity_sha256
 from ens_evidence.agent.osquery_config import pack_queries
 from ens_evidence.endpoint.normalize import MAX_STORED_CHARS, STORED_COLUMNS
 from ens_evidence.endpoint.pack import pack_sha256
@@ -122,11 +121,6 @@ def contact_result(
             }
         },
     )
-
-
-def identity_sha256(host_identifier: str) -> str:
-    """Digest completo del uuid normalizado: prueba de identidad sin guardar el uuid."""
-    return hashlib.sha256(host_identifier.encode("utf-8")).hexdigest()
 
 
 def write_result(store: WorkspaceStore, result: CollectionResult, *, now: datetime) -> str:

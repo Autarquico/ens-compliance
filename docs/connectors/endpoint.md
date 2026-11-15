@@ -1,11 +1,12 @@
-# Evidencia de endpoints con script guiado
+# Evidencia de endpoints: script guiado y agente osquery
 
 La caja ya trae servidor y agentes osquery ([agentes osquery](../runbooks/agentes-osquery.md)):
 sus resultados programados y sus contactos alimentan estos checks junto al paquete del script
 (véase «Fuentes: script y agente»).
 La evidencia del Mac y de los servidores para los checks HOST se obtiene ejecutando en cada equipo un script que lanza un
 conjunto fijo de consultas osquery y entrega un paquete que se importa en la
-caja. Los checks HOST-001…009 se evalúan sobre ese paquete.
+caja. Los checks HOST-001…009 se evalúan sobre ese paquete y sobre los resultados
+del agente (véase «Fuentes: script y agente»).
 
 Spec: [endpoint-evidence](../specs/endpoint-evidence.md).
 
@@ -123,7 +124,7 @@ bloquea la preparación (`EXPIRED_EVIDENCE`) hasta que se vuelva a ejecutar.
 | Check | `PASS` solo si | `FAIL` si |
 |-------|----------------|-----------|
 | HOST-001 inventariado | el equipo del alcance está inscrito y tiene evidencia vigente | no tiene evidencia o no está inscrito |
-| HOST-002 agente activo | el equipo tiene alta no revocada y su último contacto autenticado (evidencia `osquery-agent-contact`) es de hace `max_agent_silence_hours` o menos (24 h por defecto); cita esa evidencia | el último contacto es más antiguo que el umbral, o no hay contacto y el alta es más antigua que el umbral (el motivo da la fecha) |
+| HOST-002 agente activo | el equipo tiene alta no revocada y su último contacto autenticado del alta vigente (evidencia `osquery-agent-contact`) es de hace `max_agent_silence_hours` o menos (24 h por defecto); cita esa evidencia | el último contacto es más antiguo que el umbral, o no hay contacto del alta vigente y esa alta (con fecha registrada) es más antigua que el umbral (el motivo da la fecha) |
 | HOST-003 SO soportado | la release del equipo tiene entrada en `supported_os`, cumple su versión mínima y no ha pasado su fin de soporte | versión menor que la mínima de su release o fuera de soporte |
 | HOST-004 cifrado | el volumen raíz (FileVault en macOS) está cifrado | el volumen raíz no está cifrado |
 | HOST-005 firewall | macOS: firewall activo | macOS: firewall desactivado |
@@ -146,7 +147,8 @@ HOST-008 y HOST-009 con matices:
   (`windows_security_products`), no el indicador de tiempo real de Defender; que
   desactivar el tiempo real se refleje como un estado distinto de `On` no está
   verificado. Con tabla vacía (Windows Server) da `UNKNOWN`. La lógica está probada
-  sobre fixtures; la evaluación de extremo a extremo llega con `collector-osquery`.
+  sobre fixtures. Con agente osquery, HOST-003…009 de Windows siguen en `UNKNOWN`
+  (`not_supported`, pendientes); véase «Fuentes: script y agente».
 
 Todo lo que no se puede demostrar da `UNKNOWN`: consulta sin filas, tabla no
 disponible en ese sistema (el script marca `unsupported_hint` en `meta.json`
@@ -196,11 +198,25 @@ fuente está vigente y cita las que usa.
   La evidencia de contacto se escribe como mucho cada 6 h por equipo con la hora
   del servidor, así que el último contacto puede ir hasta 6 h por detrás del real.
   Por eso `max_agent_silence_hours` (por defecto 24) debe ser holgadamente mayor.
+- **Readmisión.** Solo cuentan los contactos de la generación del alta vigente: tras
+  `agent revoke` y `agent admit`, los contactos anteriores no cuentan y HOST-002 queda
+  `UNKNOWN` (`no_contact`) aunque el equipo hablara hace minutos, hasta que el equipo
+  se reinscribe; si pasan más de `max_agent_silence_hours` desde el alta nueva sin
+  contacto, `FAIL` (`agent_silent`, «sin contacto desde el alta del …»).
+- **Alta sin fecha.** Un registro anterior a que se guardara `last_admission_at` no tiene
+  fecha de alta: sin contacto, HOST-002 se queda en `UNKNOWN` (`no_contact`) y nunca
+  llega a `FAIL`, porque no se puede medir el silencio. Readmite el equipo
+  (`agent revoke` y `agent admit`) para que quede fechada.
 - **Windows con agente.** HOST-003…009 dan `UNKNOWN` (`not_supported`, «checks de
   Windows pendientes»); HOST-001 y HOST-002 sí se evalúan. El script de Windows no
   cambia.
 - **Alcance de la lectura.** `endpoint check` y `checks run` (y con él
   `assessment status`) leen el agente: resultados, contactos y altas del registro.
+  Cada ejecución de `checks run` fija (pin) el registro de altas que usó: tras revocar o
+  readmitir un agente, `assessment status` da esa ejecución por desfasada
+  (`check_run_missing`) hasta volver a ejecutar `checks run`. Una ejecución guardada
+  antes de este cambio no lleva el registro fijado y también cuenta como desfasada: basta
+  repetir `checks run` una vez.
 
 ### Ver un equipo: `agent hosts show`
 

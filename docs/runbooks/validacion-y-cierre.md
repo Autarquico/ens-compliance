@@ -128,7 +128,7 @@ leen; sin verificar en equipos reales.
    `sudo launchctl bootout system/io.osquery.agent` en macOS,
    `Stop-Service osqueryd` como Administrador en Windows) y espera más
    de 3 h. Qué miras: en `agent hosts show <activo>`
-   ([agentes osquery, sección 2](agentes-osquery.md)) el último contacto
+   ([agentes osquery, sección 2](agentes-osquery.md#2-dar-de-alta-un-equipo)) el último contacto
    (en evidencia y en el estado del servicio) deja de avanzar, y el
    [panel de monitorización](monitorizacion.md) marca «Agente sin reportar».
    La evidencia de contacto se escribe como mucho cada 6 h, por lo que el

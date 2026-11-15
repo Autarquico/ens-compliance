@@ -12,14 +12,13 @@ from datetime import datetime
 
 from pydantic import BaseModel, ValidationError
 
-from ens_evidence.agent.registry import RegistryError, load_registry
 from ens_evidence.checks.model import StoredCheckRun
 from ens_evidence.connectors.config import (
     ConnectorConfigError,
     connector_config_key,
     load_connector_config,
 )
-from ens_evidence.endpoint.agent_view import Admission, build_views
+from ens_evidence.endpoint.agent_view import Admission, build_views, load_admissions
 from ens_evidence.endpoint.config import CONFIG_NAME as ENDPOINT
 from ens_evidence.endpoint.config import EndpointConfig, HostEnrollment
 from ens_evidence.endpoint.evidence import (
@@ -218,6 +217,7 @@ class EndpointInputs:
     unreadable: list[str] = field(default_factory=list)
     agent: list[EndpointInput] = field(default_factory=list)
     admissions: dict[str, Admission] = field(default_factory=dict)
+    registry_sha256: str | None = None
 
     def manifest_shas(self) -> dict[str, str]:
         return {i.evidence.evidence_id: i.manifest_sha256 for i in (*self.valid, *self.agent)}
@@ -231,20 +231,14 @@ def load_endpoint_inputs(store: WorkspaceStore) -> EndpointInputs:
         f"{EVIDENCE_INCONSISTENT}:{m.id}: source" for m in _disguised_endpoint_packages(store)
     ]
     unreadable = list(loaded.unreadable)
-    admissions: dict[str, Admission] = {}
-    try:
-        registry = load_registry(store)
-    except RegistryError as exc:
-        unreadable.append(str(exc))
-    else:
-        admissions = {
-            asset_id: Admission(record.last_admission_at, record.generation)
-            for asset_id, record in registry.agents.items()
-            if not record.revoked
-        }
+    admissions = load_admissions(store)
+    if admissions.unreadable:
+        unreadable.append(admissions.unreadable)
     valid = _consistent(loaded.items, manifests, inconsistent)
     agent = _consistent(loaded.agent, manifests, inconsistent)
-    return EndpointInputs(valid, inconsistent, unreadable, agent, admissions)
+    return EndpointInputs(
+        valid, inconsistent, unreadable, agent, admissions.by_asset, admissions.sha256
+    )
 
 
 def _consistent(
@@ -277,8 +271,8 @@ def used_endpoint_evidence(
     used = {e.evidence_id for e in latest_by_host(script).values()}
     for view in build_views(agent, hosts).values():
         used.update(s.evidence_id for s in view.snapshots.values())
-        if view.contacts:
-            used.add(max(view.contacts, key=lambda c: (c.collected_at, c.evidence_id)).evidence_id)
+        if (contact := view.latest_contact()) is not None:
+            used.add(contact.evidence_id)
     return used
 
 
@@ -350,7 +344,10 @@ def evidence_after_run(
         config = load_engine_config(store, ENDPOINT, EndpointConfig).config
         hosts = config.hosts if config is not None else {}
         newer = used_endpoint_evidence(loaded, hosts, at) - cited
-        return MISSING_RUN if newer else None
+        # Un intento sin registro fijado (anterior a esta huella) no puede decir con qué altas se
+        # evaluó: se trata como deriva, lo que solo obliga a repetir el intento.
+        registry_drift = run.registry_sha256 != loaded.registry_sha256
+        return MISSING_RUN if newer or registry_drift else None
     assert asset_id is not None
     selection = select_collector_input(store, connector, asset_id, at)
     blocked = {

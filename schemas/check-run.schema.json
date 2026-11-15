@@ -131,7 +131,7 @@
     }
   },
   "additionalProperties": false,
-  "description": "Un intento del motor para un conector, completo o no.\n\n`seq` lo asigna el almac\u00e9n al registrarlo. `expected_subjects`: sujetos que cada check deb\u00eda\ncubrir. `config_sha256` y `scope_fingerprint` fijan con qu\u00e9 configuraci\u00f3n y alcance se ejecut\u00f3.",
+  "description": "Un intento del motor para un conector, completo o no.\n\n`seq` lo asigna el almac\u00e9n al registrarlo. `expected_subjects`: sujetos que cada check deb\u00eda\ncubrir. `config_sha256` y `scope_fingerprint` fijan con qu\u00e9 configuraci\u00f3n y alcance se ejecut\u00f3;\n`registry_sha256`, con qu\u00e9 altas de agentes.",
   "properties": {
     "clock_correction": {
       "anyOf": [
@@ -189,6 +189,20 @@
       },
       "title": "Inputs",
       "type": "array"
+    },
+    "registry_sha256": {
+      "anyOf": [
+        {
+          "pattern": "^[0-9a-f]{64}$",
+          "type": "string"
+        },
+        {
+          "type": "null"
+        }
+      ],
+      "default": null,
+      "description": "Huella de las altas del registro de agentes con las que se evalu\u00f3 (solo endpoint); ausente en intentos anteriores a este campo.",
+      "title": "Registry Sha256"
     },
     "results": {
       "items": {

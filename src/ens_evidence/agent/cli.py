@@ -218,7 +218,7 @@ def hosts_show(ctx: typer.Context, asset: Annotated[str, typer.Argument(help="Ac
 
 
 def _echo_contact(view: AgentView, state: HostContact | None) -> None:
-    latest = max(view.contacts, key=lambda c: (c.collected_at, c.evidence_id), default=None)
+    latest = view.latest_contact()
     if latest is None:
         typer.echo("Último contacto (evidencia): sin datos")
     else:

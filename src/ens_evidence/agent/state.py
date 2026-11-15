@@ -154,10 +154,11 @@ class AgentState:
 
     def record_contact_evidence(self, asset_id: str, now: datetime) -> None:
         _safe(asset_id)
-        mark = ContactEvidenceMark(written_at=now)
-        self._replace(self._contact_mark(asset_id), mark.model_dump_json())
+        # Primero en memoria: aunque falle el disco, no se reescribe la evidencia en cada petición.
         with self._guard:
             self._contact_written[asset_id] = now
+        mark = ContactEvidenceMark(written_at=now)
+        self._replace(self._contact_mark(asset_id), mark.model_dump_json())
 
     def _contact_mark(self, asset_id: str) -> Path:
         return self._root / "contact-evidence" / f"{asset_id}.json"

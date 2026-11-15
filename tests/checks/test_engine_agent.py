@@ -15,6 +15,7 @@ from ens_evidence.agent.results import (
     write_result,
 )
 from ens_evidence.checks.inputs import evidence_after_run
+from ens_evidence.endpoint.agent_view import load_admissions
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.evidence.manifests import load_manifest
 from ens_evidence.matrix.evidence import manifest_sha256
@@ -174,3 +175,72 @@ def test_without_a_registry_entry_host_002_is_unknown_no_agent(store):
 
     assert host(run, "HOST-002").status is CheckStatus.UNKNOWN
     assert host(run, "HOST-002").reason_code == "no_agent"
+
+
+# --- el registro de altas queda fijado en el intento -------------------------------------------
+
+
+def after_run(store, run):
+    return evidence_after_run(store, "endpoint", run, NOW)
+
+
+def pinned_run(store):
+    deliver_results(store)
+    deliver_contact(store)
+    run = evaluate(store, "endpoint")
+    assert run.registry_sha256 is not None
+    assert after_run(store, run) is None
+    return run
+
+
+def test_readmitting_without_new_evidence_is_drift(agent_store):
+    run = pinned_run(agent_store)
+
+    register(agent_store, generation=2)
+
+    assert after_run(agent_store, run) == "check_run_missing"
+
+
+def test_revoking_without_new_evidence_is_drift(agent_store):
+    run = pinned_run(agent_store)
+    record = {"generation": 1, "revoked_at": NOW.isoformat()}
+    agent_store.write_text(REGISTRY_KEY, yaml.safe_dump({"agents": {SERVER: record}}))
+
+    assert after_run(agent_store, run) == "check_run_missing"
+
+
+def test_an_unrelated_registry_edit_is_not_drift(agent_store):
+    run = pinned_run(agent_store)
+    record = {"generation": 1, "last_admission_at": (NOW - timedelta(days=3)).isoformat()}
+    other = {"generation": 4, "last_admission_at": NOW.isoformat(), "revoked_at": NOW.isoformat()}
+    agent_store.write_text(
+        REGISTRY_KEY, yaml.safe_dump({"agents": {SERVER: record, "lap-x": other}})
+    )
+
+    assert after_run(agent_store, run) is None
+
+
+def test_a_run_stored_without_a_pinned_registry_counts_as_drift(agent_store):
+    run = pinned_run(agent_store)
+
+    assert after_run(agent_store, run.model_copy(update={"registry_sha256": None})) == (
+        "check_run_missing"
+    )
+
+
+def test_an_unreadable_registry_blocks(agent_store):
+    run = pinned_run(agent_store)
+
+    agent_store.write_text(REGISTRY_KEY, "agents: [roto")
+
+    assert after_run(agent_store, run) == "evidence_unreadable"
+
+
+def test_without_endpoint_config_agent_evidence_is_not_used(store):
+    deliver_results(store)
+    deliver_contact(store)
+    register(store)
+    run = evaluate(store, "endpoint")
+    run = run.model_copy(update={"registry_sha256": load_admissions(store).sha256})
+
+    assert after_run(store, run) is None

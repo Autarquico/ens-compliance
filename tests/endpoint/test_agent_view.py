@@ -461,3 +461,47 @@ def test_solo_script_sigue_igual_salvo_host_002():
 
     assert results["HOST-001"].status is CheckStatus.PASS
     assert results["HOST-002"].reason_code == "no_agent"
+
+
+# --- HOST-001: la vigencia del agente es la de las consultas que algún check lee --------------
+
+
+def test_host_001_ignora_un_snapshot_caducado_de_una_consulta_que_ningun_check_lee():
+    legacy = agent({"legacy_query": []}, at=AT - timedelta(days=60), evidence_id="ag-legacy")
+    current = agent(DARWIN_FULL, at=AT - timedelta(hours=1), evidence_id="ag-now")
+
+    results = run(agents=[legacy, current])
+
+    assert results["HOST-001"].status is CheckStatus.PASS
+    assert results["HOST-003"].status is CheckStatus.PASS
+    assert results["HOST-001"].evidence_ids == ["ag-now"]
+
+
+def test_host_001_es_unknown_si_todo_lo_que_leen_los_checks_caduco():
+    old = agent(DARWIN_FULL, at=AT - timedelta(days=60), evidence_id="ag-old")
+
+    results = run(agents=[old])
+
+    assert results["HOST-001"].status is CheckStatus.UNKNOWN
+    assert results["HOST-001"].reason_code == "evidence_expired"
+
+
+def test_host_001_es_unknown_si_el_agente_solo_envio_consultas_que_ningun_check_lee():
+    only_legacy = agent({"legacy_query": []}, at=AT - timedelta(hours=1), evidence_id="ag-legacy")
+
+    assert run(agents=[only_legacy])["HOST-001"].status is CheckStatus.UNKNOWN
+
+
+def test_ningun_motivo_del_agente_lleva_dos_prefijos():
+    old = agent(DARWIN_FULL, at=AT - timedelta(days=60), evidence_id="ag-old")
+
+    for result in run(agents=[old]).values():
+        assert result.reason.count(ATTESTED) == 0
+        assert result.reason.count(AGENT_SAYS) <= 1
+
+
+def test_host_002_alta_sin_fecha_de_alta_nunca_llega_a_fail():
+    result = run(admission=Admission(None, GEN), at=AT + timedelta(days=365))["HOST-002"]
+
+    assert result.status is CheckStatus.UNKNOWN
+    assert result.reason_code == "no_contact"

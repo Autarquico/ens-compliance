@@ -65,6 +65,7 @@ class _Evaluation:
     results: list[CheckResult] = field(default_factory=list)
     inputs: list[CheckInput] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    registry_sha256: str | None = None
 
 
 def run_all(
@@ -133,6 +134,7 @@ def _stored(
         complete=not evaluation.errors,
         scope_fingerprint=fingerprint(inventory),
         config_sha256=config_sha256,
+        registry_sha256=evaluation.registry_sha256,
         inputs=sorted(evaluation.inputs, key=lambda i: i.evidence_id),
         expected_subjects=evaluation.expected,
         results=evaluation.results,
@@ -183,7 +185,7 @@ def _endpoint(
     loaded = load_endpoint_inputs(store)
     expected = expected_subjects(spec.name, config, inventory, None)
     problems = [*loaded.unreadable, *loaded.inconsistent]
-    evaluation = _Evaluation(expected=expected)
+    evaluation = _Evaluation(expected=expected, registry_sha256=loaded.registry_sha256)
     try:
         evaluation.results = evaluate_host_checks(
             inventory.assets.assets,

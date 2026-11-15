@@ -32,6 +32,11 @@ def normalize_host_identifier(raw: str) -> str | None:
     return candidate if _UUID.fullmatch(candidate) else None
 
 
+def identity_sha256(host_identifier: str) -> str:
+    """Digest completo del uuid normalizado: prueba de identidad sin guardar el uuid."""
+    return hashlib.sha256(host_identifier.encode("utf-8")).hexdigest()
+
+
 def host_hash(host_identifier: str) -> str:
     """Huella corta para logs y evidencia: identifica al equipo sin revelar su uuid."""
     return hashlib.sha256(host_identifier.encode("utf-8")).hexdigest()[:8]

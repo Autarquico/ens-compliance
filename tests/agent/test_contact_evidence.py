@@ -123,6 +123,22 @@ def test_a_busy_workspace_does_not_fail_config_and_the_next_request_retries(worl
     assert len(contacts(world)) == 1
 
 
+def test_a_failing_contact_mark_neither_fails_the_request_nor_repeats_the_evidence(
+    world, monkeypatch
+):
+    node_key = world.enroll()
+
+    def deny(self, path, text):
+        raise PermissionError("sin permisos")
+
+    monkeypatch.setattr(AgentState, "_replace", deny)
+
+    assert world.post("config", {"node_key": node_key}).status_code == 200
+    assert world.post("config", {"node_key": node_key}).status_code == 200
+
+    assert len(contacts(world)) == 1
+
+
 def test_invalid_credentials_leave_no_contact_evidence(world):
     world.enroll()
 

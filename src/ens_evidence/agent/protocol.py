@@ -292,9 +292,17 @@ class AgentService:
                     node.asset_id, node.host_identifier, node.platform, node.generation, now=now
                 )
                 write_result(self._store, result, now=now)
-                self._state.record_contact_evidence(node.asset_id, now)
+                self._mark_contact_evidence(node.asset_id, now)
         except (Busy, Unavailable):
             _LOGGER.warning("outcome=contact_evidence_skipped asset=%s", node.asset_id[:64])
+
+    def _mark_contact_evidence(self, asset_id: str, now: datetime) -> None:
+        """La evidencia ya está escrita: si la marca falla (estado mal configurado) no se rompe
+        la petición, y el límite queda en memoria hasta reiniciar."""
+        try:
+            self._state.record_contact_evidence(asset_id, now)
+        except OSError:
+            _LOGGER.warning("outcome=contact_mark_failed asset=%s", asset_id[:64])
 
     def _endpoint_config(self) -> EndpointConfig:
         try:

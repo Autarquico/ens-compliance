@@ -8,14 +8,17 @@ detecta aquí; lo exige el alta (`enrolled_asset`, uuid y nombre).
 """
 
 import hashlib
+import json
 from collections.abc import Iterable, Mapping
 from dataclasses import dataclass, field
 from datetime import datetime, timedelta
 from typing import Any
 
-from ens_evidence.agent.node_key import normalize_host_identifier
+from ens_evidence.agent.node_key import identity_sha256, normalize_host_identifier
+from ens_evidence.agent.registry import RegistryError, load_registry
 from ens_evidence.endpoint.config import HostEnrollment
 from ens_evidence.endpoint.evidence import AGENT_SOURCE, CONTACT_SOURCE, HostEvidence
+from ens_evidence.workspace import WorkspaceStore
 
 WINDOWS = "windows"
 PLATFORMS = frozenset({"darwin", "linux", WINDOWS})
@@ -56,11 +59,55 @@ class AgentView:
     contacts: list[Contact] = field(default_factory=list)
     platform: str | None = None
 
+    def latest_contact(self, generation: int | None = None) -> Contact | None:
+        """El contacto más reciente; con `generation`, solo los de esa generación del node_key."""
+        return max(
+            (c for c in self.contacts if generation is None or c.generation == generation),
+            key=lambda contact: (contact.collected_at, contact.evidence_id),
+            default=None,
+        )
+
+
+@dataclass(frozen=True)
+class Admissions:
+    """Las altas no revocadas del registro y su huella, para fijarlas en el intento del motor.
+
+    `unreadable` es el motivo si el registro no se puede leer: entonces no hay altas y no se sabe
+    nada de ellas. La huella cubre solo lo que decide HOST-002 (activo, generación y fecha de alta),
+    no el resto del fichero.
+    """
+
+    by_asset: dict[str, Admission] = field(default_factory=dict)
+    unreadable: str | None = None
+
+    @property
+    def sha256(self) -> str:
+        entries = [
+            [asset_id, a.generation, a.admitted_at.isoformat() if a.admitted_at else None]
+            for asset_id, a in sorted(self.by_asset.items())
+        ]
+        return hashlib.sha256(json.dumps(entries, separators=(",", ":")).encode()).hexdigest()
+
+
+def load_admissions(store: WorkspaceStore) -> Admissions:
+    """Única definición de «alta»: un registro de agente no revocado."""
+    try:
+        registry = load_registry(store)
+    except RegistryError as exc:
+        return Admissions(unreadable=str(exc))
+    return Admissions(
+        {
+            asset_id: Admission(record.last_admission_at, record.generation)
+            for asset_id, record in registry.agents.items()
+            if not record.revoked
+        }
+    )
+
 
 def identity_digest(hardware_uuid: str) -> str | None:
     """sha256 del uuid normalizado, o `None` si el uuid inscrito no tiene forma de uuid."""
     normalized = normalize_host_identifier(hardware_uuid)
-    return hashlib.sha256(normalized.encode("utf-8")).hexdigest() if normalized else None
+    return identity_sha256(normalized) if normalized else None
 
 
 def build_views(
