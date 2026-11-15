@@ -67,7 +67,7 @@ def validate_applicability(store: WorkspaceStore, now: datetime) -> Validation:
         return Validation(context, None, exc.errors)
     assets_file, _ = load_assets(store)
     assets = assets_file.assets if assets_file else []
-    errors = [e for m in document.measures for e in _measure_errors(m, context, assets)]
+    errors = [e for m in document.measures for e in measure_errors(m, context, assets)]
     risk_errors, warnings = safeguard_findings(store, document)
     return Validation(
         context, document, [*errors, *risk_errors], warnings, _exclusions(document, context)
@@ -106,7 +106,7 @@ def safeguard_findings(
     ], []
 
 
-def _measure_errors(measure: Measure, context: Context, assets: list[Asset]) -> list[str]:
+def measure_errors(measure: Measure, context: Context, assets: list[Asset]) -> list[str]:
     selection = context.selections[measure.id]
     where = f"{MEASURES_KEY}{SEPARATOR}{measure.id}"
     if measure.applicability is Applicability.UNDETERMINED:

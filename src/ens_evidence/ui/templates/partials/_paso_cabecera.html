@@ -1,0 +1,7 @@
+{# Resumen de errores del formulario y aviso de guardado. Requiere form_errors y saved. #}
+{% if form_errors %}
+<div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
+<ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% elif saved %}
+<p class="saved" role="status">Guardado</p>
+{% endif %}

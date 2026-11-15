@@ -5,6 +5,7 @@ from pathlib import Path
 
 from pydantic import BaseModel
 
+from ens_evidence.agent.registry import AgentRegistry
 from ens_evidence.applicability import Declaration
 from ens_evidence.assessment.dossier.model import DossierSnapshot
 from ens_evidence.assessment.dossier.view import TransitionRecord
@@ -62,6 +63,7 @@ from ens_evidence.scope import (
 )
 
 CONTRACTS: dict[str, type[BaseModel]] = {
+    "agent-registry": AgentRegistry,
     "applicability-declaration": Declaration,
     "applicability-review": ApplicabilityReview,
     "backup-run": BackupRun,

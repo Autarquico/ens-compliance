@@ -99,6 +99,7 @@ ZONES_PAGER = PageNumber(50)
 DNS_PAGER = PageNumber(1000)
 TUNNELS_PAGER = PageNumber(1000)
 POLICIES_PAGER = PageNumber(1000)
+IDP_PAGER = PageNumber(1000)
 
 
 class CursorAfter(Pager):

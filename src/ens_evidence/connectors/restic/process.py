@@ -11,6 +11,7 @@ from ens_evidence.backup.restic import READ_ONLY, TAG
 
 CAT_CONFIG = (*READ_ONLY, "cat", "config")
 LIST_SNAPSHOTS = (*READ_ONLY, "snapshots", "--json", "--tag", TAG)
+LIST_ALL_SNAPSHOTS = (*READ_ONLY, "snapshots", "--json")  # solo el conector `backups`
 ALLOWED = frozenset({CAT_CONFIG, LIST_SNAPSHOTS})
 TIMEOUT_SECONDS = 300
 
@@ -44,12 +45,16 @@ class ResticProcess:
         *,
         base_env: Mapping[str, str] | None = None,
         region: str | None = None,
+        allowed: frozenset[tuple[str, ...]] = ALLOWED,
+        timeout: float = TIMEOUT_SECONDS,
     ) -> None:
+        self._allowed = allowed
+        self._timeout = timeout
         self._repository = repository
         self._env = subprocess_env(secrets, base_env, region)
 
     def __call__(self, args: tuple[str, ...]) -> CommandResult:
-        if args not in ALLOWED:
+        if args not in self._allowed:
             raise ValueError("comando de restic no permitido en la recogida")
         executable = shutil.which("restic", path=self._env["PATH"])
         if executable is None:
@@ -63,7 +68,7 @@ class ResticProcess:
                 text=True,
                 check=False,
                 shell=False,
-                timeout=TIMEOUT_SECONDS,
+                timeout=self._timeout,
             )
         except subprocess.TimeoutExpired:
             raise ResticUnavailable("timeout") from None

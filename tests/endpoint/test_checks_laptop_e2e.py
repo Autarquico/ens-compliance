@@ -1,5 +1,6 @@
 """Scenarios de extremo a extremo: script + importación reales, checks y regla de preparación."""
 
+import time
 from datetime import timedelta
 
 from ens_evidence.connectors.config import load_connector_config
@@ -36,6 +37,22 @@ MANAGED_UPDATES = Answer(
 )
 
 
+XPROTECT_PLIST = "/Library/Apple/System/Library/CoreServices/XProtect.bundle/Contents/Info.plist"
+PROTECTED_MAC = {
+    "software_update_policy": MANAGED_UPDATES,
+    "gatekeeper": Answer(out=[{"assessments_enabled": "1", "dev_id_enabled": "1"}]),
+    "xprotect_bundle": Answer(
+        out=[
+            {
+                "path": XPROTECT_PLIST,
+                "bundle_short_version": "5300",
+                "mtime": str(int(time.time()) - 86400),
+            }
+        ]
+    ),
+}
+
+
 def endpoint_config(store) -> EndpointConfig:
     return load_connector_config(store, CONFIG_NAME, EndpointConfig)
 
@@ -53,12 +70,12 @@ def evaluate_at(store, moment):
 
 
 def collect_and_import(tmp_path, store):
-    run = collect(tmp_path / "run", answers={"software_update_policy": MANAGED_UPDATES})
+    run = collect(tmp_path / "run", answers=PROTECTED_MAC)
     import_package(store, run.data)
     return run
 
 
-def test_los_siete_checks_se_evaluan_sobre_la_evidencia_importada_de_un_portatil(tmp_path, store):
+def test_los_nueve_checks_se_evaluan_sobre_la_evidencia_importada_de_un_portatil(tmp_path, store):
     collect_and_import(tmp_path, store)
 
     results = evaluate_at(store, utc_now())
@@ -72,6 +89,8 @@ def test_los_siete_checks_se_evaluan_sobre_la_evidencia_importada_de_un_portatil
         "HOST-005": CheckStatus.PASS,
         "HOST-006": CheckStatus.PASS,
         "HOST-007": CheckStatus.PASS,
+        "HOST-008": CheckStatus.PASS,
+        "HOST-009": CheckStatus.PASS,
     }
     evidence_id = load_host_evidence(store).items[0].evidence_id
     assert all(

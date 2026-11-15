@@ -1,0 +1,114 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+{%- macro decision(row) -%}
+{%- set v = values or {} -%}
+{%- set posted = v.get("measure_id") == row.id -%}
+{%- set choice = v.get("decision", "") if posted else row.choice -%}
+{%- set text = v.get("justification", "") if posted else row.justification -%}
+{%- set replaced = (([v.get("comp_replaces")] if v.get("comp_replaces") is string else v.get("comp_replaces", [])) if posted else row.compensation.replaces) -%}
+{%- set key = row.id -%}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <input type="hidden" name="measure_id" value="{{ row.id }}">
+  {%- if posted and form_errors %}<div class="notice notice-bad" role="alert"><ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>{% endif %}
+  {%- if row.required %}<p class="muted">Lo exige el anexo II para {{ row.required_by }}.{% if row.required_reinforcements %} Refuerzos exigidos: <span class="mono">{{ row.required_reinforcements | map(attribute="id") | join(", ") }}</span>.{% endif %} No se puede dejar sin aplicar salvo que no exista el tipo de activo al que se refiere, o que lo sustituyas con medidas compensatorias.</p>{% endif %}
+  <fieldset class="checks">
+    <legend>Qué decides</legend>
+    <div class="check"><input type="radio" id="d-aplica~{{ key }}" name="decision" value="applies"{% if choice == "applies" %} checked{% endif %}><label for="d-aplica~{{ key }}">Aplica</label></div>
+    {%- if not row.required %}
+    <div class="check"><input type="radio" id="d-noaplica~{{ key }}" name="decision" value="not_applicable"{% if choice == "not_applicable" %} checked{% endif %}><label for="d-noaplica~{{ key }}">No aplica a mi sistema</label></div>
+    {%- endif %}
+    {%- if row.absent_types %}
+    <div class="check"><input type="radio" id="d-ausente~{{ key }}" name="decision" value="absent"{% if choice == "absent" %} checked{% endif %}><label for="d-ausente~{{ key }}">No aplica: no existe el tipo de activo al que se refiere</label></div>
+    {%- endif %}
+  </fieldset>
+  {%- for group in row.groups %}
+  {%- set gi = loop.index0 %}
+  {%- set picked = v.get("reinforcement~" ~ gi, "") if posted else group.chosen %}
+  <fieldset class="checks">
+    <legend>Refuerzo: elige uno</legend>
+    {%- for option in group.options %}
+    <div class="check"><input type="radio" id="r-{{ gi }}-{{ option.id }}~{{ key }}" name="reinforcement~{{ gi }}" value="{{ option.id }}"{% if picked == option.id %} checked{% endif %}><label for="r-{{ gi }}-{{ option.id }}~{{ key }}"><span class="mono">{{ option.id }}</span>{% if option.title %} · {{ option.title }}{% endif %}</label></div>
+    {%- endfor %}
+  </fieldset>
+  {%- endfor %}
+  {%- if row.absent_types %}
+  <div class="field">
+    <label for="a-tipo~{{ key }}">Tipo de activo que no existe</label>
+    <select id="a-tipo~{{ key }}" name="absent_asset_type">
+      {%- for t in row.absent_types %}<option value="{{ t }}"{% if (v.get("absent_asset_type") if posted else row.absent_type) == t %} selected{% endif %}>{{ t }}</option>{% endfor %}
+    </select>
+  </div>
+  {%- endif %}
+  <div class="field">
+    <label for="j~{{ key }}">Tu razón<span class="hint">{% if row.required %}Por qué la aplicas, o, si no existe el activo, por qué no existe en tu sistema.{% else %}Por qué aplica o por qué no tiene sentido en tu sistema.{% endif %} Escribe una razón propia sobre tu organización: «no aplica» o «n/a» no vale.</span></label>
+    <textarea id="j~{{ key }}" name="justification">{{ text }}</textarea>
+  </div>
+  {%- if row.required %}
+  <details>
+    <summary>La sustituyo con medidas compensatorias (art. 28.3)</summary>
+    <div class="field">
+      <label for="c-medidas~{{ key }}">Medidas compensatorias<span class="hint">Una por línea. Tienen que estar implantadas.</span></label>
+      <textarea id="c-medidas~{{ key }}" name="comp_measures">{{ v.get("comp_measures", "") if posted else row.compensation.measures }}</textarea>
+    </div>
+    <fieldset class="checks">
+      <legend>Qué obligaciones de la medida sustituyen</legend>
+      {%- for o in row.obligations %}
+      <div class="check"><input type="checkbox" id="c-{{ o.id }}~{{ key }}" name="comp_replaces" value="{{ o.id }}"{% if o.id in replaced %} checked{% endif %}><label for="c-{{ o.id }}~{{ key }}"><span class="mono">{{ o.id }}</span> · {{ o.title }}</label></div>
+      {%- endfor %}
+    </fieldset>
+    <div class="field">
+      <label for="c-razon~{{ key }}">Por qué protegen igual o mejor</label>
+      <textarea id="c-razon~{{ key }}" name="comp_justification">{{ v.get("comp_justification", "") if posted else row.compensation.justification }}</textarea>
+    </div>
+  </details>
+  {%- endif %}
+  <div class="actions"><button class="btn btn-primary" type="submit" name="accion" value="decidir">{{ "Confirmar la decisión" if row.state in ("review", "unregistered") else "Guardar la decisión" }}</button></div>
+</form>
+{%- endmacro -%}
+{%- macro measure(row, open=False) -%}
+<details class="card"{% if open %} open{% endif %}>
+  <summary><span class="mono">{{ row.id }}</span> · {{ row.name }}{% if row.reason %} <span class="muted">· {{ row.reason }}</span>{% endif %}</summary>
+  {{ decision(row) }}
+</details>
+{%- endmacro -%}
+<h2>{{ step_title }}</h2>
+<p class="lead">El anexo II del RD 311/2022 fija qué medidas te tocan según la categoría de tu sistema. Las que exige quedan marcadas como «aplica». Del resto decides tú, con una razón propia. Y si algo no se puede aplicar tal cual, solo hay dos salidas: que no exista el tipo de activo al que se refiere, o sustituirlo con medidas compensatorias.</p>
+{% include "partials/_paso_cabecera.html" %}
+{% if blocked %}
+<div class="notice notice-warn"><p>{{ blocked }}</p></div>
+{% else %}
+{%- if needs_preparing %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML">
+  <div class="notice"><p>Categoría del sistema: <strong>{{ category }}</strong>. Prepara las medidas del catálogo y marca como aplicables las que el anexo II exige para esa categoría. No decide nada por ti: lo demás queda sin decidir.</p>
+  <div class="actions"><button class="btn btn-primary" type="submit" name="accion" value="preparar">Preparar las medidas</button></div></div>
+</form>
+{%- else %}
+<section aria-labelledby="pendientes">
+  <h3 id="pendientes">Pendientes de tu decisión ({{ pending | length }})</h3>
+  {%- for row in pending %}
+  {{ measure(row, open=loop.first) }}
+  {%- else %}
+  <p class="saved" role="status">No queda ninguna medida pendiente.</p>
+  {%- endfor %}
+</section>
+{%- if required %}
+<details class="section">
+  <summary><h3>Exigidas por el anexo II ({{ required | length }})</h3></summary>
+  <p class="muted">Ya están marcadas como «aplica». Ábrelas solo si una no se puede aplicar tal cual.</p>
+  {%- for row in required %}{{ measure(row) }}{% endfor %}
+</details>
+{%- endif %}
+{%- if own %}
+<details class="section">
+  <summary><h3>Decididas por ti ({{ own | length }})</h3></summary>
+  {%- for row in own %}{{ measure(row) }}{% endfor %}
+</details>
+{%- endif %}
+{%- endif %}
+{% endif %}
+<div class="actions">
+  {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+  {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
+</div>
+{% endblock %}

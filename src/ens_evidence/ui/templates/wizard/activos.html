@@ -1,0 +1,51 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Un activo es cualquier cosa que forma parte del sistema: un portátil, un servidor, una base de datos, una cuenta en la nube. Marca los que entran en el alcance. Los activos se detectan con los conectores; aquí solo decides cuáles incluir.</p>
+{% include "partials/_paso_cabecera.html" %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <fieldset class="checks">
+    <legend>Activos del inventario <span class="hint">Lo ya incluido no se puede quitar desde aquí todavía.</span></legend>
+    {%- for a in assets %}
+    <div class="check">
+      <input type="checkbox" id="activo-{{ loop.index }}" name="included_assets" value="{{ a.id }}"{% if a.included %} checked disabled{% endif %}>{% if a.included %}<input type="hidden" name="included_assets" value="{{ a.id }}">{% endif %}
+      <label for="activo-{{ loop.index }}"><span class="mono">{{ a.id }}</span> · {{ a.type_label }}{% if a.summary %} · <span class="muted">{{ a.summary }}</span>{% endif %}{% if a.deployment == "planned" %} <span class="muted">(previsto)</span>{% endif %}</label>
+    </div>
+    {%- else %}
+    <p class="muted">El inventario está vacío. Añade un activo debajo o ejecuta los conectores.</p>
+    {%- endfor %}
+  </fieldset>
+  {{ m.field_errors("included_assets") }}
+  {% include "partials/_paso_acciones.html" %}
+</form>
+
+<section class="section" aria-labelledby="nuevo-activo">
+  <h3 id="nuevo-activo">Añadir un activo a mano</h3>
+  {% if not new_asset %}
+  <form method="get" action="{{ form_action }}">
+    <div class="field">
+      <label for="f-tipo">Tipo de activo</label>
+      <select id="f-tipo" name="tipo">
+        {%- for t in asset_types %}<option value="{{ t.value }}">{{ t.label }}</option>{% endfor %}
+      </select>
+    </div>
+    <button class="btn" type="submit">Elegir tipo</button>
+  </form>
+  {% else %}
+  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+    <input type="hidden" name="asset_type" value="{{ new_asset.type }}">
+    <p>Tipo: <strong>{{ new_asset.type_label }}</strong></p>
+    {{ m.text_field("asset_id", "Identificador", hint="Sin espacios, por ejemplo «portatil-ana».") }}
+    {%- for f in new_asset.fields %}
+    {{ m.text_field("asset_" ~ f.name, f.label, hint=("Escribe sí o no." if f.kind == "bool" else None)) }}
+    {%- endfor %}
+    <p class="muted">No pegues contraseñas ni claves: se rechazan.</p>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit" name="accion" value="anadir">Añadir activo</button>
+      <a class="btn" href="{{ form_action }}">Cancelar</a>
+    </div>
+  </form>
+  {% endif %}
+</section>
+{% endblock %}

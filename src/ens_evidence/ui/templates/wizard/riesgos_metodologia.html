@@ -1,0 +1,38 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">El artículo 14.2 del RD 311/2022 pide que el análisis de riesgos siga «alguna metodología reconocida internacionalmente». Aquí declaras cuál usas, de dónde sale y qué has adaptado a tu caso. La herramienta no juzga cuál eliges ni pone ningún valor de riesgo: eso lo decides tú.</p>
+{% include "partials/_paso_cabecera.html" %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  {{ m.text_field("name", "Nombre y versión de la metodología", hint="Por ejemplo, MAGERIT v3 o ISO/IEC 27005. La que sigas de verdad.") }}
+  {{ m.text_field("reference", "Norma o guía que la respalda", hint="La publicación de la que sale, con su título y año.") }}
+  {{ m.text_field("adaptation", "Qué has adaptado", hint="Qué has cambiado respecto a la referencia para tu organización. Si nada, dilo.", multiline=True) }}
+  <details class="card">
+    <summary>Escalas y matriz que se usarán</summary>
+    <p class="muted">Son una propuesta: tres niveles de probabilidad, de impacto y de riesgo. En esta versión se usan tal cual. La matriz da el riesgo inherente a partir de la probabilidad y el impacto.</p>
+    <div class="table-wrap">
+      <table>
+        <caption>Riesgo inherente</caption>
+        <thead><tr><th scope="col">Probabilidad \ Impacto</th>{% for i in impact_ids %}<th scope="col">{{ i }}</th>{% endfor %}</tr></thead>
+        <tbody>
+        {%- for row in matrix_rows %}
+          <tr><th scope="row">{{ row.likelihood }}</th>{% for level in row.levels %}<td>{{ level }}</td>{% endfor %}</tr>
+        {%- endfor %}
+        </tbody>
+      </table>
+    </div>
+    <dl class="facts">
+      {%- for v in likelihood %}<dt>Probabilidad · {{ v.id }}</dt><dd>{{ v.description }}</dd>{% endfor %}
+      {%- for v in impact %}<dt>Impacto · {{ v.id }}</dt><dd>{{ v.description }}</dd>{% endfor %}
+      {%- for v in risk_levels %}<dt>Riesgo · {{ v.id }}</dt><dd>{{ v.description }}</dd>{% endfor %}
+    </dl>
+  </details>
+  {% if adopted %}<p class="muted">Ya has adoptado una metodología. Si la cambias, hay que volver a aprobar el análisis.</p>{% endif %}
+  <div class="actions">
+    <button class="btn btn-primary" type="submit" name="accion" value="guardar">Adoptar esta metodología</button>
+    {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+    {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

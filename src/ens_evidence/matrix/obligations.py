@@ -15,6 +15,7 @@ from ens_evidence.applicability import Declaration, DeclarationState, declaratio
 from ens_evidence.catalog import Catalog, load_catalog
 from ens_evidence.catalog.model import BASE, Clause, MeasureCard
 from ens_evidence.matrix.fingerprint import measure_context_sha256
+from ens_evidence.orgdocs.clauses import INTRO
 from ens_evidence.workspace import WorkspaceStore
 
 COMPENSATION = "compensation"
@@ -183,9 +184,12 @@ def expand_covers(covers: Iterable[str], row: MatrixRowSpec) -> CoverExpansion:
 
     Rechaza lo que no es de la medida: un atajo sin esa obligación (p. ej. `base` si la sustituye
     la compensación) o una cláusula que no pertenece a ninguna de sus obligaciones.
+    La introducción (`<medida>.intro`, que citan los documentos) es texto del anexo II sin id:
+    se acepta si alguna obligación de la medida lo tiene, pero no es una unidad que cubrir.
     """
     by_id = {o.id: o for o in row.obligations}
     by_clause = {c: o for o in row.obligations for c in o.clause_ids}
+    has_intro = any(c.id is None for o in row.obligations for c in o.clauses)
     units: set[str] = set()
     errors: list[str] = []
     for token in covers:
@@ -193,6 +197,8 @@ def expand_covers(covers: Iterable[str], row: MatrixRowSpec) -> CoverExpansion:
             units.update(by_id[token].units)
         elif token in by_clause:
             units.add(token)
+        elif token == f"{row.measure_id}.{INTRO}" and has_intro:
+            continue
         else:
             valid = sorted({*by_id, *by_clause})
             errors.append(

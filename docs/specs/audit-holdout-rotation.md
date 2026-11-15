@@ -6,7 +6,7 @@ status: active
 priority: P0
 size: M
 issue: 57
-prs: []
+prs: [60]
 related_issues: [57]
 depends_on: [audit-pack-tuning]
 supersedes: []

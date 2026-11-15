@@ -22,6 +22,7 @@ from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.evidence.layout import manifest_key
 from ens_evidence.evidence.manifests import load_manifest
 from ens_evidence.models.preaudit import DispositionState, Layer, RefKind
+from ens_evidence.preaudit import review as review_module
 from ens_evidence.preaudit.findings import BROKEN_DETAIL, FINDING_DETAIL
 from ens_evidence.preaudit.records import (
     DISPOSITIONS_PREFIX,
@@ -95,6 +96,54 @@ def finding_blocker(finding) -> str:
 
 
 # --- disposición -------------------------------------------------------------------------------
+
+
+def race(monkeypatch, store, rival):
+    """Hace que `rival()` se escriba justo antes que la primera disposición que se intente."""
+    real = review_module.append
+    raced = []
+
+    def append(target, prefix, record):
+        if not raced:
+            raced.append(True)
+            rival()
+        return real(target, prefix, record)
+
+    monkeypatch.setattr(review_module, "append", append)
+
+
+def test_two_concurrent_dispositions_are_both_chained(judged, monkeypatch):
+    world, _, correction, finding = judged
+    race(
+        monkeypatch,
+        world.store,
+        lambda: decide(world.store, finding, DispositionState.ACCEPTED, correction),
+    )
+
+    stored, _ = decide(world.store, finding, DispositionState.DISMISSED, correction)
+
+    scan = scan_dispositions(world.store, now=LATER)
+    assert scan.problems == ()
+    assert [r.record.disposition.state for r in scan.records] == [
+        DispositionState.ACCEPTED,
+        DispositionState.DISMISSED,
+    ]
+    assert stored.record.seq == 2
+    assert stored.record.previous_sha256 == scan.records[0].sha256
+
+
+def test_the_loser_of_a_race_is_revalidated_against_the_winner(judged, monkeypatch):
+    world, _, correction, finding = judged
+    race(
+        monkeypatch,
+        world.store,
+        lambda: decide(world.store, finding, DispositionState.DISMISSED, correction),
+    )
+
+    with pytest.raises(ReviewRejected, match="ya no bloquea"):
+        decide(world.store, finding, DispositionState.ACCEPTED, correction)
+
+    assert len(scan_dispositions(world.store, now=LATER).records) == 1
 
 
 def test_resolved_needs_an_existing_and_intact_evidence(judged):

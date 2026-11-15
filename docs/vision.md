@@ -84,7 +84,7 @@ y pegar un comando, pero no sabe de seguridad ni de ENS.
 
 ## Arquitectura propuesta
 
-Una VM (o un portátil para evaluar) con `docker compose up`:
+Un VPS (o un portátil para evaluar, sin evidencia continua ni kit; ADR 0019) con `docker compose up`:
 
 ```
                   Internet
@@ -96,9 +96,10 @@ Una VM (o un portátil para evaluar) con `docker compose up`:
 │   caddy (TLS automático) ──► /agent/*  público (agentes osquery)       │
 │                          └─► /         solo LAN/VPN/Access (UI)        │
 │                    ▼                                                   │
+│   agent (misma imagen, red interna; ADR 0020)                          │
+│    · servidor TLS de osquery (enroll, config, log, distributed r/w)    │
 │   app (Python, núcleo ens_evidence)                                    │
 │    · UI web (plantillas en servidor + htmx): asistente + seguridad     │
-│    · servidor TLS de osquery (enroll, config, log, distributed r/w)    │
 │    · scheduler: collectors → checks → informes                         │
 │    · pre-auditoría (capa determinista) + adaptador LLM                 │
 │         │                         │                                    │
@@ -119,8 +120,9 @@ Una VM (o un portátil para evaluar) con `docker compose up`:
 | Pieza | Decisión | Motivo |
 |-------|----------|--------|
 | Proxy | Caddy | TLS automático; separa la ruta pública de agentes de la UI privada. |
-| App | Un contenedor: UI, API, servidor osquery, scheduler | Un proceso que operar, actualizar y respaldar. |
-| UI | Renderizada en servidor con htmx; sin SPA ni build de Node | Lo más ligero; misma app y mismo contenedor. |
+| App | Contenedor `app`: UI, API, scheduler | Un proceso que operar, actualizar y respaldar. |
+| Agentes | Servicio `agent` aparte, de la misma imagen, en red interna sin salida y sin los secretos de los conectores (ADR 0020) | Aísla el proceso expuesto a Internet; desvío del «un contenedor» original. |
+| UI | Renderizada en servidor con htmx; sin SPA ni build de Node | Lo más ligero; misma imagen que la app. |
 | Estado | SQLite | Sin servidor de base de datos; backup = un fichero. |
 | Evidencias | Ficheros locales + manifiestos sha256 | Simple; la inmutabilidad la aporta la copia externa. |
 | Copia independiente | Restic cifrado a S3 externo con bloqueo de objetos | Copia independiente (guía, línea 727) y protección contra borrado. |
@@ -167,7 +169,9 @@ Cada fase es usable por sí sola.
   generador documental; login con MFA u OIDC; instalador de un comando;
   servidor osquery embebido y agentes; conector Microsoft 365; guías de
   servicios externos; revisión de las plantillas por un auditor ENS; landing
-  mínima.
+  mínima; kit de herramientas en el VPS con la primera ola (copias,
+  claves, contraseñas y antimalware) y la guía de Access con el proveedor de
+  identidad de la pyme).
 - **v0.3 y siguientes.** Perfil de detección (wazuh-manager sin cabeza +
   VictoriaLogs + panel de seguridad); incidentes; bundle offline y releases
   firmadas; paquetes de agente por sistema operativo; landing completa; más
@@ -236,6 +240,34 @@ Estados del expediente, en orden, cada uno con fecha y persona:
   aplicación.
 - Sin verificar: que restic funcione sobre un bucket con bloqueo de objetos de
   R2.
+
+## Kit de herramientas
+
+La herramienta no se limita a decir qué falta. Para cada carencia habitual
+ofrece una herramienta open source y la despliega: si la pyme no tiene
+copias de seguridad, le da un sistema para gestionarlas, y si no tiene
+almacén de claves, se lo da también. Spec: `docs/specs/toolkit-server.md`.
+
+- **Dónde vive (ADR 0019).** En el mismo VPS que la caja, siempre encendido:
+  uno que contrata la pyme (OVH, Hetzner, Scaleway…) o un servidor propio.
+  Cada herramienta es un perfil de Compose. El ordenador de la pyme solo abre
+  la web; un portátil sirve para evaluar la herramienta, sin el kit.
+- **Cómo se despliega.** La app genera la configuración y el comando, y el
+  usuario los ejecuta. Nunca guarda credenciales del servidor ni lo cambia
+  sin una acción explícita.
+- **Contrato de cada herramienta:** servicio, conector de solo lectura, checks
+  de uso real, runbook y aviso cuando falla. Instalar no es cumplir (regla 1).
+- **Dos paneles en la web de la caja:** uno de acceso, desde el que se abre
+  cada herramienta tras la misma protección que la web, y otro de
+  monitorización con la salud de las herramientas, del VPS y de la caja,
+  con avisos. La monitorización es operación: un verde no cumple ninguna
+  medida.
+- **Primera ola (v0.2):** restic + Backrest (mp.info.6), OpenBao (op.exp.10),
+  Vaultwarden (apoyo parcial a op.acc.6) y
+  antimalware (op.exp.6: ClamAV en Linux, nativo evidenciado por osquery en
+  Windows y macOS).
+- **El servidor no guarda sus propios rescates:** las copias van a S3 con
+  bloqueo de objetos y las claves de desbloqueo quedan en manos de personas.
 
 ## Restricciones / no-goals
 

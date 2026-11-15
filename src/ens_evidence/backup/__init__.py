@@ -16,6 +16,7 @@ from ens_evidence.backup.environment import (
     subprocess_env,
 )
 from ens_evidence.backup.errors import BackupError
+from ens_evidence.backup.external_restore import record_verified_restore_test
 from ens_evidence.backup.immutability import parse_s3_repository, verify_immutability
 from ens_evidence.backup.integrity import check_scope, run_check
 from ens_evidence.backup.records import (
@@ -82,6 +83,7 @@ __all__ = [
     "load_secrets",
     "parse_s3_repository",
     "record_restore_test",
+    "record_verified_restore_test",
     "restore_recorded",
     "restore_snapshot",
     "run_backup",

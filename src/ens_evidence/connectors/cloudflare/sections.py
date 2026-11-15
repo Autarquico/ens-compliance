@@ -16,6 +16,7 @@ from pydantic import BaseModel, ConfigDict, Field, ValidationError
 from ens_evidence.connectors.cloudflare.client import (
     AUDIT_LOGS_PAGER,
     DNS_PAGER,
+    IDP_PAGER,
     POLICIES_PAGER,
     RULESETS_PAGER,
     TUNNELS_PAGER,
@@ -33,9 +34,15 @@ AUDIT_PAGE_SIZE = 1000
 TLS_SETTINGS = ("ssl", "min_tls_version", "always_use_https")
 CFARGOTUNNEL_SUFFIX = ".cfargotunnel.com"
 _SELECTOR_KIND = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,40}$")
+_OPAQUE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
+# Selectores que, además de `login_method`, van ligados a un proveedor de identidad concreto.
+_IDP_BOUND_KINDS = frozenset({"azureAD", "gsuite", "okta", "saml", "oidc"})
 _BARE_SERVICES = frozenset(
     {"http_status", "unix", "unix+tls", "hello_world", "hello-world", "bastion", "socks"}
 )
+
+
+_ABSENT: Any = object()
 
 
 class _Raw(BaseModel):
@@ -82,6 +89,13 @@ class _AccessApp(_Raw):
     domain: str | None = None
     self_hosted_domains: list[str] | None = None
     destinations: list[_Destination] | None = None
+    allowed_idps: Any = _ABSENT
+
+
+class _IdentityProvider(_Raw):
+    id: str
+    name: str | None = None
+    type: str | None = None
 
 
 class _AccessGroup(_Raw):
@@ -183,9 +197,39 @@ def group_references(rules: list[Any]) -> list[str | None]:
     return references
 
 
+def _opaque_id(value: Any) -> str | None:
+    return value if isinstance(value, str) and _OPAQUE_ID.match(value) else None
+
+
+def sanitized_selectors(rules: list[Any]) -> list[dict[str, Any]]:
+    """Por selector `{kind, idp, group}`: sin emails, dominios ni ids de grupos externos.
+
+    `idp`: id de `login_method` o `identity_provider_id` de los selectores ligados a un
+    proveedor; `group`: id del grupo de Access de un selector `group`. Forma desconocida:
+    `kind: "unknown"` con ambos a `None`.
+    """
+    selectors: list[dict[str, Any]] = []
+    for rule in rules:
+        key = next(iter(rule)) if isinstance(rule, dict) and len(rule) == 1 else None
+        kind = key if isinstance(key, str) and _SELECTOR_KIND.match(key) else "unknown"
+        body = rule[key] if kind != "unknown" and isinstance(rule[key], dict) else {}
+        idp = group = None
+        if kind == "login_method":
+            idp = _opaque_id(body.get("id"))
+        elif kind in _IDP_BOUND_KINDS:
+            idp = _opaque_id(body.get("identity_provider_id"))
+        elif kind == "group":
+            group = _opaque_id(body.get("id"))
+        selectors.append({"kind": kind, "idp": idp, "group": group})
+    return selectors
+
+
 def selector_summary(rule: _AccessGroup | _AccessPolicy) -> dict[str, Any]:
     """Tipos de selector y grupos referenciados de include/require/exclude, sin valores."""
     return {
+        "include_selectors": sanitized_selectors(rule.include),
+        "require_selectors": sanitized_selectors(rule.require),
+        "exclude_selectors": sanitized_selectors(rule.exclude),
         "include": selector_kinds(rule.include),
         "exclude": selector_kinds(rule.exclude),
         "require": selector_kinds(rule.require),
@@ -209,6 +253,12 @@ def sanitize_service(service: str | None) -> str | None:
         return f"{parts.scheme}://{shown}" + (f":{port}" if port else "")
     head = service.split(":", 1)[0]
     return head if head in _BARE_SERVICES else "other"
+
+
+_IDP_FAILURES = {
+    CollectionStatus.PERMISSION_DENIED: "sin permiso para leer los proveedores de identidad",
+    CollectionStatus.ERROR: "no se pudieron leer los proveedores de identidad",
+}
 
 
 def collect_zones(client: CloudflareClient, config: CloudflareRun) -> Section:
@@ -297,6 +347,23 @@ def public_destinations(app: _AccessApp) -> list[str]:
     return [app.domain] if app.domain else []
 
 
+def allowed_idps_form(app: _AccessApp) -> dict[str, Any]:
+    """`allowed_idps` tal como se observó, sin normalizar ausente/null/[].
+
+    `allowed_idps_form`: `absent` | `null` | `list` | `malformed`; `allowed_idps`: la lista
+    de ids (`[]` incluida) solo si `form == "list"`, si no `None`.
+    """
+    value = app.allowed_idps
+    if value is _ABSENT:
+        return {"allowed_idps_form": "absent", "allowed_idps": None}
+    if value is None:
+        return {"allowed_idps_form": "null", "allowed_idps": None}
+    ids = [_opaque_id(item) for item in value] if isinstance(value, list) else None
+    if ids is None or None in ids:
+        return {"allowed_idps_form": "malformed", "allowed_idps": None}
+    return {"allowed_idps_form": "list", "allowed_idps": ids}
+
+
 def collect_access_applications(client: CloudflareClient, config: CloudflareConfig) -> Section:
     status, reason, apps = _attempt(
         lambda: [
@@ -314,6 +381,7 @@ def collect_access_applications(client: CloudflareClient, config: CloudflareConf
                 "name": app.name,
                 "type": app.type,
                 "public_destinations": public_destinations(app),
+                **allowed_idps_form(app),
             }
             for app in apps
         ],
@@ -333,6 +401,28 @@ def collect_access_groups(client: CloudflareClient, config: CloudflareConfig) ->
     return Section(
         status=CollectionStatus.SUCCESS,
         items=[{"id": group.id, "name": group.name, **selector_summary(group)} for group in groups],
+    )
+
+
+def collect_identity_providers(client: CloudflareClient, config: CloudflareConfig) -> Section:
+    """Proveedores de identidad de Access: solo `{id, name, type}`; los errores son locales.
+
+    El mensaje del error externo no se guarda: la sección puede tocar configuración con
+    secretos de cliente y su cuerpo de error no es de fiar.
+    """
+    status, _, providers = _attempt(
+        lambda: [
+            _IdentityProvider.model_validate(raw)
+            for raw in client.pages(
+                f"/accounts/{config.account_id}/access/identity_providers", IDP_PAGER
+            )
+        ]
+    )
+    if providers is None:
+        return _failed(status, _IDP_FAILURES.get(status, _IDP_FAILURES[CollectionStatus.ERROR]))
+    return Section(
+        status=CollectionStatus.SUCCESS,
+        items=[provider.model_dump() for provider in providers],
     )
 
 

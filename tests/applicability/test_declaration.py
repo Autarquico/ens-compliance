@@ -93,6 +93,13 @@ def test_no_se_firma_si_la_aplicabilidad_no_es_valida_y_no_deja_fichero(workspac
     assert not workspace.exists(DECLARATION_KEY)
 
 
+def test_no_se_firma_con_un_correo_como_nombre_y_no_deja_fichero(ready):
+    with pytest.raises(DeclarationRejected) as raised:
+        approve_declaration(ready, "marta@example.com", SIGNED_AT)
+
+    assert raised.value.errors and not ready.exists(DECLARATION_KEY)
+
+
 def test_no_se_firma_con_una_exigida_not_applicable(ready):
     decide(ready, "op.pl.2", Applicability.NOT_APPLICABLE, "Asumido.")
 

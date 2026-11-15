@@ -9,12 +9,56 @@
       "decision": "allow",
       "precedence": 1,
       "include": [
-        {"email": {"email": "ana-CANARY@example.invalid"}},
-        {"email_domain": {"domain": "domain-CANARY.example.invalid"}}
+        {
+          "email": {
+            "email": "ana-CANARY@example.invalid"
+          }
+        },
+        {
+          "email_domain": {
+            "domain": "domain-CANARY.example.invalid"
+          }
+        },
+        {
+          "login_method": {
+            "id": "idp-1"
+          }
+        },
+        {
+          "azureAD": {
+            "id": "aad-CANARY-obj",
+            "identity_provider_id": "idp-1",
+            "name": "x"
+          }
+        }
       ],
-      "exclude": [],
-      "require": [{"ip": {"ip": "198.51.100.0/24"}}]
+      "exclude": [
+        {
+          "login_method": {
+            "id": "idp-otp"
+          }
+        }
+      ],
+      "require": [
+        {
+          "ip": {
+            "ip": "198.51.100.0/24"
+          }
+        },
+        {
+          "gsuite": {
+            "email": "gs-CANARY@example.invalid",
+            "identity_provider_id": "idp-2"
+          }
+        }
+      ]
     }
   ],
-  "result_info": {"page": 1, "per_page": 100, "total_pages": 1, "count": 1, "total_count": 1}
+  "result_info": {
+    "page": 1,
+    "per_page": 100,
+    "total_pages": 1,
+    "count": 1,
+    "total_count": 1
+  }
 }

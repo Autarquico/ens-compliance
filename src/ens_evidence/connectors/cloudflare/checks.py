@@ -22,6 +22,7 @@ from ens_evidence.models.contracts import CheckResult, CollectionResult, transla
 from ens_evidence.models.enums import CheckStatus, CollectionStatus
 
 CHECK_ID = "cloudflare.tunnel_requires_access"
+ACCESS_IDP_RESTRICTED = "cloudflare.access_idp_restricted"  # lo evalúa identity_checks
 DECLARED_PUBLIC = "declared_public"
 _IGNORED_APP_TYPES = frozenset({"bookmark"})
 _PROVABLE_APP_TYPES = frozenset({"self_hosted", "ssh", "vnc", "rdp"})
@@ -667,24 +668,42 @@ def tunnel_requires_access(
     return checks
 
 
-def _tunnel_checks(
-    tunnel: dict[str, Any], evaluator: _Evaluator, builder: Builder
-) -> list[CheckResult]:
-    subject = tunnel["id"]
+@dataclass(frozen=True)
+class TunnelPopulation:
+    """Rutas publicadas por un túnel; `failure` si no se pueden conocer (ingress no recogido)."""
+
+    routes: list[Route]  # sin duplicados (host, path)
+    unscoped_paths: list[str]
+    failure: Outcome | None = None
+    unresolved: Outcome | None = None  # túnel local: cobertura del DNS sin resolver
+
+
+def tunnel_population(tunnel: dict[str, Any], evaluator: _Evaluator) -> TunnelPopulation:
     status = CollectionStatus(tunnel["ingress_status"])
     local = status is CollectionStatus.NOT_SUPPORTED
     if not local and status is not CollectionStatus.SUCCESS:
         reason = tunnel.get("reason") or status.value
-        return [builder(subject, _unrecovered(status, f"ingress no recogido: {reason}"))]
-    routes = _local_routes(tunnel) if local else _remote_routes(tunnel)
+        failure = _unrecovered(status, f"ingress no recogido: {reason}")
+        return TunnelPopulation([], [], failure=failure)
+    unique: dict[tuple[str, str], Route] = {}
+    for route in _local_routes(tunnel) if local else _remote_routes(tunnel):
+        unique.setdefault((route.hostname.lower(), route.display_path), route)
+    unscoped = list(dict.fromkeys([] if local else _unscoped_rules(tunnel)))
+    unresolved = _unresolved_coverage(tunnel, evaluator) if local else None
+    return TunnelPopulation(list(unique.values()), unscoped, unresolved=unresolved)
+
+
+def _tunnel_checks(
+    tunnel: dict[str, Any], evaluator: _Evaluator, builder: Builder
+) -> list[CheckResult]:
+    subject = tunnel["id"]
+    population = tunnel_population(tunnel, evaluator)
+    if population.failure is not None:
+        return [builder(subject, population.failure)]
     checks: list[CheckResult] = []
-    seen = set()
+    seen = {(route.hostname.lower(), route.display_path) for route in population.routes}
     declared_subsets: list[DeclaredRoute] = []
-    for route in routes:
-        identity = (route.hostname.lower(), route.display_path)
-        if identity in seen:
-            continue
-        seen.add(identity)
+    for route in population.routes:
         outcome, excluded = evaluator.evaluate(route)
         if route.local and outcome.status is CheckStatus.PASS:
             outcome = Outcome(
@@ -694,7 +713,7 @@ def _tunnel_checks(
             )
         checks.append(builder(route.subject, outcome))
         declared_subsets += [e for e in excluded if e not in declared_subsets]
-    for path in dict.fromkeys([] if local else _unscoped_rules(tunnel)):
+    for path in population.unscoped_paths:
         checks.append(
             builder(
                 f"{subject} (sin hostname){path}",
@@ -718,8 +737,8 @@ def _tunnel_checks(
                 ),
             )
         )
-    if local and (unresolved := _unresolved_coverage(tunnel, evaluator)):
-        checks.append(builder(subject, unresolved))
+    if population.unresolved is not None:
+        checks.append(builder(subject, population.unresolved))
     return checks
 
 
@@ -741,3 +760,83 @@ def _unresolved_coverage(tunnel: dict[str, Any], evaluator: _Evaluator) -> Outco
     if not tunnel.get("inferred_complete"):
         return Outcome(CheckStatus.UNKNOWN, "ingress local no visible; cobertura no resuelta")
     return None
+
+
+@dataclass(frozen=True)
+class ScopedApp:
+    app: dict[str, Any]
+    uncertain: bool  # algún destino solapante no se sabe interpretar
+
+
+@dataclass(frozen=True)
+class PublishedScope:
+    """Aplicaciones Access cuyo destino solapa las rutas publicadas por túnel y no declaradas.
+
+    `incomplete` lista por qué la población no se puede fijar entera (túnel o DNS sin recoger,
+    reglas sin hostname, hostnames no interpretables): las `apps` son entonces un mínimo.
+    """
+
+    apps: list[ScopedApp]
+    incomplete: list[str]
+
+
+def published_scope(result: CollectionResult) -> PublishedScope:
+    evaluator = _Evaluator(result)
+    tunnels = _read(result.data.get("sections", {}), "tunnels")
+    incomplete: list[str] = []
+    if tunnels.status is not CollectionStatus.SUCCESS:
+        incomplete.append(f"túneles no recogidos del todo: {_why(tunnels)}")
+    routes: list[Route] = []
+    for tunnel in tunnels.items:
+        population = tunnel_population(tunnel, evaluator)
+        for outcome in (population.failure, population.unresolved):
+            if outcome is not None:
+                incomplete.append(f"túnel {tunnel['id']}: {outcome.reason}")
+        if population.unscoped_paths:
+            incomplete.append(f"túnel {tunnel['id']}: regla de ingress sin hostname")
+        routes += population.routes
+    published = [route for route in routes if not _declared_public(route, evaluator.declared)]
+    if any(route.host is None for route in published):
+        incomplete.append("hostname de túnel con patrón que no se sabe interpretar")
+    apps: list[ScopedApp] = []
+    for app in evaluator.applications.items:
+        if app.get("type") in _IGNORED_APP_TYPES:
+            continue
+        uncertain = _overlap_with_routes(app, published, evaluator.declared)
+        if uncertain is not None:
+            apps.append(ScopedApp(app, uncertain))
+    return PublishedScope(apps, incomplete)
+
+
+def _declared_public(route: Route, declared: list[DeclaredRoute]) -> bool:
+    return route.host is not None and any(
+        host_covers(entry.host, route.host) and path_covers(entry.path, route.path)
+        for entry in declared
+    )
+
+
+def _overlap_with_routes(
+    app: dict[str, Any], routes: list[Route], declared: list[DeclaredRoute]
+) -> bool | None:
+    """`None`: fuera de la población; `True`: dentro pero con un destino no interpretable."""
+    inside = False
+    uncertain = False
+    for uri in app.get("public_destinations", []):
+        dest = parse_destination(uri)
+        if dest.host is None:
+            if any(not _is_other_host(route.hostname, dest.raw_host) for route in routes):
+                inside = uncertain = True
+            continue
+        if dest.path is not None and any(
+            host_covers(entry.host, dest.host) and path_covers(entry.path, dest.path)
+            for entry in declared
+        ):
+            continue
+        for route in routes:
+            if route.host is None or not host_overlaps(dest.host, route.host):
+                continue
+            if dest.path is None:
+                inside = uncertain = True
+            elif path_overlaps(dest.path, route.path):
+                inside = True
+    return uncertain if inside else None

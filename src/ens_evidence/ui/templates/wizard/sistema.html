@@ -1,0 +1,17 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">Describe el sistema que vas a preparar para el ENS. El ENS llama «sistema de información» al conjunto de equipos, programas y servicios que tratan tu información.</p>
+<p><strong>¿Qué meto en el alcance?</strong> Puede ser toda tu empresa o solo la parte con la que prestas servicios al sector público, que es lo que exige el ENS. Cuanto más metas, más activos y servicios tendrás que documentar y evidenciar. Además, la categoría (BÁSICA, MEDIA o ALTA) la fija el servicio más exigente de los que incluyas.</p>
+<ul>
+  <li><strong>Toda la empresa:</strong> pon el nombre de la empresa, por ejemplo «Sistemas de Acme», y describe todo lo que hace.</li>
+  <li><strong>Solo lo que das a la administración:</strong> pon el nombre de ese servicio, por ejemplo «Plataforma de citas para ayuntamientos», y describe solo ese servicio.</li>
+</ul>
+{% include "partials/_paso_cabecera.html" %}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  {{ m.text_field("name", "Nombre del sistema", hint="Corto y reconocible, por ejemplo «Plataforma de clientes».") }}
+  {{ m.text_field("description", "Qué hace el sistema", hint="Una o dos frases: qué servicio presta y a quién.", multiline=True) }}
+  {% include "partials/_paso_acciones.html" %}
+</form>
+{% endblock %}

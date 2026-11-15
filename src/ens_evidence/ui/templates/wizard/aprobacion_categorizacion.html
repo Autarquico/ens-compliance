@@ -1,0 +1,25 @@
+{% extends ("partials/paso_solo.html" if hx_request else "wizard/shell.html") %}
+{% import "_macros.html" as m with context %}
+{% block paso %}
+<h2>{{ step_title }}</h2>
+<p class="lead">La categoría del sistema (BÁSICA, MEDIA o ALTA) sale del nivel más alto de las valoraciones. Condiciona qué medidas del ENS te tocan. Una persona debe aprobarla.</p>
+{% include "partials/_paso_cabecera.html" %}
+<dl class="facts">
+  <dt>Estado</dt><dd>{{ m.badge(categorization_state) }}</dd>
+  <dt>Categoría calculada</dt><dd>{% if category %}<span class="mono">{{ category }}</span>{% else %}<span class="muted">Aún no se puede calcular</span>{% endif %}</dd>
+  {%- for d in dimension_levels %}<dt><span class="mono">{{ d.code }}</span> · {{ (m.DIMENSIONES | selectattr("code", "equalto", d.code) | first).name }}</dt><dd>{{ "No afecta" if d.level == "not_affected" else d.level }}</dd>{% endfor %}
+  {% if approval %}<dt>Aprobada por</dt><dd>{{ approval.approved_by }} <span class="muted">· {{ approval.approved_at }}</span></dd>{% endif %}
+</dl>
+{% if pending or issues %}
+<div class="notice notice-warn"><p><strong>Antes de aprobar:</strong></p>
+<ul>{% for p in pending %}<li>{{ p }}</li>{% endfor %}{% for i in issues %}<li>{{ i }}</li>{% endfor %}</ul></div>
+{% endif %}
+{{ m.revision_humana() }}
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  {{ m.approver_field() }}
+  <div class="actions">
+    <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if pending or issues %} disabled{% endif %}>Aprobar categorización</button>
+    {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
+  </div>
+</form>
+{% endblock %}

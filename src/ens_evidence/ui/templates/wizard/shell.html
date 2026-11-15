@@ -1,0 +1,8 @@
+{% extends "base.html" %}
+{% block content %}
+<h1>Asistente</h1>
+<div class="wizard">
+  <nav id="pasos" aria-label="Pasos del asistente">{% include "partials/lista_pasos.html" %}</nav>
+  <section id="paso" aria-live="polite">{% block paso %}{% endblock %}</section>
+</div>
+{% endblock %}

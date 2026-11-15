@@ -31,9 +31,9 @@ COPY --from=uv /uv /usr/local/bin/uv
 ENV UV_PROJECT_ENVIRONMENT=/opt/venv UV_PYTHON_DOWNLOADS=never UV_LINK_MODE=copy UV_COMPILE_BYTECODE=1
 WORKDIR /src
 COPY pyproject.toml uv.lock README.md LICENSE ./
-RUN uv sync --frozen --no-dev --no-editable --no-install-project --extra s3 --extra workspace
+RUN uv sync --frozen --no-dev --no-editable --no-install-project --extra s3 --extra workspace --extra server --extra ui
 COPY src ./src
-RUN uv sync --frozen --no-dev --no-editable --extra s3 --extra workspace
+RUN uv sync --frozen --no-dev --no-editable --extra s3 --extra workspace --extra server --extra ui
 
 FROM ${PYTHON_IMAGE}
 ARG ENS_UID=10001

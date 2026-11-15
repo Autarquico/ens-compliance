@@ -1,0 +1,25 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<p><a href="/evidencias">Evidencias</a></p>
+<h1>Subir una evidencia</h1>
+<p class="lead">Una evidencia manual es un fichero que aportas tú, por ejemplo un acta o una captura. Se guarda con su huella, quién la aporta y cuándo. Máximo {{ max_megabytes }} MB. El nombre del fichero no se conserva.</p>
+{% if form_errors %}
+<div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
+<ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+{% endif %}
+<form method="post" action="/evidencias/nueva" enctype="multipart/form-data" novalidate>
+  <div class="field"><label for="f-file">Fichero</label>
+    <input type="file" id="f-file" name="file"></div>
+  <div class="field"><label for="f-asset_id">Activo al que se refiere<span class="hint">Solo los activos del alcance.</span></label>
+    <select id="f-asset_id" name="asset_id">
+      {%- for a in assets %}<option value="{{ a }}"{% if values.get('asset_id') == a %} selected{% endif %}>{{ a }}</option>{% endfor %}
+    </select>
+    {% if not assets %}<p class="muted">El alcance todavía no incluye activos. <a href="/asistente/activos">Elígelos en el asistente</a>.</p>{% endif %}</div>
+  <div class="field"><label for="f-by">Quién la aporta<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
+    <input type="text" id="f-by" name="by" value="{{ by_default }}"></div>
+  <div class="field"><label for="f-collected_on">Fecha a la que se refiere<span class="hint">Opcional, AAAA-MM-DD. Si la dejas vacía, es hoy.</span></label>
+    <input type="text" id="f-collected_on" name="collected_on" value="{{ values.get('collected_on', '') }}" placeholder="2026-01-31"></div>
+  <div class="actions"><button class="btn btn-primary" type="submit">Subir evidencia</button><a class="btn btn-ghost" href="/evidencias">Cancelar</a></div>
+</form>
+{% endblock %}

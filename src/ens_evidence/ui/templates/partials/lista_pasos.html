@@ -1,0 +1,17 @@
+{# Lista de pasos con progreso. Se incluye en el shell y, por htmx, como swap fuera de banda. #}
+<p class="progress-label" id="progreso-etiqueta">Paso {{ step_number }} de {{ step_total }}</p>
+<progress max="{{ step_total }}" value="{{ step_number }}" aria-labelledby="progreso-etiqueta">Paso {{ step_number }} de {{ step_total }}</progress>
+{%- for s in steps %}
+{%- if loop.first or s.group != loop.previtem.group %}
+{%- if not loop.first %}</ol>{% endif %}
+<p class="step-group" id="grupo-{{ s.group }}">{{ {"alcance": "Alcance", "categorizacion": "Categorización", "riesgos": "Riesgos", "aplicabilidad": "Aplicabilidad", "documentos": "Documentos"}[s.group] }}</p>
+<ol class="steps" aria-labelledby="grupo-{{ s.group }}">
+{%- endif %}
+  <li>
+    <a href="/asistente/{{ s.slug }}"{% if s.slug == step %} aria-current="step"{% endif %}>
+      <span>{{ s.label }}</span>
+      <span class="step-state">{{ {"done": "hecho", "current": "ahora", "todo": "pendiente", "optional": "opcional"}[s.state] }}</span>
+    </a>
+  </li>
+{%- endfor %}
+</ol>

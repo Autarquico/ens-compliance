@@ -1,0 +1,27 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Incidentes</h1>
+<p class="lead">El registro de incidentes de seguridad. Cada reporte queda guardado y no se modifica nunca. Lo piden las medidas <span class="mono">op.exp.7</span> y <span class="mono">op.exp.9</span>.</p>
+{{ m.revision_humana() }}
+<div class="actions"><a class="btn btn-primary" href="/incidentes/nuevo">Registrar un incidente</a></div>
+<p class="muted">Si no ha habido incidentes reales, puedes ensayar el procedimiento con un simulacro: se marca como tal en la matriz y no sustituye a los incidentes reales.</p>
+<div class="table-wrap"><table>
+  <caption>{{ rows | length }} incidentes</caption>
+  <thead><tr><th scope="col">Incidente</th><th scope="col">Estado</th><th scope="col">Severidad</th><th scope="col">Detectado</th><th scope="col">Título</th></tr></thead>
+  <tbody>
+  {%- for r in rows %}
+  <tr>
+    <th scope="row" class="id"><a class="mono" href="/incidentes/{{ r.id }}">{{ r.id }}</a>{% if r.simulated %} <span class="badge tone-info"><span>Simulacro</span></span>{% endif %}{% if r.broken %} <span class="badge tone-bad"><span>Con problemas</span></span>{% endif %}</th>
+    <td>{{ r.status }}</td>
+    <td>{{ r.severity }}</td>
+    <td class="mono">{{ r.detected_at }}</td>
+    <td>{{ r.title }}</td>
+  </tr>
+  {%- else %}
+  <tr><td colspan="5" class="muted">Todavía no hay incidentes registrados.</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+<p class="muted">Datos de {{ generated_at }}.</p>
+{% endblock %}

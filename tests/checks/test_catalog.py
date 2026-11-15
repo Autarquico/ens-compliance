@@ -29,6 +29,9 @@ def _constants(module: str, pattern: str) -> set[str]:
             "google-workspace",
             r"workspace\.[a-z0-9_]+",
         ),
+        ("ens_evidence.connectors.backups.checks", "backups", r"backups\.[a-z0-9_]+"),
+        ("ens_evidence.connectors.keystore.checks", "keystore", r"keystore\.[a-z0-9_]+"),
+        ("ens_evidence.connectors.passwords.checks", "passwords", r"passwords\.[a-z0-9_]+"),
         ("ens_evidence.connectors.restic.checks", "restic", r"restic\.[a-z0-9_]+"),
         ("ens_evidence.endpoint.checks", "endpoint", r"HOST-\d{3}"),
     ],
@@ -102,3 +105,9 @@ def test_el_catalogo_es_un_modulo_hoja():
     }
 
     assert not any(name and name.startswith("ens_evidence") for name in imported)
+
+
+def test_access_idp_restricted_esta_en_el_catalogo_sin_sujetos_de_inventario():
+    spec = CHECKS["cloudflare.access_idp_restricted"]
+
+    assert (spec.connector, spec.subjects) == ("cloudflare", SubjectKind.SELF_REPORTED)

@@ -1,0 +1,104 @@
+{
+  "$defs": {
+    "AgentRecord": {
+      "additionalProperties": false,
+      "properties": {
+        "generation": {
+          "default": 1,
+          "minimum": 1,
+          "title": "Generation",
+          "type": "integer"
+        },
+        "last_admission_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Admission At"
+        },
+        "last_admission_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Admission By"
+        },
+        "last_admission_expires_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Last Admission Expires At"
+        },
+        "revoked_at": {
+          "anyOf": [
+            {
+              "format": "date-time",
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked At"
+        },
+        "revoked_by": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked By"
+        },
+        "revoked_reason": {
+          "anyOf": [
+            {
+              "type": "string"
+            },
+            {
+              "type": "null"
+            }
+          ],
+          "default": null,
+          "title": "Revoked Reason"
+        }
+      },
+      "title": "AgentRecord",
+      "type": "object"
+    }
+  },
+  "additionalProperties": false,
+  "properties": {
+    "agents": {
+      "additionalProperties": {
+        "$ref": "#/$defs/AgentRecord"
+      },
+      "title": "Agents",
+      "type": "object"
+    }
+  },
+  "title": "AgentRegistry",
+  "type": "object"
+}

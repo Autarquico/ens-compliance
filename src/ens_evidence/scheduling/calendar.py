@@ -13,12 +13,16 @@ from zoneinfo import ZoneInfo
 from ens_evidence.scheduling.config import ScheduleConfig
 
 JobKind = Literal["daily", "monthly"]
+PREAUDIT: Literal["preaudit"] = "preaudit"
+AnyJobKind = Literal["daily", "monthly", "preaudit"]
+"""`preaudit` no es del calendario: es una petición de la UI (`preaudit/requests.py`) y su
+`period` es la clave de la petición. Se comprueba en cada tick, sin hora de disparo."""
 UTC = dt.UTC
 
 
 @dataclass(frozen=True)
 class Job:
-    kind: JobKind
+    kind: AnyJobKind
     period: str
     due_at: dt.datetime
 
@@ -86,12 +90,16 @@ def next_monthly(after: dt.datetime, cfg: ScheduleConfig) -> dt.datetime:
 
 
 def due_jobs(
-    now: dt.datetime, cfg: ScheduleConfig, done: Collection[tuple[JobKind, str]]
+    now: dt.datetime,
+    cfg: ScheduleConfig,
+    done: Collection[tuple[AnyJobKind, str]],
+    requests: Collection[str] = (),
 ) -> list[Job]:
     """Trabajos vencidos y sin terminar en `now`, el diario primero.
 
     Solo el periodo en curso: antes de la hora no hay nada; pasada la hora se ejecuta si no está
     en `done`; el mensual pendiente se recupera durante todo el mes. No se rellenan días pasados.
+    Las peticiones de pre-auditoría (`requests`: sus claves) vencen en el acto, tras los dos.
     """
     now = _require_aware(now)
     local = now.astimezone(cfg.zone)
@@ -102,4 +110,5 @@ def due_jobs(
     monthly = _monthly_due(local.year, local.month, cfg)
     if monthly <= now and ("monthly", monthly_period(monthly, cfg)) not in done:
         jobs.append(Job("monthly", monthly_period(monthly, cfg), monthly))
+    jobs += [Job(PREAUDIT, key, now) for key in sorted(requests) if (PREAUDIT, key) not in done]
     return jobs

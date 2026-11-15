@@ -1,0 +1,16 @@
+--tls_hostname=@@SERVER@@
+--host_identifier=uuid
+--enroll_tls_endpoint=/agent/enroll
+--config_plugin=tls
+--config_tls_endpoint=/agent/config
+--config_refresh=3600
+--logger_plugin=tls
+--logger_tls_endpoint=/agent/log
+--logger_tls_period=60
+--logger_tls_backoff_max=3600
+--buffered_log_max=10000
+--disable_distributed=false
+--distributed_plugin=tls
+--distributed_tls_read_endpoint=/agent/distributed/read
+--distributed_tls_write_endpoint=/agent/distributed/write
+--enroll_secret_path=/etc/osquery/enroll_secret

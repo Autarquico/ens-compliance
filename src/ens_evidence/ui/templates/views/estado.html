@@ -1,0 +1,67 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<h1>Estado</h1>
+<p class="lead">Dónde estás en la preparación del ENS y qué toca ahora. Esta página solo lee: no cambia nada.</p>
+{{ m.revision_humana() }}
+<section class="card" aria-labelledby="h-sig">
+  <h2 id="h-sig">Siguiente paso</h2>
+  {% if next_step_url %}
+  <p><a class="btn btn-primary" href="{{ next_step_url }}">{{ next_step_label }}</a></p>
+  {% else %}
+  <p>{{ next_step_label }}</p>
+  {% endif %}
+</section>
+<section class="section" aria-labelledby="h-fases">
+  <h2 id="h-fases">Tu recorrido</h2>
+  <ol class="phases">
+    {%- for p in phases %}
+    <li>
+      {%- if p.state == "done" %}{{ m.icon("check") }}<span>{{ p.label }}</span> <span class="muted">· Hecho</span>
+      {%- elif p.state == "next" %}{{ m.icon("clock") }}<strong>{{ p.label }}</strong> <span class="muted">· Ahora</span>
+      {%- else %}{{ m.icon("help") }}<span>{{ p.label }}</span> <span class="muted">· Pendiente</span>
+      {%- endif %}
+      {%- if p.key == "aplicabilidad" %}<br><span class="muted">La Declaración de Aplicabilidad es el documento que dice qué medidas del ENS te tocan; la firma una persona responsable.</span>{% endif %}
+    </li>
+    {%- endfor %}
+  </ol>
+</section>
+<div class="grid">
+  <section class="card" aria-labelledby="h-prep">
+    <h2 id="h-prep">Preparación</h2>
+    <p>{{ m.badge(readiness.state) }}</p>
+    <p>{{ readiness.summary }}</p>
+  </section>
+  <section class="card" aria-labelledby="h-alc">
+    <h2 id="h-alc">Alcance</h2>
+    <p>{{ m.badge(scope_state) }}</p>
+    <p class="muted">Qué entra en el sistema.</p>
+  </section>
+  <section class="card" aria-labelledby="h-cat">
+    <h2 id="h-cat">Categorización</h2>
+    <p>{{ m.badge(categorization_state) }}</p>
+    <p>Categoría: {% if category %}<span class="mono">{{ category }}</span>{% else %}<span class="muted">sin calcular</span>{% endif %}</p>
+  </section>
+</div>
+<section class="section" aria-labelledby="h-bloq">
+  <h2 id="h-bloq">Lo que falta</h2>
+  {% if errors %}
+  <div class="notice notice-warn"><p><strong>No se ha podido leer algo del workspace:</strong></p><ul>{% for e in errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
+  {% endif %}
+  {% if blockers %}
+  {% if earlier_phase_pending %}<p class="muted">Estos bloqueos se resuelven siguiendo el recorrido de arriba.</p>{% endif %}
+  <div class="table-wrap"><table>
+    <caption>Cada punto necesita una acción de una persona.</caption>
+    <thead><tr><th scope="col">Medida</th><th scope="col">Qué pasa</th></tr></thead>
+    <tbody>
+    {%- for b in blockers %}
+    <tr><td class="id">{% if b.measure_id %}<a href="/matriz/{{ b.measure_id }}">{{ b.measure_id }}</a>{% else %}General{% endif %}</td><td>{% if b.texts | length > 1 %}<ul>{% for t in b.texts %}<li>{{ t }}</li>{% endfor %}</ul>{% else %}{{ b.texts[0] }}{% endif %}</td></tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+  {% else %}
+  <p class="muted">No hay bloqueos registrados. Eso no significa que el sistema esté conforme: falta la revisión humana.</p>
+  {% endif %}
+</section>
+<p class="muted">Datos de {{ generated_at }}.</p>
+{% endblock %}

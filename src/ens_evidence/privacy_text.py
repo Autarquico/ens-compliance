@@ -31,8 +31,10 @@ _OWN_IDS = re.compile(r"(?<![\w-])(?:(?:INC|SIM)-\d{4}-\d{3}|EV-\d{8}-[0-9a-f]{8
 _DIGIT_RUN = re.compile(r"\d(?:(?:[\d\s().+/:-]|,(?=\d))*\d)?")
 _PHONE_MIN_DIGITS = 9
 _IP_PORT = re.compile(r"(?:(?P<v4>[\d.]+)|\[(?P<v6>[0-9A-Fa-f:.]+)\]):(?P<port>\d{1,5})")
-_ISO_TIME = r"\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[+-]\d{2}(?::?\d{2})?)?"
+_ISO_TIME = r"\d{2}:\d{2}(?::\d{2}(?:\.\d+)?)?(?:[+-]\d{2}(?::?\d{2})?|Z)?"
 _ISO_8601 = re.compile(rf"(?:\d{{4}}-\d{{2}}-\d{{2}}(?:[T ]{_ISO_TIME})?|{_ISO_TIME})")
+# Un instante con fecha y hora: sus segundos con fracción y la «Z» parecen un DNI («14.136395Z»).
+_ISO_INSTANT = re.compile(rf"\d{{4}}-\d{{2}}-\d{{2}}[T ]{_ISO_TIME}")
 _CREDENTIAL_KEY = re.compile(
     r"(?<![A-Za-z0-9])(?P<label>password|passwd|pwd|contrase[ñn]a|clave|secret|token|api[_-]?key"
     r"|access[_-]?key)[\"']?\s*(?P<sep>[=:])(?P<gap>\s*)",
@@ -82,8 +84,10 @@ def _iban_checksum(iban: str) -> bool:
 
 
 def dni_nie_spans(text: str) -> list[tuple[int, int]]:
+    # Los instantes se tapan con el mismo largo: los tramos conservan sus posiciones.
+    masked = _ISO_INSTANT.sub(lambda m: "_" * len(m.group()), text)
     spans = []
-    for m in _DNI_NIE.finditer(text):
+    for m in _DNI_NIE.finditer(masked):
         if not m["sep"]:
             spans.append(m.span())
             continue
@@ -217,7 +221,7 @@ def check_declared_name(name: str, label: str = "--by") -> list[str]:
     """Errores de `--by` (o del campo `label`): un nombre declarado no puede ser vacío, largo,
     un secreto ni un identificador personal (correo, DNI/NIE, IBAN, teléfono). Sin el valor."""
     if not name.strip():
-        return [f"{label}: indica quién registra (nombre declarado)"]
+        return [f"{label}: indica tu nombre completo."]
     errors = (
         [f"{label}: demasiado largo (máximo {NAME_MAX} caracteres)"] if len(name) > NAME_MAX else []
     )
