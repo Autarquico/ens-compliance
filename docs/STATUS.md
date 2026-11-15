@@ -19,6 +19,7 @@
 - #70 Kit: identidad y doble factor (Authentik o Keycloak)
 - #71 Kit: protección frente a código dañino
 - #72 Kit: panel de monitorización
+- #77 Guía: Cloudflare Access con el proveedor de identidad de la pyme
 <!-- /pm-sync:done-this-week -->
 
 ---
