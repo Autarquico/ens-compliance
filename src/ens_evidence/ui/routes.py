@@ -8,6 +8,7 @@ from ens_evidence.ui.views.evidence import EVIDENCE_ROUTES
 from ens_evidence.ui.views.help import HELP_ROUTES
 from ens_evidence.ui.views.incidents import INCIDENT_ROUTES
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
+from ens_evidence.ui.views.monitoring import MONITORING_ROUTES
 from ens_evidence.ui.views.preaudit import PREAUDIT_ROUTES
 from ens_evidence.ui.views.status import STATUS_ROUTES
 from ens_evidence.ui.views.tools import TOOLS_ROUTES
@@ -25,6 +26,7 @@ def ui_routes() -> list[BaseRoute]:
         *INCIDENT_ROUTES,
         *PREAUDIT_ROUTES,
         *TOOLS_ROUTES,
+        *MONITORING_ROUTES,
         *KEYSTORE_ROUTES,
         *PASSWORDS_ROUTES,
         *CUSTODY_ROUTES,

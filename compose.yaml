@@ -22,6 +22,8 @@ services:
       # El latido vive en el tmpfs del contenedor: una versión nueva no hereda el de la anterior
       # y solo está sana si su propio scheduler late.
       ENS_HEARTBEAT_FILE: /tmp/scheduler-heartbeat
+      # Perfiles activos (los fija deploy/box.sh): la monitorización sabe qué herramientas se esperan.
+      ENS_KIT_PROFILES: ${COMPOSE_PROFILES:-}
     volumes:
       - data:/data
       # Solo el export de usuarios, en solo lectura (kit de contraseñas). Vacío sin el kit. La app

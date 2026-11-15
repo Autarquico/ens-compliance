@@ -1369,3 +1369,20 @@ def test_box_sh_kit_rechaza_usos_incorrectos(clone_with_docker_stub, args):
 
     assert result.returncode != 0
     assert "uso:" in result.stderr or "desconocida" in result.stderr
+
+
+def test_la_app_no_tiene_socket_de_docker_ni_mas_redes_y_la_ui_no_recibe_el_smtp(services):
+    app, ui = services["app"], services["ui"]
+    deploy = REPO / "deploy"
+
+    assert [v for v in app.get("volumes", []) if "docker.sock" in str(v)] == []
+    assert app["networks"] == ["backend", "claves-app"]
+    assert ui["env_file"] == "${ENS_UI_ENV_FILE:-deploy/ui.env}"
+    assert "ENS_SMTP_" not in str(ui.get("environment", ""))
+    assert app["environment"]["ENS_KIT_PROFILES"] == "${COMPOSE_PROFILES:-}"
+    assert "ENS_KIT_PROFILES" not in str(ui.get("environment", ""))
+    assert "ENS_SMTP_" not in (deploy / "ui.env.example").read_text(encoding="utf-8")
+    app_example = (deploy / ".env.example").read_text(encoding="utf-8")
+    assert {f"ENS_SMTP_{k}=" for k in ("HOST", "PORT", "USER", "PASSWORD", "FROM", "TO")} <= set(
+        re.findall(r"ENS_SMTP_\w+=", app_example)
+    )
