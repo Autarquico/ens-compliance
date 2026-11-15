@@ -254,8 +254,9 @@ anótalo y abre una incidencia. No toques el workspace real ni sus credenciales.
 
 1. Ejecuta dos veces seguidas `ens-evidence check --all` sin que haya cambiado
    nada.
-2. Qué miras: mismos estados; una ejecución nueva que da lo mismo no cambia el
-   estado del expediente (`assessment dossier status <id>` no señala cambios).
+2. Qué miras: la segunda vez no se añade ninguna ejecución (`check` dice desde
+   qué ejecución anterior no hay cambios), los estados son los mismos y
+   `assessment dossier status <id>` no señala deriva.
 3. Con `ens-evidence evidence import <paquete> --source endpoint --asset <id> --by …`
    del mismo paquete de endpoint dos veces: la segunda se rechaza y señala la evidencia existente.
 
@@ -408,6 +409,13 @@ cada paso (`backup run`).
      ```bash
      ens-evidence assessment dossier declare <id> --by "Marta Ibáñez Soler"
      ```
+
+     Si el expediente tiene secciones INCOMPLETE, `declare` se rechaza y las
+     lista. La dirección las revisa y decide: completarlas en un expediente
+     nuevo o reconocerlas expresamente con `--acknowledge-incomplete`, que
+     queda en el registro DECLARED
+     ([expediente, sección 4](expediente-de-autoevaluacion.md)). No añadas el
+     flag por costumbre.
 
      Si quieres enlazar el documento firmado, impórtalo antes y pasa
      `--evidence EV-…`. La herramienta no redacta la declaración ni genera el
