@@ -189,7 +189,12 @@ def _base(app: dict[str, Any], account: _Account) -> frozenset[str]:
     form = app["allowed_idps_form"]
     if form == "malformed":
         raise _Unresolved("allowed_idps con una forma que no se sabe interpretar")
-    if form != "list" or not app.get("allowed_idps"):
+    if form != "list":
+        raise _Unresolved(
+            "la respuesta de Cloudflare no indica qué proveedores admite la aplicación "
+            "(allowed_idps); revísalo en la consola"
+        )
+    if not app["allowed_idps"]:
         return frozenset(account.types)
     unknown = [i for i in app["allowed_idps"] if i not in account.types]
     if unknown:

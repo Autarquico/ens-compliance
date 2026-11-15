@@ -175,10 +175,10 @@ def igroup(group_id, include=(), require=(), exclude=()):
     }
 
 
-def iapp(app_id, *destinations, allowed="absent", **kwargs):
-    """`allowed`: "absent", None (null), lista de ids o "malformed"."""
+def iapp(app_id, *destinations, allowed=(), **kwargs):
+    """`allowed`: lista de ids (`()` = vacía), "absent", None (null) o "malformed"."""
     entry = app(app_id, *(destinations or (HOST,)), **kwargs)
-    if allowed == "absent":
+    if isinstance(allowed, str) and allowed == "absent":
         extra = {"allowed_idps_form": "absent", "allowed_idps": None}
     elif allowed is None:
         extra = {"allowed_idps_form": "null", "allowed_idps": None}

@@ -36,7 +36,7 @@ SECRETS = {
 }
 
 
-def web_app(allowed=None, domain="app.taller-norte.example", **extra):
+def web_app(allowed=(), domain="app.taller-norte.example", **extra):
     return {
         "id": "web",
         "name": "Web de la caja",
@@ -123,6 +123,19 @@ def test_allowed_idps_vacio_con_codigo_por_correo_en_la_cuenta_da_fail(setup, co
     setup(app=web_app(allowed=[]), policies=[allow({"everyone": {}})])
 
     assert of_app(check(collect())).status is FAIL
+
+
+@pytest.mark.parametrize("allowed", ["absent", None])
+def test_allowed_idps_ausente_o_nulo_no_da_pass(setup, collect, check, allowed):
+    app = web_app(allowed=allowed)
+    if allowed == "absent":
+        del app["allowed_idps"]
+    setup(app=app, providers=[WORKSPACE], policies=[allow({"everyone": {}})])
+
+    found = of_app(check(collect()))
+
+    assert found.status is UNKNOWN
+    assert found.reason_code == "idp_review"
 
 
 def test_scenario_sin_proveedores_en_la_cuenta_es_unknown_y_dice_que_falta(setup, collect, check):

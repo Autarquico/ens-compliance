@@ -32,7 +32,7 @@ GOOGLE = idp("gg", "google", "Google personal")
 ACCOUNT = [OTP, WS]
 
 
-def evaluate(*policies, idps=ACCOUNT, allowed="absent", groups=(), **kwargs):
+def evaluate(*policies, idps=ACCOUNT, allowed=(), groups=(), **kwargs):
     app = iapp("a", allowed=allowed, policies=policies, **kwargs)
     return only(run_identity(build_identity([app], idps, groups=groups)))
 
@@ -66,10 +66,17 @@ def test_otp_y_proveedores_de_consumo_son_fail(bad):
 
 
 def test_allowed_idps_vacio_admite_todos_y_con_otp_en_la_cuenta_es_fail():
-    for allowed in ([], None, "absent"):
-        result = evaluate(allow(sel("email_domain")), allowed=allowed)
+    result = evaluate(allow(sel("email_domain")), allowed=[])
 
-        assert_result(result, FAIL, "otp_or_consumer_idp", "Código por correo")
+    assert_result(result, FAIL, "otp_or_consumer_idp", "Código por correo")
+
+
+@pytest.mark.parametrize("form", ["absent", None])
+def test_allowed_idps_ausente_o_nulo_nunca_es_pass(form):
+    for idps in (ACCOUNT, [WS]):
+        result = evaluate(allow(sel("everyone")), idps=idps, allowed=form)
+
+        assert_result(result, UNKNOWN, "idp_review", "allowed_idps", "revísalo en la consola")
 
 
 def test_allowed_idps_vacio_sin_otp_en_la_cuenta_y_un_directorio_es_pass():
