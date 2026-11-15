@@ -105,3 +105,9 @@ def test_el_catalogo_es_un_modulo_hoja():
     }
 
     assert not any(name and name.startswith("ens_evidence") for name in imported)
+
+
+def test_access_idp_restricted_esta_en_el_catalogo_sin_sujetos_de_inventario():
+    spec = CHECKS["cloudflare.access_idp_restricted"]
+
+    assert (spec.connector, spec.subjects) == ("cloudflare", SubjectKind.SELF_REPORTED)

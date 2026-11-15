@@ -65,7 +65,9 @@ carpeta local). Escribe solo en `scope/`, `controls/`, `risk/`, `org/` y
 ## 3. Comprobar que Access exige MFA
 
 Hazlo antes de dar la dirección a nadie, y de nuevo tras cualquier cambio de
-política o de proveedor de identidad (IdP).
+política o de proveedor de identidad (IdP). Cómo dar de alta Workspace o Entra ID
+y restringir la aplicación a ese proveedor:
+[acceso con proveedor de identidad](acceso-con-proveedor-de-identidad.md).
 
 1. **En el panel de Cloudflare.** Zero Trust, Access, Applications,
    `ui.example.org`, pestaña Policies. Debe haber una política `Allow` con

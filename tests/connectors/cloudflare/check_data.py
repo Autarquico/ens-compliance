@@ -3,6 +3,7 @@
 from typing import Any
 
 from ens_evidence.connectors.cloudflare.checks import tunnel_requires_access
+from ens_evidence.connectors.cloudflare.identity_checks import access_idp_restricted
 from ens_evidence.models.contracts import CheckResult, CollectionResult
 
 from .fake_api import NOW
@@ -92,6 +93,7 @@ def build(
     zones=None,
     tunnels_section=None,
     collection_status="SUCCESS",
+    extra_sections=None,
 ) -> CollectionResult:
     sections = {
         "zones": zones or section(),
@@ -101,6 +103,7 @@ def build(
         or section(a["policies"] for a in apps if a["policies"]),
         "access_groups": groups_section or section(),
         "tunnels": tunnels_section or section(tunnels),
+        **(extra_sections or {}),
     }
     return CollectionResult(
         source="cloudflare",
@@ -135,3 +138,72 @@ def subject(hostname: str, path: str = "/*", tunnel_id: str = TUNNEL) -> str:
 
 def declared(hostname: str, path: str = "/*", reason: str = "agente público") -> dict[str, Any]:
     return {"hostname": hostname, "path": path, "reason": reason}
+
+
+HOST = "app.z.example"
+
+
+def idp(idp_id, idp_type, name=None):
+    return {"id": idp_id, "name": name or idp_id, "type": idp_type}
+
+
+def sel(kind, idp=None, group=None):
+    return {"kind": kind, "idp": idp, "group": group}
+
+
+def _kinds(selectors):
+    return [s["kind"] for s in selectors]
+
+
+def ipolicy(decision="allow", include=(), require=(), exclude=()):
+    """Política ya normalizada por la recogida: tipos y selectores saneados."""
+    return {
+        "decision": decision,
+        "include": _kinds(include),
+        "require": _kinds(require),
+        "exclude": _kinds(exclude),
+        "include_selectors": list(include),
+        "require_selectors": list(require),
+        "exclude_selectors": list(exclude),
+    }
+
+
+def igroup(group_id, include=(), require=(), exclude=()):
+    return {
+        "id": group_id,
+        **{k: v for k, v in ipolicy("allow", include, require, exclude).items() if k != "decision"},
+    }
+
+
+def iapp(app_id, *destinations, allowed=(), **kwargs):
+    """`allowed`: lista de ids (`()` = vacía), "absent", None (null) o "malformed"."""
+    entry = app(app_id, *(destinations or (HOST,)), **kwargs)
+    if isinstance(allowed, str) and allowed == "absent":
+        extra = {"allowed_idps_form": "absent", "allowed_idps": None}
+    elif allowed is None:
+        extra = {"allowed_idps_form": "null", "allowed_idps": None}
+    elif allowed == "malformed":
+        extra = {"allowed_idps_form": "malformed", "allowed_idps": None}
+    else:
+        extra = {"allowed_idps_form": "list", "allowed_idps": list(allowed)}
+    entry["app"].update(extra)
+    return entry
+
+
+def build_identity(apps, idps, *, groups=(), identity_section=None, tunnels=None, **kwargs):
+    """Cuenta con túnel en `HOST`, proveedores `idps` y las aplicaciones `apps`."""
+    extra = {"identity_providers": identity_section or section(idps)}
+    return build(
+        tunnels if tunnels is not None else [remote(rule(HOST))],
+        apps,
+        groups_section=section(groups),
+        extra_sections=extra,
+        **kwargs,
+    )
+
+
+def run_identity(result: CollectionResult) -> list[CheckResult]:
+    results = access_idp_restricted(result, EVIDENCE_ID, NOW)
+    for check in results:
+        CheckResult.model_validate(check.model_dump())
+    return results

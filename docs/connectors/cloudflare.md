@@ -15,7 +15,7 @@ estos permisos de lectura:
 | Cuenta | Account Settings Read | Audit logs |
 | Cuenta | Cloudflare Tunnel Read | Túneles y su ingress |
 | Cuenta | Access: Apps and Policies Read | Aplicaciones y políticas de Access |
-| Cuenta | Access: Organizations, Identity Providers, and Groups Read | Grupos de Access (`/access/groups`) |
+| Cuenta | Access: Organizations, Identity Providers, and Groups Read | Grupos (`/access/groups`) y proveedores de identidad (`/access/identity_providers`) de Access |
 | Zona | Zone Read | Listado de zonas |
 | Zona | DNS Read | Registros DNS (hostnames de túneles locales) |
 | Zona | Zone Settings Read | TLS: modo SSL, versión mínima, HTTPS forzado |
@@ -63,7 +63,7 @@ ens-evidence collect cloudflare
 
 ## Qué se recoge
 
-Zonas, DNS, TLS, WAF, aplicaciones, políticas y grupos de Access, túneles (con su
+Zonas, DNS, TLS, WAF, aplicaciones, políticas, grupos y proveedores de identidad de Access, túneles (con su
 ingress) y un resumen de audit logs de los últimos 30 días. Cada sección
 tiene su propio estado (`access_groups` incluido): "sin permiso" nunca se confunde con "no
 configurado".
@@ -72,6 +72,10 @@ De cada grupo de Access solo se guardan id, nombre, los tipos de selector de
 include/require/exclude y los ids de los grupos anidados que referencia. Una
 configuración remota de túnel sin `config` o sin `ingress` (ausentes o `null`) es
 `ingress_status: ERROR`, nunca un túnel sin rutas.
+
+De cada proveedor de identidad (sección `identity_providers`) solo se guardan
+id, nombre y tipo. Nunca su configuración (identificador y secreto de cliente)
+ni la de SCIM. El permiso es el mismo que ya pide `access_groups`.
 
 No se guardan: el token, los valores de los selectores de Access (correos),
 el contenido de registros DNS que no son CNAME, credenciales o parámetros de
@@ -116,3 +120,51 @@ Detalles de la evaluación:
   las rutas de la cuenta: corrige el destino en Cloudflare.
 - Si la sección de túneles se recoge con éxito pero está vacía, no se emite ningún
   resultado: no hay rutas que evaluar y nunca se declara `PASS` sin evidencia.
+
+## Check: Access solo con el proveedor de la pyme
+
+`cloudflare.access_idp_restricted` es una restricción técnica de los métodos de
+acceso: para cada aplicación de Access que publica un host de los túneles de la
+cuenta (menos las `public_routes`, la misma población que
+`tunnel_requires_access`), mira qué proveedores admite.
+
+- `PASS` solo si admite un único proveedor de directorio (`google-apps` o
+  `azureAD`); el motivo lo nombra. **No prueba** que sea el tenant de la pyme ni
+  que exija doble factor: una persona lo verifica y el MFA se evidencia en
+  `collector-workspace` / `collector-m365`.
+- `FAIL` con código de motivo `otp_or_consumer_idp` (código por correo o
+  proveedor personal) o `bypass`.
+- `UNKNOWN` con `permission_denied`, `no_identity_providers`, `idp_review`,
+  `non_identity`, `scope_incomplete` o `stale_evidence`. `idp_review` cubre
+  varios motivos: SAML, OIDC u otro proveedor o más de un directorio; sin
+  política `allow` o sin proveedor admitido; `deny` que menciona un método de
+  código o personal; decisión, selector, grupo o `allowed_idps` desconocido,
+  ilegible o ausente de la evidencia; y `allowed_idps` ausente o `null` en la
+  respuesta de Cloudflare («la respuesta no indica qué proveedores admite la
+  aplicación»). Nunca `PASS` con datos incompletos; la lista de proveedores
+  permitidos vacía admite todos los de la cuenta.
+
+Guía de configuración y de acceso de emergencia:
+[acceso con proveedor de identidad](../runbooks/acceso-con-proveedor-de-identidad.md).
+
+### Cobertura de op.acc.6
+
+El vínculo a una medida lo hace una persona con `ens-evidence matrix link`; el
+código no lo crea. Cobertura declarada por cláusula:
+
+| Cláusula | Cobertura |
+|----------|-----------|
+| op.acc.6.6 | No cubre |
+| op.acc.6.r2.1 | No cubre |
+| Resto de op.acc.6 | No cubre |
+
+op.acc.6.6 pide inhabilitar las credenciales cuando el usuario termina su
+relación con el sistema. Limitar las aplicaciones al proveedor de la pyme
+centraliza en ese proveedor la baja de cuentas, pero el check no evidencia que
+las bajas se hagan: solo observa qué métodos de inicio de sesión admite cada
+aplicación.
+
+Fuente: documentación de la API de Cloudflare, 2026-11-15; no probado contra una
+cuenta real. Siguen sin verificar: el campo ausente en la lista de aplicaciones,
+las formas exactas de algunos selectores, la expansión de políticas
+reutilizables y si Access puede exigir el segundo factor.

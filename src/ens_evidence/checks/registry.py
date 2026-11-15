@@ -16,6 +16,7 @@ from ens_evidence.checks.catalog import CHECKS
 from ens_evidence.connectors.backups import checks as backups
 from ens_evidence.connectors.backups.config import BackupsConfig
 from ens_evidence.connectors.cloudflare import checks as cloudflare
+from ens_evidence.connectors.cloudflare import identity_checks as cloudflare_identity
 from ens_evidence.connectors.cloudflare.config import CloudflareConfig
 from ens_evidence.connectors.github import checks as github
 from ens_evidence.connectors.github.config import GitHubConfig
@@ -53,6 +54,7 @@ CHECK_FUNCTIONS: Mapping[str, CheckFunction] = MappingProxyType(
         github.SECRET_SCANNING: github.secret_scanning_enabled,
         github.DEPENDABOT: github.dependabot_alerts_enabled,
         cloudflare.CHECK_ID: cloudflare.tunnel_requires_access,
+        cloudflare.ACCESS_IDP_RESTRICTED: cloudflare_identity.access_idp_restricted,
         workspace.USER_2SV: workspace.user_2sv_enrolled,
         workspace.ADMIN_2SV: workspace.admin_2sv_enforced,
         workspace.SUSPENDED_NO_ADMIN: workspace.suspended_without_admin_role,

@@ -6,13 +6,13 @@ status: active
 priority: P2
 size: M
 issue: 77
-prs: []
+prs: [86]
 related_issues: [77]
 depends_on: [collector-cloudflare]
 supersedes: [kit-identity]
 related_specs: [toolkit-server, setup-guides, kit-access-panel]
 created: 2026-11-12
-updated: 2026-11-12
+updated: 2026-11-15
 ---
 
 # Guía: Cloudflare Access con el proveedor de identidad de la pyme
@@ -53,6 +53,12 @@ Lo que falta es la guía para configurarlo y la evidencia de que se hizo: que la
 - **Given** el proveedor de identidad caído
 - **When** se necesita entrar en la web de la caja
 - **Then** el runbook da un acceso de emergencia registrado y revisado, sin dejar la web abierta
+
+## Decisiones (2026-11-15, usuario)
+
+- Alcance del check: las aplicaciones de Access que publican los hosts de los túneles de la cuenta, menos las `public_routes` declaradas (la misma población que `tunnel_requires_access`); sin configuración nueva.
+- Acceso de emergencia: primero SSH con clave al VPS y la CLI (la web sigue cerrada); solo si la web es imprescindible, código por correo temporal en la aplicación de la web para una o dos direcciones con nombre, registrado como incidente, retirado después y revisado. El check da FAIL mientras está puesto.
+- Verificado en la documentación de la API (context7, 2026-11-15): `GET /accounts/{id}/access/identity_providers` con el permiso «Access: Organizations, Identity Providers, and Groups Read» (el que ya pide `access_groups`); `allowed_idps` vacío admite todos los proveedores de la cuenta; regla `login_method: {id}`; `azureAD` y `gsuite` llevan `identity_provider_id`; la lista de políticas de una aplicación incluye las reutilizables. Sin verificar contra una cuenta real.
 
 ## Notas técnicas / riesgos
 

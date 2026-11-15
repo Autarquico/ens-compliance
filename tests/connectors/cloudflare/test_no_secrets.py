@@ -30,7 +30,7 @@ def test_los_fixtures_contienen_canarios_distintos_del_token():
         if CANARY in word
     }
 
-    assert len(canaries) >= 9
+    assert len(canaries) >= 17
     assert TOKEN not in "".join(path.read_text() for path in FIXTURES.glob("*.json"))
 
 
@@ -57,6 +57,14 @@ def test_ningun_canario_llega_al_artefacto_guardado(collect):
         "zone-owner-CANARY",
         "expr-CANARY",
         "actor-CANARY",
+        "client-id-CANARY",
+        "client-secret-CANARY",
+        "scim-secret-CANARY",
+        "dir-CANARY",
+        "gw-secret-CANARY",
+        "aad-CANARY-obj",
+        "gs-CANARY",
+        "okta-CANARY",
     ],
 )
 def test_cada_canario_de_las_respuestas_esta_ausente_del_artefacto(collect, canary):
@@ -76,19 +84,36 @@ def test_el_dns_solo_guarda_content_de_los_cname(collect):
 def test_las_politicas_de_access_guardan_tipos_de_selector_nunca_valores(collect):
     policy = collect().data["sections"]["access_policies"]["items"][0]["policies"][0]
 
-    assert policy["include"] == ["email", "email_domain"]
-    assert policy["require"] == ["ip"]
-    assert policy["exclude"] == []
+    assert policy["include"] == ["email", "email_domain", "login_method", "azureAD"]
+    assert policy["require"] == ["ip", "gsuite"]
+    assert policy["exclude"] == ["login_method"]
+    assert policy["include_selectors"] == [
+        {"kind": "email", "idp": None, "group": None},
+        {"kind": "email_domain", "idp": None, "group": None},
+        {"kind": "login_method", "idp": "idp-1", "group": None},
+        {"kind": "azureAD", "idp": "idp-1", "group": None},
+    ]
+    assert policy["require_selectors"][-1] == {"kind": "gsuite", "idp": "idp-2", "group": None}
+    assert policy["exclude_selectors"] == [
+        {"kind": "login_method", "idp": "idp-otp", "group": None}
+    ]
 
 
 def test_los_grupos_de_access_guardan_tipos_de_selector_y_referencias_nunca_valores(collect):
     group = collect().data["sections"]["access_groups"]["items"][0]
 
-    assert group["include"] == ["email"]
+    assert group["include"] == ["email", "login_method"]
     assert group["exclude"] == ["ip"]
-    assert group["require"] == ["group"]
+    assert group["require"] == ["group", "okta"]
     assert group["require_groups"] == ["grp-2"]
+    assert group["require_selectors"] == [
+        {"kind": "group", "idp": None, "group": "grp-2"},
+        {"kind": "okta", "idp": "idp-3", "group": None},
+    ]
     assert set(group) == {
+        "include_selectors",
+        "exclude_selectors",
+        "require_selectors",
         "id",
         "name",
         "include",
@@ -115,6 +140,8 @@ def test_campos_extra_de_las_respuestas_no_se_persisten(collect):
         "name",
         "type",
         "public_destinations",
+        "allowed_idps",
+        "allowed_idps_form",
     }
     assert set(sections["tunnels"]["items"][0]) == {
         "id",

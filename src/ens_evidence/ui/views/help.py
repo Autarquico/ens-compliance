@@ -20,6 +20,7 @@ from ens_evidence.ui.pages import error_page, page_context, render
 RUNBOOKS_DIR = Path(__file__).resolve().parent.parent / "runbooks"
 RUNBOOKS = frozenset(
     {
+        "acceso-con-proveedor-de-identidad",
         "kit-copias",
         "kit-claves",
         "kit-contrasenas",
