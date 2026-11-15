@@ -124,14 +124,16 @@ agente sin reportar (paso 6).
    vuelve a ejecutar el script del equipo e impórtalo.
 6. Si el equipo de prueba tiene agente: para `osqueryd` en él
    (`sudo systemctl stop osqueryd` en Linux,
-   `sudo launchctl bootout system/io.osquery.agent` en macOS) y espera más
+   `sudo launchctl bootout system/io.osquery.agent` en macOS,
+   `Stop-Service osqueryd` como Administrador en Windows) y espera más
    de 3 h. Qué miras: en `agent hosts`
    ([agentes osquery, sección 2](agentes-osquery.md)) el último contacto deja
    de avanzar, y el [panel de monitorización](monitorizacion.md) marca
    «Agente sin reportar». Registra: nota manual con la salida de
    `agent hosts` y la hora. Vuelta atrás: arranca de nuevo `osqueryd`
-   (`sudo systemctl start osqueryd`, o `sudo launchctl bootstrap system
-   /Library/LaunchDaemons/io.osquery.agent.plist`) y comprueba que el último
+   (`sudo systemctl start osqueryd`; `sudo launchctl bootstrap system
+   /Library/LaunchDaemons/io.osquery.agent.plist` en macOS, no verificado en
+   equipo real; `Start-Service osqueryd` en Windows) y comprueba que el último
    contacto vuelve a avanzar.
 
 ### 2.3 Quitar protección test: desviación
