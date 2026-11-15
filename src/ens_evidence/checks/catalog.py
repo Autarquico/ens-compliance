@@ -43,6 +43,7 @@ CHECKS: Mapping[str, CheckSpec] = MappingProxyType(
             "github", SubjectKind.REPOSITORY, skip_archived=True
         ),
         "cloudflare.tunnel_requires_access": CheckSpec("cloudflare", SubjectKind.SELF_REPORTED),
+        "cloudflare.access_idp_restricted": CheckSpec("cloudflare", SubjectKind.SELF_REPORTED),
         "workspace.user_2sv_enrolled": CheckSpec("google-workspace", SubjectKind.SELF_REPORTED),
         "workspace.admin_2sv_enforced": CheckSpec("google-workspace", SubjectKind.SELF_REPORTED),
         "workspace.suspended_without_admin_role": CheckSpec(
