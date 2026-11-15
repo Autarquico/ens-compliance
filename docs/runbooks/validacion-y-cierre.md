@@ -100,9 +100,12 @@ runbook las hace por ti.
 
 ### 2.2 Desconectar agente: cobertura perdida
 
-En v0.1 no hay agente (la evidencia de equipos es un paquete que importas,
-[endpoint](../connectors/endpoint.md)). La cobertura perdida se ve por
-caducidad del paquete.
+La caja ya trae el agente osquery ([agentes osquery](agentes-osquery.md)),
+pero en v0.1 sus resultados no alimentan los checks HOST: estos solo leen el
+paquete que importas ([endpoint](../connectors/endpoint.md)). Por eso la
+cobertura perdida se prueba de dos formas: por caducidad del paquete (pasos 1
+a 5, la que bloquea el expediente) y, si tienes agentes, por el aviso de
+agente sin reportar (paso 6).
 
 1. Prepara: un equipo de prueba inscrito, con un paquete importado.
 2. Haz que caduque: espera a `max_evidence_age_days` o evalúa en una fecha
@@ -119,6 +122,17 @@ caducidad del paquete.
 4. Registra: nota manual con la fecha usada en `--at` y la salida.
 5. Vuelta atrás: ninguna; `--at` no escribe. Si dejaste caducar un paquete real,
    vuelve a ejecutar el script del equipo e impórtalo.
+6. Si el equipo de prueba tiene agente: para `osqueryd` en él
+   (`sudo systemctl stop osqueryd` en Linux,
+   `sudo launchctl bootout system/io.osquery.agent` en macOS) y espera más
+   de 3 h. Qué miras: en `agent hosts`
+   ([agentes osquery, sección 2](agentes-osquery.md)) el último contacto deja
+   de avanzar, y el [panel de monitorización](monitorizacion.md) marca
+   «Agente sin reportar». Registra: nota manual con la salida de
+   `agent hosts` y la hora. Vuelta atrás: arranca de nuevo `osqueryd`
+   (`sudo systemctl start osqueryd`, o `sudo launchctl bootstrap system
+   /Library/LaunchDaemons/io.osquery.agent.plist`) y comprueba que el último
+   contacto vuelve a avanzar.
 
 ### 2.3 Quitar protección test: desviación
 
@@ -300,6 +314,11 @@ exige revisiones de la matriz):
    determinista: `READY` sigue siendo alcanzable, pero el expediente queda con
    «revisión humana pendiente» y el análisis (sección 6, punto 2) tiene que
    llevar `--manual-judgment-review`.
+7. Lo que la propia caja aporta a su auditoría, si lo usas: acceso con el
+   proveedor de identidad ([acceso con proveedor de identidad](acceso-con-proveedor-de-identidad.md)),
+   panel de monitorización y agente del VPS ([monitorización](monitorizacion.md),
+   [agentes osquery](agentes-osquery.md)) y protección frente a código dañino
+   ([antimalware](kit-antimalware.md)). Revisa sus checks en el paso siguiente.
 
 Después, recoge y comprueba:
 
