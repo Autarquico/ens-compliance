@@ -15,7 +15,7 @@
   </tbody>
 </table></div>
 {% endif %}
-<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
   <h3>Añadir una dependencia</h3>
   {{ m.text_field("dependency_id", "Identificador", hint="Sin espacios, por ejemplo «app-db».") }}
   <div class="field">
@@ -34,5 +34,5 @@
   </div>
   {{ m.text_field("purpose", "Para qué (opcional)") }}
   {% include "partials/_paso_acciones.html" %}
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

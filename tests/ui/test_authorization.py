@@ -15,6 +15,7 @@ from starlette.testclient import TestClient
 
 from ens_evidence.applicability import approve_declaration, propose_applicability
 from ens_evidence.models.enums import Role
+from ens_evidence.orgdocs.contract import PROCEDURES_AUTHORITY_QUESTION
 from ens_evidence.preaudit.records import scan_dispositions
 from ens_evidence.preaudit.requests import list_requests
 from ens_evidence.scope import approve_scope
@@ -37,6 +38,7 @@ from ens_evidence.ui.views import matrix as matrix_view
 from ens_evidence.ui.views.dossier import DOSSIER_ROUTES
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
 from ens_evidence.ui.views.status import STATUS_ROUTES
+from ens_evidence.ui.wizard.docs import BLOCK_OF
 from ens_evidence.workspace import LocalStore
 
 from .conftest import NOW, ORIGIN, Session, jwks_for, snapshot_of, ui_client
@@ -52,7 +54,7 @@ from .test_preaudit_actions import (  # noqa: F401
     stages,
 )
 from .test_wizard_categorization import add_info, rating_fields
-from .test_wizard_docs import fill_all
+from .test_wizard_docs import ANSWERS, fill_all, form_for
 
 EMAIL = "ana@example.com"
 ALL_ROLES = frozenset(Role)
@@ -619,3 +621,28 @@ def test_los_pasos_de_aprobacion_con_rol_fijo_deniegan_sin_el_rol(ui, store, aud
     grant(store, True, SO)
     assert ui.post("/asistente/aprobacion-alcance", {"accion": "aprobar"}).status_code == 403
     assert "role=system_owner" in audit_lines(audit, "denied")[-1]
+
+
+def test_cambiar_quien_aprueba_los_procedimientos_exige_la_direccion(documents, audit):
+    ui, store = documents
+    fill_all(ui)
+    slug = BLOCK_OF[PROCEDURES_AUTHORITY_QUESTION].slug
+    form = form_for(slug, {**ANSWERS, PROCEDURES_AUTHORITY_QUESTION: "el responsable del sistema"})
+    grant(store, True, Role.SYSTEM_OWNER)
+    before = snapshot_of(store)
+
+    response = ui.post(f"/asistente/{slug}", form)
+
+    assert response.status_code == 403
+    assert "role=management" in audit_lines(audit, "denied")[-1]
+    assert snapshot_of(store) == before
+
+
+def test_la_direccion_si_puede_cambiar_quien_aprueba_los_procedimientos(documents):
+    ui, store = documents
+    fill_all(ui)
+    slug = BLOCK_OF[PROCEDURES_AUTHORITY_QUESTION].slug
+    form = form_for(slug, {**ANSWERS, PROCEDURES_AUTHORITY_QUESTION: "el responsable del sistema"})
+    grant(store, True, Role.MANAGEMENT)
+
+    assert ui.post(f"/asistente/{slug}", form).status_code == 303

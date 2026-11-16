@@ -14,7 +14,7 @@ from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.authz import WIZARD_STEPS
 from ens_evidence.ui.forms import FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
-from ens_evidence.ui.roles import ROLE_LABELS
+from ens_evidence.ui.roles import role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.wizard.applicability import APPLICABILITY_STEPS
 from ens_evidence.ui.wizard.base import Step, StepInput, StepRejected
@@ -61,11 +61,11 @@ def _echo(form: dict[str, list[str]]) -> dict[str, Any]:
     return {name: v if len(v) > 1 else (v[0] if v else "") for name, v in safe.items()}
 
 
-def _missing_role(step: Step, step_input: StepInput) -> str | None:
-    """El nombre del rol fijo que exige el paso y que este usuario no tiene; si no, `None`."""
+def _missing_role(step: Step, step_input: StepInput) -> list[dict[str, str]] | None:
+    """El rol fijo que exige el paso y que este usuario no tiene; si no, `None`."""
     required = WIZARD_STEPS[step.slug]
     if isinstance(required, Role) and step_input.permissions.lacks(required):
-        return ROLE_LABELS[required]
+        return role_options([required])
     return None
 
 

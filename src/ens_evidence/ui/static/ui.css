@@ -161,3 +161,5 @@ ul.plain li { padding: var(--space-2) 0; border-bottom: 1px solid var(--border);
 .monitor-foot a { display: inline-flex; align-items: center; min-height: var(--tap); }
 .spark { flex: none; max-width: 100%; }
 .spark-ok { fill: var(--ok); } .spark-warn { fill: var(--warn); } .spark-bad { fill: var(--bad); } .spark-neutral { fill: var(--border-strong); }
+fieldset.gate { border: 0; padding: 0; margin: 0; min-width: 0; }
+fieldset.gate:disabled { opacity: 0.6; }

@@ -27,6 +27,29 @@ class MfaState:
     status: str
 
 
+# Cada código que puede dejar el check, dicho para quien no lo conoce; el código va aparte.
+_REASONS = {
+    NOT_CHECKED: (
+        "Todavía no se ha ejecutado la comprobación: recoge `cloudflare` y ejecuta los checks"
+    ),
+    UNREADABLE: "No se ha podido leer el historial de comprobaciones",
+    "stale_evidence": "La recogida es anterior a esta comprobación: vuelve a recoger `cloudflare`",
+    "ui_hostname_not_configured": "Falta `ui_hostname` en `connectors/cloudflare.yaml`",
+    "ui_app_not_found": "No hay en Access una aplicación para el hostname de esta interfaz",
+    "ui_app_partial": "Ninguna aplicación de Access cubre el hostname entero de esta interfaz",
+    "ui_app_unresolved": "El hostname configurado no es válido o no se pudo resolver",
+    "policy_unresolved": "No constan las políticas de la aplicación de Access",
+    "no_allow_policy": "La aplicación de Access no tiene ninguna política que permita entrar",
+    "non_identity": "Hay una política por token de servicio: una persona debe confirmar que es "
+    "solo para máquinas",
+    "mfa_missing": "Hay una política de Access que deja entrar sin segundo factor",
+    "bypass": "Hay una política de Access que deja entrar sin segundo factor",
+    "error": "No se pudo recoger la configuración de Access",
+    "unknown": "No se pudo leer parte de la configuración de Access",
+    "fail": "Una política de Access no exige segundo factor",
+}
+_FALLBACK = "La política de Access no se ha podido confirmar"
+
 _PASS = MfaState(None, CheckStatus.PASS.value)
 
 
@@ -60,27 +83,26 @@ def _cached_state(request: Request) -> MfaState:
         keys = tuple(store.list(connector_prefix(CONNECTOR)))
     except Exception:  # noqa: BLE001
         return MfaState(UNREADABLE, "ilegible")
-    cache: dict[tuple[str, ...], MfaState] = getattr(request.app.state, "mfa_state_cache", {})
-    request.app.state.mfa_state_cache = cache
-    if keys not in cache:
-        cache.clear()
-        cache[keys] = read_mfa_state(store)
-    return cache[keys]
+    cached: tuple[tuple[str, ...], MfaState] | None = getattr(request.app.state, "mfa_state", None)
+    if cached is None or cached[0] != keys:
+        cached = (keys, read_mfa_state(store))
+        request.app.state.mfa_state = cached
+    return cached[1]
 
 
 def mfa_notices(request: Request) -> list[dict[str, str]]:
     state = _cached_state(request)
     if state.code is None:
         return []
+    result = "" if state.code in (NOT_CHECKED, UNREADABLE) else f"; resultado: {state.status}"
     return [
         {
             "kind": "warn",
             "title": "MFA no confirmada para esta interfaz.",
             "how": (
-                f"El último resultado de la comprobación de la política de Access es "
-                f"{state.status} (motivo: {state.code}). Esto no indica que alguien haya entrado "
-                f"sin MFA: indica que el producto no ha podido confirmarlo. Revisa la política y "
-                f"repite la comprobación: {RUNBOOK}."
+                f"{_REASONS.get(state.code, _FALLBACK)} (código: {state.code}{result}). "
+                "Esto no indica que alguien haya entrado sin MFA: indica que el producto no ha "
+                f"podido confirmarlo. Más en {RUNBOOK}."
             ),
         }
     ]

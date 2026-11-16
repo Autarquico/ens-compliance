@@ -28,7 +28,7 @@ from ens_evidence.scope.models import AssetType
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
-from ens_evidence.ui.roles import ROLE_LABELS
+from ens_evidence.ui.roles import ROLE_LABELS, role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.views.matrix import REVIEW_ROLES
@@ -124,10 +124,8 @@ def _page(
         form_errors=form_errors or [],
         application_assets=assets,
         rows=list(ROWS),
-        review_roles=[
-            {"value": r.value, "label": ROLE_LABELS[r]}
-            for r in permissions_of(request).offer(REVIEW_ROLES)
-        ],
+        review_roles=role_options(permissions_of(request).offer(REVIEW_ROLES)),
+        review_roles_needed=role_options(REVIEW_ROLES),
         current=_current(register),
         unreadable_count=len(unreadable),
         mismatches=_mismatch(register, seal),

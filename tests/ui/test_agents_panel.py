@@ -162,3 +162,22 @@ def test_panel_is_get_only_and_writes_nothing(panel, workspace):
 
     assert {k: workspace.read_bytes(k) for k in workspace.list("")} == before
     assert SERVER in panel.get("/agentes").text
+
+
+def test_without_endpoint_config_there_are_no_agents_and_no_warning(config, store, key, token):
+    seed_example_scope(store)
+
+    html = Session(ui_client(config, store, key), token).get("/agentes").text
+
+    assert "No hay agentes configurados" in html
+    assert "No se puede leer" not in html
+    assert 'notice-warn" role="status"><p>No hay agentes' not in html
+
+
+def test_unreadable_endpoint_config_stays_an_error(panel, workspace):
+    workspace.write_text("connectors/endpoint.yaml", "hosts: [roto")
+
+    html = panel.get("/agentes").text
+
+    assert "No se puede leer connectors/endpoint.yaml" in html
+    assert "No hay agentes configurados" not in html

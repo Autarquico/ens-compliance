@@ -106,3 +106,35 @@ def test_page_never_writes(session, example_store):
     before = sorted(example_store.list(""))
     page(session)
     assert sorted(example_store.list("")) == before
+
+
+def test_every_reason_code_of_the_check_has_human_text():
+    from ens_evidence.connectors.cloudflare import mfa_checks
+    from ens_evidence.ui.mfa_notice import _REASONS
+
+    codes = {
+        getattr(mfa_checks, name)
+        for name in (
+            "HOSTNAME_NOT_CONFIGURED",
+            "APP_NOT_FOUND",
+            "APP_PARTIAL",
+            "APP_UNRESOLVED",
+            "POLICY_UNRESOLVED",
+            "NO_ALLOW_POLICY",
+            "NON_IDENTITY",
+            "BYPASS",
+            "MFA_MISSING",
+            "STALE_EVIDENCE",
+        )
+    }
+
+    assert codes <= set(_REASONS)
+
+
+def test_notice_speaks_human_first_and_keeps_the_code_secondary(session):
+    body = page(session)
+
+    assert "Todavía no se ha ejecutado la comprobación" in body
+    assert "(código: not_checked)" in body
+    assert "`" not in NOTICE.search(body)[0]
+    assert "es sin resultado" not in body

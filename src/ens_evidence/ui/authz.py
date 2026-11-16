@@ -24,9 +24,8 @@ from ens_evidence.ui.security import SAFE_METHODS
 
 class Need(StrEnum):
     EDIT = "edit"  # basta la edición
-    CHOSEN = (
-        "chosen"  # edición y el rol que la persona elige en el formulario; lo valida el handler
-    )
+    # edición y el rol que la persona elige en el formulario; lo valida el handler
+    CHOSEN = "chosen"
 
 
 Requirement = Need | Role  # un `Role` fijo exige además ese rol asignado
@@ -103,12 +102,12 @@ OPERATIONS: Operations = {
 }
 
 
-def fixed_role(path: str, key: str) -> Role:
-    """El rol fijo de una acción repartida; para que el handler use el mismo que autoriza."""
+def fixed_role(path: str, key: str | None = None) -> Role:
+    """El rol fijo de una operación (de la acción `key` si reparte); para pantalla y handler."""
     entry = OPERATIONS[("POST", path)]
-    assert isinstance(entry, ByParam)
-    role = entry.policies[key]
-    assert isinstance(role, Role)
+    role = entry.policies[key or ""] if isinstance(entry, ByParam) else entry
+    if not isinstance(role, Role):
+        raise TypeError(f"{path} no exige un rol fijo")
     return role
 
 
@@ -155,7 +154,7 @@ def denial_message(denial: Denial) -> str:
         return (
             "Tu usuario puede consultar, pero no editar. Quien administra la herramienta puede "
             "darte permiso de edición con `ens-evidence ui roles grant <tu correo> --edit`. "
-            "No se ha guardado nada."
+            "No se ha guardado nada. Más en docs/runbooks/interfaz-web.md, sección 7."
         )
     if denial.reason == "missing_role" and denial.role is not None:
         return (

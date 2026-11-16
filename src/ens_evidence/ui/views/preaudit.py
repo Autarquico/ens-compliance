@@ -42,9 +42,11 @@ from ens_evidence.preaudit.review import ReviewRejected, review
 from ens_evidence.preaudit.service import PreparedRecord, read_prepared
 from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.ui.audit import audit_write
+from ens_evidence.ui.authz import fixed_role
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
 from ens_evidence.ui.plain import translate
+from ens_evidence.ui.roles import Permissions, role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
 from ens_evidence.workspace import NotFound
@@ -276,7 +278,14 @@ def _page(
         error_finding=error_finding,
         values={"by": "", **(values or {})},
         saved=SAVED_TEXTS.get(saved or ""),
+        missing_role=_missing_role(permissions_of(request)),
     )
+
+
+def _missing_role(permissions: Permissions) -> list[dict[str, str]] | None:
+    """Enviar y decidir piden el mismo rol (authz.py); si falta, se dice antes de rellenar."""
+    required = fixed_role("/preauditoria/enviar")
+    return role_options([required]) if permissions.lacks(required) else None
 
 
 def preauditoria(request: Request) -> Response:

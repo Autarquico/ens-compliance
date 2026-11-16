@@ -3,6 +3,7 @@
 {% block content %}
 <h1>Agentes</h1>
 <p class="lead">Los equipos con agente osquery: si están dados de alta, cuándo contactaron por última vez y qué dice la comprobación de contacto (HOST-002). Es una vista de solo lectura: las altas, revocaciones y consultas en vivo se hacen con la línea de órdenes.</p>
+{% for note in notes %}<p class="muted">{{ note }}</p>{% endfor %}
 {% for problem in problems %}<section class="notice notice-warn" role="status"><p>{{ problem }}</p></section>{% endfor %}
 <div class="table-wrap"><table>
   <caption>{{ rows | length }} equipos inscritos</caption>

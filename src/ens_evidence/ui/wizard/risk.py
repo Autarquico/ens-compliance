@@ -36,6 +36,7 @@ from ens_evidence.scope import ScopeNotApproved
 from ens_evidence.scope.inventory import SERVICES_KEY, SYSTEM_KEY
 from ens_evidence.ui.forms import first
 from ens_evidence.ui.plain import translate
+from ens_evidence.ui.roles import ROLE_LABELS, role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard.base import (
@@ -61,15 +62,6 @@ TREATMENT_LABELS = {
     Treatment.ACCEPT: "Aceptarlo",
     Treatment.TRANSFER: "Transferirlo (un seguro o un proveedor)",
     Treatment.AVOID: "Evitarlo (dejar de hacer lo que lo causa)",
-}
-ROLE_LABELS = {
-    Role.SYSTEM_OWNER: "Responsable del sistema",
-    Role.MANAGEMENT: "Dirección",
-    Role.SECURITY_OFFICER: "Responsable de la seguridad",
-    Role.INFORMATION_OWNER: "Responsable de la información",
-    Role.SERVICE_OWNER: "Responsable del servicio",
-    Role.SYSTEM_ADMINISTRATOR: "Administrador del sistema",
-    Role.SYSTEM_ADMINISTRATOR_DELEGATE: "Administrador delegado",
 }
 ACTION_STATUS_LABELS = {
     ActionStatus.PENDING: "Pendiente",
@@ -250,7 +242,7 @@ def _registro_context(step: StepInput) -> Context:
         "safeguard_choices": _catalog_choices(),
         "levels": [level.value for level in SecurityLevel],
         "treatments": [{"value": t.value, "label": TREATMENT_LABELS[t]} for t in Treatment],
-        "roles": [{"value": r.value, "label": label} for r, label in ROLE_LABELS.items()],
+        "roles": role_options(ROLE_LABELS),
         "action_statuses": [
             {"value": s.value, "label": ACTION_STATUS_LABELS[s]} for s in ActionStatus
         ],

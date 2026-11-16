@@ -5,6 +5,7 @@ from pathlib import Path
 
 import pytest
 
+from ens_evidence.ui.pages import code_spans
 from ens_evidence.ui.views.agents import (
     AgentDetail,
     AgentRow,
@@ -416,7 +417,7 @@ CHROME = {
     "page_title": "Página",
     "missing_role": None,
     "needs_init": False,
-    "role_notices": [{"kind": "warn", "title": HOSTILE, "how": HOSTILE}],
+    "global_notices": [{"kind": "warn", "title": HOSTILE, "how": HOSTILE}],
 }
 FINDING = {
     "id": "a" * 64,
@@ -463,7 +464,7 @@ _AGENT_ROW = AgentRow(
 _AGENT_BARE = AgentRow("pc-2", "never", "Sin alta", None, "—", None, None)
 
 VIEW_CONTEXT = {
-    "agents.html": {"rows": [_AGENT_ROW, _AGENT_BARE], "problems": [HOSTILE]},
+    "agents.html": {"rows": [_AGENT_ROW, _AGENT_BARE], "problems": [HOSTILE], "notes": [HOSTILE]},
     "agents_detail.html": {
         "detail": AgentDetail(
             _AGENT_ROW,
@@ -909,11 +910,13 @@ VIEW_CONTEXT = {
 
 
 def _environment():
-    return jinja2.Environment(
+    environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader(TEMPLATES),
         autoescape=jinja2.select_autoescape(["html"], default=True),
         undefined=jinja2.StrictUndefined,
     )
+    environment.filters["code_spans"] = code_spans
+    return environment
 
 
 def _cases():

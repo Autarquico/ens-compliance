@@ -11,10 +11,10 @@
   <tbody>{%- for i in information %}<tr><td class="id">{{ i.id }}</td><td>{{ i.description }}</td></tr>{% endfor %}</tbody>
 </table></div>
 {% endif %}
-<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
   <h3>Añadir un tipo de información</h3>
   {{ m.text_field("info_id", "Identificador", hint="Sin espacios, por ejemplo «datos-clientes».") }}
   {{ m.text_field("description", "Descripción", hint="Qué datos son y quién los usa.", multiline=True) }}
   {% include "partials/_paso_acciones.html" %}
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

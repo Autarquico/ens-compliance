@@ -43,7 +43,7 @@ from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
 from ens_evidence.ui.plain import CLI_TRACE, translate
-from ens_evidence.ui.roles import ROLE_LABELS, Permissions
+from ens_evidence.ui.roles import ROLE_LABELS, Permissions, role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import BLOCKER_LABELS, format_instant
 from ens_evidence.ui.views.tools import kit_offer
@@ -296,10 +296,9 @@ def _detail_page(
         blockers=_blockers(status),
         kit_offer=kit_offer(store, measure_id, selected, _clause_texts(status)),
         last_review=_last_review(status),
-        owner_roles=[{"value": r.value, "label": ROLE_LABELS[r]} for r in Role],
-        review_roles=[
-            {"value": r.value, "label": ROLE_LABELS[r]} for r in permissions.offer(REVIEW_ROLES)
-        ],
+        owner_roles=role_options(Role),
+        review_roles=role_options(permissions.offer(REVIEW_ROLES)),
+        review_roles_needed=role_options(REVIEW_ROLES),
         needs_init=entry is None or not store.exists(MATRIX_KEY),
         assessments=[{"value": a.value, "label": ASSESSMENT_LABELS[a]} for a in ASSESSMENT_LABELS],
         max_days=MAX_REVIEW_EVERY_DAYS,

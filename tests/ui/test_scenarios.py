@@ -705,7 +705,7 @@ def test_mfa_en_fail_llega_a_la_ui_con_como_corregirlo(session, example_store):
 
     assert MFA_WARNING in body
     assert "FAIL" in body and "mfa_missing" in body
-    assert "Revisa la política" in body and "interfaz-web.md, sección 3" in body
+    assert "código: mfa_missing" in body and "interfaz-web.md, sección 3" in body
     assert not re.search(r"MFA (está )?activa", body, re.IGNORECASE)
 
 

@@ -16,6 +16,7 @@ from ens_evidence.ui.roles import (
     dump_roles,
     normalize_email,
     parse_roles,
+    valid_email,
 )
 from ens_evidence.workspace import NotFound, WorkspaceError
 
@@ -105,10 +106,8 @@ def _read_users(store) -> dict[str, Grant]:
 
 def _clean_email(raw: str) -> str:
     email = normalize_email(raw)
-    try:
-        parse_roles(dump_roles({email: Grant()}))
-    except RolesFileInvalid:
-        raise _fail("El correo no es válido.") from None
+    if not valid_email(email):
+        raise _fail("El correo no es válido.")
     return email
 
 

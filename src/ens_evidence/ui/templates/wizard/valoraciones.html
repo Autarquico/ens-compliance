@@ -13,7 +13,7 @@
   <p class="muted">Nivel BAJO: perjuicio limitado. MEDIO: grave. ALTO: muy grave. Si dudas entre dos, elige el más alto y justifícalo.</p>
 </details>
 {% include "partials/_paso_cabecera.html" %}
-<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
   {%- for el in elements %}
   <section class="card" aria-labelledby="el-{{ el.kind }}-{{ loop.index }}">
     <h3 id="el-{{ el.kind }}-{{ loop.index }}">{{ el.label }} <span class="mono muted">{{ el.id }}</span></h3>
@@ -49,5 +49,5 @@
   <p class="muted">Aún no hay información ni servicios que valorar. Vuelve a los pasos anteriores.</p>
   {%- endfor %}
   {% include "partials/_paso_acciones.html" %}
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

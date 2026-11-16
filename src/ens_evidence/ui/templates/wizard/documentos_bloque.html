@@ -18,7 +18,7 @@
 <h2>{{ step_title }}</h2>
 <p class="lead">{{ block_intro }}</p>
 {% include "partials/_paso_cabecera.html" %}
-<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
   {% if people %}<datalist id="personas-declaradas">{% for p in people %}<option value="{{ p }}"></option>{% endfor %}</datalist>{% endif %}
   {% for q in questions %}
   <section class="pregunta" id="p-{{ q.id }}">
@@ -82,5 +82,5 @@
   </section>
   {% endfor %}
   {% include "partials/_paso_acciones.html" %}
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

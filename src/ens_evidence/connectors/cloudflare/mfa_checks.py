@@ -7,8 +7,9 @@ política o la aplicación) se ha tomado de la documentación y se prueba solo c
 
 `PASS` solo si hay al menos una aplicación que cubre el hostname de la UI entero y cada política
 `allow` que la alcanza exige MFA. `bypass` o una `allow` sin MFA (incluido `everyone` sin
-`require`) es `FAIL` y nombra la política. Lo que no se puede resolver es `UNKNOWN`; la ausencia
-de evidencia nunca es `PASS`. El token de aplicación de Access no lleva un claim de MFA, así que
+`require`) es `FAIL` y nombra la política; un selector `auth_method` ilegible o distinto de `mfa`
+cuenta como que no exige MFA (`FAIL`). Lo que no se puede resolver es `UNKNOWN`; la ausencia de
+evidencia nunca es `PASS`. El token de aplicación de Access no lleva un claim de MFA, así que
 esta política es la única comprobación posible. No demuestra que los usuarios hayan enrolado el
 factor (eso lo evidencian `workspace` y `m365`).
 """
@@ -122,8 +123,8 @@ def _outcome(result: CollectionResult) -> Outcome:
     for app in covering:
         try:
             found = _evaluate_app(app, policies, groups)
-        except _Uncollected as exc:
-            return _unrecovered(exc.status, f"aplicación «{_label(app)}»: {exc.detail}")
+        except Unresolvable as exc:
+            return _unrecovered(exc.collection, f"aplicación «{_label(app)}»: {exc.detail}")
         except _Stale:
             return _unknown(STALE_EVIDENCE, f"aplicación «{_label(app)}»: {_STALE}")
         fails += [(code, f"aplicación «{_label(app)}»: {text}") for code, text in found[0]]
@@ -171,13 +172,6 @@ def _find_apps(
     return covering, partial, ", ".join(dict.fromkeys(unreadable))
 
 
-class _Uncollected(Exception):
-    def __init__(self, status: CollectionStatus, detail: str):
-        super().__init__(detail)
-        self.status = status
-        self.detail = detail
-
-
 def _groups(section: SectionData) -> AccessGroups:
     if section.status is not CollectionStatus.SUCCESS:
         detail = f"grupos de Access no recogidos: {_why(section)}"
@@ -193,12 +187,12 @@ def _evaluate_app(
     item = next((i for i in policies.items if i["app_id"] == app["id"]), None)
     if item is None:
         if policies.status is not CollectionStatus.SUCCESS:
-            raise _Uncollected(policies.status, f"sus políticas no se recogieron: {_why(policies)}")
+            raise Unresolvable(f"sus políticas no se recogieron: {_why(policies)}", policies.status)
         return [], [(POLICY_UNRESOLVED, "no consta ninguna política recogida")]
     status = CollectionStatus(item["status"])
     if status is not CollectionStatus.SUCCESS:
-        raise _Uncollected(
-            status, f"sus políticas no se recogieron: {item.get('reason') or status.value}"
+        raise Unresolvable(
+            f"sus políticas no se recogieron: {item.get('reason') or status.value}", status
         )
     fails: Findings = []
     unknowns: Findings = []

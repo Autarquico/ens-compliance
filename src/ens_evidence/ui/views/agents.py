@@ -15,7 +15,7 @@ from starlette.routing import BaseRoute, Route
 
 from ens_evidence.agent.osquery_config import pack_queries
 from ens_evidence.agent.registry import AgentRecord, RegistryError, load_registry
-from ens_evidence.connectors.config import load_connector_config
+from ens_evidence.connectors.config import connector_config_key, load_connector_config
 from ens_evidence.endpoint.agent_view import AgentView, build_views
 from ens_evidence.endpoint.checks import AGENT
 from ens_evidence.endpoint.config import CONFIG_NAME, EndpointConfig
@@ -77,11 +77,18 @@ class AgentDetail:
     history: list[ContactRow] = field(default_factory=list)
 
 
+NO_AGENTS_NOTE = (
+    "No hay agentes configurados. Para inscribir equipos usa la línea de órdenes "
+    "(docs/connectors/endpoint.md)."
+)
+
+
 @dataclass(frozen=True)
 class Panel:
     rows: dict[str, AgentRow]
     details: dict[str, AgentDetail]
     problems: list[str]
+    notes: list[str] = field(default_factory=list)  # informativas: no son un fallo
 
 
 def _admission(
@@ -155,6 +162,8 @@ def _results(store: WorkspaceStore, now: datetime, problems: list[str]) -> list[
 
 def build_panel(store: WorkspaceStore, now: datetime) -> Panel:
     problems: list[str] = []
+    if not store.exists(connector_config_key(CONFIG_NAME)):
+        return Panel({}, {}, [], [NO_AGENTS_NOTE])
     try:
         config = load_connector_config(store, CONFIG_NAME, EndpointConfig)
     except WorkspaceError:
@@ -211,6 +220,7 @@ def listing(request: Request) -> Response:
         **page_context(request, "agentes", "Agentes"),
         rows=list(panel.rows.values()),
         problems=panel.problems,
+        notes=panel.notes,
     )
 
 

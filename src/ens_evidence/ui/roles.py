@@ -44,6 +44,10 @@ class RoleDenied(Exception):
         self.role = role
 
 
+def valid_email(email: str) -> bool:
+    return _EMAIL.fullmatch(email) is not None
+
+
 def normalize_email(value: str) -> str:
     """La única normalización: la misma para la CLI, el fichero y la identidad del JWT."""
     return value.strip().casefold()
@@ -92,7 +96,7 @@ def parse_roles(text: str) -> dict[str, Grant]:
     users: dict[str, Grant] = {}
     for raw_email, user in parsed.users.items():
         email = normalize_email(raw_email)
-        if not _EMAIL.fullmatch(email) or email in users:
+        if not valid_email(email) or email in users:
             raise RolesFileInvalid("correo vacío, mal formado o repetido")
         users[email] = Grant(edit=user.edit, roles=frozenset(user.roles))
     return users
@@ -139,16 +143,24 @@ class Permissions:
         grant = roles_file.grant_of(email)
         return cls(normalize_email(email), roles_file.status, grant.edit, grant.roles)
 
+    def has(self, role: Role) -> bool:
+        return self.edit and role in self.roles
+
     def require(self, role: Role) -> Role:
         """Autoriza con `role` (y edición) o lanza `RoleDenied`; devuelve el rol validado."""
-        if not (self.edit and role in self.roles):
+        if not self.has(role):
             raise RoleDenied(role)
         self.used.append(role)
         return role
 
     def offer(self, roles: Iterable[Role]) -> list[Role]:
         """De las opciones de un formulario, solo las que este usuario tiene asignadas."""
-        return [role for role in roles if self.edit and role in self.roles]
+        return [role for role in roles if self.has(role)]
 
     def lacks(self, role: Role) -> bool:
-        return not (self.edit and role in self.roles)
+        return not self.has(role)
+
+
+def role_options(roles: Iterable[Role]) -> list[dict[str, str]]:
+    """Etiqueta y valor de CLI de cada rol, para formularios y para pedirlos (`--role <valor>`)."""
+    return [{"value": role.value, "label": ROLE_LABELS[role]} for role in roles]

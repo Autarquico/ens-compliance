@@ -33,11 +33,11 @@
   {%- endfor %}
   </tbody>
 </table>
-<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
   <div class="actions">
     <button class="btn btn-primary" type="submit" name="accion" value="generar"{% if not can_generate %} disabled{% endif %}>Generar los documentos</button>
     {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
     {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
   </div>
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

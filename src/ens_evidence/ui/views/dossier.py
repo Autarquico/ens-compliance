@@ -43,7 +43,7 @@ from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.authz import DOSSIER_ACTIONS, DOSSIER_PATH, fixed_role
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
 from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
-from ens_evidence.ui.roles import ROLE_LABELS, Permissions
+from ens_evidence.ui.roles import Permissions, role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
 from ens_evidence.workspace import AlreadyExists
@@ -259,9 +259,7 @@ def _page(
     detail = _detail(store, now, shown) if shown else EMPTY
     permissions = permissions_of(request)
     self_assess_roles = {
-        value: label
-        for value, label in SELF_ASSESS_ROLES.items()
-        if permissions.offer([Role(value)])
+        value: label for value, label in SELF_ASSESS_ROLES.items() if permissions.has(Role(value))
     }
     detail = {
         **detail,
@@ -283,13 +281,13 @@ def _page(
 
 def _missing_role(
     action: str | None, permissions: Permissions, offered: dict[str, str]
-) -> str | None:
-    """El rol que falta para la acción que toca, para decirlo en vez de ofrecer un formulario."""
+) -> list[dict[str, str]] | None:
+    """Los roles que faltan para la acción que toca: se dicen en vez de ofrecer un formulario."""
     required = DOSSIER_ACTIONS.get(action or "")
     if isinstance(required, Role) and permissions.lacks(required):
-        return ROLE_LABELS[required]
+        return role_options([required])
     if action == "self-assess" and not offered:
-        return " o ".join(SELF_ASSESS_ROLES.values())
+        return [{"value": value, "label": label} for value, label in SELF_ASSESS_ROLES.items()]
     return None
 
 

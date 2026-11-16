@@ -73,9 +73,18 @@
 {% if permissions is defined and permissions.edit %}<form method="post" action="/matriz/iniciar"><div class="actions"><button class="btn btn-primary" type="submit">Inicializar la matriz</button></div></form>{% else %}<p>Para inicializarla hace falta permiso de edición.</p>{% endif %}</div>
 {%- endmacro %}
 
-{# Aviso cuando falta el rol ENS que exige la acción; `label` es el nombre del rol. #}
-{% macro needs_role(label) -%}
-<div class="notice notice-warn"><p><strong>Necesitas el rol {{ label }}.</strong> Quien administra la herramienta puede asignártelo con <span class="mono">ens-evidence ui roles grant &lt;tu correo&gt; --role …</span>. Mientras tanto puedes revisarlo, pero no aprobarlo.</p></div>
+{# Formularios que escriben: sin permiso de edición (o con `blocked`) quedan inactivos y se explica por qué.
+   El servidor decide de verdad; esto solo evita rellenar lo que luego se rechazaría. #}
+{% macro gate_open(blocked=False, explain=True) -%}
+{%- set can_edit = permissions is defined and permissions.edit -%}
+{%- if explain and not can_edit %}<p class="muted">Solo lectura: para editar hace falta permiso de edición.</p>{% endif -%}
+<fieldset class="gate"{% if blocked or not can_edit %} disabled{% endif %}>
+{%- endmacro %}
+{% macro gate_close() -%}</fieldset>{%- endmacro %}
+
+{# Aviso cuando falta el rol ENS que exige la acción; `roles` son pares {value, label} (cualquiera de ellos vale). #}
+{% macro needs_role(roles, after="Mientras tanto puedes revisarlo, pero no aprobarlo.") -%}
+<div class="notice notice-warn"><p><strong>Necesitas el rol {% for r in roles %}«{{ r.label }}»{% if not loop.last %} o {% endif %}{% endfor %}.</strong> Quien administra la herramienta puede asignártelo con {% for r in roles %}<span class="mono">ens-evidence ui roles grant &lt;tu correo&gt; --role {{ r.value }}</span>{% if not loop.last %} o {% endif %}{% endfor %}.{% if after %} {{ after }}{% endif %}</p></div>
 {%- endmacro %}
 
 {# Campo "Lo aprueba": vacío; quien aprueba escribe su nombre. #}

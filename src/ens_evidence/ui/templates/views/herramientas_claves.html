@@ -20,7 +20,7 @@
     <li>Inicializa el almacén y reparte las partes que se muestran una sola vez en la terminal: <code class="mono">{{ init_command }}</code></li>
   </ol>
 </section>
-<form method="post" action="/herramientas/claves" novalidate>
+<form method="post" action="/herramientas/claves" novalidate>{{ m.gate_open() }}
   <div class="field"><label for="f-asset_id">Activo del almacén<span class="hint">Un activo de tipo aplicación de tu inventario que represente a OpenBao.</span></label>
     <select id="f-asset_id" name="asset_id">
       <option value="">Elige uno</option>
@@ -32,5 +32,5 @@
   {{ m.text_field("key_threshold", "Partes necesarias (M)", "Cuántas hacen falta para desbloquear, desde 2 y sin pasar de N.") }}
   {{ m.text_field("max_key_age_days", "Antigüedad máxima de una clave (días)", "Pasado ese plazo sin rotar, la comprobación de rotación falla. Es tu política: fíjala tú.") }}
   <div class="actions"><button class="btn btn-primary" type="submit">Generar y descargar el paquete</button></div>
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

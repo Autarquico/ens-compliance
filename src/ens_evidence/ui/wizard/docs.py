@@ -35,6 +35,7 @@ from ens_evidence.orgdocs.approval import ROLE_QUESTION, required_role
 from ens_evidence.orgdocs.clauses import UnknownClause
 from ens_evidence.orgdocs.contract import (
     DECLARED_PERSON_QUESTIONS,
+    PROCEDURES_AUTHORITY_QUESTION,
     RELATION,
     SECURITY_OFFICER,
     SYSTEM_OWNER,
@@ -43,6 +44,7 @@ from ens_evidence.orgdocs.keys import document_key
 from ens_evidence.scope import ScopeNotApproved, ScopeState, scope_status
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.ui.forms import Form, first
+from ens_evidence.ui.roles import role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard.base import (
@@ -468,6 +470,9 @@ def _block_save(block: Block, step: StepInput) -> None:
         new = _answer_from_form(question, step.form)
         if not _same(new, raw.get(question.id)):
             changes[question.id] = new
+    if PROCEDURES_AUTHORITY_QUESTION in changes:
+        # Quién aprueba los procedimientos lo designa la dirección, no quien solo edita.
+        step.permissions.require(Role.MANAGEMENT)
     try:
         set_answers(cast(WorkspaceStore, step.store), changes)
     except AnswersRejected as exc:
@@ -600,6 +605,7 @@ def _approval_rows(step: StepInput) -> list[dict[str, Any]]:
             {
                 **row,
                 "role_label": ROLE_LABELS[role] if role else None,
+                "role_options": role_options([role]) if role else [],
                 "role_missing": role is not None and step.permissions.lacks(role),
                 "signatory": _signatory(role, values),
                 "by": first(step.form, "approved_by") if posted == row["name"] else "",

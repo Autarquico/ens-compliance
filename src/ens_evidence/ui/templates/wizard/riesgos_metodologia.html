@@ -4,7 +4,7 @@
 <h2>{{ step_title }}</h2>
 <p class="lead">El artículo 14.2 del RD 311/2022 pide que el análisis de riesgos siga «alguna metodología reconocida internacionalmente». Aquí declaras cuál usas, de dónde sale y qué has adaptado a tu caso. La herramienta no juzga cuál eliges ni pone ningún valor de riesgo: eso lo decides tú.</p>
 {% include "partials/_paso_cabecera.html" %}
-<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
   {{ m.text_field("name", "Nombre y versión de la metodología", hint="Por ejemplo, MAGERIT v3 o ISO/IEC 27005. La que sigas de verdad.") }}
   {{ m.text_field("reference", "Norma o guía que la respalda", hint="La publicación de la que sale, con su título y año.") }}
   {{ m.text_field("adaptation", "Qué has adaptado", hint="Qué has cambiado respecto a la referencia para tu organización. Si nada, dilo.", multiline=True) }}
@@ -34,5 +34,5 @@
     {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
     {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
   </div>
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}
