@@ -10,6 +10,7 @@
 
 <!-- pm-sync:done-this-week -->
 - #9 Despliegue de agentes osquery
+- #10 Collector de osquery y checks HOST
 - #28 Servidor osquery embebido
 - #62 UI web: base con Cloudflare Access, alcance y categorización
 - #63 UI web: el flujo completo, de los riesgos a la pre-auditoría
@@ -28,7 +29,7 @@
 ## En curso
 
 <!-- pm-sync:in-progress -->
-- #57 Reservada nueva y dev ampliado para el umbral de v0.1
+_(nada)_
 <!-- /pm-sync:in-progress -->
 
 ---

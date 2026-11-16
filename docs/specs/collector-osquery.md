@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: Collector de osquery y checks HOST
 type: task
-status: active
+status: shipped
 priority: P1
 size: M
 issue: 10
@@ -12,7 +12,7 @@ depends_on: [osquery-agents]
 supersedes: []
 related_specs: []
 created: 2026-10-15
-updated: 2026-11-15
+updated: 2026-11-16
 ---
 
 # Collector de osquery y checks HOST
