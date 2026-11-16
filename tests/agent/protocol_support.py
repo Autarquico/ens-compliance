@@ -6,6 +6,10 @@ from datetime import UTC, datetime
 from pathlib import Path
 from typing import Any
 
+from ens_evidence.agent.results import CONTACT_SOURCE
+from ens_evidence.evidence import list_manifests
+from ens_evidence.evidence.layout import manifest_key
+
 LAPTOP = "lap-ana"
 LAPTOP_UUID = "6f1c2d3e-4a5b-4c6d-8e9f-0a1b2c3d4e5f"
 LAPTOP_HOST = "lap-ana.taller-norte.example"
@@ -124,14 +128,32 @@ def request_for(endpoint: str, c: Credentials) -> dict[str, Any]:
 
 
 def tree(*roots: Path) -> dict[str, str]:
-    """Ficheros bajo las raíces con el hash de su contenido: detecta cualquier escritura."""
+    """Ficheros bajo las raíces con el hash de su contenido: detecta cualquier escritura.
+
+    La evidencia de contacto (y su marca de estado) no cuenta: se escribe en toda petición
+    autenticada y se prueba en `test_contact_evidence.py`.
+    """
     listing: dict[str, str] = {}
     for root in roots:
         for path in sorted(root.rglob("*")):
-            if path.is_file():
+            if "contact-evidence" in path.parts or not path.is_file():
+                continue
+            if CONTACT_SOURCE.encode() not in path.read_bytes():
                 listing[str(path)] = hashlib.sha256(path.read_bytes()).hexdigest()
     return listing
 
 
 def with_(c: Credentials, **changes: Any) -> Credentials:
     return replace(c, **changes)
+
+
+def result_manifests(world) -> list:
+    """Manifiestos de resultados del agente; la evidencia de contacto se mira aparte."""
+    return [m for m in list_manifests(world.workspace).manifests if m.source != CONTACT_SOURCE]
+
+
+def workspace_keys(world) -> list[str]:
+    """Claves del workspace sin la evidencia de contacto (manifiesto y artefacto)."""
+    contact = [m for m in list_manifests(world.workspace).manifests if m.source == CONTACT_SOURCE]
+    own = {m.artifact.key for m in contact} | {manifest_key(m.id) for m in contact}
+    return [key for key in world.workspace.list("") if key not in own]

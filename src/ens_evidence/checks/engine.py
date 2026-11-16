@@ -20,6 +20,7 @@ from ens_evidence.checks.inputs import (
     load_endpoint_inputs,
     load_engine_config,
     select_collector_input,
+    used_endpoint_evidence,
 )
 from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.checks.registry import ENDPOINT, ENGINE_CONNECTORS, EngineConnector
@@ -27,7 +28,6 @@ from ens_evidence.checks.store import CheckHistoryUnreadable, record_run
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.endpoint.checks import evaluate_host_checks
 from ens_evidence.endpoint.config import EndpointConfig
-from ens_evidence.endpoint.evidence import latest_by_host
 from ens_evidence.evidence.layout import sha256_hex
 from ens_evidence.models.contracts import CheckResult
 from ens_evidence.models.enums import CheckStatus
@@ -65,6 +65,7 @@ class _Evaluation:
     results: list[CheckResult] = field(default_factory=list)
     inputs: list[CheckInput] = field(default_factory=list)
     errors: list[str] = field(default_factory=list)
+    registry_sha256: str | None = None
 
 
 def run_all(
@@ -133,6 +134,7 @@ def _stored(
         complete=not evaluation.errors,
         scope_fingerprint=fingerprint(inventory),
         config_sha256=config_sha256,
+        registry_sha256=evaluation.registry_sha256,
         inputs=sorted(evaluation.inputs, key=lambda i: i.evidence_id),
         expected_subjects=evaluation.expected,
         results=evaluation.results,
@@ -183,10 +185,16 @@ def _endpoint(
     loaded = load_endpoint_inputs(store)
     expected = expected_subjects(spec.name, config, inventory, None)
     problems = [*loaded.unreadable, *loaded.inconsistent]
-    evaluation = _Evaluation(expected=expected)
+    evaluation = _Evaluation(expected=expected, registry_sha256=loaded.registry_sha256)
     try:
         evaluation.results = evaluate_host_checks(
-            inventory.assets.assets, [i.evidence for i in loaded.valid], config, now, problems
+            inventory.assets.assets,
+            [i.evidence for i in loaded.valid],
+            config,
+            now,
+            problems,
+            agent_evidence=[i.evidence for i in loaded.agent],
+            admissions=loaded.admissions,
         )
     except Exception as exc:
         name = type(exc).__name__
@@ -195,11 +203,10 @@ def _endpoint(
             spec.check_ids, None, expected, now, CHECK_CRASHED, f"la evaluación terminó con {name}"
         )
     if not problems:
-        shas = {i.evidence.evidence_id: i.manifest_sha256 for i in loaded.valid}
-        latest = latest_by_host(i.evidence for i in loaded.valid)
+        shas = loaded.manifest_shas()
         evaluation.inputs = [
-            CheckInput(evidence_id=e.evidence_id, manifest_sha256=shas[e.evidence_id])
-            for e in latest.values()
+            CheckInput(evidence_id=evidence_id, manifest_sha256=shas[evidence_id])
+            for evidence_id in used_endpoint_evidence(loaded, config.hosts)
         ]
     return evaluation
 

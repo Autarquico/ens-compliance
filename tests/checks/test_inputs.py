@@ -21,6 +21,7 @@ from ens_evidence.checks.inputs import (
 )
 from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.connectors.github.config import GitHubConfig
+from ens_evidence.endpoint.agent_view import load_admissions
 from ens_evidence.endpoint.normalize import SOURCE as ENDPOINT_SOURCE
 from ens_evidence.evidence.importer import (
     canonical_json,
@@ -432,7 +433,8 @@ def test_an_unreadable_manifest_blocks_instead_of_saying_nothing_is_missing(stor
 
 
 def endpoint_after_run(store, run) -> str | None:
-    return evidence_after_run(store, "endpoint", run, NOW + timedelta(days=1))
+    pinned = run.model_copy(update={"registry_sha256": load_admissions(store).sha256})
+    return evidence_after_run(store, "endpoint", pinned, NOW + timedelta(days=1))
 
 
 def test_endpoint_evidence_not_cited_by_the_run_is_flagged(store):

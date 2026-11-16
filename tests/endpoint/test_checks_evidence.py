@@ -41,7 +41,7 @@ def test_con_evaluated_at_en_o_tras_valid_until_todos_los_checks_son_unknown_cad
     results = evaluate(host_evidence(), at=VALID_UNTIL + delay)
 
     assert {r.status for r in results.values()} == {CheckStatus.UNKNOWN}
-    assert {r.reason_code for r in results.values()} == {"evidence_expired"}
+    assert {r.reason_code for c, r in results.items() if c != "HOST-002"} == {"evidence_expired"}
     assert all(not r.evidence_ids or r.status is not CheckStatus.PASS for r in results.values())
 
 
@@ -51,7 +51,7 @@ def test_la_evidencia_con_fecha_futura_deja_todos_los_checks_unknown():
     results = evaluate(future)
 
     assert {r.status for r in results.values()} == {CheckStatus.UNKNOWN}
-    assert {r.reason_code for r in results.values()} == {"evidence_in_future"}
+    assert {r.reason_code for c, r in results.items() if c != "HOST-002"} == {"evidence_in_future"}
 
 
 def test_una_ejecucion_futura_no_hace_volver_a_una_anterior_que_pasaba():
@@ -171,7 +171,8 @@ def test_todo_resultado_valida_contra_el_modelo_y_declara_la_atestacion_manual()
     for result in results:
         assert CheckResult.model_validate(result.model_dump()) == result
         assert result.subject == result.asset_id
-        assert "atestación manual" in result.reason
+        # HOST-002 no depende de la atestación del script: habla del agente.
+        assert "atestación manual" in result.reason or result.check_id == "HOST-002"
         assert result.evaluated_at.tzinfo is not None
 
 
@@ -201,7 +202,7 @@ def test_un_umbral_endurecido_tras_importar_caduca_la_evidencia_aunque_valid_unt
     after = evaluate(evidence, endpoint_config=strict, at=COLLECTED + timedelta(days=7))
 
     assert before["HOST-001"].status is CheckStatus.PASS
-    assert {r.reason_code for r in after.values()} == {"evidence_expired"}
+    assert {r.reason_code for c, r in after.items() if c != "HOST-002"} == {"evidence_expired"}
 
 
 def test_un_umbral_ampliado_no_resucita_lo_que_valid_until_ya_caduco():
@@ -209,7 +210,7 @@ def test_un_umbral_ampliado_no_resucita_lo_que_valid_until_ya_caduco():
 
     results = evaluate(host_evidence(), endpoint_config=wide, at=VALID_UNTIL)
 
-    assert {r.reason_code for r in results.values()} == {"evidence_expired"}
+    assert {r.reason_code for c, r in results.items() if c != "HOST-002"} == {"evidence_expired"}
 
 
 def test_la_fecha_futura_dentro_del_margen_de_reloj_de_la_importacion_se_tolera():
@@ -230,7 +231,7 @@ def test_la_evidencia_de_otro_equipo_con_el_mismo_activo_no_pasa_ningun_check():
     results = evaluate(replaced)
 
     assert results["HOST-001"].status is CheckStatus.FAIL
-    assert {r.reason_code for r in results.values()} == {"enrollment_changed"}
+    assert {r.reason_code for c, r in results.items() if c != "HOST-002"} == {"enrollment_changed"}
     assert "otro equipo" in results["HOST-001"].reason
     assert all(r.evidence_ids == [] for r in results.values())
 

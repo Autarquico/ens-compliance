@@ -2,7 +2,7 @@
 
 import pytest
 
-from ens_evidence.models.enums import CheckStatus, CollectionStatus
+from ens_evidence.models.enums import CheckStatus
 
 from .check_data import LAPTOP, SERVER, config, evaluate, evaluate_all, host_evidence
 
@@ -56,10 +56,9 @@ def test_los_activos_que_no_son_laptop_ni_server_no_se_evaluan():
 
 
 @pytest.mark.parametrize("platform", ["darwin", "linux"])
-def test_host_002_es_siempre_unknown_not_supported(platform):
+def test_host_002_sin_alta_del_agente_es_unknown_no_agent(platform):
     result = evaluate(host_evidence(platform))["HOST-002"]
 
     assert result.status is CheckStatus.UNKNOWN
-    assert result.reason_code == "not_supported"
-    assert result.collection_status is CollectionStatus.NOT_SUPPORTED
+    assert result.reason_code == "no_agent"
     assert result.evidence_ids == []

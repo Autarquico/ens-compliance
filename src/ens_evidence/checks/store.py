@@ -76,6 +76,8 @@ def connector_prefix(connector: str) -> str:
 
 def canonical_bytes(run: StoredCheckRun) -> bytes:
     document = run.model_dump(mode="json")
+    if run.registry_sha256 is None:  # los intentos sin él conservan sus bytes y su nombre
+        del document["registry_sha256"]
     return json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False).encode()
 
 
@@ -118,6 +120,8 @@ def outcome_digest(run: StoredCheckRun) -> str:
         "errors": sorted(run.errors),
         "complete": run.complete,
     }
+    if run.registry_sha256 is not None:  # sin él, la huella de los intentos anteriores no cambia
+        document["registry_sha256"] = run.registry_sha256
     text = json.dumps(document, sort_keys=True, separators=(",", ":"), ensure_ascii=False)
     return hashlib.sha256(text.encode()).hexdigest()
 

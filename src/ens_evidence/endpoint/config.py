@@ -2,9 +2,10 @@
 
 La antigüedad máxima de la evidencia y las versiones soportadas son decisiones de la
 organización: no tienen valor por defecto. La antigüedad máxima de las firmas antimalware
-(`max_signature_age_days`) sí: 7 días (`max_xprotect_age_days`, 30, para XProtect). La
-inscripción de cada equipo (uuid y nombre) es independiente del paquete que se importa y
-no contiene credenciales.
+(`max_signature_age_days`) sí: 7 días (`max_xprotect_age_days`, 30, para XProtect). El silencio
+máximo del agente osquery (`max_agent_silence_hours`, HOST-002) también: 24 horas. La
+inscripción de cada equipo (uuid y nombre) es independiente del paquete que se importa y no
+contiene credenciales.
 """
 
 import re
@@ -22,6 +23,7 @@ from pydantic import (
 
 Text = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=200)]
 Days = Annotated[int, Field(gt=0, strict=True)]
+Hours = Days
 NUMERIC_VERSION = re.compile(r"\d+(\.\d+)*")
 
 CONFIG_NAME = "endpoint"
@@ -87,6 +89,7 @@ class EndpointConfig(_Strict):
     max_evidence_age_days: Days
     max_signature_age_days: Days = 7
     max_xprotect_age_days: Days = 30
+    max_agent_silence_hours: Hours = 24
     supported_os: list[SupportedOs]
     hosts: dict[Text, HostEnrollment]
 

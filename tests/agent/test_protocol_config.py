@@ -6,7 +6,7 @@ from ens_evidence.agent.monitoring import INTERVAL_SECONDS
 from ens_evidence.agent.osquery_config import SCHEDULE_INTERVAL_SECONDS
 from ens_evidence.endpoint.pack import PACK_DIR, load_pack
 
-from .protocol_support import LAPTOP, SERVER, SERVER_HOST, SERVER_UUID
+from .protocol_support import LAPTOP, SERVER, SERVER_HOST, SERVER_UUID, workspace_keys
 
 
 def test_config_serves_the_pack_sql_byte_for_byte(world):
@@ -33,11 +33,11 @@ def test_config_sets_status_log_floor(world):
 
 def test_config_does_not_write_to_the_workspace(world):
     node_key = world.enroll()
-    before = world.workspace.list("")
+    before = workspace_keys(world)
 
     world.post("config", {"node_key": node_key})
 
-    assert world.workspace.list("") == before
+    assert workspace_keys(world) == before
 
 
 def test_last_contact_is_rewritten_at_most_every_minute(world):

@@ -49,7 +49,7 @@ WINDOWS_ROWS = {
 # --- Windows sin checks ------------------------------------------------------------------------
 
 
-def test_windows_host_that_delivers_results_gets_unknown_on_every_host_check(world):
+def test_windows_agent_covers_the_host_but_every_windows_check_is_unknown_not_supported(world):
     node_key = world.enroll(platform="windows")
     world.workspace.write_text("scope/assets.yaml", ASSETS)
     events = [snapshot_event(name, rows) for name, rows in WINDOWS_ROWS.items()]
@@ -61,14 +61,13 @@ def test_windows_host_that_delivers_results_gets_unknown_on_every_host_check(wor
 
     mine = {r.check_id: r for r in results if r.asset_id == LAPTOP}
     assert set(mine) == set(HOST_CHECKS)
-    assert CheckStatus.PASS not in {r.status for r in mine.values()}
-    assert all(r.reason_code == "no_evidence" for r in mine.values())
-    # HOST-008 y HOST-009 (laptop) también salen, UNKNOWN y sin evidencia.
-    assert {"HOST-008", "HOST-009"} <= set(mine)
-    # Sin evidencia (`_without_evidence`, endpoint/checks.py): HOST-001 sale FAIL por cobertura,
-    # el resto UNKNOWN, nunca PASS.
-    assert mine["HOST-001"].status is CheckStatus.FAIL
-    assert {r.status for c, r in mine.items() if c != "HOST-001"} == {CheckStatus.UNKNOWN}
+    assert mine["HOST-001"].status is CheckStatus.PASS
+    assert mine["HOST-002"].status is CheckStatus.PASS  # el contacto de la entrega es reciente
+    unsupported = {c: r for c, r in mine.items() if c not in {"HOST-001", "HOST-002"}}
+    assert {"HOST-008", "HOST-009"} <= set(unsupported)
+    assert {r.status for r in unsupported.values()} == {CheckStatus.UNKNOWN}
+    assert {r.reason_code for r in unsupported.values()} == {"not_supported"}
+    assert all(r.evidence_ids == [] for r in unsupported.values())
 
 
 # --- El token no queda a la vista --------------------------------------------------------------

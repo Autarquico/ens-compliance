@@ -15,6 +15,7 @@ from .protocol_support import (
     SERVER_HOST,
     SERVER_UUID,
     snapshot_event,
+    workspace_keys,
 )
 
 VPS = {"uuid": SERVER_UUID, "hostname": SERVER_HOST, "platform": "linux"}
@@ -42,7 +43,7 @@ def _store(world):
 
 
 def test_vps_samples_land_in_the_monitoring_store_and_never_in_evidence(world, vps):
-    before = world.workspace.list("")
+    before = workspace_keys(world)
 
     response = _log(world, vps, _mon("mon_load", [{**LOAD, "extra": "no"}]))
 
@@ -50,7 +51,7 @@ def test_vps_samples_land_in_the_monitoring_store_and_never_in_evidence(world, v
     sample = _store(world).latest()["mon_load"]
     assert sample.rows == (LOAD,)
     assert sample.observed_at == NOW
-    assert world.workspace.list("") == before
+    assert workspace_keys(world) == before
     assert (world.state_dir / "monitoring" / "vps" / "mon_load.json").is_file()
 
 

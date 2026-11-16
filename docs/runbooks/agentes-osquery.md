@@ -149,7 +149,10 @@ sha256 antes de instalar y escribe flags y token. No se editan flags a mano.
    docker compose -p ens-box --profile agents exec -T agent ens-evidence agent hosts
    ```
 
-   El equipo aparece con su último contacto y `admitido`. En el equipo,
+   El equipo aparece con su último contacto y `admitido`. `agent hosts show <activo>`
+   da el detalle: último contacto en evidencia, última lectura por consulta y
+   resultados HOST-001…009 (véase
+   [Ver un equipo](../connectors/endpoint.md#ver-un-equipo-agent-hosts-show)). En el equipo,
    según el SO (esta es la única comprobación por SO; los pilotos remiten
    aquí):
 
@@ -311,7 +314,9 @@ docker compose -p ens-box --profile agents exec -T agent ens-evidence agent revo
 
 Sube la generación: el node_key anterior deja de valer en la siguiente
 petición (el registro no se cachea). Para volver a admitirlo, ejecuta
-`agent admit`.
+`agent admit`. Tras revocar o readmitir, vuelve a ejecutar `checks run`: cada
+ejecución fija el registro de altas, y HOST-002 solo cuenta contactos del alta
+vigente (véase [Fuentes: script y agente](../connectors/endpoint.md#fuentes-script-y-agente)).
 
 ## 5. Rotar secretos
 

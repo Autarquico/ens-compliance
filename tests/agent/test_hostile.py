@@ -6,8 +6,6 @@ from datetime import timedelta
 
 import pytest
 
-from ens_evidence.evidence import list_manifests
-
 from .protocol_support import (
     LAPTOP,
     OS_VERSION_ROW,
@@ -15,6 +13,7 @@ from .protocol_support import (
     SERVER_HOST,
     SERVER_UUID,
     STRANGER_UUID,
+    result_manifests,
     snapshot_event,
 )
 
@@ -32,7 +31,7 @@ LIMITS = {
 
 
 def manifests(world) -> list:
-    return list_manifests(world.workspace).manifests
+    return result_manifests(world)
 
 
 def send_log(world, node_key, events):

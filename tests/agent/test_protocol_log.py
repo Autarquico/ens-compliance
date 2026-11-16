@@ -3,7 +3,6 @@ from datetime import timedelta
 import pytest
 
 from ens_evidence.endpoint.pack import pack_sha256
-from ens_evidence.evidence import list_manifests
 from ens_evidence.evidence.verify import verify_all
 
 from .protocol_support import (
@@ -14,7 +13,9 @@ from .protocol_support import (
     SERVER,
     SERVER_HOST,
     SERVER_UUID,
+    result_manifests,
     snapshot_event,
+    workspace_keys,
 )
 
 
@@ -23,7 +24,7 @@ def send(world, node_key, events, log_type="result"):
 
 
 def manifests(world):
-    return list_manifests(world.workspace).manifests
+    return result_manifests(world)
 
 
 def test_snapshot_result_is_stored_as_verifiable_collector_evidence(world):
@@ -70,12 +71,12 @@ def _artifact(world, manifest):
 
 def test_status_logs_are_discarded(world):
     node_key = world.enroll()
-    before = world.workspace.list("")
+    before = workspace_keys(world)
 
     response = send(world, node_key, [{"line": 1, "message": "secreto"}], log_type="status")
 
     assert response.status_code == 200
-    assert world.workspace.list("") == before
+    assert workspace_keys(world) == before
 
 
 @pytest.mark.parametrize(
@@ -115,12 +116,12 @@ def test_status_logs_are_discarded(world):
 )
 def test_events_that_do_not_qualify_are_ignored(world, event):
     node_key = world.enroll()
-    before = world.workspace.list("")
+    before = workspace_keys(world)
 
     response = send(world, node_key, [event])
 
     assert response.status_code == 200
-    assert world.workspace.list("") == before
+    assert workspace_keys(world) == before
 
 
 def test_qualifying_events_are_kept_next_to_ignored_ones(world):

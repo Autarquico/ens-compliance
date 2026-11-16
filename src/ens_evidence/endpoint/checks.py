@@ -1,20 +1,30 @@
 """Checks HOST-001…009 sobre la evidencia de endpoints (atestación manual).
 
-Funciones puras. `PASS` solo con evidencia positiva y vigente de la última ejecución del
+Funciones puras. `PASS` solo con evidencia positiva y vigente de la última observación del
 host; tabla vacía, ambigua o sin privilegios es `UNKNOWN`; el resto de estados de recogida
-se traducen según el ADR 0002. Toda conclusión es "según atestación manual del host": los
-hashes del paquete detectan corrupción, no falsificación. `CheckResult.subject` es el
-activo evaluado.
+se traducen según el ADR 0002. Las conclusiones del script son "según atestación manual del
+host" (los hashes del paquete detectan corrupción, no falsificación) y las del agente "según
+el agente osquery". Por check y host manda la fuente (script o agente) con la observación más
+reciente de las consultas que ese check lee, aunque sea un FAIL; si esa fuente caducó no se
+vuelve a la otra. HOST-002 (último contacto del agente) es independiente de la vigencia de
+los demás checks. `CheckResult.subject` es el activo evaluado.
 """
 
 import re
-from collections.abc import Iterable, Sequence
-from dataclasses import dataclass
+from collections.abc import Callable, Iterable, Mapping, Sequence
+from dataclasses import dataclass, field, replace
 from datetime import UTC, datetime, timedelta
 from typing import Any
 
 from ens_evidence.checks.catalog import CHECKS, ENDPOINT_CONNECTOR, SubjectKind
 from ens_evidence.connectors.sections import worst
+from ens_evidence.endpoint.agent_view import (
+    WINDOWS,
+    Admission,
+    AgentView,
+    QuerySnapshot,
+    build_views,
+)
 from ens_evidence.endpoint.config import (
     EndpointConfig,
     HostEnrollment,
@@ -56,6 +66,7 @@ WORKSTATION_ONLY_CHECKS = frozenset(
 )
 
 ATTESTED = "Según atestación manual del host"
+AGENT_SAYS = "Según el agente osquery"
 APPS_COVERAGE = "`apps` solo cubre aplicaciones conocidas de macOS, no todo el software"
 ALF_ACTIVE = frozenset({"1", "2"})
 ALF_MIN_OSQUERY_FOR_MACOS_15 = (5, 14, 1)
@@ -72,14 +83,21 @@ class Outcome:
     collection: CollectionStatus = CollectionStatus.SUCCESS
     code: str | None = None
     cite: bool = True
+    evidence_ids: tuple[str, ...] = ()
 
 
 @dataclass(frozen=True)
 class Host:
-    evidence: HostEvidence
+    """Lo que un check lee de una fuente; `moments` da la fecha de cada consulta del agente."""
+
     platform: str
     queries: dict[str, Any]
     collected_at: datetime
+    moments: Mapping[str, datetime] = field(default_factory=dict)
+
+    def collected(self, query_id: str) -> datetime:
+        """Cuándo se observó la consulta: su fecha si el agente la dio; si no, la de la recogida."""
+        return self.moments.get(query_id, self.collected_at)
 
     def rows(self, query_id: str) -> list[dict[str, Any]]:
         return [
@@ -105,6 +123,9 @@ def evaluate_host_checks(
     config: EndpointConfig,
     evaluated_at: datetime,
     unreadable: Sequence[str] = (),
+    *,
+    agent_evidence: Iterable[HostEvidence] = (),
+    admissions: Mapping[str, Admission] | None = None,
 ) -> list[CheckResult]:
     """HOST-001…009 de cada laptop/server del alcance, sobre su última ejecución.
 
@@ -112,8 +133,13 @@ def evaluate_host_checks(
 
     Con evidencia `unreadable` no se sabe cuál es la última ejecución de ningún host (un
     manifiesto ilegible no dice de qué activo es): todos dan UNKNOWN, nunca la anterior.
+
+    `agent_evidence` es lo leído del agente (`LoadedEvidence.agent`); `admissions`, las altas no
+    revocadas del registro por activo. Sin ellos solo cuenta el script y HOST-002 es UNKNOWN.
     """
     latest = latest_by_host(evidence)
+    views = build_views(agent_evidence, config.hosts)
+    admissions = admissions or {}
     context = CheckContext(config, evaluated_at)
     results: list[CheckResult] = []
     for asset in assets:
@@ -124,10 +150,10 @@ def evaluate_host_checks(
         outcomes = (
             _all_unknown(_unreadable_reason(unreadable))
             if unreadable
-            else _outcomes(item, enrollment, context)
+            else _outcomes(item, enrollment, context, views.get(asset.id), admissions.get(asset.id))
         )
         results += [
-            _result(check_id, asset.id, outcomes[check_id], item, evaluated_at)
+            _result(check_id, asset.id, outcomes[check_id], evaluated_at)
             for check_id in HOST_CHECKS
             if asset.type is AssetType.LAPTOP or check_id not in WORKSTATION_ONLY_CHECKS
         ]
@@ -135,53 +161,282 @@ def evaluate_host_checks(
 
 
 def _outcomes(
-    item: HostEvidence | None, enrollment: HostEnrollment | None, context: CheckContext
+    item: HostEvidence | None,
+    enrollment: HostEnrollment | None,
+    context: CheckContext,
+    view: AgentView | None = None,
+    admission: Admission | None = None,
 ) -> dict[str, Outcome]:
-    if item is None:
-        if enrollment is not None:
-            return _without_evidence(
-                "no_evidence",
-                (
-                    "falta la evidencia del script guiado (`endpoint script`) de este equipo; "
-                    "los resultados del agente aún no se evalúan (lo hará collector-osquery)"
-                ),
-            )
+    if enrollment is None:
         return _without_evidence(
             "not_enrolled", "el equipo no está inscrito en `hosts` de connectors/endpoint.yaml"
         )
-    if enrollment is None or not _same_host(item, enrollment):
-        return _without_evidence(
+    script = item if item is not None and _same_host(item, enrollment) else None
+    agent = view if view is not None and view.snapshots else None
+    if script is None and agent is None:
+        outcomes = _without_evidence(*_no_sources(item))
+    else:
+        outcomes = _from_sources(script, agent, context)
+    return outcomes | {AGENT: _agent_contact(view, admission, context)}
+
+
+def _no_sources(item: HostEvidence | None) -> tuple[str, str]:
+    if item is not None:
+        return (
             "enrollment_changed",
             "evidencia de otro equipo: no corresponde al uuid y nombre inscritos ahora",
         )
-    freshness = _freshness(item, context)
-    if freshness is not None:
-        return {check_id: freshness for check_id in HOST_CHECKS}
-    host = Host(
-        item,
-        str(_dict(item.result.data.get("package")).get("platform")),
-        _dict(item.result.data.get("queries")),
-        item.collected_at,
+    return (
+        "no_evidence",
+        "falta la evidencia del script guiado (`endpoint script`) y los resultados programados "
+        "del agente osquery de este equipo",
     )
-    return {
-        COVERAGE: Outcome(
-            CheckStatus.PASS, f"{ATTESTED}: hay evidencia vigente del {item.collected_at:%Y-%m-%d}"
-        ),
-        AGENT: Outcome(
-            CheckStatus.UNKNOWN,
-            f"{ATTESTED}: sin agente en v0.1; lo cubre `collector-osquery`",
-            CollectionStatus.NOT_SUPPORTED,
-            "not_supported",
-            cite=False,
-        ),
-        OS_SUPPORTED: _os_supported(host, context),
-        DISK_ENCRYPTION: _disk_encryption(host),
-        FIREWALL: _firewall(host),
-        AUTO_UPDATES: _auto_updates(host),
-        SOFTWARE_INVENTORY: _software_inventory(host),
-        SIGNATURES: _signatures(host, context),
-        REALTIME: _realtime(host, context),
+
+
+def _from_sources(
+    script: HostEvidence | None, agent: AgentView | None, context: CheckContext
+) -> dict[str, Outcome]:
+    outcomes = {COVERAGE: _coverage(script, agent, context)}
+    for check_id in HOST_CHECKS[2:]:
+        outcomes[check_id] = _by_freshest_source(check_id, script, agent, context)
+    return outcomes
+
+
+def _coverage(
+    script: HostEvidence | None, agent: AgentView | None, context: CheckContext
+) -> Outcome:
+    script_problem = _freshness(script, context) if script is not None else None
+    if script is not None and script_problem is not None:
+        script_problem = replace(script_problem, evidence_ids=(script.evidence_id,))
+    read = _read_snapshots(agent)
+    agent_problem = _agent_freshness(read, context) if read else None
+    if agent is not None and not read:
+        agent_problem = _agent_outcome(
+            _unknown("el agente aún no ha enviado consultas de los checks")
+        )
+    used: list[tuple[str, str, datetime, tuple[str, ...]]] = []
+    if script is not None and script_problem is None:
+        used.append(("script", ATTESTED, script.collected_at, (script.evidence_id,)))
+    if read and agent_problem is None:
+        used.append(("agente", AGENT_SAYS, max(s.collected_at for s in read), _ids(read)))
+    if not used:
+        problem = script_problem or agent_problem
+        assert problem is not None
+        return problem
+    ids = tuple(sorted({i for *_, group in used for i in group}))
+    if len(used) == 1:
+        _, prefix, moment, _ = used[0]
+        reason = f"{prefix}: hay evidencia vigente del {moment:%Y-%m-%d}"
+    else:
+        detail = ", ".join(f"{who} del {moment:%Y-%m-%d}" for who, _, moment, _ in used)
+        reason = f"{ATTESTED} y del agente osquery: hay evidencia vigente ({detail})"
+    return Outcome(CheckStatus.PASS, reason, evidence_ids=ids)
+
+
+def _read_snapshots(agent: AgentView | None) -> list[QuerySnapshot]:
+    """Los snapshots del agente que algún check lee: solo ellos deciden la vigencia de HOST-001.
+    Sin checks para su plataforma (Windows, desconocida) cuentan todos: es lo único que lo cubre."""
+    if agent is None:
+        return []
+    if agent.platform not in NEEDED_PLATFORMS:
+        return list(agent.snapshots.values())
+    return [s for query, s in agent.snapshots.items() if query in READ_QUERIES]
+
+
+def _by_freshest_source(
+    check_id: str, script: HostEvidence | None, agent: AgentView | None, context: CheckContext
+) -> Outcome:
+    seen = _agent_observed(check_id, agent)
+    if script is not None and (seen is None or seen <= script.collected_at):
+        return _from_script(check_id, script, context)
+    assert agent is not None
+    return _from_agent(check_id, agent, context)
+
+
+def _agent_observed(check_id: str, agent: AgentView | None) -> datetime | None:
+    """La observación más reciente del agente de las consultas de este check, si hay alguna."""
+    if agent is None:
+        return None
+    moments = [
+        agent.snapshots[query].collected_at
+        for query in CHECK_QUERIES[check_id]
+        if query in agent.snapshots
+    ]
+    return max(moments, default=None)
+
+
+def _from_script(check_id: str, script: HostEvidence, context: CheckContext) -> Outcome:
+    if (stale := _freshness(script, context)) is not None:
+        return replace(stale, evidence_ids=(script.evidence_id,))
+    host = Host(
+        str(_dict(script.result.data.get("package")).get("platform")),
+        _dict(script.result.data.get("queries")),
+        script.collected_at,
+    )
+    return replace(RUNNERS[check_id](host, context), evidence_ids=(script.evidence_id,))
+
+
+def _from_agent(check_id: str, agent: AgentView, context: CheckContext) -> Outcome:
+    platform = agent.platform
+    if platform == WINDOWS:
+        return _agent_outcome(
+            _not_supported("checks de Windows pendientes: este check aún no se evalúa en Windows")
+        )
+    if platform is None:
+        return _agent_outcome(_unknown("el agente no informa la plataforma del equipo"))
+    groups = _needed_queries(check_id, platform)
+    missing = [group for group in groups if not any(query in agent.snapshots for query in group)]
+    if missing:
+        listed = ", ".join(" o ".join(f"`{query}`" for query in group) for group in missing)
+        return _agent_outcome(_unknown(f"el agente aún no ha enviado {listed}"))
+    used = {
+        query: agent.snapshots[query]
+        for group in groups
+        for query in group
+        if query in agent.snapshots
     }
+    if (stale := _agent_freshness(used.values(), context)) is not None:
+        return replace(stale, evidence_ids=_ids(used.values()))
+    host = Host(
+        platform,
+        {query: snapshot.data for query, snapshot in used.items()},
+        max((snapshot.collected_at for snapshot in used.values()), default=context.evaluated_at),
+        {query: snapshot.collected_at for query, snapshot in used.items()},
+    )
+    outcome = RUNNERS[check_id](host, context)
+    return _agent_outcome(replace(outcome, evidence_ids=_ids(used.values())))
+
+
+def _agent_outcome(outcome: Outcome) -> Outcome:
+    reason = outcome.reason.removeprefix(f"{ATTESTED}: ")
+    return replace(outcome, reason=f"{AGENT_SAYS}: {reason}")
+
+
+def _ids(snapshots: Iterable[QuerySnapshot]) -> tuple[str, ...]:
+    return tuple(sorted({snapshot.evidence_id for snapshot in snapshots}))
+
+
+def _agent_freshness(snapshots: Iterable[QuerySnapshot], context: CheckContext) -> Outcome | None:
+    """UNKNOWN si una consulta usada tiene fecha futura o caducó (con `>=`, como el script)."""
+    used = list(snapshots)
+    evaluated_at = context.evaluated_at
+    for snapshot in used:
+        if snapshot.collected_at > evaluated_at + CLOCK_SKEW:
+            return _agent_outcome(
+                Outcome(
+                    CheckStatus.UNKNOWN,
+                    f"la consulta `{snapshot.query_id}` tiene fecha futura "
+                    f"({snapshot.collected_at.isoformat()})",
+                    code="evidence_in_future",
+                    evidence_ids=(snapshot.evidence_id,),
+                )
+            )
+    for snapshot in used:
+        expires = snapshot.expires_at(context.config.max_evidence_age_days)
+        if evaluated_at >= expires:
+            return _agent_outcome(
+                Outcome(
+                    CheckStatus.UNKNOWN,
+                    f"la última consulta `{snapshot.query_id}` caducó el {expires.isoformat()}",
+                    code="evidence_expired",
+                    evidence_ids=(snapshot.evidence_id,),
+                )
+            )
+    return None
+
+
+# HOST-002 ---------------------------------------------------------------------------------
+
+
+def _agent_contact(
+    view: AgentView | None, admission: Admission | None, context: CheckContext
+) -> Outcome:
+    """Último contacto autenticado del agente, con evidencia citable; independiente de la vigencia
+    de los demás checks. Sin alta (o revocada) no se demuestra ausencia de agente: UNKNOWN."""
+    if admission is None:
+        return Outcome(
+            CheckStatus.UNKNOWN,
+            f"{AGENT_SAYS}: el equipo no tiene un agente dado de alta (o su alta está revocada)",
+            code="no_agent",
+            cite=False,
+        )
+    evaluated_at = context.evaluated_at
+    limit = timedelta(hours=context.config.max_agent_silence_hours)
+    last = view.latest_contact(admission.generation) if view else None
+    if last is None:
+        if admission.admitted_at is not None and evaluated_at - admission.admitted_at > limit:
+            return Outcome(
+                CheckStatus.FAIL,
+                f"{AGENT_SAYS}: agente sin contacto desde el alta del "
+                f"{_moment(admission.admitted_at)} "
+                f"(umbral de {context.config.max_agent_silence_hours} h)",
+                code="agent_silent",
+                cite=False,
+            )
+        return Outcome(
+            CheckStatus.UNKNOWN,
+            f"{AGENT_SAYS}: el agente dado de alta aún no ha contactado",
+            code="no_contact",
+            cite=False,
+        )
+    cited = (last.evidence_id,)
+    if last.collected_at > evaluated_at + CLOCK_SKEW:
+        return Outcome(
+            CheckStatus.UNKNOWN,
+            f"{AGENT_SAYS}: el último contacto tiene fecha futura ({_moment(last.collected_at)})",
+            code="evidence_in_future",
+            evidence_ids=cited,
+        )
+    if evaluated_at - last.collected_at <= limit:
+        return Outcome(
+            CheckStatus.PASS,
+            f"{AGENT_SAYS}: último contacto del agente el {_moment(last.collected_at)}",
+            evidence_ids=cited,
+        )
+    return Outcome(
+        CheckStatus.FAIL,
+        f"{AGENT_SAYS}: agente sin contacto desde {_moment(last.collected_at)} "
+        f"(umbral de {context.config.max_agent_silence_hours} h)",
+        code="agent_silent",
+        evidence_ids=cited,
+    )
+
+
+def _moment(moment: datetime) -> str:
+    return f"{moment.astimezone(UTC):%Y-%m-%d %H:%M} UTC"
+
+
+# Por check y plataforma, grupos de los que hace falta al menos una consulta para poder concluir.
+NEEDED: dict[str, dict[str, tuple[tuple[str, ...], ...]]] = {
+    OS_SUPPORTED: {"darwin": (("os_version",),), "linux": (("os_version",),)},
+    DISK_ENCRYPTION: {
+        "darwin": (("root_mount",), ("disk_encryption_darwin",)),
+        "linux": (("root_mount",), ("disk_encryption",)),
+    },
+    FIREWALL: {"darwin": (("alf",), ("os_version",), ("osquery_info",))},
+    AUTO_UPDATES: {"darwin": (("software_update_policy",),)},
+    SOFTWARE_INVENTORY: {
+        "darwin": (("apps",),),
+        "linux": (("deb_packages", "rpm_packages"),),
+    },
+    SIGNATURES: {
+        "darwin": (("xprotect_bundle",),),
+        "linux": (("clamav_signatures",), ("clamav_units",)),
+    },
+    REALTIME: {"darwin": (("gatekeeper",), ("xprotect_bundle",))},
+}
+
+# Consultas que lee algún check: decide qué fuente tiene la observación más reciente.
+CHECK_QUERIES: dict[str, frozenset[str]] = {
+    check_id: frozenset(q for groups in by_platform.values() for group in groups for q in group)
+    for check_id, by_platform in NEEDED.items()
+}
+NEEDED_PLATFORMS = frozenset({"darwin", "linux"})
+READ_QUERIES = frozenset().union(*CHECK_QUERIES.values())
+
+
+def _needed_queries(check_id: str, platform: str) -> tuple[tuple[str, ...], ...]:
+    return NEEDED.get(check_id, {}).get("darwin" if platform == "darwin" else "linux", ())
 
 
 def _all_unknown(reason: str) -> dict[str, Outcome]:
@@ -227,20 +482,14 @@ def _freshness(item: HostEvidence, context: CheckContext) -> Outcome | None:
     return None
 
 
-def _result(
-    check_id: str,
-    asset_id: str,
-    outcome: Outcome,
-    item: HostEvidence | None,
-    evaluated_at: datetime,
-) -> CheckResult:
+def _result(check_id: str, asset_id: str, outcome: Outcome, evaluated_at: datetime) -> CheckResult:
     return CheckResult(
         check_id=check_id,
         asset_id=asset_id,
         subject=asset_id,
         status=outcome.status,
         evaluated_at=evaluated_at,
-        evidence_ids=[item.evidence_id] if item is not None and outcome.cite else [],
+        evidence_ids=list(outcome.evidence_ids) if outcome.cite else [],
         reason=outcome.reason,
         collection_status=outcome.collection,
         reason_code=outcome.code,
@@ -572,14 +821,14 @@ class SignatureDate:
     moment: datetime | None = None
     row: dict[str, Any] | None = None
     blocked: Outcome | None = None
+    observed_at: datetime | None = None
 
-    def age_exceeded(self, host: Host, max_age_days: int) -> bool:
-        assert self.moment is not None
-        return host.collected_at - self.moment > timedelta(days=max_age_days)
+    def age_exceeded(self, max_age_days: int) -> bool:
+        """Antigüedad al observarse la consulta de la que sale la fecha, no al de otra."""
+        assert self.moment is not None and self.observed_at is not None
+        return self.observed_at - self.moment > timedelta(days=max_age_days)
 
-    def outdated_at_evaluation(
-        self, host: Host, context: CheckContext, max_age_days: int
-    ) -> Outcome | None:
+    def outdated_at_evaluation(self, context: CheckContext, max_age_days: int) -> Outcome | None:
         """UNKNOWN si, con la recogida aún vigente, las firmas ya superan la política hoy."""
         assert self.moment is not None
         if context.evaluated_at - self.moment <= timedelta(days=max_age_days):
@@ -638,7 +887,9 @@ def _epoch(raw: Any) -> datetime | None:
         return None
 
 
-def _newest_file_date(host: Host, rows: list[dict[str, Any]], what: str) -> SignatureDate:
+def _newest_file_date(
+    host: Host, query_id: str, rows: list[dict[str, Any]], what: str
+) -> SignatureDate:
     """Fecha del fichero más reciente de `rows`; UNKNOWN si falta, es ilegible o es futura."""
     dated = [(_epoch(row.get("mtime")), row) for row in rows]
     if not dated:
@@ -646,13 +897,14 @@ def _newest_file_date(host: Host, rows: list[dict[str, Any]], what: str) -> Sign
     if any(moment is None for moment, _ in dated):
         return SignatureDate(blocked=_unknown(f"un fichero de {what} no informa su fecha"))
     moment, row = max(((m, r) for m, r in dated if m is not None), key=lambda pair: pair[0])
-    if moment > host.collected_at + CLOCK_SKEW:
+    observed_at = host.collected(query_id)
+    if moment > observed_at + CLOCK_SKEW:
         return SignatureDate(
             blocked=_unknown(
                 f"el fichero de {what} tiene fecha futura ({moment:%Y-%m-%d}); {FILE_DATE_NOTE}"
             )
         )
-    return SignatureDate(moment=moment, row=row)
+    return SignatureDate(moment=moment, row=row, observed_at=observed_at)
 
 
 def _positive(raw: Any) -> bool:
@@ -670,21 +922,21 @@ def _clamav_signatures(host: Host, context: CheckContext) -> Outcome:
         for row in host.rows("clamav_signatures")
         if str(row.get("path", "")).rsplit("/", 1)[-1].startswith("daily.")
     ]
-    date = _newest_file_date(host, daily, "firmas de ClamAV (`daily.*`)")
+    date = _newest_file_date(host, "clamav_signatures", daily, "firmas de ClamAV (`daily.*`)")
     if date.blocked is not None:
         return date.blocked
     assert date.moment is not None and date.row is not None
     if not _positive(date.row.get("size")):
         return _unknown(f"el fichero de firmas de ClamAV está vacío o sin tamaño; {FILE_DATE_NOTE}")
     shown = f"firmas de ClamAV del {date.moment:%Y-%m-%d} ({FILE_DATE_NOTE})"
-    if date.age_exceeded(host, context.config.max_signature_age_days):
+    if date.age_exceeded(context.config.max_signature_age_days):
         limit = context.config.max_signature_age_days
         return Outcome(
             CheckStatus.FAIL,
             f"{ATTESTED}: {shown}, más antiguas que los {limit} días de la política",
         )
     limit = context.config.max_signature_age_days
-    if (stale := date.outdated_at_evaluation(host, context, limit)) is not None:
+    if (stale := date.outdated_at_evaluation(context, limit)) is not None:
         return stale
     if (failed := _failed_query(host, ["clamav_units"], "servicio clamav-freshclam")) is not None:
         return failed
@@ -707,10 +959,10 @@ def _xprotect(host: Host, context: CheckContext) -> tuple[datetime | None, Outco
     rows = host.rows("xprotect_bundle")
     if any(not str(row.get("bundle_short_version", "")).strip() for row in rows):
         return None, _unknown("XProtect sin versión (`CFBundleShortVersionString`) legible")
-    date = _newest_file_date(host, rows, "XProtect")
+    date = _newest_file_date(host, "xprotect_bundle", rows, "XProtect")
     if date.blocked is not None or date.moment is None:
         return None, date.blocked
-    if date.age_exceeded(host, context.config.max_xprotect_age_days):
+    if date.age_exceeded(context.config.max_xprotect_age_days):
         limit = context.config.max_xprotect_age_days
         return date.moment, Outcome(
             CheckStatus.FAIL,
@@ -718,7 +970,7 @@ def _xprotect(host: Host, context: CheckContext) -> tuple[datetime | None, Outco
             f"más antiguo que los {limit} días de la política",
         )
     limit = context.config.max_xprotect_age_days
-    return date.moment, date.outdated_at_evaluation(host, context, limit)
+    return date.moment, date.outdated_at_evaluation(context, limit)
 
 
 def _xprotect_signatures(host: Host, context: CheckContext) -> Outcome:
@@ -837,3 +1089,14 @@ def _dict(value: Any) -> dict[str, Any]:
 
 def _list(value: Any) -> list[Any]:
     return value if isinstance(value, list) else []
+
+
+RUNNERS: dict[str, Callable[[Host, CheckContext], Outcome]] = {
+    OS_SUPPORTED: _os_supported,
+    DISK_ENCRYPTION: lambda host, _: _disk_encryption(host),
+    FIREWALL: lambda host, _: _firewall(host),
+    AUTO_UPDATES: lambda host, _: _auto_updates(host),
+    SOFTWARE_INVENTORY: lambda host, _: _software_inventory(host),
+    SIGNATURES: _signatures,
+    REALTIME: _realtime,
+}

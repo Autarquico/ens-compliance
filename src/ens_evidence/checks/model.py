@@ -23,7 +23,8 @@ class StoredCheckRun(Strict):
     """Un intento del motor para un conector, completo o no.
 
     `seq` lo asigna el almacén al registrarlo. `expected_subjects`: sujetos que cada check debía
-    cubrir. `config_sha256` y `scope_fingerprint` fijan con qué configuración y alcance se ejecutó.
+    cubrir. `config_sha256` y `scope_fingerprint` fijan con qué configuración y alcance se ejecutó;
+    `registry_sha256`, con qué altas de agentes.
     """
 
     schema_version: str = "1.0"
@@ -35,6 +36,12 @@ class StoredCheckRun(Strict):
     complete: bool
     scope_fingerprint: str = Field(pattern=SHA256_PATTERN)
     config_sha256: str = Field(pattern=SHA256_PATTERN)
+    registry_sha256: str | None = Field(
+        default=None,
+        pattern=SHA256_PATTERN,
+        description="Huella de las altas del registro de agentes con las que se evaluó "
+        "(solo endpoint); ausente en intentos anteriores a este campo.",
+    )
     inputs: list[CheckInput] = Field(default_factory=list)
     expected_subjects: dict[str, list[str]] = Field(default_factory=dict)
     results: list[CheckResult] = Field(default_factory=list)

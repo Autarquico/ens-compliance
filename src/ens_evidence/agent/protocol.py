@@ -28,6 +28,7 @@ from ens_evidence.agent.node_key import (
 from ens_evidence.agent.osquery_config import SCHEDULE_INTERVAL_SECONDS, build_config, query_sql
 from ens_evidence.agent.registry import RegistryError, enrolled_asset, load_registry
 from ens_evidence.agent.results import (
+    contact_result,
     live_result,
     scheduled_result,
     snapshots_from_events,
@@ -43,6 +44,8 @@ from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 
 _LOGGER = logging.getLogger("ens_evidence.agent")
 MAX_HOSTNAME_CHARS = 255
+# Como mucho una evidencia de contacto autenticado por equipo y este intervalo.
+CONTACT_EVIDENCE_INTERVAL = timedelta(hours=6)
 KNOWN_PLATFORMS = frozenset({"darwin", "linux", "windows"})
 # osquery desplaza cada intervalo hasta un 10 % (`--schedule_splay_percent`, 10 por defecto).
 SCHEDULE_SPLAY = 0.10
@@ -80,6 +83,7 @@ class Node:
     asset_id: str
     host_identifier: str
     platform: str | None
+    generation: int
 
 
 @dataclass(frozen=True)
@@ -132,7 +136,7 @@ class AgentService:
         if not verify_enroll_token(self._secrets, token, uuid, record.generation, now):
             raise NodeInvalid
         assert asset_id is not None
-        node = Node(asset_id, uuid, _build_platform(fields))
+        node = Node(asset_id, uuid, _build_platform(fields), record.generation)
         self._state.touch_host(asset_id, now=now, platform=node.platform, force=True)
         node_key = issue_node_key(self._secrets, uuid, record.generation)
         return Reply({"node_key": node_key, "node_invalid": False}, node)
@@ -199,7 +203,7 @@ class AgentService:
                 )
             ]
             if fresh:
-                result = scheduled_result(node.asset_id, node.host_identifier, fresh)
+                result = scheduled_result(node.asset_id, node.host_identifier, node.platform, fresh)
                 write_result(self._store, result, now=now)
                 for s in fresh:
                     self._state.record_result(
@@ -243,6 +247,7 @@ class AgentService:
         result = live_result(
             node.asset_id,
             node.host_identifier,
+            node.platform,
             run_id=run_id,
             query_id=run.query_id,
             collected_at=delivered_at,
@@ -263,10 +268,43 @@ class AgentService:
         if asset_id is None or not self._registry().accepts(asset_id, identity.generation):
             raise NodeInvalid
         contact = self._state.host(asset_id)
-        return Node(asset_id, identity.host_identifier, contact.platform if contact else None)
+        platform = contact.platform if contact else None
+        return Node(asset_id, identity.host_identifier, platform, identity.generation)
 
     def _touch(self, node: Node) -> None:
-        self._state.touch_host(node.asset_id, now=self._now())
+        now = self._now()
+        self._state.touch_host(node.asset_id, now=now)
+        self._store_contact(node, now)
+
+    def _store_contact(self, node: Node, now: datetime) -> None:
+        """Evidencia citable del contacto, a lo sumo una por intervalo.
+
+        Con el workspace ocupado o ilegible no se escribe ni se marca: la siguiente lo reintenta.
+        """
+        interval = CONTACT_EVIDENCE_INTERVAL
+        if not self._state.contact_evidence_due(node.asset_id, node.generation, now, interval):
+            return
+        try:
+            with self._workspace_lock():
+                if not self._state.contact_evidence_due(
+                    node.asset_id, node.generation, now, interval
+                ):
+                    return
+                result = contact_result(
+                    node.asset_id, node.host_identifier, node.platform, node.generation, now=now
+                )
+                write_result(self._store, result, now=now)
+                self._mark_contact_evidence(node.asset_id, node.generation, now)
+        except (Busy, Unavailable):
+            _LOGGER.warning("outcome=contact_evidence_skipped asset=%s", node.asset_id[:64])
+
+    def _mark_contact_evidence(self, asset_id: str, generation: int, now: datetime) -> None:
+        """La evidencia ya está escrita: si la marca falla (estado mal configurado) no se rompe
+        la petición, y el límite queda en memoria hasta reiniciar."""
+        try:
+            self._state.record_contact_evidence(asset_id, generation, now)
+        except OSError:
+            _LOGGER.warning("outcome=contact_mark_failed asset=%s", asset_id[:64])
 
     def _endpoint_config(self) -> EndpointConfig:
         try:

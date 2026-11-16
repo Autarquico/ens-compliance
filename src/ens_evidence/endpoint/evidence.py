@@ -14,18 +14,25 @@ from ens_evidence.models.contracts import CollectionResult, EvidenceManifest
 from ens_evidence.models.readiness import EvidenceRef
 from ens_evidence.workspace import WorkspaceError, WorkspaceStore
 
+# Las mismas cadenas que escribe el servidor del agente (agent/results.py); se repiten aquí para
+# que el lector no dependa del paquete `agent`.
+AGENT_SOURCE = "osquery-agent"
+CONTACT_SOURCE = "osquery-agent-contact"
+AGENT_SOURCES = frozenset({AGENT_SOURCE, CONTACT_SOURCE})
+
 
 def expires_at(
-    collected_at: datetime, valid_until: datetime, max_evidence_age_days: int
+    collected_at: datetime, valid_until: datetime | None, max_evidence_age_days: int
 ) -> datetime:
-    """Caduca con lo primero entre el manifiesto y el umbral vigente de la configuración."""
-    return min(valid_until, collected_at + timedelta(days=max_evidence_age_days))
+    """Caduca con lo primero entre el manifiesto (si declara vencimiento) y el umbral vigente."""
+    by_age = collected_at + timedelta(days=max_evidence_age_days)
+    return by_age if valid_until is None else min(valid_until, by_age)
 
 
 @dataclass(frozen=True)
 class HostEvidence:
     evidence_id: str
-    valid_until: AwareDatetime
+    valid_until: AwareDatetime | None
     result: CollectionResult
 
     @property
@@ -59,21 +66,26 @@ class LoadedEvidence:
 
     items: list[HostEvidence] = field(default_factory=list)
     unreadable: list[str] = field(default_factory=list)
+    agent: list[HostEvidence] = field(default_factory=list)
 
 
 def load_host_evidence(store: WorkspaceStore) -> LoadedEvidence:
-    """Los resultados normalizados `endpoint-script` del workspace, listos para los checks."""
+    """Los resultados normalizados del workspace: `endpoint-script` en `items`; lo que el
+    agente osquery escribió (resultados y contactos) en `agent`, sin filtrar por identidad."""
     listing = list_manifests(store)
     items: list[HostEvidence] = []
+    agent: list[HostEvidence] = []
     unreadable = list(listing.errors)
     for manifest in listing.manifests:
-        if manifest.source != SOURCE:
+        if manifest.source != SOURCE and manifest.source not in AGENT_SOURCES:
             continue
         try:
-            items.append(_read(store, manifest))
+            read = _read(store, manifest)
         except (WorkspaceError, ValueError) as exc:
             unreadable.append(f"{manifest.id}: artefacto ilegible ({type(exc).__name__})")
-    return LoadedEvidence(items, unreadable)
+            continue
+        (items if manifest.source == SOURCE else agent).append(read)
+    return LoadedEvidence(items, unreadable, agent)
 
 
 def _read(store: WorkspaceStore, manifest: EvidenceManifest) -> HostEvidence:
