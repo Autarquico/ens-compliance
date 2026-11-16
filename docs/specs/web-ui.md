@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: UI web con asistente
 type: task
-status: active
+status: shipped
 priority: P1
 size: XL
 issue: 29

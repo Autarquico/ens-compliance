@@ -12,6 +12,7 @@
 - #9 Despliegue de agentes osquery
 - #10 Collector de osquery y checks HOST
 - #28 Servidor osquery embebido
+- #29 UI web con asistente
 - #62 UI web: base con Cloudflare Access, alcance y categorización
 - #63 UI web: el flujo completo, de los riesgos a la pre-auditoría
 - #66 Kit: copias de seguridad con restic y Backrest
