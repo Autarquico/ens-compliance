@@ -61,12 +61,16 @@ GET_ROUTES = [
     *(f"/asistente/{s.slug}" for s in STEPS), "/static/ui.css",
     "/herramientas", "/herramientas/claves", "/herramientas/claves/custodios",
     "/herramientas/contrasenas",
+    "/inventario", "/inventario/alta", "/inventario/activos/lap-ana",
 ]  # fmt: skip
 POST_ROUTES = [
     *(f"/asistente/{s.slug}" for s in STEPS),
     "/herramientas/claves",
     "/herramientas/claves/custodios",
     "/herramientas/contrasenas",
+    "/inventario/alta",
+    "/inventario/activos/lap-ana/editar",
+    "/inventario/activos/lap-ana/baja",
 ]
 
 

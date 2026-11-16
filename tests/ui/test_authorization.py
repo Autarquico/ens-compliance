@@ -24,6 +24,7 @@ from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.authz import (
     DOSSIER_ACTIONS,
     INCIDENT_ACTIONS,
+    INVENTORY_ACTIONS,
     MATRIX_ACTIONS,
     OPERATIONS,
     WIZARD_STEPS,
@@ -34,6 +35,7 @@ from ens_evidence.ui.roles import ROLES_KEY, Grant, dump_roles
 from ens_evidence.ui.routes import ui_routes
 from ens_evidence.ui.views import dossier as dossier_view
 from ens_evidence.ui.views import incidents as incidents_view
+from ens_evidence.ui.views import inventory as inventory_view
 from ens_evidence.ui.views import matrix as matrix_view
 from ens_evidence.ui.views.dossier import DOSSIER_ROUTES
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
@@ -100,6 +102,7 @@ def test_la_tabla_clasifica_exactamente_las_acciones_de_cada_vista():
     assert set(matrix_view.ACTIONS) == set(MATRIX_ACTIONS)
     assert {a for a in dossier_view.ACTIONS} == set(DOSSIER_ACTIONS)
     assert set(incidents_view.ACTIONS) == set(INCIDENT_ACTIONS)
+    assert set(inventory_view.ACTIONS) == set(INVENTORY_ACTIONS)
 
 
 def test_toda_ruta_repartida_por_parametro_tiene_su_tabla():
@@ -109,6 +112,7 @@ def test_toda_ruta_repartida_por_parametro_tiene_su_tabla():
         ("POST", "/matriz/{medida}/{accion}"),
         ("POST", "/expediente/{dossier}/{accion}"),
         ("POST", "/incidentes/{incidente}/{accion}"),
+        ("POST", "/inventario/activos/{activo}/{accion}"),
     }
 
 

@@ -66,8 +66,8 @@ code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
 .product-name { font-family: var(--font-heading); font-size: var(--text-2xl); color: var(--text); text-decoration: none; }
 .identity { font-size: var(--text-sm); color: var(--muted); }
 .main-nav { border-bottom: 1px solid var(--border); }
-.main-nav ul { display: flex; flex-wrap: wrap; gap: var(--space-1); list-style: none; margin: 0 auto; padding: 0 var(--space-5); max-width: 72rem; }
-.main-nav a { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--space-3); color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; }
+.main-nav ul { display: flex; flex-wrap: wrap; gap: 0; list-style: none; margin: 0 auto; padding: 0 var(--space-5); max-width: 72rem; }
+.main-nav a { display: inline-flex; align-items: center; min-height: var(--tap); padding: 0 var(--space-2); color: var(--muted); text-decoration: none; border-bottom: 2px solid transparent; }
 .main-nav a:hover { color: var(--text); }
 .main-nav a[aria-current="page"] { color: var(--text); border-bottom-color: var(--accent); font-weight: 600; }
 main { padding-top: var(--space-7); padding-bottom: var(--space-8); }
@@ -123,6 +123,11 @@ fieldset.dimension legend { padding: 0 var(--space-2); font-weight: 600; }
 .btn-primary { background: var(--accent); border-color: var(--accent); color: var(--on-accent); }
 .btn-primary:hover { background: var(--accent-hover); border-color: var(--accent-hover); color: var(--on-accent); }
 .btn-primary:active { background: var(--accent-active); }
+.filters { display: flex; flex-wrap: wrap; gap: var(--space-4); align-items: flex-end; margin-bottom: var(--space-5); }
+.filters .field { margin-bottom: 0; }
+.filters select { max-width: 16rem; }
+.radios { border: 0; padding: 0; margin: 0 0 var(--space-5); }
+.radios legend { font-weight: 500; padding: 0; margin-bottom: var(--space-2); }
 .btn-ghost { border-color: transparent; color: var(--accent); }
 .actions { display: flex; flex-wrap: wrap; gap: var(--space-3); align-items: center; margin-top: var(--space-5); }
 

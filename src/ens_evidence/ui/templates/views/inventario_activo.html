@@ -1,0 +1,152 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{# Resultado de un check: icono + texto + código; PASS no es «correcto», solo «sin fallos». #}
+{% macro resultado(status, partial=False) -%}
+{%- set known = {"PASS": ("ok", "Sin fallos"), "FAIL": ("bad", "Falla"), "ERROR": ("bad", "Error al comprobar"), "UNKNOWN": ("neutral", "Sin datos")}.get(status) -%}
+{%- set tone = "warn" if partial and status == "PASS" else (known[0] if known else "neutral") -%}
+<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ "PASS parcial" if partial and status == "PASS" else (known[1] if known else status) }}</span> <span class="badge-code">{{ status }}</span></span>
+{%- endmacro %}
+{% block content %}
+{%- set r = detail.row %}
+{%- set e = r.evidence %}
+{%- set can_write = permissions is defined and permissions.edit and not writes_blocked %}
+<p><a href="/inventario">Volver al inventario</a></p>
+<h1>Activo <span class="mono">{{ r.id }}</span></h1>
+<p class="lead">{{ r.type_label }}. {{ r.deployment_label }}. {{ r.scope_label }}.</p>
+{% if saved %}<section class="notice notice-ok" role="status"><p>{{ saved }}</p></section>{% endif %}
+{% if revoked_notice %}<section class="notice notice-warn" role="status"><p>{{ revoked_notice }}</p></section>{% endif %}
+{% for msg in form_errors %}<section class="notice notice-warn" role="alert"><p>{{ msg }}</p></section>{% endfor %}
+{% if file_errors %}<section class="notice notice-warn" role="status"><p><strong>Hay ficheros del inventario con errores.</strong> No se puede editar ni dar de baja nada hasta corregirlos.</p>
+  <ul>{% for msg in file_errors %}<li>{{ msg }}</li>{% endfor %}</ul></section>{% endif %}
+{% if integrity_warnings %}<section class="notice notice-warn" role="status"><p><strong>Avisos de coherencia.</strong></p>
+  <ul>{% for msg in integrity_warnings %}<li>{{ msg }}</li>{% endfor %}</ul></section>{% endif %}
+{% for note in history_notes %}<p class="muted">{{ note }}</p>{% endfor %}
+
+{% if form %}
+<section class="section" aria-labelledby="h-editar">
+  <h2 id="h-editar">Editar el activo</h2>
+  <p>Lo que no cambies se conserva. El identificador <span class="mono">{{ form.asset_id }}</span> no se puede cambiar.</p>
+  <form method="post" action="{{ form.action }}" novalidate>{{ m.gate_open(blocked=writes_blocked) }}
+    {%- for f in form.fields %}
+    {{ m.text_field(f.name, f.label ~ ("" if f.required else " (opcional)"), hint=("Escribe sí o no." if f.kind == "bool" else None)) }}
+    {%- endfor %}
+    <div class="field">
+      <label for="f-asset_deployment">Despliegue<span class="hint">«Planificado» es un activo que aún no existe.</span></label>
+      <select id="f-asset_deployment" name="asset_deployment">
+        <option value="deployed"{% if form.deployment == "deployed" %} selected{% endif %}>Desplegado</option>
+        <option value="planned"{% if form.deployment == "planned" %} selected{% endif %}>Planificado</option>
+      </select>
+      {{ m.field_errors("asset_deployment") }}
+    </div>
+    <fieldset class="radios">
+      <legend>Alcance</legend>
+      <div class="check"><input type="radio" id="f-scope-included" name="scope" value="included"{% if form.scope == "included" %} checked{% endif %}><label for="f-scope-included">Entra en el alcance</label></div>
+      <div class="check"><input type="radio" id="f-scope-excluded" name="scope" value="excluded"{% if form.scope == "excluded" %} checked{% endif %}><label for="f-scope-excluded">Queda fuera del alcance</label></div>
+      {{ m.field_errors("scope") }}
+    </fieldset>
+    {{ m.text_field("justification", "Justificación", hint="Obligatoria si queda fuera del alcance: explica por qué.", multiline=True) }}
+    {% if form.approval_warning %}
+    <div class="notice notice-warn" role="note"><p><strong>Guardar revoca la aprobación del alcance.</strong> La aprobó {{ form.approval_warning.approved_by }} el {{ form.approval_warning.approved_at }}. Habrá que aprobarla de nuevo en el asistente.</p>
+      <div class="check"><input type="checkbox" id="f-acepto_revocacion" name="acepto_revocacion" value="1"{% if (values or {}).get("acepto_revocacion") %} checked{% endif %}><label for="f-acepto_revocacion">Lo entiendo y quiero guardar</label></div>
+      {{ m.field_errors("acepto_revocacion") }}</div>
+    {% endif %}
+    <p class="muted">No pegues contraseñas ni claves: se rechazan.</p>
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Guardar cambios</button>
+      <a class="btn" href="{{ form.cancel_href }}">Cancelar</a>
+    </div>
+  {{ m.gate_close() }}</form>
+</section>
+{% endif %}
+
+{% if removal %}
+<section class="section" aria-labelledby="h-baja">
+  <h2 id="h-baja">Dar de baja el activo</h2>
+  {% if removal.blockers %}
+  <div class="notice notice-warn" role="status"><p><strong>No se puede dar de baja todavía.</strong></p>
+    <ul>{% for b in removal.blockers %}<li>{{ b }}</li>{% endfor %}</ul>
+    {% if removal.references %}<p>Lo usan:</p>
+    <ul>{% for ref in removal.references %}<li><a href="{{ '/asistente/servicios' if ref.kind == 'service' else '/asistente/dependencias' }}">{{ ref.label }}</a> <span class="muted">({{ "servicio" if ref.kind == "service" else "dependencia" }} <span class="mono">{{ ref.id }}</span>)</span></li>{% endfor %}</ul>{% endif %}
+  </div>
+  <p><a class="btn" href="{{ removal.cancel_href }}">Volver a la ficha</a></p>
+  {% else %}
+  <p>Dar de baja quita el activo del inventario y del alcance. No se borran las evidencias ya recogidas.</p>
+  <form method="post" action="{{ removal.action }}" novalidate>{{ m.gate_open(blocked=writes_blocked) }}
+    <div class="field">
+      <label for="f-confirmar">Escribe <span class="mono">{{ removal.asset_id }}</span> para confirmar</label>
+      <input type="text" id="f-confirmar" name="confirmar" value=""{% if (errors or {}).get("confirmar") %} aria-invalid="true" aria-describedby="err-confirmar"{% endif %} autocomplete="off">
+      {{ m.field_errors("confirmar") }}
+    </div>
+    {% if removal.approval_warning %}
+    <div class="notice notice-warn" role="note"><p><strong>Guardar revoca la aprobación del alcance.</strong> La aprobó {{ removal.approval_warning.approved_by }} el {{ removal.approval_warning.approved_at }}. Habrá que aprobarla de nuevo en el asistente.</p>
+      <div class="check"><input type="checkbox" id="f-acepto_revocacion" name="acepto_revocacion" value="1"><label for="f-acepto_revocacion">Lo entiendo y quiero dar de baja</label></div>
+      {{ m.field_errors("acepto_revocacion") }}</div>
+    {% endif %}
+    <div class="actions">
+      <button class="btn btn-primary" type="submit">Dar de baja</button>
+      <a class="btn" href="{{ removal.cancel_href }}">Cancelar</a>
+    </div>
+  {{ m.gate_close() }}</form>
+  {% endif %}
+</section>
+{% endif %}
+
+<section class="section" aria-labelledby="h-datos">
+  <h2 id="h-datos">Datos</h2>
+  <dl class="facts">
+    <dt>Tipo</dt><dd>{{ r.type_label }}</dd>
+    <dt>Despliegue</dt><dd>{{ r.deployment_label }}</dd>
+    <dt>Alcance</dt><dd>{{ r.scope_label }}{% if r.justification %}. Justificación: {{ r.justification }}{% endif %}</dd>
+    {%- for label, value in detail.fields %}
+    <dt>{{ label }}</dt><dd>{{ value }}</dd>
+    {%- endfor %}
+  </dl>
+  {% if r.agent_href %}<p><a href="{{ r.agent_href }}">Ver el agente de este equipo</a></p>{% endif %}
+  {% if can_write and not form and not removal %}
+  <div class="actions">
+    <a class="btn" href="{{ r.href }}?editar=1">Editar</a>
+    <a class="btn" href="{{ r.href }}?baja=1">Dar de baja</a>
+  </div>
+  {% elif not can_write %}<p class="muted">Solo lectura: para editar o dar de baja hace falta permiso de edición y un inventario válido.</p>{% endif %}
+</section>
+
+<section class="section" aria-labelledby="h-usos">
+  <h2 id="h-usos">Quién usa este activo</h2>
+  {% if not detail.references_known %}<p class="muted">No se pueden leer los servicios o las dependencias, así que no se sabe qué usa este activo.</p>
+  {% elif detail.referenced %}
+  <p>Este activo está referenciado. Mientras lo esté, no se puede dar de baja.</p>
+  {% if detail.services %}<h3>Servicios</h3>
+  <ul>{% for s in detail.services %}<li><a href="/asistente/servicios">{{ s.label }}</a> <span class="mono">{{ s.id }}</span></li>{% endfor %}</ul>{% endif %}
+  {% if detail.dependencies %}<h3>Dependencias</h3>
+  <ul>{% for d in detail.dependencies %}<li><a href="/asistente/dependencias">{{ d.label }}</a> <span class="mono">{{ d.id }}</span></li>{% endfor %}</ul>{% endif %}
+  {% else %}<p class="muted">Ningún servicio ni dependencia usa este activo.</p>{% endif %}
+</section>
+
+<section class="section" aria-labelledby="h-resultados">
+  <h2 id="h-resultados">Resultados por conector</h2>
+  {% if e %}
+  <p>{% set tone = "bad" if e.status in ("FAIL", "ERROR") else ("ok" if e.favorable else ("warn" if e.status == "PASS" else "neutral")) %}<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ e.label }}</span></span> {{ e.sentence }}</p>
+  {% if e.coverage == "parcial" %}<p class="muted">Cobertura parcial: no se puede dar por completo.{% for reason in e.partial_reasons %} {{ reason }}{% endfor %}</p>{% endif %}
+  {% for c in detail.results %}
+  <h3><span class="mono">{{ c.connector }}</span> <span class="muted">· {{ c.finished_at }}</span></h3>
+  {% if not c.complete %}<p class="muted">{{ m.icon("alert") }} Resultados incompletos: faltan datos de esta ejecución.</p>{% endif %}
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Check</th><th scope="col">Resultado</th><th scope="col">Recogida</th><th scope="col">Motivo</th><th scope="col">Evidencia</th></tr></thead>
+    <tbody>
+    {%- for row in c.rows %}
+    <tr>
+      <th scope="row" class="mono">{{ row.check_id }}</th>
+      <td>{{ resultado(row.status, e.coverage == "parcial" or not c.complete) }}</td>
+      <td><span class="badge tone-neutral">{{ m.icon("help") }}<span>{{ (m.ESTADOS.get(row.collection_status) or (None, row.collection_status))[1] }}</span></span></td>
+      <td>{% if row.reason_code %}<span class="mono">{{ row.reason_code }}</span>{% else %}—{% endif %}</td>
+      <td class="id">{{ row.evidence_ids | join(", ") or "—" }}</td>
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+  {% endfor %}
+  <p class="muted">Cada resultado viene del conector y la fecha que se indican. El motivo completo está en el historial de checks.</p>
+  {% else %}<p class="muted">{{ m.icon("help") }} Sin evidencia: ningún conector ha dado resultados para este activo.</p>{% endif %}
+</section>
+<p class="muted">Datos leídos el {{ generated_at }}. Un activo sin resultados no es un activo correcto: es un activo sin evidencia. Esta vista no declara conformidad.</p>
+{% endblock %}

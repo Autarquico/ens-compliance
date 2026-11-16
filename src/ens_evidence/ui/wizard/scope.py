@@ -6,6 +6,7 @@ from typing import get_args
 from ens_evidence.scope import (
     Asset,
     AssetType,
+    Deployment,
     ScopeApprovalRejected,
     ScopeState,
     approve_scope,
@@ -31,7 +32,7 @@ from ens_evidence.scope.inventory import (
 from ens_evidence.scope.models import REQUIRED_FIELDS
 from ens_evidence.scope.skeleton import create_scope_skeleton
 from ens_evidence.ui.authz import WIZARD_PATH, fixed_role
-from ens_evidence.ui.forms import first
+from ens_evidence.ui.forms import Form, first
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard.base import (
@@ -74,6 +75,7 @@ FIELD_LABELS = {
     "source": "Origen", "destination": "Destino", "frequency": "Frecuencia",
     "restoration": "Prueba de restauración", "dependency": "Dependencia",
 }  # fmt: skip
+OPTIONAL_FIELDS = {AssetType.LAPTOP: ("hostname",)}
 SUMMARY_FIELDS = ("hostname", "owner", "domain", "account", "engine", "service", "source")
 
 
@@ -122,15 +124,19 @@ def _sistema_done(store: UiStore, now: datetime) -> bool:
 # --- activos -----------------------------------------------------------------------------------
 
 
-def _asset_summary(asset: dict) -> str | None:
+def asset_summary(asset: dict) -> str | None:
     return next((str(asset[f]) for f in SUMMARY_FIELDS if asset.get(f)), None)
 
 
-def _new_asset(selected: str) -> dict | None:
+def asset_form_fields(selected: str, *, with_optional: bool = False) -> dict | None:
+    """Campos del formulario para el tipo elegido; con `with_optional`, también los opcionales."""
     try:
         kind = AssetType(selected)
     except ValueError:
         return None
+    names = [(n, True) for n in REQUIRED_FIELDS[kind]]
+    if with_optional:
+        names += [(n, False) for n in OPTIONAL_FIELDS.get(kind, ())]
     return {
         "type": kind.value,
         "type_label": ASSET_TYPE_LABELS[kind],
@@ -139,10 +145,42 @@ def _new_asset(selected: str) -> dict | None:
                 "name": name,
                 "label": FIELD_LABELS.get(name, name),
                 "kind": "bool" if _is_bool(name) else "text",
+                **({} if is_required else {"required": False}),
             }
-            for name in REQUIRED_FIELDS[kind]
+            for name, is_required in names
         ],
     }
+
+
+def asset_form_values(form: Form, *, kind: AssetType, blank_clears: bool = False) -> dict:
+    """Valores del formulario de un activo, validados; `StepRejected` con un error por campo.
+
+    Con `blank_clears`, un campo del tipo dejado en blanco vale None (borra el existente);
+    sin él, simplemente no aparece. `asset_deployment`, si viene, elige el despliegue.
+    """
+    asset_id = required(form, {"asset_id": "El identificador"})["asset_id"]
+    values: dict = {"id": asset_id, "type": kind.value, "deployment": "deployed"}
+    errors: dict[str, list[str]] = {}
+    if any(c.isspace() for c in asset_id):
+        errors["asset_id"] = ["El identificador no puede llevar espacios."]
+    if deployment := first(form, "asset_deployment"):
+        if deployment in {d.value for d in Deployment}:
+            values["deployment"] = deployment
+        else:
+            errors["asset_deployment"] = ["Elige desplegado o planificado."]
+    for name in (*REQUIRED_FIELDS[kind], *OPTIONAL_FIELDS.get(kind, ())):
+        if not (text := first(form, f"asset_{name}")):
+            if blank_clears:
+                values[name] = None
+            continue
+        try:
+            values[name] = parse_field(name, text)
+        except ScopeEditRejected:
+            label = FIELD_LABELS.get(name, name)
+            errors[f"asset_{name}"] = [f"{label}: escribe sí o no."]
+    if errors:
+        raise StepRejected(errors)
+    return values
 
 
 def _activos_context(step: StepInput) -> Context:
@@ -156,39 +194,24 @@ def _activos_context(step: StepInput) -> Context:
                 "id": a.id,
                 "type": a.type.value,
                 "type_label": ASSET_TYPE_LABELS[a.type],
-                "summary": _asset_summary(a.model_dump(exclude_none=True)),
+                "summary": asset_summary(a.model_dump(exclude_none=True)),
                 "deployment": a.deployment.value,
                 "included": a.id in included,
             }
             for a in listed
         ],
         "asset_types": [{"value": t.value, "label": ASSET_TYPE_LABELS[t]} for t in AssetType],
-        "new_asset": _new_asset(selected),
+        "new_asset": asset_form_fields(selected),
         "values": {"included_assets": sorted(included)},
     }
 
 
 def _add_asset(step: StepInput) -> None:
-    form = step.form
     try:
-        kind = AssetType(first(form, "asset_type"))
+        kind = AssetType(first(step.form, "asset_type"))
     except ValueError:
         raise StepRejected(form_errors=["Elige un tipo de activo."]) from None
-    asset_id = required(form, {"asset_id": "El identificador"})["asset_id"]
-    values: dict = {"id": asset_id, "type": kind.value, "deployment": "deployed"}
-    errors: dict[str, list[str]] = {}
-    if any(c.isspace() for c in asset_id):
-        errors["asset_id"] = ["El identificador no puede llevar espacios."]
-    for name in REQUIRED_FIELDS[kind]:
-        if not (text := first(form, f"asset_{name}")):
-            continue
-        try:
-            values[name] = parse_field(name, text)
-        except ScopeEditRejected:
-            label = FIELD_LABELS.get(name, name)
-            errors[f"asset_{name}"] = [f"{label}: escribe sí o no."]
-    if errors:
-        raise StepRejected(errors)
+    values = asset_form_values(step.form, kind=kind)
     with rejected_to_step(ScopeEditRejected):
         add_asset(step.store, values, True, step.now)
 

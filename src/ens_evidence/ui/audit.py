@@ -30,12 +30,18 @@ def audit_write(
     keys: list[str],
     at: datetime,
     roles: Iterable[str] = (),
+    asset: str | None = None,
+    failed: bool = False,
 ) -> None:
-    AUDIT_LOGGER.info(
-        "audit outcome=saved identity=%s step=%s action=%s roles=%s keys=%s at=%s",
+    """`asset` identifica el activo tocado; `failed`, una escritura que falló tras escribir algo."""
+    target = f" asset={_field(asset)}" if asset is not None else ""
+    (AUDIT_LOGGER.error if failed else AUDIT_LOGGER.info)(
+        "audit outcome=%s identity=%s step=%s action=%s%s roles=%s keys=%s at=%s",
+        "failed" if failed else "saved",
         _field(identity),
         _field(step),
         _field(action),
+        target,
         _roles(roles),
         ",".join(_field(k) for k in keys) or "-",
         at.isoformat(),

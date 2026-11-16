@@ -80,6 +80,7 @@ DOSSIER_ACTIONS: dict[str, Requirement] = {
     "declare": MANAGEMENT,
 }
 INCIDENT_ACTIONS: dict[str, Requirement] = {"actualizar": EDIT, "cerrar": EDIT, "historial": EDIT}
+INVENTORY_ACTIONS: dict[str, Requirement] = {"editar": EDIT, "baja": EDIT}
 
 WIZARD_PATH = "/asistente/{slug}"
 DOSSIER_PATH = "/expediente/{dossier}/{accion}"
@@ -92,6 +93,8 @@ OPERATIONS: Operations = {
     ("POST", DOSSIER_PATH): ByParam("accion", DOSSIER_ACTIONS),
     ("POST", "/incidentes/nuevo"): EDIT,
     ("POST", "/incidentes/{incidente}/{accion}"): ByParam("accion", INCIDENT_ACTIONS),
+    ("POST", "/inventario/alta"): EDIT,
+    ("POST", "/inventario/activos/{activo}/{accion}"): ByParam("accion", INVENTORY_ACTIONS),
     ("POST", "/preauditoria/preparar"): EDIT,
     ("POST", "/preauditoria/enviar"): SO,
     ("POST", "/preauditoria/hallazgos/{finding}"): SO,

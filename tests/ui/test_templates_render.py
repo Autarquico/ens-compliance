@@ -2,10 +2,12 @@
 
 import re
 from pathlib import Path
+from types import SimpleNamespace
 
 import pytest
 
 from ens_evidence.ui.pages import code_spans
+from ens_evidence.ui.views import inventory as inv
 from ens_evidence.ui.views.agents import (
     AgentDetail,
     AgentRow,
@@ -77,6 +79,9 @@ VIEW_TEMPLATES = [
     "views/ayuda.html",
     "agents.html",
     "agents_detail.html",
+    "views/inventario.html",
+    "views/inventario_activo.html",
+    "views/inventario_form.html",
 ]
 # Solo se importa desde otras plantillas.
 INDIRECT = {"_macros.html"}
@@ -466,6 +471,221 @@ _AGENT_ROW = AgentRow(
 )
 _AGENT_BARE = AgentRow("pc-2", "never", "Sin alta", None, "—", None, None)
 
+EDITOR = SimpleNamespace(edit=True)
+READER = SimpleNamespace(edit=False)
+_CHOICES = (inv.Choice("laptop", "Portátil"), inv.Choice("server", "Servidor"))
+_EVIDENCE_FAIL = inv.EvidenceSummary(
+    "FAIL",
+    "FAIL",
+    False,
+    "completa",
+    (),
+    HOSTILE,
+    "2026-11-08 10:00 UTC",
+    2,
+    ("ev-1",),
+    f"Último resultado de 2 checks de {HOSTILE} el 2026-11-08 10:00 UTC",
+)
+_EVIDENCE_PARTIAL = inv.EvidenceSummary(
+    "PASS",
+    "PASS parcial",
+    False,
+    "parcial",
+    (HOSTILE,),
+    "osquery",
+    "2026-11-08 10:00 UTC",
+    1,
+    ("ev-2",),
+    "Último resultado de 1 checks de osquery el 2026-11-08 10:00 UTC",
+)
+_EVIDENCE_PASS = inv.EvidenceSummary(
+    "PASS",
+    "PASS",
+    True,
+    "completa",
+    (),
+    "osquery",
+    "2026-11-08 10:00 UTC",
+    1,
+    ("ev-3",),
+    "Último resultado de 1 checks de osquery el 2026-11-08 10:00 UTC",
+)
+
+
+def _asset_row(asset_id, evidence, scope="included", **extra):
+    return inv.AssetRow(
+        id=asset_id,
+        href=f"/inventario/activos/{asset_id}",
+        type="laptop",
+        type_label="Portátil",
+        deployment="deployed",
+        deployment_label="Desplegado",
+        scope=scope,
+        scope_label="Excluido" if scope == "excluded" else "En el alcance",
+        justification=HOSTILE if scope == "excluded" else None,
+        summary=HOSTILE,
+        evidence=evidence,
+        agent_href="/agentes/lap-ana",
+        **extra,
+    )
+
+
+_ASSET_ROWS = (
+    _asset_row(HOSTILE, _EVIDENCE_FAIL),
+    _asset_row("lap-ana", _EVIDENCE_PARTIAL),
+    _asset_row("lap-bea", _EVIDENCE_PASS),
+    _asset_row("lap-sin", None, scope="excluded"),
+)
+_RECONCILE = inv.Reconciliation(
+    rows=(
+        inv.ReconcileRow(
+            "not_inventoried",
+            "Reporta y no está inventariado",
+            HOSTILE,
+            HOSTILE,
+            None,
+            False,
+            HOSTILE,
+            "/inventario/alta?tipo=laptop&id=x",
+            None,
+        ),
+        inv.ReconcileRow(
+            "hostname_mismatch",
+            "El nombre del equipo no coincide",
+            "lap-ana",
+            "pc-a",
+            HOSTILE,
+            True,
+            None,
+            None,
+            "/inventario/activos/lap-ana",
+        ),
+        inv.ReconcileRow(
+            "not_enrolled",
+            "Desplegado y sin alta en agentes",
+            "srv-1",
+            None,
+            None,
+            False,
+            None,
+            None,
+            "/inventario/activos/srv-1",
+        ),
+    ),
+    notes=(HOSTILE,),
+)
+_FILTERS = inv.Filters(tipo="laptop")
+_OPTIONS = inv.FilterOptions(
+    tipo=_CHOICES,
+    despliegue=(inv.Choice("deployed", "Desplegado"),),
+    alcance=(inv.Choice("included", "En el alcance"),),
+    estado=(inv.Choice("FAIL", "Falla (FAIL)"), inv.Choice(inv.NO_EVIDENCE, "Sin evidencia")),
+)
+_PAGE = inv.InventoryPage(
+    rows=_ASSET_ROWS,
+    total=7,
+    filters=_FILTERS,
+    filter_options=_OPTIONS,
+    file_errors=(HOSTILE,),
+    integrity_warnings=(HOSTILE,),
+    writes_blocked=True,
+    reconciliation=_RECONCILE,
+    history_notes=(HOSTILE,),
+    generated_at="2026-11-08 10:00 UTC",
+)
+_WARNING = inv.ApprovalWarning(HOSTILE, "2026-11-01 09:00 UTC")
+_FORM_FIELDS = (
+    inv.FormField("asset_os", "Sistema operativo", "text", True),
+    inv.FormField("asset_hostname", "Nombre del equipo", "text", False),
+    inv.FormField("asset_encrypted", "Cifrado", "bool", True),
+)
+_FORM_VALUES = {
+    "asset_id": HOSTILE,
+    "asset_os": HOSTILE,
+    "asset_hostname": HOSTILE,
+    "justification": HOSTILE,
+    "scope": "excluded",
+    "acepto_revocacion": "1",
+}
+
+
+def _asset_form(mode, **extra):
+    new = mode == "nuevo"
+    base = {
+        "mode": mode,
+        "action": "/inventario/alta" if new else "/inventario/activos/x/editar",
+        "cancel_href": "/inventario" if new else "/inventario/activos/x",
+        "asset_id": "" if new else "x",
+        "type": "laptop",
+        "type_label": "Portátil",
+        "fields": _FORM_FIELDS,
+        "asset_types": _CHOICES,
+        "deployment": "planned",
+        "scope": "excluded",
+        "justification": HOSTILE,
+        "approval_warning": _WARNING,
+    }
+    return inv.AssetForm(**{**base, **extra})
+
+
+_BLOCKED = {
+    "writes_blocked": False,
+    "file_errors": [HOSTILE],
+    "integrity_warnings": [HOSTILE],
+    "history_notes": [HOSTILE],
+    "generated_at": "2026-11-08 10:00 UTC",
+}
+_DETAIL = inv.AssetDetail(
+    row=_asset_row("x", _EVIDENCE_PARTIAL),
+    fields=(("Sistema operativo", HOSTILE), ("Nombre del equipo", HOSTILE)),
+    services=(inv.RefRow("service", "svc-1", HOSTILE),),
+    dependencies=(inv.RefRow("dependency", "dep-1", HOSTILE),),
+    results=(
+        inv.ConnectorResults(
+            HOSTILE,
+            "2026-11-08 10:00 UTC",
+            False,
+            (
+                inv.CheckRow("HOST-001", "PASS", "SUCCESS", None, ("ev-2",)),
+                inv.CheckRow("HOST-002", "FAIL", "PERMISSION_DENIED", HOSTILE, ()),
+            ),
+        ),
+    ),
+    referenced=True,
+    references_known=True,
+    removal_blockers=(HOSTILE,),
+    removable=False,
+)
+_DETAIL_BARE = inv.AssetDetail(
+    row=_asset_row("y", None),
+    fields=(),
+    services=(),
+    dependencies=(),
+    results=(),
+    referenced=False,
+    references_known=False,
+    removal_blockers=(),
+    removable=True,
+)
+_REMOVAL = inv.Removal(
+    "x",
+    "/inventario/activos/x/baja",
+    "/inventario/activos/x",
+    (),
+    (inv.RefRow("service", "svc-1", HOSTILE),),
+    _WARNING,
+)
+_ACTIVO = {
+    "form": None,
+    "removal": None,
+    "values": {},
+    "errors": {},
+    "form_errors": [],
+    "saved": None,
+    "revoked_notice": None,
+    **_BLOCKED,
+}
+
 VIEW_CONTEXT = {
     "agents.html": {"rows": [_AGENT_ROW, _AGENT_BARE], "problems": [HOSTILE], "notes": [HOSTILE]},
     "agents_detail.html": {
@@ -477,6 +697,109 @@ VIEW_CONTEXT = {
         ),
         "problems": [HOSTILE],
     },
+    "views/inventario.html": [
+        {
+            "page": _PAGE,
+            "rows": _PAGE.rows,
+            "reconciliation": _RECONCILE,
+            "saved": HOSTILE,
+            "revoked_notice": HOSTILE,
+            "permissions": EDITOR,
+        },
+        {
+            "page": inv.InventoryPage(
+                rows=(),
+                total=0,
+                filters=inv.Filters(),
+                filter_options=_OPTIONS,
+                file_errors=(),
+                integrity_warnings=(),
+                writes_blocked=False,
+                reconciliation=inv.Reconciliation(),
+                history_notes=(),
+                generated_at="2026-11-08 10:00 UTC",
+            ),
+            "rows": (),
+            "reconciliation": inv.Reconciliation(),
+            "saved": None,
+            "revoked_notice": None,
+            "permissions": READER,
+        },
+        {
+            "page": _PAGE,
+            "rows": _PAGE.rows,
+            "reconciliation": _RECONCILE,
+            "saved": None,
+            "revoked_notice": None,
+        },
+    ],
+    "views/inventario_activo.html": [
+        {**_ACTIVO, "detail": _DETAIL, "permissions": EDITOR},
+        {**_ACTIVO, "detail": _DETAIL_BARE, "permissions": READER},
+        {
+            **_ACTIVO,
+            "detail": _DETAIL,
+            "permissions": EDITOR,
+            "form": _asset_form("editar"),
+            "values": _FORM_VALUES,
+            "form_errors": [HOSTILE],
+        },
+        {
+            **_ACTIVO,
+            "detail": _DETAIL,
+            "permissions": EDITOR,
+            "removal": _REMOVAL,
+            "values": _FORM_VALUES,
+        },
+        {
+            **_ACTIVO,
+            "detail": _DETAIL,
+            "permissions": EDITOR,
+            "removal": inv.Removal(
+                "x",
+                "/inventario/activos/x/baja",
+                "/inventario/activos/x",
+                (HOSTILE,),
+                (inv.RefRow("dependency", "dep-1", HOSTILE),),
+                None,
+            ),
+            "saved": HOSTILE,
+            "revoked_notice": HOSTILE,
+        },
+    ],
+    "views/inventario_form.html": [
+        {
+            "form": _asset_form("nuevo"),
+            "values": _FORM_VALUES,
+            "errors": {},
+            "form_errors": [],
+            "permissions": EDITOR,
+            **_BLOCKED,
+        },
+        {
+            "form": _asset_form(
+                "nuevo",
+                type=None,
+                type_label=None,
+                fields=(),
+                approval_warning=None,
+                scope="included",
+            ),
+            "values": {},
+            "errors": {},
+            "form_errors": [HOSTILE],
+            "permissions": EDITOR,
+            **_BLOCKED,
+        },
+        {
+            "form": _asset_form("nuevo"),
+            "values": _FORM_VALUES,
+            "errors": {},
+            "form_errors": [],
+            **_BLOCKED,
+            "writes_blocked": True,
+        },
+    ],
     "views/estado.html": {
         "readiness": {"state": "NOT_READY", "summary": "Faltan evidencias"},
         "scope_state": "APPROVED",
@@ -924,7 +1247,9 @@ def _environment():
 
 def _cases():
     for name in VIEW_TEMPLATES:
-        yield name, {**CHROME, **VIEW_CONTEXT[name]}
+        variants = VIEW_CONTEXT[name]
+        for variant in variants if isinstance(variants, list) else [variants]:
+            yield name, {**CHROME, **variant}
     for step, name in WIZARD_TEMPLATES.items():
         for hx in (False, True):
             yield name, {**CHROME, **_wizard(step, hx_request=hx, **WIZARD_EXTRA[step])}
@@ -934,6 +1259,23 @@ def _cases():
 
 
 def _with_errors(name, context):
+    if name.startswith("views/inventario"):
+        bad = {
+            k: [HOSTILE]
+            for k in (
+                "asset_id",
+                "asset_os",
+                "asset_hostname",
+                "asset_encrypted",
+                "asset_deployment",
+                "asset_type",
+                "scope",
+                "justification",
+                "acepto_revocacion",
+                "confirmar",
+            )
+        }
+        return {**context, "errors": bad, "form_errors": [HOSTILE]}
     if not name.startswith("wizard/"):
         return context
     bad = {
@@ -1025,3 +1367,48 @@ def test_base_carries_safe_htmx_config_and_no_cdn():
 def test_css_has_no_remote_references():
     css = (STATIC / "ui.css").read_text()
     assert "http" not in css and "@import" not in css
+
+
+def _render(name, context):
+    return _environment().get_template(name).render(**{**CHROME, **context})
+
+
+def test_inventory_never_shows_no_evidence_favourably():
+    html = _render("views/inventario.html", VIEW_CONTEXT["views/inventario.html"][0])
+    row = html.split(">lap-sin</a>")[1].split("</tr>")[0]
+    assert "sin evidencia" in row and "tone-ok" not in row
+    partial = html.split("PASS parcial")[0].rsplit("<tr>", 1)[1]
+    assert "tone-warn" in partial and "tone-ok" not in partial
+    assert "Cobertura parcial" in html and "Nombre distinto" in html
+
+
+def test_inventory_hides_write_actions_without_edit_or_when_blocked():
+    for context in VIEW_CONTEXT["views/inventario.html"][1:]:
+        html = _render("views/inventario.html", context)
+        assert "Añadir un activo" not in html and 'method="post"' not in html
+    blocked = _render("views/inventario.html", VIEW_CONTEXT["views/inventario.html"][0])
+    assert "Añadir un activo" not in blocked and "Añadir al inventario" not in blocked
+    reader = _render(
+        "views/inventario_activo.html", VIEW_CONTEXT["views/inventario_activo.html"][1]
+    )
+    assert "Dar de baja" not in reader.split("Solo lectura")[0] and "editar=1" not in reader
+
+
+def test_referenced_asset_removal_explains_and_offers_no_form():
+    html = _render("views/inventario_activo.html", VIEW_CONTEXT["views/inventario_activo.html"][4])
+    assert "No se puede dar de baja todavía" in html and 'name="confirmar"' not in html
+    assert "/asistente/dependencias" in html
+
+
+def test_revocation_warning_carries_the_acceptance_checkbox():
+    html = _render("views/inventario_form.html", VIEW_CONTEXT["views/inventario_form.html"][0])
+    assert 'name="acepto_revocacion"' in html and "revoca la aprobación" in html
+    assert 'name="asset_hostname"' in html and 'value="excluded" checked' in html
+    clean = _render("views/inventario_form.html", VIEW_CONTEXT["views/inventario_form.html"][1])
+    assert 'name="acepto_revocacion"' not in clean
+
+
+def test_inventory_pages_carry_the_no_conformity_note():
+    for name in ("views/inventario.html", "views/inventario_activo.html"):
+        context = VIEW_CONTEXT[name][0]
+        assert "Esta vista no declara conformidad." in _render(name, context)
