@@ -6,7 +6,7 @@ status: active
 priority: P1
 size: XL
 issue: 29
-prs: []
+prs: [89]
 related_issues: [29]
 depends_on: [assessment-dossier, pre-audit]
 supersedes: []
