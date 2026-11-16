@@ -84,6 +84,7 @@ class CloudflareConnector(Connector):
                 "token_kind": config.token_kind,
                 "error": error,
                 "public_routes": [route.model_dump() for route in config.public_routes],
+                "ui_hostname": config.ui_hostname,
                 "sections": {name: s.model_dump(mode="json") for name, s in collected.items()},
             },
             collection_status=CollectionStatus.ERROR if error else CollectionStatus.SUCCESS,

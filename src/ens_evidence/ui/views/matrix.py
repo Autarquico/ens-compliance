@@ -41,22 +41,14 @@ from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.scope import ScopeState, scope_status
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
-from ens_evidence.ui.pages import error_page, identity_of, page_context, render
+from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
 from ens_evidence.ui.plain import CLI_TRACE, translate
+from ens_evidence.ui.roles import ROLE_LABELS, Permissions, role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import BLOCKER_LABELS, format_instant
 from ens_evidence.ui.views.tools import kit_offer
 from ens_evidence.workspace import WorkspaceError
 
-ROLE_LABELS = {
-    Role.SYSTEM_ADMINISTRATOR: "Administrador del sistema",
-    Role.SYSTEM_ADMINISTRATOR_DELEGATE: "Delegado del administrador",
-    Role.SECURITY_OFFICER: "Responsable de la seguridad",
-    Role.SYSTEM_OWNER: "Responsable del sistema",
-    Role.MANAGEMENT: "Dirección",
-    Role.INFORMATION_OWNER: "Responsable de la información",
-    Role.SERVICE_OWNER: "Responsable del servicio",
-}
 REVIEW_ROLES = [r for r in Role if r in SELF_ASSESSORS]
 ASSESSMENT_LABELS = {
     MeasureAssessment.COMPLIANT: "Favorable: la medida está implantada",
@@ -105,27 +97,14 @@ def plain(message: str) -> str:
     return cleaned if cleaned.endswith(".") else f"{cleaned}."
 
 
-def _ensure_matrix(store: UiStore, now: datetime, email: str, *, force: bool = False) -> None:
-    """Crea o completa `controls/matrix.yaml`; sin Declaración vigente no hace nada."""
-    if store.exists(MATRIX_KEY) and not force:
-        return
-    recording = store.recording()
-    try:
-        init_matrix(recording, now)
-    except (MatrixRejected, WorkspaceError):
-        return
-    if recording.written:
-        audit_write(identity=email, step="matriz", action="iniciar", keys=recording.written, at=now)
-
-
 def _status(store: UiStore, now: datetime) -> tuple[RowStatus, ...]:
     return matrix_status(store, now, checks=StoredCheckResults(reference_now=now))[1]
 
 
 def matriz(request: Request) -> Response:
     store, now = request.app.state.store, request.app.state.clock()
-    _ensure_matrix(store, now, identity_of(request).email)
     names = measure_names()
+    statuses = _status(store, now)
     wizard_pending = (
         scope_status(store).state is not ScopeState.APPROVED
         or categorization_status(store, now).state is not CategorizationState.CURRENT
@@ -142,9 +121,11 @@ def matriz(request: Request) -> Response:
                 "assessment": r.row.measure.assessment.value,
                 "evidence_count": sum(1 for s in r.row.supports if s.counts),
             }
-            for r in _status(store, now)
+            for r in statuses
         ],
         wizard_pending=wizard_pending,
+        needs_init=bool(statuses)
+        and (not store.exists(MATRIX_KEY) or any(r.row.entry is None for r in statuses)),
         generated_at=format_instant(now),
     )
 
@@ -152,14 +133,8 @@ def matriz(request: Request) -> Response:
 # --- la página de una medida ---------------------------------------------------------------------
 
 
-def _row_of(store: UiStore, now: datetime, email: str, measure_id: str) -> RowStatus:
-    def find() -> RowStatus | None:
-        return next((r for r in _status(store, now) if r.row.spec.measure_id == measure_id), None)
-
-    found = find()
-    if found is not None and found.row.entry is None:
-        _ensure_matrix(store, now, email, force=True)
-        found = find()
+def _row_of(store: UiStore, now: datetime, measure_id: str) -> RowStatus:
+    found = next((r for r in _status(store, now) if r.row.spec.measure_id == measure_id), None)
     if found is None:
         raise HTTPException(404)
     return found
@@ -292,8 +267,8 @@ def _detail_page(
     saved: bool = False,
     status_code: int = 200,
 ) -> Response:
-    email = identity_of(request).email
-    status = _row_of(store, now, email, measure_id)
+    permissions = permissions_of(request)
+    status = _row_of(store, now, measure_id)
     entry = status.row.entry
     selected = _is_selected(status)
     echo = {k: v[0] for k, v in (values or {}).items() if v}
@@ -321,8 +296,10 @@ def _detail_page(
         blockers=_blockers(status),
         kit_offer=kit_offer(store, measure_id, selected, _clause_texts(status)),
         last_review=_last_review(status),
-        owner_roles=[{"value": r.value, "label": ROLE_LABELS[r]} for r in Role],
-        review_roles=[{"value": r.value, "label": ROLE_LABELS[r]} for r in REVIEW_ROLES],
+        owner_roles=role_options(Role),
+        review_roles=role_options(permissions.offer(REVIEW_ROLES)),
+        review_roles_needed=role_options(REVIEW_ROLES),
+        needs_init=entry is None or not store.exists(MATRIX_KEY),
         assessments=[{"value": a.value, "label": ASSESSMENT_LABELS[a]} for a in ASSESSMENT_LABELS],
         max_days=MAX_REVIEW_EVERY_DAYS,
         generated_at=format_instant(now),
@@ -346,10 +323,12 @@ def medida(request: Request) -> Response:
 
 # --- escrituras ----------------------------------------------------------------------------------
 
-Apply = Callable[[UiStore, datetime, str, str, Form], None]
+Apply = Callable[[UiStore, datetime, str, Permissions, Form], None]
 
 
-def _set_owner(store: UiStore, now: datetime, measure_id: str, email: str, form: Form) -> None:
+def _set_owner(
+    store: UiStore, now: datetime, measure_id: str, permissions: Permissions, form: Form
+) -> None:
     name, role, days = first(form, "owner_name"), first(form, "owner_role"), first(form, "every")
     if not name and not days:
         raise Rejected("Indica el responsable, la periodicidad o ambos.")
@@ -373,7 +352,9 @@ def _set_owner(store: UiStore, now: datetime, measure_id: str, email: str, form:
         raise Rejected(*map(plain, exc.errors)) from None
 
 
-def _link(store: UiStore, now: datetime, measure_id: str, email: str, form: Form) -> None:
+def _link(
+    store: UiStore, now: datetime, measure_id: str, permissions: Permissions, form: Form
+) -> None:
     kind = LINK_KINDS.get(first(form, "kind"))
     target = first(form, "target")
     covers = [c.strip() for c in form.get("covers", []) if c.strip()]
@@ -390,7 +371,9 @@ def _link(store: UiStore, now: datetime, measure_id: str, email: str, form: Form
         raise Rejected(*map(plain, exc.errors)) from None
 
 
-def _unlink(store: UiStore, now: datetime, measure_id: str, email: str, form: Form) -> None:
+def _unlink(
+    store: UiStore, now: datetime, measure_id: str, permissions: Permissions, form: Form
+) -> None:
     kind, target = first(form, "kind"), first(form, "target")
     if kind not in {EVIDENCE, CHECK, DOCUMENT} or not target:
         raise Rejected("Elige qué enlace quitar.")
@@ -400,10 +383,12 @@ def _unlink(store: UiStore, now: datetime, measure_id: str, email: str, form: Fo
         raise Rejected(*map(plain, exc.errors)) from None
 
 
-def _review(store: UiStore, now: datetime, measure_id: str, email: str, form: Form) -> None:
+def _review(
+    store: UiStore, now: datetime, measure_id: str, permissions: Permissions, form: Form
+) -> None:
     by, role = first(form, "by"), first(form, "role")
     conclusion, assessment = first(form, "conclusion"), first(form, "assessment")
-    selected = _is_selected(_row_of(store, now, email, measure_id))
+    selected = _is_selected(_row_of(store, now, measure_id))
     errors = []
     if not by:
         errors.append("Indica quién revisa.")
@@ -417,6 +402,7 @@ def _review(store: UiStore, now: datetime, measure_id: str, email: str, form: Fo
         errors.append("Elige la valoración.")
     if errors:
         raise Rejected(*errors)
+    permissions.require(Role(role))  # el mismo rol autoriza, llega al producto y se audita
     try:
         plan = prepare_review(
             store,
@@ -459,9 +445,10 @@ async def escribir(request: Request) -> Response:
     except FormInvalid:
         return error_page(request, 400, "No se ha entendido el formulario.")
     now, email = request.app.state.clock(), identity_of(request).email
+    permissions = permissions_of(request)
     store: UiStore = request.app.state.store.recording()
     try:
-        apply(store, now, measure_id, email, form)
+        apply(store, now, measure_id, permissions, form)
     except Rejected as rejected:
         return _detail_page(
             request,
@@ -474,12 +461,33 @@ async def escribir(request: Request) -> Response:
             status_code=422,
         )
     if store.written:
-        audit_write(identity=email, step="matriz", action=name, keys=store.written, at=now)
+        audit_write(
+            identity=email,
+            step="matriz",
+            action=name,
+            keys=store.written,
+            at=now,
+            roles=permissions.used,
+        )
     return RedirectResponse(f"/matriz/{measure_id}?guardado=1", status_code=303)
+
+
+async def iniciar(request: Request) -> Response:
+    """Crea o completa `controls/matrix.yaml`; sin Declaración vigente no hace nada."""
+    now, email = request.app.state.clock(), identity_of(request).email
+    store: UiStore = request.app.state.store.recording()
+    try:
+        init_matrix(store, now)
+    except (MatrixRejected, WorkspaceError):
+        return RedirectResponse("/matriz", status_code=303)
+    if store.written:
+        audit_write(identity=email, step="matriz", action="iniciar", keys=store.written, at=now)
+    return RedirectResponse("/matriz?guardado=1", status_code=303)
 
 
 MATRIX_ROUTES: list[BaseRoute] = [
     Route("/matriz", matriz, methods=["GET"]),
+    Route("/matriz/iniciar", iniciar, methods=["POST"]),
     Route("/matriz/{medida}", medida, methods=["GET"]),
     Route("/matriz/{medida}/{accion}", escribir, methods=["POST"]),
 ]

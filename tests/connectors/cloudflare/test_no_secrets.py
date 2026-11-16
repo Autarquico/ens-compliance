@@ -122,6 +122,7 @@ def test_los_grupos_de_access_guardan_tipos_de_selector_y_referencias_nunca_valo
         "include_groups",
         "exclude_groups",
         "require_groups",
+        "require_auth_methods",
     }
 
 
@@ -142,6 +143,7 @@ def test_campos_extra_de_las_respuestas_no_se_persisten(collect):
         "public_destinations",
         "allowed_idps",
         "allowed_idps_form",
+        "mfa_required",
     }
     assert set(sections["tunnels"]["items"][0]) == {
         "id",

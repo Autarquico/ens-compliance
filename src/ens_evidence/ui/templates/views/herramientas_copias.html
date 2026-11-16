@@ -20,7 +20,7 @@
     <li>Para otro servidor Linux, el paquete trae un fichero <span class="mono">INSTRUCCIONES.md</span> con los pasos.</li>
   </ol>
 </section>
-<form method="post" action="/herramientas/copias" novalidate>
+<form method="post" action="/herramientas/copias" novalidate>{{ m.gate_open() }}
   <fieldset class="checks">
     <legend>Dónde se instala</legend>
     {%- for v in variants %}
@@ -74,5 +74,5 @@
     {{ m.field_errors(name) }}</div>
   {% endfor %}
   <div class="actions"><button class="btn btn-primary" type="submit">Generar y descargar el paquete</button></div>
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

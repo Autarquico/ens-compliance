@@ -44,6 +44,7 @@ CHECKS: Mapping[str, CheckSpec] = MappingProxyType(
         ),
         "cloudflare.tunnel_requires_access": CheckSpec("cloudflare", SubjectKind.SELF_REPORTED),
         "cloudflare.access_idp_restricted": CheckSpec("cloudflare", SubjectKind.SELF_REPORTED),
+        "cloudflare.ui_access_requires_mfa": CheckSpec("cloudflare", SubjectKind.SELF_REPORTED),
         "workspace.user_2sv_enrolled": CheckSpec("google-workspace", SubjectKind.SELF_REPORTED),
         "workspace.admin_2sv_enforced": CheckSpec("google-workspace", SubjectKind.SELF_REPORTED),
         "workspace.suspended_without_admin_role": CheckSpec(

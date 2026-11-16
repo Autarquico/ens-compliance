@@ -45,7 +45,13 @@ public_routes:                  # rutas públicas por diseño, con motivo
   - hostname: caja.example.com
     path: /agent/*
     reason: los agentes osquery reportan desde fuera sin sesión de usuario
+ui_hostname: ui.example.com     # opcional: hostname de la interfaz web (check de MFA)
 ```
+
+`ui_hostname` es el hostname público de la interfaz web, en minúsculas y sin
+esquema, puerto, ruta ni comodín; se rechaza cualquier otra forma
+(`connectors/cloudflare/config.py`). Sin él, el check de MFA de la interfaz da
+`UNKNOWN`.
 
 Las zonas esperadas salen del campo `zones` de ese activo del inventario.
 
@@ -72,6 +78,14 @@ De cada grupo de Access solo se guardan id, nombre, los tipos de selector de
 include/require/exclude y los ids de los grupos anidados que referencia. Una
 configuración remota de túnel sin `config` o sin `ingress` (ausentes o `null`) es
 `ingress_status: ERROR`, nunca un túnel sin rutas.
+
+Para el check de MFA se guardan además, sin valores de selectores:
+`mfa_required` (booleano: el ajuste `mfa_config.mfa_disabled` es explícitamente
+`false`) en cada aplicación y política de Access, y `require_auth_methods` (los
+métodos de autenticación del `Require`, p. ej. `mfa`) en cada política y grupo.
+Las recogidas hechas antes de este cambio no los tienen: **recoge de nuevo**
+(`ens-evidence collect cloudflare`) tras actualizar. También se guarda
+`ui_hostname` en la recogida.
 
 De cada proveedor de identidad (sección `identity_providers`) solo se guardan
 id, nombre y tipo. Nunca su configuración (identificador y secreto de cliente)
@@ -168,3 +182,42 @@ Fuente: documentación de la API de Cloudflare, 2026-11-15; no probado contra un
 cuenta real. Siguen sin verificar: el campo ausente en la lista de aplicaciones,
 las formas exactas de algunos selectores, la expansión de políticas
 reutilizables y si Access puede exigir el segundo factor.
+
+## Check: la interfaz web exige MFA
+
+`cloudflare.ui_access_requires_mfa` mira la política de Access de la aplicación
+que protege la interfaz web (ADR 0022). La interfaz no puede comprobar el MFA
+por petición, porque la documentación de Cloudflare no describe un claim de
+segundo factor en el token de aplicación (revisado el 2026-11-16). La
+aplicación se localiza por el `ui_hostname` configurado: se evalúan **todas** las
+que alcanzan el hostname o una ruta bajo él (`ui.example.com/asistente`, o un
+comodín que lo cubre), porque una aplicación de subruta tiene sus propias
+políticas y no hereda las de la raíz.
+
+- `PASS` solo si al menos una aplicación cubre el hostname y la ruta raíz
+  enteros y **toda** política `allow` de **todas** las aplicaciones evaluadas
+  exige MFA (selector `Require` de método de autenticación `mfa`, o
+  el ajuste de MFA de la política o de la aplicación, o un grupo en `Require`
+  que lo exija). Un `include` con método de autenticación no cuenta: es un OR.
+  **No prueba** que cada persona haya enrolado el factor ni que el IdP lo pida.
+- `FAIL` si hay una política `bypass` o una `allow` sin MFA (incluida `everyone`
+  sin `Require`) en cualquiera de ellas, también en una subruta; el motivo nombra
+  la aplicación y la política. Códigos: `bypass`,
+  `mfa_missing`.
+- `UNKNOWN` con `ui_hostname_not_configured`, `ui_app_not_found`,
+  `ui_app_partial` (ninguna cubre la raíz entera; solo subrutas), `ui_app_unresolved` (destino que
+  no se sabe interpretar), `policy_unresolved`, `no_allow_policy`,
+  `non_identity` (política por token de servicio: una persona confirma que es
+  solo para máquinas), `permission_denied` o `stale_evidence` (evidencia sin los
+  campos nuevos: recoge de nuevo). Nunca `PASS` con datos incompletos.
+
+Resultado único (sin `subject`). No está vinculado a ninguna medida ENS: no
+existe un mapeo de los checks de Cloudflare a medidas y no se ha inventado un
+identificador; lo vincula una persona con `ens-evidence matrix link`.
+
+**No verificado:** la forma con que la API expresa la MFA (valor `mfa` del
+selector de método de autenticación y `mfa_config.mfa_disabled`) está tomada de
+la documentación y solo se ha probado con datos de ejemplo
+(`connectors/cloudflare/mfa_checks.py`). Tampoco se sabe si el token necesita
+permisos adicionales. Pasos de configuración y uso:
+[interfaz web](../runbooks/interfaz-web.md), sección 3.

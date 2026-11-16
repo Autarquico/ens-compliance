@@ -15,11 +15,12 @@
   <p class="muted">Aún no está generado. Hazlo en el paso <a href="/asistente/documentos-generar">«Generar los documentos»</a>.</p>
   {% elif d.state != "APPROVED" %}
   {% if d.role_label %}
+  {% if d.role_missing %}{{ m.needs_role(d.role_options) }}{% endif %}
   <p class="muted">Lo aprueba {{ d.role_label }}.{% if d.signatory %} El nombre debe ser el declarado para ese puesto: <strong>{{ d.signatory }}</strong>.{% else %} Todavía no has declarado quién es.{% endif %}</p>
   {% else %}
   <p class="muted">Antes de aprobarlo, di en <a href="/asistente/documentos-responsables">«Responsables y designación»</a> quién aprueba los procedimientos.</p>
   {% endif %}
-  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open(blocked=d.role_missing or not d.role_label) }}
     <input type="hidden" name="documento" value="{{ d.name }}">
     <div class="field">
       <label for="f-by-{{ d.name }}">Lo aprueba<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
@@ -27,9 +28,9 @@
       {{ m.field_errors(d.error_key) }}
     </div>
     <div class="actions">
-      <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if not d.role_label %} disabled{% endif %}>Aprobar este documento</button>
+      <button class="btn btn-primary" type="submit" name="accion" value="aprobar">Aprobar este documento</button>
     </div>
-  </form>
+  {{ m.gate_close() }}</form>
   {% endif %}
 </section>
 {% endfor %}

@@ -1,25 +1,38 @@
 """Un test por escenario de docs/specs/web-ui-base.md y de docs/specs/web-ui-flujo.md."""
 
+import json
+import logging
 import re
 from dataclasses import replace
 from datetime import timedelta
+from functools import partial
 from pathlib import Path
 
+import httpx
 import pytest
 import yaml
+from connectors.cloudflare.test_ui_mfa import evaluate, mfa_policy, ui_app
+from starlette.testclient import TestClient
 from typer.testing import CliRunner
 
 import ens_evidence.cli as cli
 from ens_evidence.applicability import DeclarationState, declaration_status
 from ens_evidence.assessment.dossier import scan_transitions
 from ens_evidence.categorization import categorization_status
+from ens_evidence.checks.model import CheckInput, StoredCheckRun
 from ens_evidence.checks.source import StoredCheckResults
+from ens_evidence.checks.store import record_run
 from ens_evidence.matrix import matrix_status
 from ens_evidence.models.enums import Category, CheckStatus, DossierState
 from ens_evidence.orgdocs import DocumentState, all_statuses
 from ens_evidence.preaudit.requests import request_prepare
 from ens_evidence.risk import RiskState, risk_status
+from ens_evidence.scheduling.access_jwks import JwksRefreshConfig, refresh_once
 from ens_evidence.scheduling.scheduler import CycleExecutor
+from ens_evidence.ui.access import load_jwks_file
+from ens_evidence.ui.app import create_ui_app
+from ens_evidence.ui.roles import ROLES_KEY
+from ens_evidence.ui.routes import ui_routes
 from ens_evidence.ui.store import WRITABLE_PREFIXES, UiStore, WriteNotAllowed
 from ens_evidence.ui.wizard import STEPS
 from ens_evidence.workspace import LocalStore
@@ -28,9 +41,12 @@ from . import test_equivalence as flows
 from .conftest import (
     NOW,
     ORIGIN,
+    TEAM,
     WRITE_HEADERS,
     Session,
     auth,
+    grant_all,
+    jwks_for,
     mint,
     snapshot_of,
     ui_client,
@@ -109,15 +125,16 @@ def test_sin_certificados_nadie_entra(config, example_store, key):
     assert response.status_code == 401
 
 
-def test_mfa_exigido_por_access():
+def test_el_runbook_manda_comprobar_la_politica_de_access_y_no_un_claim_de_mfa():
     text = RUNBOOK.read_text(encoding="utf-8")
 
     assert "## 3. Comprobar que Access exige MFA" in text
-    section = text.split("## 3. Comprobar que Access exige MFA", 1)[1].split("\n## ", 1)[0]
     assert "exija MFA" in text.split("## 3.", 1)[0]
-    assert "Authentication method" in section
-    assert "Bypass" in section
-    assert "segundo factor" in section
+    section = text.split("## 3. Comprobar que Access exige MFA", 1)[1].split("\n## ", 1)[0]
+    assert "no puede comprobar el MFA por petición" in section
+    assert "cloudflare.ui_access_requires_mfa" in section
+    assert "ui_hostname" in section and "MFA no confirmada" in section
+    assert "Authentication method" in section and "Bypass" in section
     assert "302" in section and "cloudflareaccess.com" in section
 
 
@@ -224,6 +241,7 @@ def test_la_web_no_da_por_buena_una_medida_sin_pruebas(web_flow, tmp_path, confi
     store = LocalStore(tmp_path / "copia")
     for name, data in snapshot_of(web_flow.store).items():
         store.write_bytes(name, data)
+    grant_all(store)
     ui = flow_session(config, store, key, token)
     ui.post("/matriz/org.1/desenlazar", {"kind": "org_document", "target": "politica-seguridad"})
     before = snapshot_of(store)
@@ -631,3 +649,108 @@ def test_un_export_ausente_o_erroneo_nunca_deja_la_tarjeta_de_contrasenas_al_dia
     html = passwords_card(example_store, session, tmp_path, doc)
 
     assert "Al día" not in html and "Caída" in html
+
+
+# --- docs/specs/web-ui.md ------------------------------------------------------------------------
+#
+# Índice escenario -> test. Lo que ya prueba otro fichero se enlaza, no se duplica.
+#
+# asistente completo     tests/ui/test_equivalence.py::test_el_flujo_completo_deja_los_
+#                        mismos_ficheros_que_la_cli y
+#                        ::test_cada_area_del_flujo_deja_los_mismos_bytes_que_la_cli
+#                        (web_flow parte de grant_all: edición y todos los roles; el reloj es NOW
+#                        en la web y en la CLI). Alcance y categorización: arriba, con snapshot.
+# MFA                    test_mfa_en_fail_llega_a_la_ui_con_como_corregirlo (aquí, punta a punta);
+#                        tabla de verdad en tests/connectors/cloudflare/test_ui_mfa.py.
+# MFA sin confirmar      tests/ui/test_mfa_warning.py (sin resultado, otro check, FAIL, UNKNOWN,
+#                        ilegible) y test_sin_resultado_de_mfa_la_ui_avisa_y_no_afirma_mfa_activa.
+# aprobación sin el rol  tests/ui/test_authorization.py::test_editor_sin_rol_o_con_otro_rol_no_hace_
+#                        lo_que_exige_un_rol (403, workspace igual, línea outcome=denied) y los
+#                        tests de matriz, expediente, documentos y pre-auditoría de ese fichero.
+# sin roles asignados    tests/ui/test_roles.py::test_sin_fichero_el_aviso_global_se_ve y
+#                        test_sin_roles_asignados_la_ui_solo_lee_y_explica_como_asignarlos (aquí).
+# JWKS caído             tests/scheduling/test_access_jwks.py::test_failure_keeps_previous_file_and_
+#                        logs_code y test_el_jwks_caido_conserva_el_fichero_y_la_ui_sigue_entrando.
+# panel de agentes       tests/ui/test_agents_panel.py::test_silent_agent_shows_host002_fail_with_
+#                        reason_and_last_contact y ::test_panel_is_get_only_and_writes_nothing.
+
+EVIDENCE = "EV-20261108-aaaaaaaa"
+MFA_WARNING = "MFA no confirmada"
+
+
+def record_check_result(store, result) -> None:
+    sha = "a" * 64
+    result = result.model_copy(update={"evaluated_at": NOW - timedelta(hours=1)})
+    run = StoredCheckRun(
+        seq=1,
+        connector="cloudflare",
+        engine_version="1",
+        started_at=NOW - timedelta(hours=2),
+        finished_at=NOW - timedelta(hours=1),
+        complete=True,
+        scope_fingerprint=sha,
+        config_sha256=sha,
+        inputs=[CheckInput(evidence_id=EVIDENCE, manifest_sha256=sha)],
+        results=[result.model_copy(update={"evidence_ids": [EVIDENCE]})],
+    )
+    record_run(store, run, NOW)
+
+
+def test_mfa_en_fail_llega_a_la_ui_con_como_corregirlo(session, example_store):
+    result = evaluate(ui_app(mfa_policy(name="equipo", methods=())))
+    assert result.status is CheckStatus.FAIL
+    record_check_result(example_store, result)
+
+    body = session.get("/").text
+
+    assert MFA_WARNING in body
+    assert "FAIL" in body and "mfa_missing" in body
+    assert "código: mfa_missing" in body and "interfaz-web.md, sección 3" in body
+    assert not re.search(r"MFA (está )?activa", body, re.IGNORECASE)
+
+
+def test_sin_resultado_de_mfa_la_ui_avisa_y_no_afirma_mfa_activa(session):
+    body = session.get("/").text
+
+    assert MFA_WARNING in body and "not_checked" in body
+    assert not re.search(r"MFA (está )?activa", body, re.IGNORECASE)
+
+
+def test_sin_roles_asignados_la_ui_solo_lee_y_explica_como_asignarlos(
+    config, example_store, key, token, tmp_path
+):
+    (tmp_path / "ws" / ROLES_KEY).unlink()
+    session = Session(ui_client(config, example_store, key), token)
+    before = snapshot_of(example_store)
+
+    page = session.get("/")
+    refused = [session.post(path, {"name": "x"}) for path in POST_ROUTES]
+
+    assert page.status_code == 200
+    assert "solo lectura" in page.text and "ens-evidence ui roles grant" in page.text
+    assert {r.status_code for r in refused} == {403}
+    assert snapshot_of(example_store) == before
+
+
+def test_el_jwks_caido_conserva_el_fichero_y_la_ui_sigue_entrando(
+    config, example_store, key, token, caplog
+):
+    published = {"keys": [{**jwks_for(key)["keys"][0], "use": "sig"}]}
+    config.jwks_file.write_text(json.dumps(published), encoding="utf-8")
+    before = config.jwks_file.read_bytes()
+
+    def down(request: httpx.Request) -> httpx.Response:
+        return httpx.Response(503, content=b"{}")
+
+    refresh = JwksRefreshConfig(team_domain=TEAM, output=config.jwks_file)
+    with caplog.at_level(logging.INFO):
+        code = refresh_once(refresh, lambda: httpx.Client(transport=httpx.MockTransport(down)))
+
+    assert code == "bad_status" and "(bad_status)" in caplog.text
+    assert config.jwks_file.read_bytes() == before
+    app = create_ui_app(
+        config, example_store, lambda: NOW, partial(load_jwks_file, config.jwks_file),
+        routes=ui_routes(),
+    )  # fmt: skip
+    entered = TestClient(app, base_url=ORIGIN).get("/", headers=auth(token))
+    assert entered.status_code == 200

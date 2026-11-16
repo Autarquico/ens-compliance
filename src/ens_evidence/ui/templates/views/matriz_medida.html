@@ -5,6 +5,7 @@
 <h1><span class="mono">{{ measure_id }}</span> {{ title }}</h1>
 <p>{{ m.badge(applicability, show_code=False) }} {{ m.badge(assessment, show_code=False) }}</p>
 {{ m.revision_humana() }}
+{% if needs_init %}{{ m.init_matrix() }}{% endif %}
 {% if form_errors %}
 <div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
 <ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul>
@@ -63,7 +64,7 @@
   <h2 id="h-responsable">Responsable</h2>
   <p>{% if owner %}{{ owner.name }} · {{ owner.role }}{% else %}<span class="muted">Sin responsable.</span>{% endif %}
   · {% if every_days %}Se revisa cada {{ every_days }} días.{% else %}<span class="muted">Sin periodicidad.</span>{% endif %}</p>
-  <form method="post" action="/matriz/{{ measure_id }}/responsable" novalidate>
+  <form method="post" action="/matriz/{{ measure_id }}/responsable" novalidate>{{ m.gate_open() }}
     <div class="field"><label for="f-owner_name">Nombre del responsable</label>
       <input type="text" id="f-owner_name" name="owner_name" value="{{ values.get('owner_name', owner.name if owner else '') }}" autocomplete="name"></div>
     <div class="field"><label for="f-owner_role">Rol</label>
@@ -73,7 +74,7 @@
     <div class="field"><label for="f-every">Cada cuántos días se revisa<span class="hint">De 1 a {{ max_days }}.</span></label>
       <input type="text" inputmode="numeric" id="f-every" name="every" value="{{ values.get('every', every_days or '') }}"></div>
     <div class="actions"><button class="btn btn-primary" type="submit">Guardar responsable</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
 </section>
 
 {% if selected %}
@@ -88,9 +89,9 @@
       <th scope="row">{{ l.label }}</th>
       <td class="mono">{{ l.covers | join(", ") }}</td>
       <td>{% if l.counts %}Cuenta{% else %}No cuenta todavía{% endif %}</td>
-      <td><form method="post" action="/matriz/{{ measure_id }}/desenlazar">
+      <td><form method="post" action="/matriz/{{ measure_id }}/desenlazar">{{ m.gate_open(explain=False) }}
         <input type="hidden" name="kind" value="{{ l.kind }}"><input type="hidden" name="target" value="{{ l.target }}">
-        <button class="btn" type="submit">Quitar enlace</button></form></td>
+        <button class="btn" type="submit">Quitar enlace</button>{{ m.gate_close() }}</form></td>
     </tr>
     {%- endfor %}
     </tbody>
@@ -100,7 +101,7 @@
 
   <h3>Enlazar un documento</h3>
   {% for d in document_offers %}
-  <form method="post" action="/matriz/{{ measure_id }}/enlazar">
+  <form method="post" action="/matriz/{{ measure_id }}/enlazar">{{ m.gate_open() }}
     <input type="hidden" name="kind" value="document"><input type="hidden" name="target" value="{{ d.name }}">
     <fieldset class="checks"><legend>{{ d.name }} · cláusulas que cubre según su ficha</legend>
       {%- for u in units %}
@@ -108,12 +109,12 @@
       {%- endfor %}
     </fieldset>
     <div class="actions"><button class="btn" type="submit">Enlazar {{ d.name }}</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
   {% else %}<p class="muted">Ningún documento aprobado cubre cláusulas de esta medida.</p>{% endfor %}
 
   <h3>Enlazar una evidencia</h3>
   {% if evidence_offers %}
-  <form method="post" action="/matriz/{{ measure_id }}/enlazar">
+  <form method="post" action="/matriz/{{ measure_id }}/enlazar">{{ m.gate_open() }}
     <input type="hidden" name="kind" value="evidence">
     <div class="field"><label for="f-target">Evidencia</label>
       <select id="f-target" name="target">
@@ -125,7 +126,7 @@
       {%- endfor %}
     </fieldset>
     <div class="actions"><button class="btn" type="submit">Enlazar evidencia</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
   {% else %}<p class="muted">No hay evidencias manuales. <a href="/evidencias/nueva">Sube una</a>.</p>{% endif %}
 </section>
 {% endif %}
@@ -136,7 +137,8 @@
   <p>Última revisión: {{ last_review.by }} ({{ last_review.role }}), {{ last_review.at }}. Vale hasta {{ last_review.valid_until }}.</p>
   <p>{{ last_review.conclusion }}</p>
   {% else %}<p class="muted">Nadie ha revisado esta medida.</p>{% endif %}
-  <form method="post" action="/matriz/{{ measure_id }}/revisar" novalidate>
+  {% if not review_roles %}{{ m.needs_role(review_roles_needed, "Mientras tanto puedes consultar la medida, pero no registrar su revisión.") }}{% else %}
+  <form method="post" action="/matriz/{{ measure_id }}/revisar" novalidate>{{ m.gate_open() }}
     <div class="field"><label for="f-by">Quién revisa<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
       <input type="text" id="f-by" name="by" value="{{ by_default }}" autocomplete="name"></div>
     <div class="field"><label for="f-role">Rol</label>
@@ -152,7 +154,8 @@
     <div class="field"><label for="f-conclusion">Conclusión<span class="hint">Qué has comprobado y por qué llegas a esa valoración.</span></label>
       <textarea id="f-conclusion" name="conclusion">{{ values.get('conclusion', '') }}</textarea></div>
     <div class="actions"><button class="btn btn-primary" type="submit">Registrar revisión</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
+  {% endif %}
 </section>
 <p class="muted">Datos de {{ generated_at }}.</p>
 {% endblock %}

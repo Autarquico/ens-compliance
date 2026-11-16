@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+{%- set r = detail.row %}
+<p><a href="/agentes">Volver a los agentes</a></p>
+<h1>Agente <span class="mono">{{ r.asset }}</span></h1>
+<p class="lead">Vista de solo lectura, como <span class="mono">agent hosts show</span>. Para dar de alta, revocar o consultar en vivo usa la línea de órdenes.</p>
+{% for problem in problems %}<section class="notice notice-warn" role="status"><p>{{ problem }}</p></section>{% endfor %}
+<section class="section" aria-labelledby="h-alta">
+  <h2 id="h-alta">Alta</h2>
+  <p>{{ r.admission_label }}{% if r.generation %} (generación {{ r.generation }}){% endif %}{% if r.admission != "never" and r.admission != "unreadable" %}. Última alta: <span class="mono">{{ r.admitted_at }}</span>{% endif %}.</p>
+  <h3>Último contacto de la generación vigente</h3>
+  {% if r.contact %}<p><span class="mono">{{ r.contact.collected_at }}</span>, evidencia <span class="mono">{{ r.contact.evidence_id }}</span>.</p>
+  {% else %}<p class="muted">Sin contacto de la generación vigente.</p>{% endif %}
+</section>
+<section class="section" aria-labelledby="h-consultas">
+  <h2 id="h-consultas">Consultas programadas (última lectura)</h2>
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Consulta</th><th scope="col">Recogida</th><th scope="col">Filas</th><th scope="col">Evidencia</th></tr></thead>
+    <tbody>
+    {%- for q in detail.queries %}
+    <tr>
+      <th scope="row" class="mono">{{ q.query_id }}</th>
+      {% if q.evidence_id %}<td class="mono">{{ q.collected_at }}</td><td>{{ q.row_count if q.row_count is not none else "—" }}</td><td class="id">{{ q.evidence_id }}</td>
+      {% else %}<td colspan="3" class="muted">sin datos</td>{% endif %}
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+  <p class="muted">Solo se muestran fecha, recuento y evidencia; el contenido de las filas no se enseña aquí.</p>
+</section>
+<section class="section" aria-labelledby="h-host">
+  <h2 id="h-host">Resultados HOST (evaluación en este momento)</h2>
+  {% if detail.checks %}
+  <div class="table-wrap"><table>
+    <thead><tr><th scope="col">Comprobación</th><th scope="col">Resultado</th><th scope="col">Motivo</th><th scope="col">Evidencia</th></tr></thead>
+    <tbody>
+    {%- for c in detail.checks %}
+    <tr>
+      <th scope="row" class="mono">{{ c.check_id }}</th>
+      <td>{{ m.badge(c.status) }}</td>
+      <td>{% if c.reason %}{{ c.reason }}{% elif c.reason_code %}<span class="mono">{{ c.reason_code }}</span>{% else %}—{% endif %}</td>
+      <td class="id">{{ c.evidence_ids | join(", ") or "—" }}</td>
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+  <p class="muted">El motivo completo de cada comprobación está en <span class="mono">agent hosts show</span>; aquí solo se enseña el de HOST-002, que no cita datos del equipo.</p>
+  {% else %}<p class="muted">No hay resultados HOST evaluados para este equipo.</p>{% endif %}
+</section>
+<section class="section" aria-labelledby="h-historico">
+  <h2 id="h-historico">Contactos históricos de otras generaciones</h2>
+  {% if detail.history %}
+  <p class="muted">Son de un alta anterior o de otra generación de la clave: no cuentan para HOST-002.</p>
+  <ul>
+    {%- for c in detail.history %}
+    <li>Histórico, generación {{ c.generation }}: <span class="mono">{{ c.collected_at }}</span>, evidencia <span class="mono">{{ c.evidence_id }}</span></li>
+    {%- endfor %}
+  </ul>
+  {% else %}<p class="muted">No hay contactos de otras generaciones.</p>{% endif %}
+</section>
+{% endblock %}

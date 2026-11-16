@@ -22,7 +22,7 @@
 <div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
 <ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% endif %}
-<form method="post" action="/herramientas/claves/custodios" novalidate>
+<form method="post" action="/herramientas/claves/custodios" novalidate>{{ m.gate_open(blocked=not review_roles) }}
   <div class="field"><label for="f-asset_id">Activo del almacén<span class="hint">El activo de tipo aplicación que representa a OpenBao.</span></label>
     <select id="f-asset_id" name="asset_id">
       <option value="">Elige uno</option>
@@ -43,6 +43,7 @@
   <div class="field"><label for="f-reviewer">Quién revisa<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
     <input type="text" id="f-reviewer" name="reviewer" value="{{ values.get('reviewer', '') }}" autocomplete="off"{% if errors.get('reviewer') %} aria-invalid="true" aria-describedby="err-reviewer"{% endif %}>
     {{ m.field_errors("reviewer") }}</div>
+  {% if not review_roles %}{{ m.needs_role(review_roles_needed, "Mientras tanto puedes consultar el registro, pero no registrar la revisión.") }}{% endif %}
   <div class="field"><label for="f-role">Rol</label>
     <select id="f-role" name="role">
       {%- for r in review_roles %}<option value="{{ r.value }}"{% if values.get('role') == r.value %} selected{% endif %}>{{ r.label }}</option>{% endfor %}
@@ -51,5 +52,5 @@
   {{ m.text_field("reviewed_on", "Fecha de la revisión", "AAAA-MM-DD; no puede ser futura.") }}
   {{ m.text_field("valid_until_on", "Vale hasta", "AAAA-MM-DD; posterior a la revisión.") }}
   <div class="actions"><button class="btn btn-primary" type="submit">Registrar la revisión</button><a class="btn btn-ghost" href="/herramientas/claves">Cancelar</a></div>
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

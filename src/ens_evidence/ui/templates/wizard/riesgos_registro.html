@@ -33,18 +33,18 @@
       {%- for a in r.actions %}
       <li>
         <span class="mono">{{ a.id }}</span> · {{ a.description }} <span class="muted">· {{ a.owner }} · antes del {{ a.due }} · {{ a.status }}</span>
-        <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML">
+        <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML">{{ m.gate_open(explain=False) }}
           <input type="hidden" name="item_id" value="{{ a.id }}">
           <button class="btn btn-ghost" type="submit" name="accion" value="quitar-accion">Quitar la acción {{ a.id }}</button>
-        </form>
+        {{ m.gate_close() }}</form>
       </li>
       {%- endfor %}
     </ul>
     {%- endif %}
-    <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML">
+    <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML">{{ m.gate_open() }}
       <input type="hidden" name="item_id" value="{{ r.id }}">
       <button class="btn" type="submit" name="accion" value="quitar-riesgo">Quitar el riesgo {{ r.id }}</button>
-    </form>
+    {{ m.gate_close() }}</form>
     {%- if r.actions %}<p class="muted">Para quitar un riesgo, quita antes sus acciones.</p>{% endif %}
   </article>
   {%- else %}
@@ -54,7 +54,7 @@
 
 <section class="section" aria-labelledby="nuevo-riesgo">
   <h3 id="nuevo-riesgo">Añadir un riesgo</h3>
-  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
     {{ m.text_field("risk_id", "Identificador", hint="Corto y único, por ejemplo «R-001».") }}
     {{ m.text_field("threat", "Amenaza", hint="Qué puede pasar, con tus palabras.", multiline=True) }}
     {{ m.asset_checks(asset_choices, "risk_assets", picked_assets, "Activos afectados") }}
@@ -143,13 +143,13 @@
       </div>
     </fieldset>
     <div class="actions"><button class="btn btn-primary" type="submit" name="accion" value="anadir-riesgo">Añadir el riesgo</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
 </section>
 
 {%- if risks %}
 <section class="section" aria-labelledby="nueva-accion">
   <h3 id="nueva-accion">Añadir una acción de tratamiento</h3>
-  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
     {{ m.text_field("action_id", "Identificador", hint="Corto y único, por ejemplo «A-001».") }}
     <div class="field">
       <label for="f-action_risk">Riesgo que trata</label>
@@ -174,7 +174,7 @@
       {{ m.field_errors("action_status") }}
     </div>
     <div class="actions"><button class="btn btn-primary" type="submit" name="accion" value="anadir-accion">Añadir la acción</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
 </section>
 {%- endif %}
 {% endif %}

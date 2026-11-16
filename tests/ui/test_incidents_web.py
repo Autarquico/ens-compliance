@@ -13,7 +13,7 @@ from ens_evidence.incidents.verify import scan_incident
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.views.incidents import INCIDENT_ROUTES
 
-from .conftest import NOW, ORIGIN, Session, jwks_for, snapshot_of
+from .conftest import NOW, ORIGIN, Session, grant_all, jwks_for, snapshot_of
 
 OPEN = {"title": "Phishing a cuentas", "detected_at": "2026-11-08T06:00", "by": BY}
 REPORT = {"by": BY, "action": "Bloqueo de las cuentas afectadas", "action_kind": "emergency"}
@@ -35,6 +35,7 @@ def world(tmp_path) -> World:
 
 @pytest.fixture
 def ui(config, world, key, token) -> Session:
+    grant_all(world.store)
     app = create_ui_app(
         config, world.store, lambda: NOW, lambda: jwks_for(key), routes=INCIDENT_ROUTES
     )
@@ -307,7 +308,7 @@ def test_ids_y_acciones_desconocidos_son_404(ui):
 
     assert ui.get("/incidentes/INC-2026-099").status_code == 404
     assert ui.get("/incidentes/no-es-un-id").status_code == 404
-    assert ui.post(f"{path}/borrar", {"by": BY}).status_code == 404
+    assert ui.post(f"{path}/borrar", {"by": BY}).status_code == 403  # sin política
     assert ui.post("/incidentes/INC-2026-099/actualizar", REPORT).status_code == 404
 
 

@@ -225,6 +225,7 @@ def test_connector_without_inventory_subjects_closes_with_a_single_unknown(store
     assert [(r.check_id, r.subject, r.asset_id, r.status, r.reason_code) for r in run.results] == [
         ("cloudflare.tunnel_requires_access", None, "cf-taller", CheckStatus.UNKNOWN, NO_EVIDENCE),
         ("cloudflare.access_idp_restricted", None, "cf-taller", CheckStatus.UNKNOWN, NO_EVIDENCE),
+        ("cloudflare.ui_access_requires_mfa", None, "cf-taller", CheckStatus.UNKNOWN, NO_EVIDENCE),
     ]
 
 

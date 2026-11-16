@@ -1,5 +1,6 @@
 """Configuración del conector de Cloudflare (`connectors/cloudflare.yaml`)."""
 
+import re
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -31,6 +32,20 @@ class CloudflareConfig(_Strict):
     account_id: str = Field(pattern=ACCOUNT_TAG)
     token_kind: Literal["account", "user"] = "account"
     public_routes: list[PublicRoute] = Field(default_factory=list)
+    ui_hostname: str | None = None
+
+    @field_validator("ui_hostname")
+    @classmethod
+    def _bare_hostname(cls, value: str | None) -> str | None:
+        """Hostname de la UI sin esquema, puerto, ruta ni comodín."""
+        if value is None:
+            return None
+        name = value.strip().lower().rstrip(".")
+        if not re.fullmatch(
+            r"[a-z0-9]([a-z0-9-]*[a-z0-9])?(\.[a-z0-9]([a-z0-9-]*[a-z0-9])?)+", name
+        ):
+            raise ValueError("debe ser un hostname sin esquema, puerto, ruta ni comodín")
+        return name
 
 
 class CloudflareRun(CloudflareConfig):

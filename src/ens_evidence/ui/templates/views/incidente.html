@@ -67,10 +67,10 @@
   <p class="muted">Solo la revisión de una persona lo confirma.</p>
   {% elif history_missing %}
   <div class="notice notice-warn"><p><strong>Falta el historial.</strong> El cierre está registrado y es definitivo, pero el historial no se generó. Mientras falte, <span class="mono">{{ op_exp_9 }}</span> sigue bloqueada. Los registros no se tocan.</p></div>
-  <form method="post" action="/incidentes/{{ incident_id }}/historial" novalidate>
+  <form method="post" action="/incidentes/{{ incident_id }}/historial" novalidate>{{ m.gate_open() }}
     {{ by_field("historial") }}
     <div class="actions"><button class="btn btn-primary" type="submit">Generar el historial</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
   {% endif %}
 </section>
 {% endif %}
@@ -91,7 +91,7 @@
 <section class="section" aria-labelledby="h-intermedio">
   <h2 id="h-intermedio">Añadir un reporte intermedio</h2>
   <p class="muted">Cambia solo lo que haya cambiado; lo demás se queda como estaba.</p>
-  <form method="post" action="/incidentes/{{ incident_id }}/actualizar" novalidate>
+  <form method="post" action="/incidentes/{{ incident_id }}/actualizar" novalidate>{{ m.gate_open() }}
     {{ by_field("actualizar") }}
     {% if levels %}
     <div class="field"><label for="f-severity">Severidad</label>
@@ -119,7 +119,7 @@
     <div class="field"><label for="f-evidence">Evidencias relacionadas<span class="hint">Opcional. Identificadores EV-… ya subidos, separados por espacios o comas.</span></label>
       <input type="text" id="f-evidence" name="evidence" value="{{ values.get('evidence', '') }}"></div>
     <div class="actions"><button class="btn btn-primary" type="submit">Registrar el reporte intermedio</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
 </section>
 
 <section class="section" aria-labelledby="h-cerrar">
@@ -128,7 +128,7 @@
   <div class="notice notice-warn"><p>Antes de cerrar hay que decidir si el incidente afecta a datos personales. Indícalo en un reporte intermedio (sí o no).</p></div>
   {% else %}
   <p class="muted">El cierre es el reporte final y es definitivo: después no admite más registros. Se genera el historial del incidente.</p>
-  <form method="post" action="/incidentes/{{ incident_id }}/cerrar" novalidate>
+  <form method="post" action="/incidentes/{{ incident_id }}/cerrar" novalidate>{{ m.gate_open() }}
     {{ by_field("cerrar") }}
     <div class="field"><label for="f-conclusion">Conclusión<span class="hint">Qué pasó y cómo se resolvió, sin datos personales.</span></label>
       <textarea id="f-conclusion" name="conclusion">{{ values.get('conclusion', '') }}</textarea></div>
@@ -147,7 +147,7 @@
     <div class="field"><label for="f-preserved_evidence">Evidencias preservadas<span class="hint">Identificadores EV-… separados por espacios o comas. Obligatorio si hay relevancia jurisdiccional.</span></label>
       <input type="text" id="f-preserved_evidence" name="preserved_evidence" value="{{ values.get('preserved_evidence', '') }}"></div>
     <div class="actions"><button class="btn btn-primary" type="submit">Cerrar el incidente</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
   {% endif %}
 </section>
 {% endif %}

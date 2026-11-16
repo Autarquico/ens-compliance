@@ -13,7 +13,7 @@
   <p class="muted">Nivel BAJO: perjuicio limitado. MEDIO: grave. ALTO: muy grave. Si dudas entre dos, elige el más alto y justifícalo.</p>
 </details>
 {% include "partials/_paso_cabecera.html" %}
-<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
   {%- for el in elements %}
   <section class="card" aria-labelledby="el-{{ el.kind }}-{{ loop.index }}">
     <h3 id="el-{{ el.kind }}-{{ loop.index }}">{{ el.label }} <span class="mono muted">{{ el.id }}</span></h3>
@@ -39,9 +39,11 @@
     </fieldset>
     {%- endfor %}
     {%- set vname = "valued_by~" ~ el.kind ~ "~" ~ el.id %}
+    {%- set lacking = (missing_valuation_roles or {}).get(el.kind) %}
+    {%- if lacking %}{{ m.needs_role(lacking, "Mientras tanto puedes guardar el borrador de las valoraciones, pero no firmarlas.") }}{% endif %}
     <div class="field">
       <label for="{{ vname }}">Lo valora<span class="hint">Nombre completo {{ el.role_label }}. Queda registrado como lo declaras.{% if el.valuation %} Última valoración: {{ el.valuation.valued_at }}.{% endif %}</span></label>
-      <input type="text" id="{{ vname }}" name="{{ vname }}" value="{{ el.valuation.valued_by if el.valuation else '' }}"{% if (errors or {}).get(vname) %} aria-invalid="true" aria-describedby="err-{{ vname }}"{% endif %}>
+      <input type="text" id="{{ vname }}" name="{{ vname }}"{% if lacking %} disabled{% endif %} value="{{ el.valuation.valued_by if el.valuation else '' }}"{% if (errors or {}).get(vname) %} aria-invalid="true" aria-describedby="err-{{ vname }}"{% endif %}>
       {{ m.field_errors(vname) }}
     </div>
   </section>
@@ -49,5 +51,5 @@
   <p class="muted">Aún no hay información ni servicios que valorar. Vuelve a los pasos anteriores.</p>
   {%- endfor %}
   {% include "partials/_paso_acciones.html" %}
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

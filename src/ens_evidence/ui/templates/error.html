@@ -10,7 +10,7 @@
 <section class="card" role="alert">
   <p class="muted mono">Código {{ status }}</p>
   <h1>{{ text[0] }}</h1>
-  <p>{{ message or text[1] }}</p>
+  <p>{{ (message or text[1])|code_spans }}</p>
   <div class="actions"><a class="btn" href="/">Volver al estado</a></div>
 </section>
 {% endblock %}

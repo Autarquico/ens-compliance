@@ -21,7 +21,7 @@
     <li>Cierra el alta en cuanto se haya registrado: <code class="mono">{{ close_command }}</code> Para invitar a más personas sigue la guía: según el caso hará falta abrir otro alta.</li>
   </ol>
 </section>
-<form method="post" action="/herramientas/contrasenas" novalidate>
+<form method="post" action="/herramientas/contrasenas" novalidate>{{ m.gate_open() }}
   <div class="field"><label for="f-asset_id">Activo del gestor<span class="hint">Un activo de tipo aplicación de tu inventario que represente a Vaultwarden.</span></label>
     <select id="f-asset_id" name="asset_id">
       <option value="">Elige uno</option>
@@ -32,5 +32,5 @@
   {{ m.text_field("inactive_days", "Días sin entrar para dar una cuenta por inactiva", "Sale de la política de tu organización: pon el plazo que ya has fijado allí. Pasado ese plazo sin actividad, la comprobación falla.") }}
   {{ m.text_field("host", "Nombre con el que se abrirá el gestor", "Un dominio como contrasenas.example.com, sin https://. Es el que pondrás en deploy/ui.env.") }}
   <div class="actions"><button class="btn btn-primary" type="submit">Generar y descargar el paquete</button></div>
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

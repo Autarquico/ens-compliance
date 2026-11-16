@@ -29,6 +29,8 @@ services:
       # Solo el export de usuarios, en solo lectura (kit de contraseñas). Vacío sin el kit. La app
       # nunca monta vaultwarden-data ni alcanza contrasenas-net.
       - contrasenas-export:/run/kit/contrasenas:ro
+      # JWKS de Cloudflare Access: solo app lo escribe (scheduling/access_jwks.py); ui lo monta :ro.
+      - access-jwks:/run/access-jwks
     # claves-app: interna; solo la alcanza openbao (perfil claves). Sin el perfil, queda vacía.
     networks: [backend, claves-app]
     logging: *logging
@@ -93,6 +95,9 @@ services:
     security_opt: ["no-new-privileges:true"]
     volumes:
       - data:/data
+      # Certificados de Access, que publica app: ui no puede sustituir las claves en las que confía.
+      # Poner ENS_UI_ACCESS_JWKS_FILE=/run/access-jwks/access-jwks.json en deploy/ui.env.
+      - access-jwks:/run/access-jwks:ro
     networks: [ui-net]
     logging: *logging
     healthcheck:
@@ -365,3 +370,5 @@ volumes:
     name: ${ENS_BOX_PROJECT:-ens-box}_contrasenas-export
   contrasenas-snapshot:
     name: ${ENS_BOX_PROJECT:-ens-box}_contrasenas-snapshot
+  access-jwks:
+    name: ${ENS_BOX_PROJECT:-ens-box}_access-jwks

@@ -34,6 +34,7 @@ AUDIT_PAGE_SIZE = 1000
 TLS_SETTINGS = ("ssl", "min_tls_version", "always_use_https")
 CFARGOTUNNEL_SUFFIX = ".cfargotunnel.com"
 _SELECTOR_KIND = re.compile(r"^[A-Za-z][A-Za-z0-9_-]{0,40}$")
+_AUTH_METHOD = re.compile(r"^[A-Za-z0-9_-]{1,20}$")
 _OPAQUE_ID = re.compile(r"^[A-Za-z0-9_-]{1,64}$")
 # Selectores que, además de `login_method`, van ligados a un proveedor de identidad concreto.
 _IDP_BOUND_KINDS = frozenset({"azureAD", "gsuite", "okta", "saml", "oidc"})
@@ -90,6 +91,7 @@ class _AccessApp(_Raw):
     self_hosted_domains: list[str] | None = None
     destinations: list[_Destination] | None = None
     allowed_idps: Any = _ABSENT
+    mfa_config: Any = _ABSENT
 
 
 class _IdentityProvider(_Raw):
@@ -114,6 +116,7 @@ class _AccessPolicy(_Raw):
     include: list[Any] = Field(default_factory=list)
     exclude: list[Any] = Field(default_factory=list)
     require: list[Any] = Field(default_factory=list)
+    mfa_config: Any = _ABSENT
 
 
 class _Tunnel(_Raw):
@@ -224,6 +227,32 @@ def sanitized_selectors(rules: list[Any]) -> list[dict[str, Any]]:
     return selectors
 
 
+def auth_methods(rules: list[Any]) -> list[str]:
+    """Valores de los selectores `auth_method` (`mfa`, `swk`...); ilegible: `unreadable`.
+
+    Forma `{"auth_method": {"auth_method": "mfa"}}`: no verificada contra una cuenta real.
+    """
+    methods: list[str] = []
+    for rule in rules:
+        if not (isinstance(rule, dict) and list(rule) == ["auth_method"]):
+            continue
+        body = rule["auth_method"]
+        value = body.get("auth_method") if isinstance(body, dict) else None
+        methods.append(
+            value.lower() if isinstance(value, str) and _AUTH_METHOD.match(value) else "unreadable"
+        )
+    return methods
+
+
+def mfa_enforced(config: Any) -> bool:
+    """`mfa_config` con `mfa_disabled` explícitamente `false`; ausente o ambiguo: `False`.
+
+    Ajuste de MFA independiente de la política o la aplicación: no verificado contra una
+    cuenta real, por eso solo se acepta la forma inequívoca.
+    """
+    return isinstance(config, dict) and config.get("mfa_disabled") is False
+
+
 def selector_summary(rule: _AccessGroup | _AccessPolicy) -> dict[str, Any]:
     """Tipos de selector y grupos referenciados de include/require/exclude, sin valores."""
     return {
@@ -236,6 +265,7 @@ def selector_summary(rule: _AccessGroup | _AccessPolicy) -> dict[str, Any]:
         "include_groups": group_references(rule.include),
         "require_groups": group_references(rule.require),
         "exclude_groups": group_references(rule.exclude),
+        "require_auth_methods": auth_methods(rule.require),
     }
 
 
@@ -381,6 +411,7 @@ def collect_access_applications(client: CloudflareClient, config: CloudflareConf
                 "name": app.name,
                 "type": app.type,
                 "public_destinations": public_destinations(app),
+                "mfa_required": mfa_enforced(app.mfa_config),
                 **allowed_idps_form(app),
             }
             for app in apps
@@ -445,6 +476,7 @@ def collect_access_policies(
                     "name": policy.name,
                     "decision": policy.decision,
                     "precedence": policy.precedence,
+                    "mfa_required": mfa_enforced(policy.mfa_config),
                     **selector_summary(policy),
                 }
                 for policy in policies

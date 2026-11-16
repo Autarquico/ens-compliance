@@ -10,7 +10,7 @@
 <ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
 {% endif %}
 <aside class="notice" role="note"><p>No escribas datos personales (correos, DNI o NIE, IBAN, teléfonos), claves ni registros en bruto. Describe a las personas por su rol y los datos por referencia, por ejemplo «ticket 123». El registro los rechaza sin guardar nada.</p></aside>
-<form method="post" action="/incidentes/nuevo" novalidate>
+<form method="post" action="/incidentes/nuevo" novalidate>{{ m.gate_open() }}
   {{ m.text_field("title", "Título", "Breve y sin datos personales.") }}
   <div class="field"><label for="f-detected_at">Cuándo se detectó<span class="hint">Hora UTC.</span></label>
     <input type="datetime-local" id="f-detected_at" name="detected_at" value="{{ values.get('detected_at', '') }}"></div>
@@ -34,5 +34,5 @@
   <div class="field"><label><input type="checkbox" name="simulated" value="1"{% if values.get('simulated') %} checked{% endif %}> Es un simulacro</label>
     <span class="hint">{{ simulation_note }} Hace falta el procedimiento de incidentes aprobado y vigente.</span></div>
   <div class="actions"><button class="btn btn-primary" type="submit">Registrar el incidente</button></div>
-</form>
+{{ m.gate_close() }}</form>
 {% endblock %}

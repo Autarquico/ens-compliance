@@ -5,6 +5,15 @@ from pathlib import Path
 
 import pytest
 
+from ens_evidence.ui.pages import code_spans
+from ens_evidence.ui.views.agents import (
+    AgentDetail,
+    AgentRow,
+    CheckRow,
+    ContactRow,
+    QueryRow,
+)
+
 jinja2 = pytest.importorskip("jinja2")
 
 TEMPLATES = Path(__file__).resolve().parents[2] / "src" / "ens_evidence" / "ui" / "templates"
@@ -66,6 +75,8 @@ VIEW_TEMPLATES = [
     "views/herramientas_contrasenas.html",
     "views/herramientas_claves_custodios.html",
     "views/ayuda.html",
+    "agents.html",
+    "agents_detail.html",
 ]
 # Solo se importa desde otras plantillas.
 INDIRECT = {"_macros.html"}
@@ -169,7 +180,7 @@ WIZARD_EXTRA = {
         "approval": None,
     },
     "informacion": {"information": [{"id": "datos-clientes", "description": "Clientes"}]},
-    "valoraciones": {"elements": ELEMENTS},
+    "valoraciones": {"elements": ELEMENTS, "missing_valuation_roles": {}},
     "aprobacion-categorizacion": {
         "categorization_state": "PENDING",
         "category": "MEDIA",
@@ -243,6 +254,7 @@ QUESTION = {
     "clause": {"reference": "RD 311/2022, anexo II, org.1.1", "text": HOSTILE},
     "condition_note": HOSTILE,
     "allow_na": True,
+    "locked": False,
     "na_label": "No aplica",
     "na": False,
     "reason": HOSTILE,
@@ -355,7 +367,9 @@ WIZARD_FLOW_EXTRA = {
             {**QUESTION, "id": "listado", "type": "list", "rows": LIST_ROWS, "na": True},
             {**QUESTION, "id": "tabla", "type": "records", "rows": RECORD_ROWS},
             {**QUESTION, "id": "eleccion", "choices": [HOSTILE, "sí"], "people_list": True},
+            {**QUESTION, "id": "fija", "choices": ["sí"], "locked": True},
         ],
+        "management_option": [{"value": "management", "label": HOSTILE}],
         "people": [HOSTILE],
         "values": {"a~organizacion": HOSTILE},
     },
@@ -373,6 +387,7 @@ WIZARD_FLOW_EXTRA = {
             {
                 **DOCUMENT,
                 "role_label": "la dirección",
+                "role_missing": False,
                 "signatory": HOSTILE,
                 "by": HOSTILE,
                 "can_approve": True,
@@ -382,6 +397,7 @@ WIZARD_FLOW_EXTRA = {
             {
                 **DOCUMENT,
                 "role_label": "la dirección",
+                "role_missing": False,
                 "signatory": "Ana",
                 "by": "ana",
                 "can_approve": False,
@@ -402,6 +418,9 @@ CHROME = {
     "identity_email": "ana@example.org",
     "nav_active": "estado",
     "page_title": "Página",
+    "missing_role": None,
+    "needs_init": False,
+    "global_notices": [{"kind": "warn", "title": HOSTILE, "how": HOSTILE}],
 }
 FINDING = {
     "id": "a" * 64,
@@ -440,7 +459,24 @@ INCIDENT_FORM = {
     "action_kinds": [{"value": "emergency", "label": "emergencia"}],
     "review_results": [{"value": "changed", "label": "se cambiaron los eventos auditables"}],
 }
+_AGENT_CHECK = CheckRow("HOST-002", "PASS", HOSTILE, "AGENT_OK", ("e" * 8,))
+_AGENT_CONTACT = ContactRow(2, "2026-11-08 10:00 UTC", "ev-1")
+_AGENT_ROW = AgentRow(
+    HOSTILE, "admitted", "Admitido", 2, "2026-11-01 09:00 UTC", _AGENT_CONTACT, _AGENT_CHECK
+)
+_AGENT_BARE = AgentRow("pc-2", "never", "Sin alta", None, "—", None, None)
+
 VIEW_CONTEXT = {
+    "agents.html": {"rows": [_AGENT_ROW, _AGENT_BARE], "problems": [HOSTILE], "notes": [HOSTILE]},
+    "agents_detail.html": {
+        "detail": AgentDetail(
+            _AGENT_ROW,
+            [QueryRow("q1", "2026-11-08 10:00 UTC", 3, "ev-2"), QueryRow("q2", None, None, None)],
+            [_AGENT_CHECK, CheckRow("HOST-001", "FAIL", None, None, ())],
+            [_AGENT_CONTACT],
+        ),
+        "problems": [HOSTILE],
+    },
     "views/estado.html": {
         "readiness": {"state": "NOT_READY", "summary": "Faltan evidencias"},
         "scope_state": "APPROVED",
@@ -877,11 +913,13 @@ VIEW_CONTEXT = {
 
 
 def _environment():
-    return jinja2.Environment(
+    environment = jinja2.Environment(
         loader=jinja2.FileSystemLoader(TEMPLATES),
         autoescape=jinja2.select_autoescape(["html"], default=True),
         undefined=jinja2.StrictUndefined,
     )
+    environment.filters["code_spans"] = code_spans
+    return environment
 
 
 def _cases():

@@ -14,7 +14,7 @@
   {% if f.decidable and f.closed %}
   <p class="muted">Ya está decidido y no bloquea.</p>
   {% elif f.decidable %}
-  <form method="post" action="/preauditoria/hallazgos/{{ f.id }}" novalidate>
+  <form method="post" action="/preauditoria/hallazgos/{{ f.id }}" novalidate>{{ m.gate_open(blocked=missing_role) }}
     <input type="hidden" name="dossier" value="{{ dossier_id }}">
     {% set own = error_finding == f.id %}
     <div class="field">
@@ -40,7 +40,7 @@
     </div>
     {{ by_field("b-" ~ f.id) }}
     <div class="actions"><button class="btn" type="submit">Registrar la decisión</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
   {% endif %}
 </article>
 {%- endmacro %}
@@ -48,6 +48,7 @@
 <h1>Pre-auditoría</h1>
 <p class="lead">Un ensayo antes de la auditoría. Los hallazgos son propuestas para que una persona los revise. Ninguno es una conclusión.</p>
 <aside class="notice notice-warn" role="note"><p><strong>Revisión humana obligatoria.</strong> Los hallazgos son propuestas. Nada de esto declara conformidad ni sustituye a un auditor.</p></aside>
+{% if missing_role %}{{ m.needs_role(missing_role, "Mientras tanto puedes consultar la pre-auditoría, pero no enviarla ni decidir sus hallazgos.") }}{% endif %}
 {% if saved and not form_errors %}<div class="notice notice-ok" role="status"><p>{{ saved }}</p></div>{% endif %}
 {% if form_errors %}
 <div class="notice notice-warn" role="alert"><p><strong>No se ha guardado.</strong></p><ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></div>
@@ -82,11 +83,11 @@
   {% if has_live_request %}
   <p class="muted">Hay una petición sin terminar. Espera a que acabe para pedir otra; recarga la página para ver cómo va.</p>
   {% else %}
-  <form method="post" action="/preauditoria/preparar" novalidate>
+  <form method="post" action="/preauditoria/preparar" novalidate>{{ m.gate_open() }}
     <input type="hidden" name="dossier" value="{{ dossier_id }}">
     {{ by_field("b-preparar") }}
     <div class="actions"><button class="btn {{ 'btn-primary' if not prepared else '' }}" type="submit">{{ "Preparar de nuevo" if prepared else "Preparar" }}</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
   {% endif %}
 </section>
 
@@ -114,7 +115,7 @@
 <section class="section" aria-labelledby="h-enviar">
   <h2 id="h-enviar">3. Enviar a la revisión automática</h2>
   <p>Al enviar, el contenido de arriba sale del equipo hacia el destino indicado. Solo se envía si la huella coincide con la que has revisado.</p>
-  <form method="post" action="/preauditoria/enviar" novalidate>
+  <form method="post" action="/preauditoria/enviar" novalidate>{{ m.gate_open(blocked=missing_role) }}
     <input type="hidden" name="dossier" value="{{ dossier_id }}">
     <div class="field"><label><input type="checkbox" name="reviewed" value="1"> He revisado lo que se envía.</label></div>
     <div class="field">
@@ -127,7 +128,7 @@
     {% endif %}
     {{ by_field("b-enviar") }}
     <div class="actions"><button class="btn btn-primary" type="submit">Enviar</button></div>
-  </form>
+  {{ m.gate_close() }}</form>
 </section>
 {% endif %}
 {% endif %}

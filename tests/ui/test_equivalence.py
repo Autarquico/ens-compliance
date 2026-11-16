@@ -33,6 +33,7 @@ from .conftest import (
     WRITE_HEADERS,
     Session,
     auth,
+    grant_all,
     mint,
     seed_example_scope,
     snapshot_of,
@@ -443,7 +444,8 @@ def web_script_until_review(session: Session, client, token: str, guide=no_guide
         post_ok(session, "/asistente/documentos-aprobar", data)
     assert sorted(approver_names()) == sorted(document_names())
     guide("documentos aprobados")
-    assert session.get("/matriz").status_code == 200  # abrir la matriz la inicia
+    assert session.get("/matriz").status_code == 200
+    post_ok(session, "/matriz/iniciar", {})  # abrir la matriz no la inicia: es una escritura
     upload_evidence(client, token)
 
 
@@ -716,7 +718,7 @@ def web_flow(tmp_path_factory, key) -> FlowRun:
     from .conftest import AUD, ORIGIN, TEAM
 
     root = tmp_path_factory.mktemp("flujo-web")
-    store = seed_example_scope(LocalStore(root / "ui-ws"))
+    store = grant_all(seed_example_scope(LocalStore(root / "ui-ws")))
     config = UiConfig(origin=ORIGIN, access_aud=AUD, team_domain=TEAM, jwks_file=root / "jwks.json")
     client, token = ui_client(config, store, key), mint(key)
     session, milestones = Session(client, token), []

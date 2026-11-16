@@ -10,6 +10,7 @@ import yaml
 
 from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.ui.forms import Form, first
+from ens_evidence.ui.roles import Permissions
 from ens_evidence.ui.store import UiStore
 from ens_evidence.workspace import NotFound, NotText
 from ens_evidence.yaml_unique import safe_load_unique
@@ -35,6 +36,7 @@ class StepInput:
     email: str
     query: dict[str, str] = field(default_factory=dict)
     form: Form = field(default_factory=dict)
+    permissions: Permissions = field(default_factory=Permissions)
 
 
 @dataclass(frozen=True)

@@ -4,6 +4,7 @@
 <h1>Matriz de medidas</h1>
 <p class="lead">Una fila por medida del anexo II del ENS. «Aplicabilidad» dice si la medida te toca. «Valoración» es el juicio de una persona.</p>
 {{ m.revision_humana() }}
+{% if needs_init %}{{ m.init_matrix() }}{% endif %}
 <div class="table-wrap"><table>
   <caption>{{ rows | length }} medidas · datos de {{ generated_at }}</caption>
   <thead><tr><th scope="col" class="id">Medida</th><th scope="col">Título</th><th scope="col">Aplicabilidad</th><th scope="col">Valoración</th><th scope="col">Evidencias</th></tr></thead>

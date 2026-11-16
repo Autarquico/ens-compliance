@@ -124,10 +124,14 @@ provider**, Azure AD:
 ### 2.3 Segundo factor en el inicio de sesión
 
 Ninguna de las dos páginas dice si Access lee o exige la reclamación de
-autenticación multifactor (`amr`) del proveedor: **no verificado**. La página
-de Entra ID menciona una opción «Entra ID Policy Sync» que remite a una guía de
-acceso condicional que esta guía no ha revisado. Por eso el doble factor se
-fuerza y se evidencia en el proveedor (sección 4).
+autenticación multifactor (`amr`) del proveedor: **no verificado**. Tampoco la
+documentación de Cloudflare describe un claim de MFA en el token de aplicación
+de Access (revisado el 2026-11-16), así que la interfaz web no comprueba `amr`
+(ADR 0022): se verifica la política de Access con el check
+`cloudflare.ui_access_requires_mfa` (ver `interfaz-web.md`, sección 3). La
+página de Entra ID menciona una opción «Entra ID Policy Sync» que remite a una
+guía de acceso condicional que esta guía no ha revisado. Por eso el doble factor
+se fuerza y se evidencia en el proveedor (sección 4).
 
 ## 3. Exigirlo en cada aplicación de la caja y del kit
 

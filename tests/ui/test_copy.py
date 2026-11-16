@@ -47,7 +47,7 @@ def test_ninguna_pagina_de_error_ni_paso_con_errores_dice_certifica(session, tok
         session.post("/asistente/aprobacion-alcance", {"accion": "aprobar", "approved_by": ""}),
     ]
     for response in pages:
-        assert response.status_code in (404, 422, 200), response.status_code
+        assert response.status_code in (404, 403, 422, 200), response.status_code
         assert not FORBIDDEN.search(response.text)
 
 

@@ -23,6 +23,7 @@ from ens_evidence.models.enums import CheckStatus, CollectionStatus
 
 CHECK_ID = "cloudflare.tunnel_requires_access"
 ACCESS_IDP_RESTRICTED = "cloudflare.access_idp_restricted"  # lo evalúa identity_checks
+UI_ACCESS_REQUIRES_MFA = "cloudflare.ui_access_requires_mfa"  # lo evalúa mfa_checks
 DECLARED_PUBLIC = "declared_public"
 _IGNORED_APP_TYPES = frozenset({"bookmark"})
 _PROVABLE_APP_TYPES = frozenset({"self_hosted", "ssh", "vnc", "rdp"})

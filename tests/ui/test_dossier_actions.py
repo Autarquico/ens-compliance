@@ -18,7 +18,7 @@ from ens_evidence.ui.views.dossier import DOSSIER_ROUTES
 from ens_evidence.ui.views.status import STATUS_ROUTES
 from ens_evidence.workspace import LocalStore
 
-from .conftest import NOW, ORIGIN, Session, jwks_for, snapshot_of
+from .conftest import NOW, ORIGIN, Session, grant_all, jwks_for, snapshot_of
 
 
 @pytest.fixture(scope="module")
@@ -51,6 +51,7 @@ def clock() -> Clock:
 
 
 def web(config, store, key, token, clock) -> Session:
+    grant_all(store)
     app = create_ui_app(
         config, store, clock, lambda: jwks_for(key), routes=[*STATUS_ROUTES, *DOSSIER_ROUTES]
     )
@@ -334,10 +335,10 @@ def test_lo_enviado_se_devuelve_escapado(ui, spy):
     assert "&lt;script&gt;" in response.text
 
 
-def test_una_accion_desconocida_es_404(ui):
+def test_una_accion_desconocida_es_403(ui):
     dossier = generated(ui)
 
-    assert ui.post(f"/expediente/{dossier}/borrar", {"by": "Ana"}).status_code == 404
+    assert ui.post(f"/expediente/{dossier}/borrar", {"by": "Ana"}).status_code == 403
 
 
 def test_un_formulario_enorme_se_rechaza(ui):

@@ -17,9 +17,11 @@ from ens_evidence.categorization.edit import (
     set_rating,
     set_valuation,
 )
+from ens_evidence.models.enums import Role
 from ens_evidence.scope import ScopeNotApproved
 from ens_evidence.scope.inventory import SERVICES_KEY
 from ens_evidence.ui.forms import first
+from ens_evidence.ui.roles import role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard.base import (
@@ -34,6 +36,8 @@ from ens_evidence.ui.wizard.base import (
     required,
 )
 
+# Quién firma la valoración de cada tipo de elemento; un test lo iguala con el del producto.
+VALUATION_ROLES = {"information": Role.INFORMATION_OWNER, "service": Role.SERVICE_OWNER}
 LEVELS = ("BAJO", "MEDIO", "ALTO", "not_affected")
 KINDS = (("information", "information"), ("service", "services"))
 ROLE_LABELS = {
@@ -166,7 +170,19 @@ def _valuations_due(step: StepInput, elements: list[dict], changes: list) -> lis
 
 
 def _valoraciones_context(step: StepInput) -> Context:
-    return {"elements": _elements(step.store)}
+    return {
+        "elements": _elements(step.store),
+        "missing_valuation_roles": _missing_valuation_roles(step),
+    }
+
+
+def _missing_valuation_roles(step: StepInput) -> dict[str, list[dict[str, str]]]:
+    """Por tipo de elemento, el rol de firma que falta a este usuario."""
+    return {
+        kind: role_options([role])
+        for kind, role in VALUATION_ROLES.items()
+        if step.permissions.lacks(role)
+    }
 
 
 def _valoraciones_save(step: StepInput) -> None:
@@ -175,6 +191,8 @@ def _valoraciones_save(step: StepInput) -> None:
     if errors:
         raise StepRejected(errors, ["Revisa los campos marcados."])
     due = _valuations_due(step, elements, changes)
+    for role in sorted({VALUATION_ROLES[kind] for kind, _, _ in due}):  # todo antes de escribir
+        step.permissions.require(role)
     for kind, element_id, dimension, level, justification in changes:
         with rejected_to_step(CategorizationEditRejected):
             set_rating(step.store, kind, element_id, dimension, level, justification)

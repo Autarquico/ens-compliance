@@ -4,7 +4,7 @@
 <h2>{{ step_title }}</h2>
 <p class="lead">Un activo es cualquier cosa que forma parte del sistema: un portátil, un servidor, una base de datos, una cuenta en la nube. Marca los que entran en el alcance. Los activos se detectan con los conectores; aquí solo decides cuáles incluir.</p>
 {% include "partials/_paso_cabecera.html" %}
-<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+<form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
   <fieldset class="checks">
     <legend>Activos del inventario <span class="hint">Lo ya incluido no se puede quitar desde aquí todavía.</span></legend>
     {%- for a in assets %}
@@ -18,7 +18,7 @@
   </fieldset>
   {{ m.field_errors("included_assets") }}
   {% include "partials/_paso_acciones.html" %}
-</form>
+{{ m.gate_close() }}</form>
 
 <section class="section" aria-labelledby="nuevo-activo">
   <h3 id="nuevo-activo">Añadir un activo a mano</h3>
@@ -33,7 +33,7 @@
     <button class="btn" type="submit">Elegir tipo</button>
   </form>
   {% else %}
-  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
+  <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>{{ m.gate_open() }}
     <input type="hidden" name="asset_type" value="{{ new_asset.type }}">
     <p>Tipo: <strong>{{ new_asset.type_label }}</strong></p>
     {{ m.text_field("asset_id", "Identificador", hint="Sin espacios, por ejemplo «portatil-ana».") }}
@@ -45,7 +45,7 @@
       <button class="btn btn-primary" type="submit" name="accion" value="anadir">Añadir activo</button>
       <a class="btn" href="{{ form_action }}">Cancelar</a>
     </div>
-  </form>
+  {{ m.gate_close() }}</form>
   {% endif %}
 </section>
 {% endblock %}

@@ -8,10 +8,13 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.routing import BaseRoute, Route
 
+from ens_evidence.models.enums import Role
 from ens_evidence.scope.secrets import find_secrets
 from ens_evidence.ui.audit import audit_write
+from ens_evidence.ui.authz import WIZARD_STEPS
 from ens_evidence.ui.forms import FormInvalid, FormTooLarge, first, read_form
-from ens_evidence.ui.pages import error_page, identity_of, page_context, render
+from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
+from ens_evidence.ui.roles import role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.wizard.applicability import APPLICABILITY_STEPS
 from ens_evidence.ui.wizard.base import Step, StepInput, StepRejected
@@ -58,6 +61,14 @@ def _echo(form: dict[str, list[str]]) -> dict[str, Any]:
     return {name: v if len(v) > 1 else (v[0] if v else "") for name, v in safe.items()}
 
 
+def _missing_role(step: Step, step_input: StepInput) -> list[dict[str, str]] | None:
+    """El rol fijo que exige el paso y que este usuario no tiene; si no, `None`."""
+    required = WIZARD_STEPS[step.slug]
+    if isinstance(required, Role) and step_input.permissions.lacks(required):
+        return role_options([required])
+    return None
+
+
 def _page(
     request: Request,
     step: Step,
@@ -89,6 +100,7 @@ def _page(
         form_action=f"/asistente/{step.slug}",
         prev_step=STEPS[index - 1].slug if index else None,
         next_step=STEPS[index + 1].slug if index + 1 < len(STEPS) else None,
+        missing_role=_missing_role(step, step_input),
         hx_request=request.headers.get("HX-Request") == "true",
         errors=errors or {},
         form_errors=form_errors or [],
@@ -105,6 +117,7 @@ def _input(request: Request, form: dict[str, list[str]] | None = None) -> StepIn
         email=identity_of(request).email,
         query=dict(request.query_params),
         form=form or {},
+        permissions=permissions_of(request),
     )
 
 
@@ -156,6 +169,7 @@ async def guardar(request: Request) -> Response:
             action=first(form, "accion"),
             keys=written,
             at=step_input.now,
+            roles=step_input.permissions.used,
         )
     if htmx:
         return _page(request, step, _input(request), saved=bool(written))
