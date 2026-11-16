@@ -37,9 +37,11 @@ certificados de Access se aprovisionan a mano y no hay panel de agentes.
   (`Role`), tener asignado ese rol. Sin asignación, la UI es de solo lectura y explica
   cómo asignar roles; nunca concede escritura por defecto. Cada denegación queda en el log
   de auditoría.
-- **MFA comprobada.** Además de la política de Access, la UI rechaza un JWT cuyo `amr` no
-  acredite un segundo factor, con una página que explica cómo configurarlo. Se puede
-  desactivar solo por entorno y queda advertido en la UI y en el log de arranque.
+- **MFA comprobada en la política.** El token de aplicación de Access no documenta ningún claim
+  de MFA (comprobado en la documentación de Cloudflare el 2026-11-16), así que la app no rechaza por
+  claim. Un check nuevo del conector Cloudflare (solo lectura) confirma que toda política que deja
+  entrar a la aplicación Access de la UI exige un segundo factor; la UI muestra un aviso permanente
+  mientras el último resultado de ese check no sea `PASS`.
 - **Refresco del JWKS.** Trabajo del scheduler en `app` que descarga los certificados del
   team de Access, los valida y los escribe de forma atómica en state (ADR 0021). Si falla,
   conserva el anterior y lo registra.
@@ -60,9 +62,14 @@ certificados de Access se aprovisionan a mano y no hay panel de agentes.
 - **Then** obtiene los mismos artefactos que el flujo CLI
 
 ### Scenario: MFA
-- **Given** un usuario cuyo JWT de Access no acredita segundo factor
-- **When** intenta entrar
-- **Then** se le niega el acceso y se le explica cómo configurarlo; no se escribe nada
+- **Given** una aplicación Access de la UI con alguna política Allow que no exige segundo factor
+- **When** se evalúa el check de MFA del conector Cloudflare
+- **Then** da `FAIL` y la UI muestra el aviso de MFA no confirmada con cómo corregirlo
+
+### Scenario: MFA sin confirmar
+- **Given** que no hay resultado del check de MFA, o no es `PASS`
+- **When** entra un usuario
+- **Then** la UI muestra el aviso; nunca afirma que la MFA esté activa
 
 ### Scenario: aprobación sin el rol
 - **Given** un usuario con edición pero sin el rol ENS que exige una aprobación
@@ -86,8 +93,8 @@ certificados de Access se aprovisionan a mano y no hay panel de agentes.
 
 ## Notas técnicas / riesgos
 
-- Contenido exacto de `amr` en los JWT de Access sin verificar en cuenta real: depende del
-  método (OTP de Access, IdP con MFA). Probar con fixtures y marcar como no verificado.
+- Cómo expresa la API de Access la exigencia de MFA (selector `auth_method`, MFA independiente por
+  aplicación o política) sin verificar en cuenta real: fixtures y marcado como no verificado.
 - Cambio de comportamiento al actualizar: sin roles asignados, quien antes escribía pasa a
   solo lectura hasta ejecutar `ui roles`. Documentarlo en el runbook de actualización.
 - `ui` no tiene salida a Internet ni `deploy/.env`: el JWKS lo escribe `app` en state.
