@@ -161,6 +161,44 @@ def test_todas_las_aplicaciones_que_cubren_el_hostname_deben_exigir_mfa():
     assert "«mala»" in result.reason
 
 
+def test_raiz_con_mfa_y_subruta_allow_sin_mfa_es_fail():
+    root = ui_app(mfa_policy(name="raiz"), app_id="a")
+    sub = ui_app(mfa_policy(name="sub", methods=()), app_id="b", destination=f"{UI}/asistente")
+
+    result = evaluate(root, sub)
+
+    assert (result.status, result.reason_code) == (FAIL, "mfa_missing")
+    assert "«sub»" in result.reason
+
+
+def test_subruta_con_bypass_es_fail():
+    root = ui_app(mfa_policy(name="raiz"), app_id="a")
+    sub = ui_app(mfa_policy("bypass", name="abierta"), app_id="b", destination=f"{UI}/asistente")
+
+    result = evaluate(root, sub)
+
+    assert (result.status, result.reason_code) == (FAIL, "bypass")
+    assert "«abierta»" in result.reason
+
+
+def test_subruta_con_politicas_ilegibles_es_unknown():
+    root = ui_app(mfa_policy(name="raiz"), app_id="a")
+    sub = ui_app(
+        mfa_policy(), app_id="b", destination=f"{UI}/asistente", policy_status="PERMISSION_DENIED"
+    )
+
+    result = evaluate(root, sub)
+
+    assert result.status is UNKNOWN
+
+
+def test_raiz_y_subruta_con_mfa_es_pass():
+    root = ui_app(mfa_policy(name="raiz"), app_id="a")
+    sub = ui_app(mfa_policy(name="sub"), app_id="b", destination=f"{UI}/asistente")
+
+    assert evaluate(root, sub).status is PASS
+
+
 def test_destino_ilegible_que_podria_ser_el_hostname_es_unknown():
     result = evaluate(ui_app(mfa_policy(), destination=f"{UI}:8443"))
 

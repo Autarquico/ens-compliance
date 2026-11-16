@@ -21,6 +21,7 @@ from ens_evidence.models.enums import Role
 from ens_evidence.scope import ScopeNotApproved
 from ens_evidence.scope.inventory import SERVICES_KEY
 from ens_evidence.ui.forms import first
+from ens_evidence.ui.roles import role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.wizard.base import (
@@ -169,7 +170,19 @@ def _valuations_due(step: StepInput, elements: list[dict], changes: list) -> lis
 
 
 def _valoraciones_context(step: StepInput) -> Context:
-    return {"elements": _elements(step.store)}
+    return {
+        "elements": _elements(step.store),
+        "missing_valuation_roles": _missing_valuation_roles(step),
+    }
+
+
+def _missing_valuation_roles(step: StepInput) -> dict[str, list[dict[str, str]]]:
+    """Por tipo de elemento, el rol de firma que falta a este usuario."""
+    return {
+        kind: role_options([role])
+        for kind, role in VALUATION_ROLES.items()
+        if step.permissions.lacks(role)
+    }
 
 
 def _valoraciones_save(step: StepInput) -> None:

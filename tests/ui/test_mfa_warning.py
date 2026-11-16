@@ -101,6 +101,18 @@ def test_unreadable_store_warns(session, example_store):
     assert "unreadable" in body
 
 
+def test_cache_no_conserva_un_pass_tras_corromper_el_historial(session, example_store):
+    record_mfa(example_store, CheckStatus.PASS)
+    assert WARNING not in page(session)
+    key = example_store.list(connector_prefix("cloudflare"))[0]
+    example_store.write_text(key, "no es json")
+
+    body = page(session)
+
+    assert WARNING in body
+    assert "unreadable" in body
+
+
 def test_page_never_writes(session, example_store):
     record_mfa(example_store, CheckStatus.FAIL, "x_code")
     before = sorted(example_store.list(""))

@@ -8,7 +8,7 @@ from dataclasses import dataclass
 
 from starlette.requests import Request
 
-from ens_evidence.checks.store import StoredRun, connector_prefix, scan_runs
+from ens_evidence.checks.store import StoredRun, scan_runs
 from ens_evidence.connectors.cloudflare.checks import UI_ACCESS_REQUIRES_MFA
 from ens_evidence.connectors.cloudflare.mfa_checks import (
     APP_NOT_FOUND,
@@ -90,22 +90,8 @@ def read_mfa_state(store: UiStore) -> MfaState:
     return _from_run(live[-1] if live else None)
 
 
-def _cached_state(request: Request) -> MfaState:
-    """El historial es inmutable por clave: se relee solo si cambia la lista de claves."""
-    store: UiStore = request.app.state.store
-    try:
-        keys = tuple(store.list(connector_prefix(CONNECTOR)))
-    except Exception:  # noqa: BLE001
-        return MfaState(UNREADABLE, "ilegible")
-    cached: tuple[tuple[str, ...], MfaState] | None = getattr(request.app.state, "mfa_state", None)
-    if cached is None or cached[0] != keys:
-        cached = (keys, read_mfa_state(store))
-        request.app.state.mfa_state = cached
-    return cached[1]
-
-
 def mfa_notices(request: Request) -> list[dict[str, str]]:
-    state = _cached_state(request)
+    state = read_mfa_state(request.app.state.store)
     if state.code is None:
         return []
     result = "" if state.code in (NOT_CHECKED, UNREADABLE) else f"; resultado: {state.status}"

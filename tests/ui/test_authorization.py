@@ -475,6 +475,30 @@ def test_firmar_solo_la_informacion_basta_con_su_rol(valuations):
     assert ui.post("/asistente/valoraciones", only_info).status_code == 303
 
 
+def test_valoraciones_anuncia_el_rol_que_falta_e_inactiva_solo_esa_firma(valuations):
+    ui, store, _ = valuations
+    grant(store, True, INFO_OWNER)
+
+    page = ui.get("/asistente/valoraciones").text
+
+    assert page.count("Necesitas el rol") == 1
+    assert "--role service_owner" in page
+    assert 'name="valued_by~service~svc-facturacion" disabled' in page
+    assert 'name="valued_by~information~datos" disabled' not in page
+    assert 'name="rating~service~svc-facturacion~C~level"' in page
+    assert 'rating~service~svc-facturacion~C~level" disabled' not in page
+
+
+def test_valoraciones_con_los_dos_roles_no_anuncia_nada(valuations):
+    ui, store, _ = valuations
+    grant(store, True, INFO_OWNER, SERVICE_OWNER)
+
+    page = ui.get("/asistente/valoraciones").text
+
+    assert "Necesitas el rol" not in page
+    assert '~service~svc-facturacion" disabled' not in page
+
+
 # --- (e) pre-auditoría ---------------------------------------------------------------------------
 
 

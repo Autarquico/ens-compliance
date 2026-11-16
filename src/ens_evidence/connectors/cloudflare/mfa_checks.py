@@ -6,10 +6,13 @@ NO VERIFICADO contra una cuenta real de Cloudflare: la forma con que la API expr
 política o la aplicación) se ha tomado de la documentación y se prueba solo con fixtures.
 
 `PASS` solo si hay al menos una aplicación que cubre el hostname de la UI entero y cada política
-`allow` que la alcanza exige MFA. `bypass` o una `allow` sin MFA (incluido `everyone` sin
-`require`) es `FAIL` y nombra la política; un selector `auth_method` ilegible o distinto de `mfa`
-cuenta como que no exige MFA (`FAIL`). Lo que no se puede resolver es `UNKNOWN`; la ausencia de
-evidencia nunca es `PASS`. El token de aplicación de Access no lleva un claim de MFA, así que
+`allow` de TODAS las aplicaciones que alcanzan el hostname o una ruta bajo él (también comodines
+que lo cubren) exige MFA: una aplicación de subruta (`ui.example.com/asistente`) tiene sus
+propias políticas y puede dejar entrar sin MFA aunque la raíz lo exija. `bypass` o una `allow`
+sin MFA (incluido `everyone` sin `require`) es `FAIL` y nombra la aplicación y la política; un
+selector `auth_method` ilegible o distinto de `mfa` cuenta como que no exige MFA (`FAIL`). Lo que
+no se puede resolver es `UNKNOWN`; la ausencia de evidencia nunca es `PASS`. El token de
+aplicación de Access no lleva un claim de MFA, así que
 esta política es la única comprobación posible. No demuestra que los usuarios hayan enrolado el
 factor (eso lo evidencian `workspace` y `m365`).
 """
@@ -102,25 +105,33 @@ def _outcome(result: CollectionResult) -> Outcome:
     target = parse_host(hostname)
     if target is None:
         return _unknown(APP_UNRESOLVED, f"ui_hostname «{hostname}» no es un hostname válido")
-    covering, partial, uncertain = _find_apps(applications.items, target)
+    reaching, root_covered, uncertain = _find_apps(applications.items, target)
+    structural: Findings = []
     if uncertain:
-        return _unknown(
-            APP_UNRESOLVED, "algún destino de Access no se sabe interpretar: " + uncertain
+        structural.append(
+            (APP_UNRESOLVED, "algún destino de Access no se sabe interpretar: " + uncertain)
         )
-    if not covering:
-        if partial:
-            names = ", ".join(partial)
-            return _unknown(
-                APP_PARTIAL, f"solo cubren parte de {hostname} (por ruta) las aplicaciones: {names}"
+    if not root_covered:
+        if reaching:
+            names = ", ".join(_label(app) for app in reaching)
+            structural.append(
+                (
+                    APP_PARTIAL,
+                    f"solo cubren parte de {hostname} (por ruta) las aplicaciones: {names}",
+                )
             )
-        return _unknown(
-            APP_NOT_FOUND, f"ninguna aplicación de Access cubre {hostname}; revísalo en la consola"
-        )
+        else:
+            structural.append(
+                (
+                    APP_NOT_FOUND,
+                    f"ninguna aplicación de Access cubre {hostname}; revísalo en la consola",
+                )
+            )
     policies = _read(sections, "access_policies")
     groups = _groups(_read(sections, "access_groups"))
     fails: Findings = []
     unknowns: Findings = []
-    for app in covering:
+    for app in reaching:
         try:
             found = _evaluate_app(app, policies, groups)
         except Unresolvable as exc:
@@ -131,11 +142,12 @@ def _outcome(result: CollectionResult) -> Outcome:
         unknowns += [(code, f"aplicación «{_label(app)}»: {text}") for code, text in found[1]]
     if fails:
         return _report(CheckStatus.FAIL, fails)
-    if unknowns:
-        return _report(CheckStatus.UNKNOWN, unknowns)
+    if structural or unknowns:
+        return _report(CheckStatus.UNKNOWN, structural + unknowns)
     return Outcome(
         CheckStatus.PASS,
-        f"toda política allow que alcanza {hostname} exige MFA (política de Access; no prueba "
+        f"toda política allow de las aplicaciones que alcanzan {hostname} o una ruta bajo él "
+        "exige MFA (política de Access; no prueba "
         "que los usuarios hayan enrolado el factor)",
     )
 
@@ -151,25 +163,30 @@ def _report(status: CheckStatus, findings: Findings) -> Outcome:
 
 def _find_apps(
     applications: list[dict[str, Any]], target: Host
-) -> tuple[list[dict[str, Any]], list[str], str]:
-    """Aplicaciones que cubren el hostname entero, las que cubren parte y los destinos ilegibles."""
-    covering: list[dict[str, Any]] = []
-    partial: list[str] = []
+) -> tuple[list[dict[str, Any]], bool, str]:
+    """Aplicaciones que alcanzan el hostname o una ruta bajo él, si alguna cubre la raíz entera
+    y los destinos ilegibles. Una aplicación de subruta no hereda las políticas de la raíz."""
+    reaching: list[dict[str, Any]] = []
+    root_covered = False
     unreadable: list[str] = []
     for app in applications:
         if app.get("type") in _IGNORED_APP_TYPES:
             continue
+        reached = False
         for uri in app.get("public_destinations", []):
             dest = parse_destination(uri)
             if dest.host is None:
                 if not _is_other_host(target.name, dest.raw_host):
                     unreadable.append(_label(app))
             elif host_covers(dest.host, target):
-                if dest.path is not None and path_covers(dest.path, _ROOT):
-                    covering.append(app)
-                    break
-                partial.append(_label(app))
-    return covering, partial, ", ".join(dict.fromkeys(unreadable))
+                if dest.path is None:
+                    unreadable.append(_label(app))
+                    continue
+                reached = True
+                root_covered = root_covered or path_covers(dest.path, _ROOT)
+        if reached:
+            reaching.append(app)
+    return reaching, root_covered, ", ".join(dict.fromkeys(unreadable))
 
 
 def _groups(section: SectionData) -> AccessGroups:

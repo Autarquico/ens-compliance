@@ -189,19 +189,23 @@ reutilizables y si Access puede exigir el segundo factor.
 que protege la interfaz web (ADR 0022). La interfaz no puede comprobar el MFA
 por petición, porque la documentación de Cloudflare no describe un claim de
 segundo factor en el token de aplicación (revisado el 2026-11-16). La
-aplicación se localiza por el `ui_hostname` configurado: las que cubren el
-hostname y la ruta raíz enteros.
+aplicación se localiza por el `ui_hostname` configurado: se evalúan **todas** las
+que alcanzan el hostname o una ruta bajo él (`ui.example.com/asistente`, o un
+comodín que lo cubre), porque una aplicación de subruta tiene sus propias
+políticas y no hereda las de la raíz.
 
-- `PASS` solo si hay al menos una aplicación así y **toda** política `allow` que
-  la alcanza exige MFA (selector `Require` de método de autenticación `mfa`, o
+- `PASS` solo si al menos una aplicación cubre el hostname y la ruta raíz
+  enteros y **toda** política `allow` de **todas** las aplicaciones evaluadas
+  exige MFA (selector `Require` de método de autenticación `mfa`, o
   el ajuste de MFA de la política o de la aplicación, o un grupo en `Require`
   que lo exija). Un `include` con método de autenticación no cuenta: es un OR.
   **No prueba** que cada persona haya enrolado el factor ni que el IdP lo pida.
 - `FAIL` si hay una política `bypass` o una `allow` sin MFA (incluida `everyone`
-  sin `Require`); el motivo nombra la política. Códigos: `bypass`,
+  sin `Require`) en cualquiera de ellas, también en una subruta; el motivo nombra
+  la aplicación y la política. Códigos: `bypass`,
   `mfa_missing`.
 - `UNKNOWN` con `ui_hostname_not_configured`, `ui_app_not_found`,
-  `ui_app_partial` (solo cubre una subruta), `ui_app_unresolved` (destino que
+  `ui_app_partial` (ninguna cubre la raíz entera; solo subrutas), `ui_app_unresolved` (destino que
   no se sabe interpretar), `policy_unresolved`, `no_allow_policy`,
   `non_identity` (política por token de servicio: una persona confirma que es
   solo para máquinas), `permission_denied` o `stale_evidence` (evidencia sin los

@@ -180,7 +180,7 @@ WIZARD_EXTRA = {
         "approval": None,
     },
     "informacion": {"information": [{"id": "datos-clientes", "description": "Clientes"}]},
-    "valoraciones": {"elements": ELEMENTS},
+    "valoraciones": {"elements": ELEMENTS, "missing_valuation_roles": {}},
     "aprobacion-categorizacion": {
         "categorization_state": "PENDING",
         "category": "MEDIA",

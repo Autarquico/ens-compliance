@@ -39,9 +39,11 @@
     </fieldset>
     {%- endfor %}
     {%- set vname = "valued_by~" ~ el.kind ~ "~" ~ el.id %}
+    {%- set lacking = (missing_valuation_roles or {}).get(el.kind) %}
+    {%- if lacking %}{{ m.needs_role(lacking, "Mientras tanto puedes guardar el borrador de las valoraciones, pero no firmarlas.") }}{% endif %}
     <div class="field">
       <label for="{{ vname }}">Lo valora<span class="hint">Nombre completo {{ el.role_label }}. Queda registrado como lo declaras.{% if el.valuation %} Última valoración: {{ el.valuation.valued_at }}.{% endif %}</span></label>
-      <input type="text" id="{{ vname }}" name="{{ vname }}" value="{{ el.valuation.valued_by if el.valuation else '' }}"{% if (errors or {}).get(vname) %} aria-invalid="true" aria-describedby="err-{{ vname }}"{% endif %}>
+      <input type="text" id="{{ vname }}" name="{{ vname }}"{% if lacking %} disabled{% endif %} value="{{ el.valuation.valued_by if el.valuation else '' }}"{% if (errors or {}).get(vname) %} aria-invalid="true" aria-describedby="err-{{ vname }}"{% endif %}>
       {{ m.field_errors(vname) }}
     </div>
   </section>
