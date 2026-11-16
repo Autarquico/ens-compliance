@@ -28,7 +28,7 @@
       {{ m.field_errors(d.error_key) }}
     </div>
     <div class="actions">
-      <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if not d.role_label or d.role_missing %} disabled{% endif %}>Aprobar este documento</button>
+      <button class="btn btn-primary" type="submit" name="accion" value="aprobar">Aprobar este documento</button>
     </div>
   {{ m.gate_close() }}</form>
   {% endif %}

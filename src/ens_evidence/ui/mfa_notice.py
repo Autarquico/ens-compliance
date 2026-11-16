@@ -10,6 +10,18 @@ from starlette.requests import Request
 
 from ens_evidence.checks.store import StoredRun, connector_prefix, scan_runs
 from ens_evidence.connectors.cloudflare.checks import UI_ACCESS_REQUIRES_MFA
+from ens_evidence.connectors.cloudflare.mfa_checks import (
+    APP_NOT_FOUND,
+    APP_PARTIAL,
+    APP_UNRESOLVED,
+    BYPASS,
+    HOSTNAME_NOT_CONFIGURED,
+    MFA_MISSING,
+    NO_ALLOW_POLICY,
+    NON_IDENTITY,
+    POLICY_UNRESOLVED,
+    STALE_EVIDENCE,
+)
 from ens_evidence.models.enums import CheckStatus
 from ens_evidence.ui.store import UiStore
 
@@ -27,23 +39,25 @@ class MfaState:
     status: str
 
 
+_NO_SECOND_FACTOR = "Hay una política de Access que deja entrar sin segundo factor"
 # Cada código que puede dejar el check, dicho para quien no lo conoce; el código va aparte.
 _REASONS = {
     NOT_CHECKED: (
-        "Todavía no se ha ejecutado la comprobación: recoge `cloudflare` y ejecuta los checks"
+        "Todavía no se ha ejecutado la comprobación: recoge `cloudflare` "
+        "y ejecuta las comprobaciones"
     ),
     UNREADABLE: "No se ha podido leer el historial de comprobaciones",
-    "stale_evidence": "La recogida es anterior a esta comprobación: vuelve a recoger `cloudflare`",
-    "ui_hostname_not_configured": "Falta `ui_hostname` en `connectors/cloudflare.yaml`",
-    "ui_app_not_found": "No hay en Access una aplicación para el hostname de esta interfaz",
-    "ui_app_partial": "Ninguna aplicación de Access cubre el hostname entero de esta interfaz",
-    "ui_app_unresolved": "El hostname configurado no es válido o no se pudo resolver",
-    "policy_unresolved": "No constan las políticas de la aplicación de Access",
-    "no_allow_policy": "La aplicación de Access no tiene ninguna política que permita entrar",
-    "non_identity": "Hay una política por token de servicio: una persona debe confirmar que es "
+    STALE_EVIDENCE: "La recogida es anterior a esta comprobación: vuelve a recoger `cloudflare`",
+    HOSTNAME_NOT_CONFIGURED: "Falta `ui_hostname` en `connectors/cloudflare.yaml`",
+    APP_NOT_FOUND: "No hay en Access una aplicación para el hostname de esta interfaz",
+    APP_PARTIAL: "Ninguna aplicación de Access cubre el hostname entero de esta interfaz",
+    APP_UNRESOLVED: "El hostname configurado no es válido o no se pudo resolver",
+    POLICY_UNRESOLVED: "No constan las políticas de la aplicación de Access",
+    NO_ALLOW_POLICY: "La aplicación de Access no tiene ninguna política que permita entrar",
+    NON_IDENTITY: "Hay una política por token de servicio: una persona debe confirmar que es "
     "solo para máquinas",
-    "mfa_missing": "Hay una política de Access que deja entrar sin segundo factor",
-    "bypass": "Hay una política de Access que deja entrar sin segundo factor",
+    MFA_MISSING: _NO_SECOND_FACTOR,
+    BYPASS: _NO_SECOND_FACTOR,
     "error": "No se pudo recoger la configuración de Access",
     "unknown": "No se pudo leer parte de la configuración de Access",
     "fail": "Una política de Access no exige segundo factor",

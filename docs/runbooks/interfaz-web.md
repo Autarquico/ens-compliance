@@ -256,6 +256,9 @@ quien no lo tiene ve que necesita el rol y la orden que tendría que pedir.
 Enviar a una pre-auditoría externa y decidir sus hallazgos piden
 `security_officer` en la interfaz (política de la interfaz, no de la CLI);
 una petición ya encolada se ejecuta aunque después se revoque el permiso.
+Cambiar quién aprueba los procedimientos (bloque «Responsables» de los
+documentos) pide `management`; sin él, ese campo queda inactivo y el resto del
+bloque se guarda con la edición.
 
 Asignar un rol indica que esa persona puede firmar, no que sea quien firma: el
 nombre de `by` lo escribe quien rellena el formulario (el ADR 0021 hablaba de

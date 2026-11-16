@@ -646,3 +646,25 @@ def test_la_direccion_si_puede_cambiar_quien_aprueba_los_procedimientos(document
     grant(store, True, Role.MANAGEMENT)
 
     assert ui.post(f"/asistente/{slug}", form).status_code == 303
+
+
+def test_sin_direccion_el_bloque_avisa_y_deja_la_pregunta_de_solo_lectura(documents):
+    ui, store = documents
+    fill_all(ui)
+    slug = BLOCK_OF[PROCEDURES_AUTHORITY_QUESTION].slug
+    grant(store, True, Role.SYSTEM_OWNER)
+
+    page = ui.get(f"/asistente/{slug}").text
+
+    assert "ens-evidence ui roles grant" in page and "--role management" in page
+    assert f'name="q~{PROCEDURES_AUTHORITY_QUESTION}"' not in page
+    assert re.search(rf'<select id="f-{PROCEDURES_AUTHORITY_QUESTION}"[^>]* disabled', page)
+
+
+def test_sin_direccion_se_guarda_el_resto_del_bloque_si_la_pregunta_no_cambia(documents):
+    ui, store = documents
+    fill_all(ui)
+    slug = BLOCK_OF[PROCEDURES_AUTHORITY_QUESTION].slug
+    grant(store, True, Role.SYSTEM_OWNER)
+
+    assert ui.post(f"/asistente/{slug}", form_for(slug, ANSWERS)).status_code == 303

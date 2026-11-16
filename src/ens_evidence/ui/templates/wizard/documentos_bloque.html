@@ -22,16 +22,17 @@
   {% if people %}<datalist id="personas-declaradas">{% for p in people %}<option value="{{ p }}"></option>{% endfor %}</datalist>{% endif %}
   {% for q in questions %}
   <section class="pregunta" id="p-{{ q.id }}">
-    <input type="hidden" name="q~{{ q.id }}" value="1">
+    {% if not q.locked %}<input type="hidden" name="q~{{ q.id }}" value="1">{% endif %}
     {% if q.type == "text" %}
     <div class="field">
       <label for="f-{{ q.id }}">{{ q.text }}{% if q.optional %}<span class="hint">Opcional</span>{% endif %}</label>
       {{ por_que(q) }}
       {% if q.choices -%}
-      <select id="f-{{ q.id }}" name="{{ q.name }}"{% if (errors or {}).get(q.name) %} aria-invalid="true" aria-describedby="err-{{ q.name }}"{% endif %}>
+      <select id="f-{{ q.id }}" name="{{ q.name }}"{% if q.locked %} disabled{% endif %}{% if (errors or {}).get(q.name) %} aria-invalid="true" aria-describedby="err-{{ q.name }}"{% endif %}>
         <option value="">Elige una opción</option>
         {% for c in q.choices %}<option value="{{ c }}"{% if c == q.value %} selected{% endif %}>{{ c }}</option>{% endfor %}
       </select>
+      {%- if q.locked %}{{ m.needs_role(management_option, "Mientras tanto puedes guardar el resto del bloque; esta respuesta la cambia la dirección.") }}{% endif %}
       {%- elif q.multiline -%}
       <textarea id="f-{{ q.id }}" name="{{ q.name }}"{% if (errors or {}).get(q.name) %} aria-invalid="true" aria-describedby="err-{{ q.name }}"{% endif %}>{{ q.value }}</textarea>
       {%- else -%}

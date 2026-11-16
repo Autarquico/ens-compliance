@@ -105,7 +105,12 @@ OPERATIONS: Operations = {
 def fixed_role(path: str, key: str | None = None) -> Role:
     """El rol fijo de una operación (de la acción `key` si reparte); para pantalla y handler."""
     entry = OPERATIONS[("POST", path)]
-    role = entry.policies[key or ""] if isinstance(entry, ByParam) else entry
+    if isinstance(entry, ByParam):
+        if key is None:
+            raise TypeError(f"{path} reparte por {entry.param}; falta key")
+        role = entry.policies[key]
+    else:
+        role = entry
     if not isinstance(role, Role):
         raise TypeError(f"{path} no exige un rol fijo")
     return role

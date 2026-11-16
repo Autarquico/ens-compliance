@@ -419,12 +419,17 @@ def _question_view(question: Question, raw: Any, form: Form) -> dict[str, Any]:
 def _block_context(block: Block, step: StepInput) -> Context:
     raw = _stored(step.store)
     values = _report(step.store).values
+    cannot_designate = step.permissions.lacks(Role.MANAGEMENT)
     return {
         "block_intro": block.intro,
         "questions": [
-            _question_view(q, raw.get(q.id), step.form)
+            {
+                **_question_view(q, raw.get(q.id), step.form),
+                "locked": cannot_designate and q.id == PROCEDURES_AUTHORITY_QUESTION,
+            }
             for q in _block_questions(block, values, step.form)
         ],
+        "management_option": role_options([Role.MANAGEMENT]),
         "people": declared_people(values),
     }
 

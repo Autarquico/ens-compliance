@@ -54,6 +54,7 @@ handler valida contra los asignados).
 | Aprobar aplicabilidad (`aprobacion-aplicabilidad`) | `security_officer` | `applicability/declaration.py:166` |
 | Firmar una valoración (`valoraciones`) | `information_owner` o `service_owner`, según el elemento; los borradores solo piden `edit` | `categorization/models.py:54,63`; `ui/wizard/categorization.py:39` |
 | Aprobar un documento (`documentos-aprobar`) | el de la ficha del documento (p. ej. `management` para la política y la normativa) | `orgdocs/approval.py:45-52` |
+| Cambiar quién aprueba los procedimientos (bloque «Responsables», `autoridad_procedimientos`) | `management` (política de la interfaz: lo designa la dirección; si el valor no cambia, basta la edición) | `ui/wizard/docs.py` |
 | Revisar una medida (`matriz revisar`) | `chosen`: uno de los autoevaluadores (`system_administrator` o su delegado) | `models/dossier.py:13`; `ui/views/matrix.py:52` |
 | Autoevaluación del expediente (`self-assess`) | `chosen`: igual que el anterior | `models/dossier.py:13` |
 | Análisis del expediente (`analyze`) | `security_officer` | `assessment/dossier/transitions.py:73,516` |
