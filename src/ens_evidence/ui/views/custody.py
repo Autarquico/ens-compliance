@@ -22,14 +22,16 @@ from ens_evidence.kit.custody import (
     latest_register,
     record_custodians,
 )
+from ens_evidence.models.enums import Role
 from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.models import AssetType
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
-from ens_evidence.ui.pages import error_page, identity_of, page_context, render
+from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
+from ens_evidence.ui.roles import ROLE_LABELS
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
-from ens_evidence.ui.views.matrix import REVIEW_ROLES, ROLE_LABELS
+from ens_evidence.ui.views.matrix import REVIEW_ROLES
 from ens_evidence.workspace import WorkspaceError
 
 STEP = "claves-custodios"
@@ -122,7 +124,10 @@ def _page(
         form_errors=form_errors or [],
         application_assets=assets,
         rows=list(ROWS),
-        review_roles=[{"value": r.value, "label": ROLE_LABELS[r]} for r in REVIEW_ROLES],
+        review_roles=[
+            {"value": r.value, "label": ROLE_LABELS[r]}
+            for r in permissions_of(request).offer(REVIEW_ROLES)
+        ],
         current=_current(register),
         unreadable_count=len(unreadable),
         mismatches=_mismatch(register, seal),
@@ -232,6 +237,13 @@ def _validation_errors(exc: ValidationError) -> tuple[dict[str, list[str]], list
     return fields, general
 
 
+def _review_role(value: str) -> Role | None:
+    try:
+        return Role(value)
+    except ValueError:
+        return None  # el producto lo rechaza como error de campo
+
+
 async def guardar(request: Request) -> Response:
     try:
         form = await read_form(request)
@@ -243,7 +255,10 @@ async def guardar(request: Request) -> Response:
     now, email = request.app.state.clock(), identity_of(request).email
     declaration, errors = _declaration(form, _application_assets(store), now)
     general: list[str] = []
+    permissions = permissions_of(request)
     if declaration is not None:
+        if role := _review_role(first(form, "role")):
+            permissions.require(role)  # el rol que se atesta es el que se asigna y se audita
         try:
             record_custodians(
                 store,
@@ -268,7 +283,14 @@ async def guardar(request: Request) -> Response:
             form_errors=general or ["No se ha guardado. Revisa los campos marcados."],
             status_code=422,
         )
-    audit_write(identity=email, step=STEP, action="registrar", keys=store.written, at=now)
+    audit_write(
+        identity=email,
+        step=STEP,
+        action="registrar",
+        keys=store.written,
+        at=now,
+        roles=permissions.used,
+    )
     return RedirectResponse("/herramientas/claves/custodios?guardado=1", status_code=303)
 
 

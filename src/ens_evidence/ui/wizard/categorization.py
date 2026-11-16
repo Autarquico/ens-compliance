@@ -17,6 +17,7 @@ from ens_evidence.categorization.edit import (
     set_rating,
     set_valuation,
 )
+from ens_evidence.models.enums import Role
 from ens_evidence.scope import ScopeNotApproved
 from ens_evidence.scope.inventory import SERVICES_KEY
 from ens_evidence.ui.forms import first
@@ -34,6 +35,8 @@ from ens_evidence.ui.wizard.base import (
     required,
 )
 
+# Quién firma la valoración de cada tipo de elemento; un test lo iguala con el del producto.
+VALUATION_ROLES = {"information": Role.INFORMATION_OWNER, "service": Role.SERVICE_OWNER}
 LEVELS = ("BAJO", "MEDIO", "ALTO", "not_affected")
 KINDS = (("information", "information"), ("service", "services"))
 ROLE_LABELS = {
@@ -175,6 +178,8 @@ def _valoraciones_save(step: StepInput) -> None:
     if errors:
         raise StepRejected(errors, ["Revisa los campos marcados."])
     due = _valuations_due(step, elements, changes)
+    for role in sorted({VALUATION_ROLES[kind] for kind, _, _ in due}):  # todo antes de escribir
+        step.permissions.require(role)
     for kind, element_id, dimension, level, justification in changes:
         with rejected_to_step(CategorizationEditRejected):
             set_rating(step.store, kind, element_id, dimension, level, justification)

@@ -3,7 +3,6 @@
 from datetime import datetime
 from typing import get_args
 
-from ens_evidence.models.enums import Role
 from ens_evidence.scope import (
     Asset,
     AssetType,
@@ -31,6 +30,7 @@ from ens_evidence.scope.inventory import (
 )
 from ens_evidence.scope.models import REQUIRED_FIELDS
 from ens_evidence.scope.skeleton import create_scope_skeleton
+from ens_evidence.ui.authz import WIZARD_PATH, fixed_role
 from ens_evidence.ui.forms import first
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
@@ -340,7 +340,7 @@ def _aprobacion_save(step: StepInput) -> None:
         return
     by = declared_name(first(step.form, "approved_by"), "Quién lo aprueba", "approved_by")
     try:
-        approve_scope(step.store, by, Role.SYSTEM_OWNER, step.now)
+        approve_scope(step.store, by, fixed_role(WIZARD_PATH, "aprobacion-alcance"), step.now)
     except ScopeApprovalRejected as exc:
         raise StepRejected(form_errors=exc.errors) from None
 

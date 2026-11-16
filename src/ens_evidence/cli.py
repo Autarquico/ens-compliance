@@ -272,6 +272,11 @@ from ens_evidence.risk.edit import (
     remove_risk,
 )
 from ens_evidence.risk.models import ActionStatus, Treatment
+from ens_evidence.scheduling.access_jwks import (
+    config_from_env,
+    jwks_refresh_alongside,
+    refresh_once,
+)
 from ens_evidence.scheduling.calendar import JobKind
 from ens_evidence.scheduling.clock import SystemClock
 from ens_evidence.scheduling.collect import (
@@ -3273,8 +3278,24 @@ def scheduler_run(ctx: typer.Context) -> None:
         heartbeat=heartbeat,
         requests=executor.pending_requests,
     )
-    with stop_on_signals(stop), monitoring_alongside(store, stop):
+    with stop_on_signals(stop), monitoring_alongside(store, stop), jwks_refresh_alongside(stop):
         scheduler.run()
+
+
+@scheduler_app.command("refresh-access-jwks")
+@handled
+def scheduler_refresh_access_jwks() -> None:
+    """Refresca una vez el JWKS de Cloudflare Access (tras una rotación de claves). Usa
+    ENS_ACCESS_JWKS_TEAM_DOMAIN y ENS_ACCESS_JWKS_FILE. Sale con 0 si lo publica y con 2 si no."""
+    config = config_from_env(os.environ)
+    if config is None:
+        typer.echo("Sin configuración válida del refresco del JWKS (config_invalid).", err=True)
+        raise typer.Exit(2)
+    code = refresh_once(config)
+    if code != "ok":
+        typer.echo(f"Refresco fallido ({code}); se conserva el JWKS anterior.", err=True)
+        raise typer.Exit(2)
+    typer.echo("JWKS de Access actualizado.")
 
 
 @scheduler_app.command("status")

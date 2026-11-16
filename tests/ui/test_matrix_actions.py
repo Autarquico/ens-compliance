@@ -21,7 +21,7 @@ from ens_evidence.models.enums import Applicability
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES, plain
 
-from .conftest import NOW, ORIGIN, Session, jwks_for, snapshot_of
+from .conftest import NOW, ORIGIN, Session, grant_all, jwks_for, snapshot_of
 
 MEASURE = "org.1"
 ALL_CLAUSES = [f"org.1.{n}" for n in range(1, 6)]
@@ -38,7 +38,7 @@ REVIEW = {
 @pytest.fixture
 def signed(tmp_path):
     """Alcance, categorización y Declaración vigentes, y los documentos de la organización."""
-    store = prepared_workspace(tmp_path / "signed", uniform("MEDIO"))
+    store = grant_all(prepared_workspace(tmp_path / "signed", uniform("MEDIO")))
     propose_applicability(store, LATER)
     decide_all_undetermined(store)
     decide(store, "op.pl.1", Applicability.APPLICABLE, "Compensada.", compensation=COMPENSATION)
@@ -66,26 +66,36 @@ def entry_of(store, measure=MEASURE):
 
 def prepared(web, signed):
     """Responsable y periodicidad fijados y la política enlazada a las cinco cláusulas."""
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     assert web.post(f"/matriz/{MEASURE}/responsable", OWNER).status_code == 303
     link = {"kind": "document", "target": "politica-seguridad", "covers": ALL_CLAUSES}
     assert web.post(f"/matriz/{MEASURE}/enlazar", link).status_code == 303
 
 
-def test_lista_crea_la_matriz_y_enlaza_cada_medida(web, signed):
-    assert not signed.exists("controls/matrix.yaml")
+def test_ver_la_lista_no_escribe_y_ofrece_inicializar_la_matriz(web, signed):
+    before = snapshot_of(signed)
 
     page = web.get("/matriz")
+    web.get(f"/matriz/{MEASURE}")
 
+    assert snapshot_of(signed) == before
+    assert "Inicializar la matriz" in page.text
+
+
+def test_iniciar_crea_la_matriz_y_enlaza_cada_medida(web, signed):
+    response = web.post("/matriz/iniciar", {})
+
+    assert response.status_code == 303
     assert signed.exists("controls/matrix.yaml")
-    assert f'href="/matriz/{MEASURE}"' in page.text
+    assert f'href="/matriz/{MEASURE}"' in web.get("/matriz").text
+    assert "Inicializar la matriz" not in web.get("/matriz").text
 
 
 def test_la_lista_no_reescribe_una_matriz_existente(web, signed):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     before = snapshot_of(signed)
 
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
 
     assert snapshot_of(signed) == before
 
@@ -113,12 +123,12 @@ def test_medida_desconocida_es_404(web):
     assert web.post("/matriz/no.existe/responsable", OWNER).status_code == 404
 
 
-def test_accion_desconocida_es_404(web):
-    assert web.post(f"/matriz/{MEASURE}/borrar", {"x": "1"}).status_code == 404
+def test_accion_desconocida_es_403(web):
+    assert web.post(f"/matriz/{MEASURE}/borrar", {"x": "1"}).status_code == 403
 
 
 def test_fija_responsable_y_periodicidad_y_lo_audita(web, signed, caplog):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     caplog.set_level(logging.INFO, logger="ens_evidence.ui.audit")
 
     response = web.post(f"/matriz/{MEASURE}/responsable", OWNER)
@@ -145,7 +155,7 @@ def test_fija_responsable_y_periodicidad_y_lo_audita(web, signed, caplog):
     ],
 )
 def test_responsable_invalido_no_escribe(web, signed, form):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     before = snapshot_of(signed)
 
     response = web.post(f"/matriz/{MEASURE}/responsable", form)
@@ -156,7 +166,7 @@ def test_responsable_invalido_no_escribe(web, signed, form):
 
 
 def test_enlaza_un_documento_con_las_clausulas_marcadas(web, signed):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     link = {"kind": "document", "target": "politica-seguridad", "covers": ["org.1.1", "org.1.2"]}
 
     assert web.post(f"/matriz/{MEASURE}/enlazar", link).status_code == 303
@@ -170,7 +180,7 @@ def test_enlaza_un_documento_con_las_clausulas_marcadas(web, signed):
 
 
 def test_enlace_sin_clausulas_o_a_algo_desconocido_se_rechaza_en_claro(web, signed):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     before = snapshot_of(signed)
 
     sin_clausulas = web.post(
@@ -199,7 +209,7 @@ def test_quita_un_enlace(web, signed):
 
 
 def test_quitar_un_enlace_inexistente_se_rechaza(web, signed):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
 
     response = web.post(
         f"/matriz/{MEASURE}/desenlazar", {"kind": "org_document", "target": "politica-seguridad"}
@@ -209,7 +219,7 @@ def test_quitar_un_enlace_inexistente_se_rechaza(web, signed):
 
 
 def test_revision_favorable_con_clausulas_sin_cubrir_dice_cuales_y_no_escribe(web, signed):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     web.post(f"/matriz/{MEASURE}/responsable", OWNER)
     web.post(
         f"/matriz/{MEASURE}/enlazar",
@@ -243,7 +253,7 @@ def test_revision_favorable_con_todo_cubierto_se_registra(web, signed, caplog):
 
 
 def test_revision_sin_responsable_se_rechaza_sin_ordenes_de_la_cli(web, signed):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     before = snapshot_of(signed)
 
     response = web.post(f"/matriz/{MEASURE}/revisar", REVIEW)
@@ -271,7 +281,7 @@ def test_revision_incompleta_no_escribe(web, signed, change):
 
 
 def test_medida_que_no_aplica_se_revisa_sin_valoracion(web, signed):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     page = web.get(f"/matriz/{NOT_APPLICABLE}").text
     assert 'name="assessment"' not in page
     web.post(f"/matriz/{NOT_APPLICABLE}/responsable", OWNER)
@@ -303,7 +313,7 @@ def test_un_email_como_revisor_se_rechaza_y_no_escribe(web, signed):
 
 
 def test_origen_ajeno_no_escribe(web, signed):
-    web.get("/matriz")
+    web.post("/matriz/iniciar", {})
     before = snapshot_of(signed)
 
     response = web._client.post(

@@ -1,5 +1,6 @@
 import pytest
 
+from ens_evidence.ui.roles import ROLES_KEY
 from ens_evidence.ui.store import WRITABLE_PREFIXES, UiStore, WriteNotAllowed
 from ens_evidence.workspace import InvalidKey
 
@@ -40,7 +41,7 @@ def test_other_keys_are_rejected_for_every_write(ui_store, store, key):
     for write in (ui_store.write_text, ui_store.write_bytes, ui_store.create_bytes):
         with pytest.raises((WriteNotAllowed, InvalidKey)):
             write(key, "x" if write is ui_store.write_text else b"x")
-    assert store.list("") == []
+    assert store.list("") == [ROLES_KEY]
 
 
 def test_reads_cover_the_whole_workspace(ui_store, store):

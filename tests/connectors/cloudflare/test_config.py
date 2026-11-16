@@ -114,3 +114,20 @@ def test_configuracion_incompleta_o_con_claves_desconocidas_se_rechaza(store, do
 
     with pytest.raises(ConnectorConfigError, match=fragment):
         load(store)
+
+
+@pytest.mark.parametrize(
+    "hostname", ["https://ui.example.com", "ui.example.com/x", "*.example.com"]
+)
+def test_ui_hostname_invalido_se_rechaza(store, hostname):
+    write(store, {**BASE, "ui_hostname": hostname})
+
+    with pytest.raises(ConnectorConfigError):
+        load(store)
+
+
+def test_ui_hostname_se_normaliza_y_es_opcional(store):
+    write(store, BASE)
+    assert load(store).ui_hostname is None
+    write(store, {**BASE, "ui_hostname": "UI.Example.com."})
+    assert load(store).ui_hostname == "ui.example.com"

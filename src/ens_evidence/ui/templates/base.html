@@ -19,11 +19,14 @@
   </header>
   <nav class="main-nav" aria-label="Secciones">
     <ul>
-      {%- for key, href, label in [("estado", "/", "Estado"), ("asistente", "/asistente", "Asistente"), ("matriz", "/matriz", "Matriz"), ("evidencias", "/evidencias", "Evidencias"), ("expediente", "/expediente", "Expediente"), ("incidentes", "/incidentes", "Incidentes"), ("preauditoria", "/preauditoria", "Pre-auditoría"), ("herramientas", "/herramientas", "Herramientas"), ("monitorizacion", "/monitorizacion", "Monitorización")] %}
+      {%- for key, href, label in [("estado", "/", "Estado"), ("asistente", "/asistente", "Asistente"), ("matriz", "/matriz", "Matriz"), ("evidencias", "/evidencias", "Evidencias"), ("expediente", "/expediente", "Expediente"), ("incidentes", "/incidentes", "Incidentes"), ("preauditoria", "/preauditoria", "Pre-auditoría"), ("herramientas", "/herramientas", "Herramientas"), ("monitorizacion", "/monitorizacion", "Monitorización"), ("agentes", "/agentes", "Agentes")] %}
       <li><a href="{{ href }}"{% if nav_active == key %} aria-current="page"{% endif %}>{{ label }}</a></li>
       {%- endfor %}
     </ul>
   </nav>
+  {%- for notice in (role_notices if role_notices is defined else []) %}
+  <div class="notice notice-{{ notice.kind }}" role="status"><div class="monitoring-banner-inner"><strong>{{ notice.title }}</strong> {{ notice.how }}</div></div>
+  {%- endfor %}
   {%- if monitoring_banner is defined and monitoring_banner and nav_active != "monitorizacion" %}
   <div class="monitoring-banner notice {{ 'notice-warn' if monitoring_banner.kind == 'stale' else 'notice-bad' }}" role="status">
     <div class="monitoring-banner-inner">

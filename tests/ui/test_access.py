@@ -2,6 +2,8 @@ import json
 
 import pytest
 
+from ens_evidence.ui.roles import ROLES_KEY
+
 from .conftest import KID, NOW, auth, b64, jwks_for, mint
 
 PATH = "/whoami"
@@ -102,4 +104,21 @@ def test_denied_request_writes_nothing(client, store):
         ).status_code
         == 401
     )
-    assert store.list("") == []
+    assert store.list("") == [ROLES_KEY]
+
+
+def test_401_logs_the_reason_code_and_never_the_token(client, key, caplog):
+    token = mint(key, kid="otro")
+    with caplog.at_level("WARNING", logger="ens_evidence.ui"):
+        assert client.get(PATH, headers=auth(token)).status_code == 401
+    logged = " ".join(r.getMessage() for r in caplog.records)
+    assert "unknown_kid" in logged
+    assert token not in logged
+    assert "ana@example.com" not in logged
+    assert "otro" not in logged
+
+
+def test_missing_header_logs_missing(client, caplog):
+    with caplog.at_level("WARNING", logger="ens_evidence.ui"):
+        client.get(PATH)
+    assert "missing" in " ".join(r.getMessage() for r in caplog.records)

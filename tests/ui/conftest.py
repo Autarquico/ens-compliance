@@ -14,9 +14,12 @@ from starlette.routing import Route
 from starlette.testclient import TestClient
 
 from ens_evidence.applicability import approve_declaration, propose_applicability
+from ens_evidence.models.enums import Role
 from ens_evidence.ui.app import create_ui_app
+from ens_evidence.ui.authz import EDIT
 from ens_evidence.ui.config import UiConfig
 from ens_evidence.ui.pages import identity_of
+from ens_evidence.ui.roles import ROLES_KEY, Grant, dump_roles
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
 from ens_evidence.workspace import LocalStore
 
@@ -25,6 +28,12 @@ ORIGIN = "https://ui.example.com"
 AUD = "aud-tag-123"
 TEAM = "acme.cloudflareaccess.com"
 KID = "kid-1"
+
+
+def grant_all(store, email: str = "ana@example.com"):
+    """Edición y todos los roles ENS para `email`: lo que antes tenía cualquier identidad."""
+    store.write_text(ROLES_KEY, dump_roles({email: Grant(True, frozenset(Role))}))
+    return store
 
 
 def b64(data: bytes) -> str:
@@ -93,7 +102,7 @@ def config(tmp_path: Path) -> UiConfig:
 def store(tmp_path: Path) -> LocalStore:
     root = tmp_path / "ws"
     root.mkdir()
-    return LocalStore(root)
+    return grant_all(LocalStore(root))
 
 
 async def _whoami(request: Request) -> JSONResponse:
@@ -116,6 +125,7 @@ def client(config, store, key) -> TestClient:
             Route("/whoami", _whoami, methods=["GET"]),
             Route("/write", _write, methods=["POST"]),
         ],
+        operations={("POST", "/write"): EDIT},
     )
     return TestClient(app, base_url=ORIGIN)
 
@@ -184,13 +194,14 @@ def session(raw_client, token) -> Session:
 
 
 def snapshot_of(store: LocalStore) -> dict[str, bytes]:
-    return {k: store.read_bytes(k) for k in store.list("")}
+    """El contenido del workspace salvo los permisos de la UI, que fija el test."""
+    return {k: store.read_bytes(k) for k in store.list("") if k != ROLES_KEY}
 
 
 @pytest.fixture
 def workspaces(tmp_path):
     cli_store = seed_example_scope(LocalStore(tmp_path / "cli-ws"))
-    ui_store = seed_example_scope(LocalStore(tmp_path / "ui-ws"))
+    ui_store = grant_all(seed_example_scope(LocalStore(tmp_path / "ui-ws")))
     return cli_store, ui_store
 
 
@@ -205,7 +216,7 @@ def completed(session) -> Session:
 
 @pytest.fixture
 def signed(tmp_path):
-    store = prepared_workspace(tmp_path / "signed", uniform("MEDIO"))
+    store = grant_all(prepared_workspace(tmp_path / "signed", uniform("MEDIO")))
     propose_applicability(store, LATER)
     decide_all_undetermined(store)
     approve_declaration(store, "Luis Pardo", SIGNED_AT)

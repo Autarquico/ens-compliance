@@ -39,7 +39,8 @@ FROM ${PYTHON_IMAGE}
 ARG ENS_UID=10001
 RUN groupadd --gid ${ENS_UID} ens \
     && useradd --uid ${ENS_UID} --gid ${ENS_UID} --no-create-home --home-dir /data --shell /usr/sbin/nologin ens \
-    && install -d -o ens -g ens -m 0700 /data
+    && install -d -o ens -g ens -m 0700 /data \
+    && install -d -o ens -g ens -m 0755 /run/access-jwks
 COPY --from=restic /restic /usr/local/bin/restic
 COPY --from=build /opt/venv /opt/venv
 ENV PATH=/opt/venv/bin:$PATH \

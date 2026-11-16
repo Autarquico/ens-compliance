@@ -341,7 +341,7 @@ def test_ui_corre_endurecido_sin_puertos_y_solo_en_una_red_interna(compose, serv
     assert "ports" not in ui
     assert ui["networks"] == ["ui-net"]
     assert compose["networks"]["ui-net"]["internal"] is True
-    assert ui["volumes"] == ["data:/data"]
+    assert ui["volumes"] == ["data:/data", "access-jwks:/run/access-jwks:ro"]
     assert ui["command"][:3] == ["ens-evidence", "ui", "serve"]
 
 

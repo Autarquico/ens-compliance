@@ -7,13 +7,39 @@ from starlette.requests import Request
 from starlette.responses import HTMLResponse
 
 from ens_evidence.ui.access import Identity
+from ens_evidence.ui.mfa_notice import mfa_notices
 from ens_evidence.ui.monitoring_banner import banner_for
+from ens_evidence.ui.roles import Permissions, RolesStatus
 
 PRODUCT_NAME = "ens-compliance"
 
 
 def identity_of(request: Request) -> Identity:
     return request.state.identity
+
+
+def permissions_of(request: Request) -> Permissions:
+    """Los permisos de esta petición; sin ellos (no debería pasar), solo lectura."""
+    return getattr(request.state, "permissions", None) or Permissions()
+
+
+def roles_notices(permissions: Permissions) -> list[dict[str, str]]:
+    """Avisos globales sobre quién puede editar; vacío si esta persona puede editar."""
+    if permissions.edit:
+        return []
+    if permissions.status is RolesStatus.INVALID:
+        title = "El fichero de roles no es válido, así que nadie puede editar."
+        how = (
+            "Quien administra la herramienta debe corregir `settings/ui-roles.yaml` "
+            "o volver a crearlo con `ens-evidence ui roles grant <correo> --edit`."
+        )
+    elif permissions.status is RolesStatus.MISSING:
+        title = "Todavía no hay roles asignados: la interfaz está en solo lectura."
+        how = "Quien administra la herramienta puede asignarlos con `ens-evidence ui roles grant`."
+    else:
+        title = "Tu usuario solo puede consultar."
+        how = "Para editar, pide `ens-evidence ui roles grant <tu correo> --edit`."
+    return [{"kind": "warn", "title": title, "how": how}]
 
 
 def render(request: Request, template: str, status_code: int = 200, **context: Any) -> HTMLResponse:
@@ -30,6 +56,8 @@ def page_context(request: Request, nav_active: str, page_title: str) -> dict[str
         "nav_active": nav_active,
         "page_title": page_title,
         "monitoring_banner": banner_for(request),
+        "permissions": permissions_of(request),
+        "role_notices": [*mfa_notices(request), *roles_notices(permissions_of(request))],
     }
 
 

@@ -600,6 +600,7 @@ def _approval_rows(step: StepInput) -> list[dict[str, Any]]:
             {
                 **row,
                 "role_label": ROLE_LABELS[role] if role else None,
+                "role_missing": role is not None and step.permissions.lacks(role),
                 "signatory": _signatory(role, values),
                 "by": first(step.form, "approved_by") if posted == row["name"] else "",
                 "can_approve": status.state in (DocumentState.GENERATED, DocumentState.OBSOLETE),
@@ -649,6 +650,7 @@ def _aprobar_save(step: StepInput) -> None:
                 "bloque «Responsables y designación»."
             ]
         )
+    step.permissions.require(role)
     try:
         approve_document(step.store, name, by, role, step.now)
     except ScopeNotApproved:

@@ -43,7 +43,7 @@ from ens_evidence.preaudit.service import PreparedRecord, read_prepared
 from ens_evidence.privacy_text import check_declared_name
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
-from ens_evidence.ui.pages import error_page, identity_of, page_context, render
+from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
 from ens_evidence.ui.plain import translate
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
@@ -385,6 +385,7 @@ def _audited(request: Request, store: UiStore, action: str, now: datetime) -> No
         action=action,
         keys=store.written,
         at=now,
+        roles=permissions_of(request).used,
     )
 
 

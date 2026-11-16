@@ -2,6 +2,9 @@
 
 - Estado: aceptada
 - Fecha: 2026-11-08
+- Actualizada por: [0022 — Roles y MFA en la interfaz web](0022-roles-y-mfa-en-la-interfaz-web.md)
+  (roles de escritura, MFA por política de Access, refresco automático del JWKS;
+  lo que 0022 contradice queda superado, y no se reescribe aquí)
 
 ## Contexto
 

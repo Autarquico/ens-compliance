@@ -15,8 +15,15 @@ from starlette.staticfiles import StaticFiles
 
 from ens_evidence.http.app import create_app
 from ens_evidence.ui.access import AccessMiddleware, AccessVerifier, JwksLoader
+from ens_evidence.ui.authz import (
+    OPERATIONS,
+    AuthorizationMiddleware,
+    Operations,
+    role_denied_handler,
+)
 from ens_evidence.ui.config import UiConfig
 from ens_evidence.ui.pages import error_page
+from ens_evidence.ui.roles import RoleDenied
 from ens_evidence.ui.security import (
     SECURITY_HEADERS,
     OriginCheckMiddleware,
@@ -38,6 +45,7 @@ def create_ui_app(
     clock: Callable[[], datetime],
     jwks_loader: JwksLoader,
     routes: Sequence[BaseRoute] = (),
+    operations: Operations = OPERATIONS,
 ) -> Starlette:
     app = create_app(
         [*routes, Mount("/static", StaticFiles(directory=STATIC_DIR, check_dir=False))]
@@ -52,7 +60,9 @@ def create_ui_app(
         issuer=config.issuer, audience=config.access_aud, jwks_loader=jwks_loader, clock=clock
     )
     app.add_exception_handler(HTTPException, _http_error_page)
+    app.add_exception_handler(RoleDenied, role_denied_handler)
     app.add_exception_handler(Exception, _unexpected_error_page)
+    app.add_middleware(AuthorizationMiddleware, operations=operations)
     app.add_middleware(OriginCheckMiddleware, origin=config.origin)
     app.add_middleware(AccessMiddleware, verifier=verifier)
     app.add_middleware(SecurityHeadersMiddleware)

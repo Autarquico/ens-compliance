@@ -4,7 +4,9 @@ La interfaz (ADR 0021) corre en el servicio `ui` de la caja, con la misma imagen
 que `app`. No tiene contraseñas ni sesiones propias: la identidad es el JWT que
 firma Cloudflare Access (`Cf-Access-Jwt-Assertion`). **El MFA lo impone la
 política de Access, no la aplicación**: si la política no lo exige, nadie lo
-exige. Esta guía parte de una caja instalada (`docs/runbooks/caja.md`).
+exige, y el token no lleva una prueba de que se usó (sección 3). Quién puede
+escribir y con qué rol ENS lo decide `settings/ui-roles.yaml` (sección 7;
+ADR 0022). Esta guía parte de una caja instalada (`docs/runbooks/caja.md`).
 
 Los nombres de este documento son ficticios: `ui.example.org`,
 `agents.example.org`, `example.cloudflareaccess.com`.
@@ -15,11 +17,13 @@ Los nombres de este documento son ficticios: `ui.example.org`,
 |---|---|
 | `ui` (perfil `ui`) | Sirve la interfaz en `ui:8000`. Red `ui-net` (interna, sin salida a Internet). Lee solo `deploy/ui.env`. |
 | `caddy` | Enruta por nombre de host: `ENS_UI_HOST` a `ui`, `ENS_AGENT_HOST` a los agentes. Host desconocido o vacío, y cualquier otra ruta: 403. Conserva `Cf-Access-Jwt-Assertion` hacia `ui` y lo quita hacia `agent`. |
+| `app` | Además del scheduler, descarga los certificados de Access y los publica en el volumen `access-jwks` (sección 4). |
 | Cloudflare Access | Autentica y exige MFA delante del hostname de la interfaz. |
 
 `ui` se niega a arrancar si el workspace es S3 (la interfaz solo trabaja sobre
-carpeta local). Escribe solo en `scope/`, `controls/`, `risk/`, `org/` y
-`assessments/`, nunca en `connectors/` ni en los ajustes.
+carpeta local). Escribe solo bajo una lista blanca de prefijos del workspace
+(`scope/`, `controls/`, `risk/`, `org/`, evidencias de usuario…), nunca en
+`connectors/` ni en `settings/`.
 
 ## 2. Desplegar
 
@@ -43,15 +47,18 @@ carpeta local). Escribe solo en `scope/`, `controls/`, `risk/`, `org/` y
    | `ENS_UI_ORIGIN` | `https://ui.example.org` |
    | `ENS_UI_ACCESS_AUD` | el AUD tag de la aplicación |
    | `ENS_UI_ACCESS_TEAM_DOMAIN` | `example.cloudflareaccess.com` |
-   | `ENS_UI_ACCESS_JWKS_FILE` | `/data/state/ui/access-jwks.json` |
+   | `ENS_UI_ACCESS_JWKS_FILE` | `/run/access-jwks/access-jwks.json` (volumen `access-jwks`, de solo lectura en `ui`) |
 
    El servicio no lee `deploy/.env`: no recibe las credenciales de los conectores.
 4. **Hostname de los agentes** (solo si usas el perfil `agents`): añade
    `ENS_AGENT_HOST=agents.example.org` a `deploy/agent.env`. Sin él, Caddy
    deja de enrutar los agentes (host `agent.invalid`).
-5. **Certificados de Access** (sección 4). Sin ellos la interfaz arranca pero
-   responde 401 a todo.
-6. **Arrancar.** Con `deploy/ui.env` presente `box.sh` activa el perfil `ui`.
+5. **Certificados de Access** (sección 4). Añade a `deploy/.env` (el que lee
+   `app`) `ENS_ACCESS_JWKS_TEAM_DOMAIN=example.cloudflareaccess.com` y
+   `ENS_ACCESS_JWKS_FILE=/run/access-jwks/access-jwks.json`. Sin ellos `app` no
+   publica nada y la interfaz arranca pero responde 401 a todo.
+6. **Roles** (sección 7). Sin ninguno asignado, todo el mundo solo consulta.
+7. **Arrancar.** Con `deploy/ui.env` presente `box.sh` activa el perfil `ui`.
    Caddy tiene que releer los nombres de host:
 
    ```bash
@@ -64,23 +71,60 @@ carpeta local). Escribe solo en `scope/`, `controls/`, `risk/`, `org/` y
 
 ## 3. Comprobar que Access exige MFA
 
+La interfaz **no puede comprobar el MFA por petición**: la documentación de
+Cloudflare no describe un claim de segundo factor en el token de aplicación de
+Access (revisado el 2026-11-16; ADR 0022), así que no se acepta ni se rechaza
+por `amr` ni por otro claim. Lo que se comprueba es la **política** de Access.
 Hazlo antes de dar la dirección a nadie, y de nuevo tras cualquier cambio de
 política o de proveedor de identidad (IdP). Cómo dar de alta Workspace o Entra ID
 y restringir la aplicación a ese proveedor:
 [acceso con proveedor de identidad](acceso-con-proveedor-de-identidad.md).
 
 1. **En el panel de Cloudflare.** Zero Trust, Access, Applications,
-   `ui.example.org`, pestaña Policies. Debe haber una política `Allow` con
-   una de estas dos formas:
-   - una regla `Require` de **Authentication method** (MFA), si el IdP envía el
-     método de autenticación (`amr`), o
-   - un IdP que ya impone MFA a todos sus usuarios (compruébalo en el propio
-     IdP: política de acceso condicional o equivalente, sin excepciones para
-     las cuentas autorizadas).
+   `ui.example.org`, pestaña Policies. Toda política `Allow` debe exigir MFA:
+   una regla `Require` de **Authentication method** con MFA o el ajuste de MFA
+   de la política o de la aplicación; o bien un IdP que ya impone MFA a todos
+   sus usuarios (compruébalo en el propio IdP, sin excepciones para las cuentas
+   autorizadas). Una política `Allow` por correo o dominio sin una de esas
+   cosas **no** exige MFA. Ninguna política `Bypass` ni `Service Auth` sobre
+   este hostname.
+2. **Que el producto lo compruebe.** En `connectors/cloudflare.yaml` añade el
+   hostname de la interfaz (sin esquema, puerto ni ruta):
 
-   Una política `Allow` por correo o dominio sin una de las dos cosas **no**
-   exige MFA. Ninguna política `Bypass` ni `Service Auth` sobre este hostname.
-2. **Sin cookie ni sesión.** Desde una máquina fuera de la red de la caja:
+   ```yaml
+   ui_hostname: ui.example.org
+   ```
+
+   Después recoge de nuevo la evidencia (los campos nuevos solo se guardan al
+   recoger) y ejecuta los checks:
+
+   ```bash
+   ens-evidence collect cloudflare
+   ens-evidence check --all
+   ```
+
+   Resultado de `cloudflare.ui_access_requires_mfa`: `PASS` si toda política
+   `Allow` que alcanza el hostname exige MFA; `FAIL` si hay una `Bypass` o una
+   `Allow` sin MFA (el motivo nombra la política); `UNKNOWN` si falta
+   `ui_hostname` (`ui_hostname_not_configured`), no hay una aplicación que
+   cubra el hostname entero, algún dato no se pudo leer, la evidencia es
+   anterior a este check (`stale_evidence`: recoge de nuevo) o hay una política
+   por token de servicio que una persona debe confirmar que es solo para
+   máquinas. La ausencia de datos nunca es `PASS`. El check no está vinculado a
+   ninguna medida ENS; lo vincula una persona con `ens-evidence matrix link`.
+3. **Qué significa el aviso de MFA.** Mientras el último resultado guardado de
+   `cloudflare.ui_access_requires_mfa` no sea `PASS`, todas las páginas de la
+   interfaz muestran el aviso «MFA no confirmada para esta interfaz», con el
+   estado y el código del motivo (`ui_hostname_not_configured`, `stale_evidence`,
+   `not_checked` si no hay ninguna recogida, `unreadable` si el historial no se
+   puede leer…). Significa que la política no lo exige, que no se ha podido
+   comprobar o que no hay recogida reciente. No dice que alguien haya entrado sin
+   MFA. Con `PASS` no se muestra nada, y eso tampoco prueba que el MFA esté
+   activo para cada persona. El aviso se calcula leyendo el historial de checks;
+   desaparece tras una recogida y un `ens-evidence check --all` con `PASS`. Corrige la política, o `ui_hostname`, y repite
+   el paso 2. Un `PASS` tampoco prueba que cada persona haya enrolado el factor:
+   eso se evidencia en el proveedor (`collector-workspace`, `collector-m365`).
+4. **Sin cookie ni sesión.** Desde una máquina fuera de la red de la caja:
 
    ```bash
    curl -sS -o /dev/null -D - https://ui.example.org/ | grep -iE '^(HTTP|location)'
@@ -90,41 +134,56 @@ y restringir la aplicación a ese proveedor:
    `https://example.cloudflareaccess.com/cdn-cgi/access/login/...`, no contenido
    de la interfaz. Con 200 y contenido, quita el hostname del túnel y avisa al
    responsable del sistema.
-3. **Con sesión.** Entra desde un navegador, inicia sesión y comprueba que el
+5. **Con sesión.** Entra desde un navegador, inicia sesión y comprueba que el
    IdP pide el segundo factor. Si no lo pide, la política no lo exige: corrígela
    antes de seguir.
-4. **Falsificación.** Una petición con una cabecera `Cf-Access-Jwt-Assertion`
+6. **Falsificación.** Una petición con una cabecera `Cf-Access-Jwt-Assertion`
    inventada que llegue a Caddy sin pasar por Access (solo posible desde la red
    `edge`) recibe 401 de la aplicación: el JWT se verifica con la firma,
    `iss`, `aud` y `exp`.
 
-Esta guía no se ha ejecutado contra una cuenta real de Cloudflare: la
-comprobación completa queda para `validation-selfassessment`.
+**No verificado:** la forma exacta con que la API de Cloudflare expresa la MFA
+(el selector `Require` de método de autenticación y `mfa_config`) está tomada
+de la documentación y solo se ha probado con datos de ejemplo. Esta guía no se
+ha ejecutado contra una cuenta real: la comprobación completa queda para
+`validation-selfassessment`.
 
 ## 4. Certificados de Access (JWKS)
 
 `ui` no tiene salida a Internet y no puede descargar las claves con las que
-Access firma los JWT. Hasta que exista la tarea del scheduler que las refresca
-(ADR 0021; pendiente), se aprovisionan a mano desde un equipo con Internet y
-se escriben en el volumen de datos.
-
-```bash
-curl -fsS https://example.cloudflareaccess.com/cdn-cgi/access/certs > access-jwks.json
-python3 -c "import json; k = json.load(open('access-jwks.json'))['keys']; assert any(x['kty'] == 'RSA' for x in k), 'sin claves RSA'; print(len(k), 'claves')"
-docker run --rm -i --network none --read-only --cap-drop ALL \
-  --security-opt no-new-privileges:true --user 10001:10001 -v ens-box_data:/data \
-  python:3.12-slim sh -c 'umask 077; mkdir -p /data/state/ui && cat > /data/state/ui/access-jwks.json.tmp \
-  && mv /data/state/ui/access-jwks.json.tmp /data/state/ui/access-jwks.json' < access-jwks.json
-rm access-jwks.json
-```
+Access firma los JWT. Lo hace `app`: al arrancar, cada 6 horas y, tras un
+fallo, a los 15 minutos, descarga
+`https://example.cloudflareaccess.com/cdn-cgi/access/certs` y publica el
+fichero `/run/access-jwks/access-jwks.json` en el volumen `access-jwks`, que
+`ui` monta solo en lectura. Solo acepta el host `<equipo>.cloudflareaccess.com`,
+sin redirecciones, con límites de tamaño, número de claves (20) y fuerza de la
+clave (RSA, al menos 2048 bits). Si algo falla conserva el fichero anterior y
+deja un código en el log de `app` (`docker compose -p ens-box logs app | grep
+JWKS`). Se activa con `ENS_ACCESS_JWKS_TEAM_DOMAIN` y `ENS_ACCESS_JWKS_FILE` en
+`deploy/.env`; sin ellas no se registra el trabajo.
 
 `ui` relee el fichero en cada petición: no hace falta reiniciar. Sin un
-fichero válido nadie entra (401): la interfaz falla cerrada.
+fichero válido nadie entra (401): la interfaz falla cerrada. Tras la primera
+instalación el fichero no existe hasta el primer refresco de `app`.
 
-Access rota sus claves de forma periódica (las publica con antelación en el
-mismo endpoint). Repite el procedimiento al menos una vez al mes y siempre que
-`ui` responda 401 a usuarios que sí pasan por Access. Anota la fecha en el
-registro de operaciones de la caja.
+**Refresco manual**, tras una rotación de claves o al instalar:
+
+```bash
+docker compose -p ens-box exec app ens-evidence scheduler refresh-access-jwks
+```
+
+Sale con 0 si publica y con 2 si falla (imprime el código del fallo y conserva
+el fichero anterior).
+
+**401 a usuarios que sí pasan por Access, y `unknown_kid`.** Tras una rotación
+Access firma con una clave que `ui` aún no tiene (`unknown_kid` en el
+verificador). La respuesta 401 de `ui` es genérica,
+pero deja el motivo en su log, con un código estable y sin el token ni sus datos:
+`docker compose -p ens-box logs ui | grep 'acceso rechazado'` (por ejemplo
+`acceso rechazado (401): unknown_kid`; otros códigos: `missing`, `bad_signature`,
+`expired`, `jwks_unavailable`). Ejecuta el refresco manual; si el 401 persiste,
+comprueba el log de `app` (`JWKS`), el dominio del team y el reloj del host. Sin refresco, el siguiente
+automático llega en 15 min si el anterior falló y en 6 h si tuvo éxito.
 
 ## 5. Volver atrás
 
@@ -134,18 +193,27 @@ registro de operaciones de la caja.
 - **Volver a una versión anterior.** `deploy/box.sh rollback`. Si esa versión
   no define el servicio `ui`, `box.sh` para el contenedor huérfano sin borrarlo
   ni tocar volúmenes. El Caddyfile vuelve al de esa versión.
+  **Qué pasa con `settings/ui-roles.yaml`:** está en el workspace, no en la
+  imagen, y el rollback no lo toca. Una versión anterior a los roles no lo lee
+  (no lo borra) y vuelve a dejar escribir a cualquiera que Access deje entrar,
+  sin roles ENS: es el comportamiento del ADR 0021. Al volver a actualizar, el
+  fichero sigue vigente. El volumen `access-jwks` tampoco se borra; una versión
+  anterior no lo monta, así que, si lee
+  `ENS_UI_ACCESS_JWKS_FILE=/data/state/ui/access-jwks.json`, hay que
+  aprovisionar ese fichero a mano o la interfaz responderá 401 a todos.
 - **Revocar el acceso de una persona.** En Access, quita a la persona de la
   política y revoca su sesión (Users, Revoke). La aplicación no guarda sesiones.
 
 ## 6. Recuperar
 
 - **Quién cambió qué.** `docker compose -p ens-box logs ui | grep 'ens_evidence.ui.audit'`:
-  una línea por escritura con `identity=<email>`, paso, acción, claves y hora. No
-  incluye valores del formulario.
+  una línea por escritura con `identity=<email>`, paso, acción, roles usados,
+  claves y hora; también las operaciones denegadas (`outcome=denied`, con el
+  motivo). No incluye valores del formulario.
 
 - **La interfaz responde 401 a todos.** Es lo esperado sin JWKS válido, con
   `ENS_UI_ACCESS_AUD` o el dominio del team equivocados, o con el reloj del
-  host desviado más de 60 s. Revisa el fichero de la sección 4 y
+  host desviado más de 60 s. Revisa la sección 4 (refresco del JWKS) y
   `docker compose -p ens-box logs ui` (no imprime valores de configuración).
 - **403 de Caddy en el hostname de la interfaz.** `ENS_UI_HOST` de
   `deploy/ui.env` no coincide con el hostname publicado, o Caddy no ha releído
@@ -154,9 +222,75 @@ registro de operaciones de la caja.
   es S3. El error sale con código 2 y no imprime valores.
 - **Se perdió el volumen o el workspace.** La interfaz no guarda nada propio:
   restaura el workspace desde la copia (`docs/runbooks/restauracion-de-evidencias.md`),
-  vuelve a aprovisionar el JWKS (sección 4) y `deploy/box.sh restart ui`.
+  ejecuta el refresco del JWKS (sección 4), revisa `settings/ui-roles.yaml`
+  (`ui roles list`; viaja con el workspace) y `deploy/box.sh restart ui`.
 - **Escrituras de la interfaz sin copia.** Se hacen sin tomar el lock del ciclo
   y de forma atómica; la siguiente copia detecta el cambio y la reintenta.
+
+## 7. Roles: quién edita y quién firma
+
+Sin una asignación, la interfaz es de **solo lectura para todo el mundo**. La
+asignación vive en `settings/ui-roles.yaml` y **solo se edita con la CLI**: la
+interfaz no puede escribirla, y la lee en cada petición, así que un cambio o una
+revocación se aplica en la siguiente. Los correos se comparan sin distinguir
+mayúsculas ni espacios. Si el fichero no es válido, nadie edita hasta que se
+corrija.
+
+```bash
+docker compose -p ens-box exec app ens-evidence ui roles list
+docker compose -p ens-box exec app ens-evidence ui roles grant ana@example.org --edit
+docker compose -p ens-box exec app ens-evidence ui roles grant ana@example.org --role security_officer
+docker compose -p ens-box exec app ens-evidence ui roles grant luis@example.org --edit --role system_owner --role management
+docker compose -p ens-box exec app ens-evidence ui roles revoke ana@example.org --role security_officer
+docker compose -p ens-box exec app ens-evidence ui roles revoke ana@example.org --no-edit
+docker compose -p ens-box exec app ens-evidence ui roles revoke ana@example.org
+```
+
+`grant` suma a lo que la persona ya tenía; `--role` es repetible. `revoke` sin
+opciones quita todo; `--role` quita solo ese rol; `--no-edit` quita solo la
+edición. Para firmar hace falta `--edit` **y** el rol: el rol solo no basta.
+Roles ENS: `system_administrator`, `system_administrator_delegate`,
+`security_officer`, `system_owner`, `management`, `information_owner`,
+`service_owner`. Qué rol pide cada firma está en el ADR 0022; en la interfaz,
+quien no lo tiene ve que necesita el rol y la orden que tendría que pedir.
+Enviar a una pre-auditoría externa y decidir sus hallazgos piden
+`security_officer` en la interfaz (política de la interfaz, no de la CLI);
+una petición ya encolada se ejecuta aunque después se revoque el permiso.
+
+Asignar un rol indica que esa persona puede firmar, no que sea quien firma: el
+nombre de `by` lo escribe quien rellena el formulario (el ADR 0021 hablaba de
+prerrellenarlo con el correo; no se hace). Quién operaba lo dice el log de
+auditoría (sección 6). Los roles no sustituyen la revisión humana: la
+herramienta nunca declara conformidad.
+
+**Límite que debes conocer.** La protección del fichero es de código (la lista
+blanca de escritura), no de aislamiento: `ui` comparte imagen y usuario con
+`app` y monta `data` con escritura. Quien ejecutara código dentro de `ui`
+podría reescribirlo. El aislamiento real está pendiente (ADR 0022).
+
+## 8. Al actualizar desde una versión sin roles
+
+Tras actualizar, **todo el mundo queda en solo lectura** hasta que asignes roles
+(sección 7): quien antes escribía recibe un 403 que explica cómo pedirlo, sin
+guardar nada. Antes de actualizar, o justo después:
+
+1. Decide quién edita y qué rol ENS tiene cada persona (las firmas siguen
+   siendo decisión de personas).
+2. Ejecuta los `ui roles grant` de la sección 7 y `ui roles list`.
+3. La matriz ya no se inicializa al abrirla: la primera vez, una persona con
+   edición la inicia desde la interfaz (`POST /matriz/iniciar`).
+4. Cambia `ENS_UI_ACCESS_JWKS_FILE` en `deploy/ui.env`, añade las variables de
+   `app` (sección 2, pasos 3 y 5) y ejecuta el refresco manual (sección 4).
+5. Configura `ui_hostname` y recoge de nuevo (sección 3, paso 2).
+
+## 9. Panel de agentes
+
+`/agentes` lista los equipos con agente osquery inscritos (estado del alta,
+último contacto registrado en la evidencia y resultado de HOST-002) y
+`/agentes/{activo}` da el detalle, como `ens-evidence agent hosts show`. Es de
+solo lectura, no tiene acciones y no muestra datos en bruto de osquery. Un
+activo no inscrito da 404. No muestra el contacto «según el servicio»: el estado
+del servicio de agentes no está al alcance de `ui`.
 
 Nada de esto se ha verificado con Docker ni con Cloudflare reales, salvo el
 enrutado por host de Caddy y la validación del Caddyfile.

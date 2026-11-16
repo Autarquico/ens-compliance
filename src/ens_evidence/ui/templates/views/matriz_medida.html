@@ -5,6 +5,7 @@
 <h1><span class="mono">{{ measure_id }}</span> {{ title }}</h1>
 <p>{{ m.badge(applicability, show_code=False) }} {{ m.badge(assessment, show_code=False) }}</p>
 {{ m.revision_humana() }}
+{% if needs_init %}{{ m.init_matrix() }}{% endif %}
 {% if form_errors %}
 <div class="notice notice-bad" role="alert"><p><strong>No se ha guardado.</strong> Revisa esto:</p>
 <ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul>
@@ -136,6 +137,7 @@
   <p>Última revisión: {{ last_review.by }} ({{ last_review.role }}), {{ last_review.at }}. Vale hasta {{ last_review.valid_until }}.</p>
   <p>{{ last_review.conclusion }}</p>
   {% else %}<p class="muted">Nadie ha revisado esta medida.</p>{% endif %}
+  {% if not review_roles %}{{ m.needs_role("de administrador del sistema o su delegado") }}{% else %}
   <form method="post" action="/matriz/{{ measure_id }}/revisar" novalidate>
     <div class="field"><label for="f-by">Quién revisa<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
       <input type="text" id="f-by" name="by" value="{{ by_default }}" autocomplete="name"></div>
@@ -153,6 +155,7 @@
       <textarea id="f-conclusion" name="conclusion">{{ values.get('conclusion', '') }}</textarea></div>
     <div class="actions"><button class="btn btn-primary" type="submit">Registrar revisión</button></div>
   </form>
+  {% endif %}
 </section>
 <p class="muted">Datos de {{ generated_at }}.</p>
 {% endblock %}

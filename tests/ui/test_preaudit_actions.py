@@ -27,7 +27,7 @@ from ens_evidence.preaudit.service import prepare, run
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.views.preaudit import PREAUDIT_ROUTES, plain
 
-from .conftest import ORIGIN, Session, jwks_for, mint, snapshot_of
+from .conftest import ORIGIN, Session, grant_all, jwks_for, mint, snapshot_of
 
 REVIEWED_AT = SENT_AT + timedelta(minutes=1)
 ASKED_AT = PREPARED_AT - timedelta(seconds=30)
@@ -58,6 +58,7 @@ def audited(stages, tmp_path, monkeypatch):
 
 def web(config, store, key, token, now) -> Session:
     clock = Clock(now)
+    grant_all(store)
     app = create_ui_app(config, store, clock, lambda: jwks_for(key), routes=[*PREAUDIT_ROUTES])
     start = int(ASKED_AT.timestamp())
     valid = mint(key, nbf=start - 3600, exp=start + 86400)

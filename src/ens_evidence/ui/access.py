@@ -2,6 +2,7 @@
 
 import base64
 import json
+import logging
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import datetime
@@ -16,6 +17,7 @@ from starlette.types import ASGIApp, Receive, Scope, Send
 
 ACCESS_HEADER = "cf-access-jwt-assertion"
 CLOCK_SKEW_SECONDS = 60
+_LOGGER = logging.getLogger("ens_evidence.ui")
 HEALTH_PATH = "/healthz"
 MAX_TOKEN_BYTES = 8192
 
@@ -161,7 +163,8 @@ class AccessMiddleware:
             if token is None:
                 raise AccessDenied("missing")
             identity = self._verifier.verify(token)
-        except AccessDenied:
+        except AccessDenied as denied:
+            _LOGGER.warning("acceso rechazado (401): %s", denied.reason)
             response = JSONResponse({"error": "unauthorized"}, status_code=401)
             await response(scope, receive, send)
             return

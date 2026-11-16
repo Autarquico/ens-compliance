@@ -45,7 +45,9 @@
   <h2 id="h-sig">Siguiente paso</h2>
   <p>{{ next_text }}</p>
   {% if blocked %}<div class="notice notice-warn"><p><strong>Ahora no se puede declarar:</strong></p><ul>{% for b in blocked %}<li>{{ b }}</li>{% endfor %}</ul></div>{% endif %}
-  {% if action == "self-assess" %}
+  {% if missing_role %}
+  <div class="notice notice-warn"><p><strong>Necesitas el rol {{ missing_role }}.</strong> Quien administra la herramienta puede asignártelo con <span class="mono">ens-evidence ui roles grant &lt;tu correo&gt; --role …</span>.</p></div>
+  {% elif action == "self-assess" %}
   <form method="post" action="/expediente/{{ dossier_id }}/self-assess" novalidate>
     {{ by_field() }}
     <div class="field">

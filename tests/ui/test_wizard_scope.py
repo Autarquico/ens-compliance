@@ -2,6 +2,7 @@ import pytest
 import yaml
 
 from ens_evidence.scope import ScopeState, scope_status
+from ens_evidence.ui.roles import ROLES_KEY
 from ens_evidence.ui.wizard import STEPS
 
 from .conftest import NOW, Session, snapshot_of, ui_client
@@ -62,13 +63,13 @@ def test_primer_guardado_en_un_workspace_vacio_crea_el_esqueleto_de_init(
     reference = LocalStore(tmp_path / "init")
     (tmp_path / "init").mkdir()
     create_scope_skeleton(reference)
-    assert store.list("") == []
+    assert store.list("") == [ROLES_KEY]
     fresh = Session(ui_client(config, store, key), token)
 
     response = fresh.post("/asistente/sistema", {"name": "Mi sistema", "description": "Todo"})
 
     assert response.status_code == 303
-    assert set(store.list("")) == set(reference.list(""))
+    assert set(store.list("")) - {ROLES_KEY} == set(reference.list(""))
     assert system(store)["name"] == "Mi sistema"
     assert store.read_text("scope/assets.yaml") == reference.read_text("scope/assets.yaml")
 

@@ -266,7 +266,7 @@ def test_parametros_de_ruta_hostiles_dan_404_sin_escribir(client, example_store,
     posted = post(client, token, f"/asistente/{slug}", {"name": "x"})
 
     assert got.status_code in (404, 307, 308, 400)
-    assert posted.status_code in (404, 307, 308, 400, 405)
+    assert posted.status_code in (404, 403, 307, 308, 400, 405)  # 403: operación sin política
     assert snapshot_of(example_store) == before
 
 

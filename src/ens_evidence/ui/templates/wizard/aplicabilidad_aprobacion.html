@@ -32,6 +32,7 @@
   {% endif %}
 </section>
 {{ m.revision_humana() }}
+{% if missing_role %}{{ m.needs_role(missing_role) }}{% endif %}
 <form method="post" action="{{ form_action }}" hx-post="{{ form_action }}" hx-target="#paso" hx-swap="innerHTML" novalidate>
   <div class="field">
     <label for="f-approved_by">La firma<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
@@ -39,7 +40,7 @@
     {{ m.field_errors("approved_by") }}
   </div>
   <div class="actions">
-    <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if issues %} disabled{% endif %}>Firmar la Declaración</button>
+    <button class="btn btn-primary" type="submit" name="accion" value="aprobar"{% if issues or missing_role %} disabled{% endif %}>Firmar la Declaración</button>
     {% if prev_step %}<a class="btn" href="/asistente/{{ prev_step }}">Paso anterior</a>{% endif %}
     {% if next_step %}<a class="btn btn-ghost" href="/asistente/{{ next_step }}">Siguiente paso</a>{% endif %}
   </div>

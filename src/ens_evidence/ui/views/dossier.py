@@ -40,8 +40,10 @@ from ens_evidence.models.dossier import CorrectiveMeasure
 from ens_evidence.models.enums import Category, DossierState, Role
 from ens_evidence.scope import ScopeNotApproved
 from ens_evidence.ui.audit import audit_write
+from ens_evidence.ui.authz import DOSSIER_ACTIONS, DOSSIER_PATH, fixed_role
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
-from ens_evidence.ui.pages import error_page, identity_of, page_context, render
+from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
+from ens_evidence.ui.roles import ROLE_LABELS, Permissions
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import NO_DATE, format_instant
 from ens_evidence.workspace import AlreadyExists
@@ -255,6 +257,17 @@ def _page(
 ) -> Response:
     store, now = request.app.state.store, request.app.state.clock()
     detail = _detail(store, now, shown) if shown else EMPTY
+    permissions = permissions_of(request)
+    self_assess_roles = {
+        value: label
+        for value, label in SELF_ASSESS_ROLES.items()
+        if permissions.offer([Role(value)])
+    }
+    detail = {
+        **detail,
+        "self_assess_roles": self_assess_roles,
+        "missing_role": _missing_role(detail["action"], permissions, self_assess_roles),
+    }
     return render(
         request,
         "views/expediente.html",
@@ -266,6 +279,18 @@ def _page(
         values={"by": "", **(values or {})},
         saved=SAVED_TEXTS.get(saved or ""),
     )
+
+
+def _missing_role(
+    action: str | None, permissions: Permissions, offered: dict[str, str]
+) -> str | None:
+    """El rol que falta para la acción que toca, para decirlo en vez de ofrecer un formulario."""
+    required = DOSSIER_ACTIONS.get(action or "")
+    if isinstance(required, Role) and permissions.lacks(required):
+        return ROLE_LABELS[required]
+    if action == "self-assess" and not offered:
+        return " o ".join(SELF_ASSESS_ROLES.values())
+    return None
 
 
 def _find(store: UiStore, dossier: str) -> Shown:
@@ -337,27 +362,29 @@ def _by(form: Form, action: str) -> dict[str, str]:
     return values
 
 
-def _details(action: str, form: Form, values: dict[str, str]) -> tuple[Role, dict[str, Any]]:
+def _details(
+    action: str, form: Form, values: dict[str, str], permissions: Permissions
+) -> tuple[Role, dict[str, Any]]:
     if action == "self-assess":
         if values["role"] not in SELF_ASSESS_ROLES:
             raise Rejected(
                 "Elige el rol.", errors={"role": ["Elige uno de los roles de la lista."]}
             )
-        return Role(values["role"]), {}
+        return permissions.require(Role(values["role"])), {}
     if action == "analyze":
         measures = [
             CorrectiveMeasure(description=line.strip(), addressee=Role.SYSTEM_OWNER)
             for line in first(form, "corrective_measures").splitlines()
             if line.strip()
         ]
-        return Role.SECURITY_OFFICER, {
+        return fixed_role(DOSSIER_PATH, "analyze"), {
             "conclusions": values["conclusion"],
             "elevated_to": values["elevated_to"],
             "elevation_confirmed": "elevated" in form,
             "manual_judgment_review": "manual_judgment_review" in form,
             "corrective_measures": measures,
         }
-    return Role.MANAGEMENT, {
+    return fixed_role(DOSSIER_PATH, "declare"), {
         "declaration_evidence_id": first(form, "evidence") or None,
         "acknowledge_incomplete": "acknowledge_incomplete" in form,
     }
@@ -369,10 +396,12 @@ def plain_state(message: str) -> str:
     return message.replace("--by", BY_LABEL)
 
 
-def transition(store: UiStore, now: datetime, dossier: str, action: str, form: Form) -> None:
+def transition(
+    store: UiStore, now: datetime, dossier: str, action: str, form: Form, permissions: Permissions
+) -> None:
     """Lo mismo que `assessment dossier self-assess|analyze|declare`."""
     values = _by(form, action)
-    role, details = _details(action, form, values)
+    role, details = _details(action, form, values, permissions)
     try:
         record_transition(
             store, dossier, ACTIONS[action], by=values["by"], role=role, at=now, now=now, **details
@@ -390,6 +419,7 @@ def _audited(request: Request, store: UiStore, action: str, now: datetime) -> No
         action=action,
         keys=store.written,
         at=now,
+        roles=permissions_of(request).used,
     )
 
 
@@ -432,7 +462,9 @@ async def registrar(request: Request) -> Response:
         return form
     store, now = request.app.state.store.recording(), request.app.state.clock()
     try:
-        await run_in_threadpool(transition, store, now, shown.id, action, form)
+        await run_in_threadpool(
+            transition, store, now, shown.id, action, form, permissions_of(request)
+        )
     except Rejected as rejected:
         return _page(
             request,

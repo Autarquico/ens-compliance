@@ -67,6 +67,17 @@
 </div>
 {%- endmacro %}
 
+{# La matriz aún no tiene todas sus filas: crearlas es una escritura y se pide aparte. #}
+{% macro init_matrix() -%}
+<div class="notice notice-warn"><p><strong>La matriz está sin inicializar.</strong> Ver esta página no escribe nada.</p>
+{% if permissions is defined and permissions.edit %}<form method="post" action="/matriz/iniciar"><div class="actions"><button class="btn btn-primary" type="submit">Inicializar la matriz</button></div></form>{% else %}<p>Para inicializarla hace falta permiso de edición.</p>{% endif %}</div>
+{%- endmacro %}
+
+{# Aviso cuando falta el rol ENS que exige la acción; `label` es el nombre del rol. #}
+{% macro needs_role(label) -%}
+<div class="notice notice-warn"><p><strong>Necesitas el rol {{ label }}.</strong> Quien administra la herramienta puede asignártelo con <span class="mono">ens-evidence ui roles grant &lt;tu correo&gt; --role …</span>. Mientras tanto puedes revisarlo, pero no aprobarlo.</p></div>
+{%- endmacro %}
+
 {# Campo "Lo aprueba": vacío; quien aprueba escribe su nombre. #}
 {% macro approver_field() -%}
 <div class="field">

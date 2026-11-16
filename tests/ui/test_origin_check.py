@@ -1,5 +1,7 @@
 import pytest
 
+from ens_evidence.ui.roles import ROLES_KEY
+
 from .conftest import auth
 
 OK = {"Origin": "https://ui.example.com", "Sec-Fetch-Site": "same-origin"}
@@ -24,7 +26,7 @@ def test_same_origin_post_passes(client, token, store):
 def test_cross_origin_post_is_403_and_writes_nothing(client, token, store, extra):
     response = client.post("/write", headers={**auth(token), **extra})
     assert response.status_code == 403
-    assert store.list("") == []
+    assert store.list("") == [ROLES_KEY]
 
 
 def test_get_needs_no_origin(client, token):
