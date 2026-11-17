@@ -192,7 +192,7 @@ def test_wizard_store_is_the_whitelisted_one(raw_client, example_store):
     before = snapshot_of(example_store)
 
     with pytest.raises(WriteNotAllowed):
-        store.write_text("connectors/github.yaml", "token_env: X\n")
+        store.write_text("settings.yaml", "token_env: X\n")
 
     assert snapshot_of(example_store) == before
 

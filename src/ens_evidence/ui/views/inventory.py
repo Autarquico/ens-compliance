@@ -66,6 +66,7 @@ from ens_evidence.ui.views.check_history import (
     summary,
     unreadable_notes,
 )
+from ens_evidence.ui.views.conectores_catalogo import CATALOGUE, configs_citing
 from ens_evidence.ui.views.matrix import plain
 from ens_evidence.ui.wizard.base import StepRejected
 from ens_evidence.ui.wizard.scope import (
@@ -154,6 +155,13 @@ class RefRow:
 
 
 @dataclass(frozen=True)
+class ConnectorLink:
+    name: str
+    label: str
+    href: str
+
+
+@dataclass(frozen=True)
 class AssetDetail:
     row: AssetRow
     fields: tuple[tuple[str, str], ...]
@@ -164,6 +172,7 @@ class AssetDetail:
     references_known: bool  # False si servicios o dependencias no se pueden leer
     removal_blockers: tuple[str, ...]
     removable: bool  # sin bloqueos y con el inventario válido
+    connectors: tuple[ConnectorLink, ...] = ()  # conectores cuya configuración cita el activo
 
 
 @dataclass(frozen=True)
@@ -392,7 +401,7 @@ def _dependency_ref(dependency: Dependency) -> RefRow:
     )
 
 
-def _detail(loaded: Loaded, row: AssetRow, asset: Asset) -> AssetDetail:
+def _detail(store: UiStore, loaded: Loaded, row: AssetRow, asset: Asset) -> AssetDetail:
     services_doc, deps_doc = loaded.docs.services, loaded.docs.dependencies
     known = all(not d.errors or d.absent for d in (services_doc, deps_doc))
     services = tuple(
@@ -421,6 +430,10 @@ def _detail(loaded: Loaded, row: AssetRow, asset: Asset) -> AssetDetail:
         references_known=known,
         removal_blockers=blockers,
         removable=not blockers and not loaded.writes_blocked,
+        connectors=tuple(
+            ConnectorLink(name, CATALOGUE[name].label, f"/conectores/{name}")
+            for name in configs_citing(store, asset.id)
+        ),
     )
 
 
@@ -797,7 +810,7 @@ def _ficha_page(
     if asset is None:
         raise HTTPException(404)
     row = next(r for r in _rows(loaded) if r.id == asset_id)
-    detail = _detail(loaded, row, asset)
+    detail = _detail(store, loaded, row, asset)
     shown_mode = mode
     if rejected is None and not (permissions_of(request).edit and not loaded.writes_blocked):
         shown_mode = "ver"  # sin permiso o con el inventario inválido no se ofrece escribir

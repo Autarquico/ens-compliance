@@ -34,6 +34,7 @@ from ens_evidence.ui.authz import (
 )
 from ens_evidence.ui.roles import ROLES_KEY, Grant, dump_roles
 from ens_evidence.ui.routes import ui_routes
+from ens_evidence.ui.views import conectores as conectores_view
 from ens_evidence.ui.views import dossier as dossier_view
 from ens_evidence.ui.views import incidents as incidents_view
 from ens_evidence.ui.views import inventory as inventory_view
@@ -104,6 +105,7 @@ def test_la_tabla_clasifica_exactamente_las_acciones_de_cada_vista():
     assert {a for a in dossier_view.ACTIONS} == set(DOSSIER_ACTIONS)
     assert set(incidents_view.ACTIONS) == set(INCIDENT_ACTIONS)
     assert set(inventory_view.ACTIONS) == set(INVENTORY_ACTIONS)
+    assert set(conectores_view.EDITABLE) == set(CONNECTOR_FORMS)
 
 
 def test_toda_ruta_repartida_por_parametro_tiene_su_tabla():

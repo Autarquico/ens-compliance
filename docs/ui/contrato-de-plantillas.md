@@ -12,7 +12,7 @@ Los textos de usuario se pasan **sin escapar**: la plantilla escapa. No pases `M
 |---|---|---|
 | `product_name` | `str` | Marcador: el nombre del producto está pendiente (`base.yml`). |
 | `identity_email` | `str \| None` | Email del JWT de Access. |
-| `nav_active` | `"estado" \| "asistente" \| "matriz" \| "evidencias" \| "expediente" \| "incidentes" \| "preauditoria" \| "herramientas"` | Marca la sección actual. |
+| `nav_active` | `"estado" \| "asistente" \| "matriz" \| "evidencias" \| "expediente" \| "incidentes" \| "preauditoria" \| "herramientas" \| "copias" \| "monitorizacion" \| "inventario" \| "conectores" \| "agentes"` | Marca la sección actual. |
 | `page_title` | `str` | Título de la pestaña. |
 
 Enlaces fijos del menú (las rutas deben existir): `/`, `/asistente`, `/matriz`, `/evidencias`, `/expediente`, `/incidentes`, `/preauditoria`, `/herramientas`. Rutas con parámetro: `/matriz/{medida}`, `/evidencias/nueva`, `/expediente/{id}`, `/expediente/{id}/dossier.md`, `/incidentes/nuevo` y `/incidentes/{id}`.
@@ -176,6 +176,21 @@ Formulario `POST /herramientas/copias`: `variant` (`caja`\|`servidor`), `id`, `a
 `box: {last: None \| {run_id, status, status_label, started_at, finished_at: str\|None, snapshot_id: str\|None}, interrupted: tuple[{run_id, started_at}], unreadable_count: int, note: str}` (nunca el texto de error de una ejecución).
 `history: tuple[{test_id, repository_label (code_spans), performed_at, matched: "sí"\|"no"\|"sin verificar", reviewer, role_label, valid_until}]` y `unreadable_tests: int`.
 La ausencia de resultados, de snapshot o de prueba se dice con icono y texto y nunca con tono favorable; la copia no usa «certifica», «garantiza el cumplimiento» ni «cumple el ENS».
+
+### `views/conectores.html`
+`GET /conectores` (solo lectura, sin formularios, `nav_active="conectores"`). `page: ConectoresPage` · `saved: str | None` (`?hecho=`) · `saved_text: str | None` (texto fijo) · `permissions`.
+`ConectoresPage`: `blocks: tuple[ConnectorBlock]` · `manifest_notes`, `inventory_notes: tuple[str]` · `generated_at: str`.
+`ConnectorBlock`: `name`, `label`, `href` · `editable`, `can_configure: bool` (el botón «Configurar» solo sale con `can_configure`) · `config: ConfigState` · `credential: CredentialInfo | None` (`None`: conector sin ficha, «Sin ficha en esta versión») · `doc_href: str | None` (`/ayuda/conector-<name>`), `kit_href`, `status_href: str | None` · `last: LastCollection | None` (`None`: «Sin recogidas todavía», neutro) · `evidence: EvidenceSummary | None`, `results: tuple[ConnectorResults]`, `history_notes: tuple[str]` · `repositories: tuple[RepositoryState]` (solo `backups`: bloque de solo lectura con enlaces a `/copias` y `/herramientas/copias`) · `has_sheet: bool`.
+`ConfigState`: `status` (`sin-configurar` \| `configurado` \| `invalida` \| `ilegible`), `label`, `problem: str | None` (mensaje fijo) · `asset_id`, `asset_href`, `asset_note: str | None` · `shown: tuple[(etiqueta, valor)]` (solo campos del catálogo).
+`CredentialInfo`: `kind` (`env` \| `env_prefix` \| `settings` \| `none`), `names: tuple[str]`, `where: str`. El párrafo depende de `kind` y añade «La web no puede saber si la credencial está puesta: míralo en la última recogida.» (salvo en `none`).
+`LastCollection`: `evidence_id`, `collected_at: str` · `status: str | None` (`CollectionStatus`; `None` si no se pudo verificar), `status_label` · `unreadable`, `partial: bool` (con `partial` sale el distintivo «Recogida parcial») · `failure: Failure | None` (`category`, `label` fija, `detail: str | None` fija) · `sections: tuple[SectionRow(name, status)]`, `sections_unreadable: bool`.
+`RepositoryState`: `id`, `status: str | None`, `status_label`, `failure: Failure | None`.
+Todo estado lleva icono, texto y código. Nada de `data.error` ni de texto de excepciones llega a la plantilla; la copia no usa «certifica», «garantiza el cumplimiento» ni «cumple el ENS».
+
+### `views/conectores_form.html`
+`GET /conectores/{conector}` y la respuesta 422 de `POST /conectores/{conector}` (`nav_active="conectores"`). Contexto: `block: ConnectorBlock` (cabecera y estado) · `form: ConnectorForm | None` (`None` en `backups` y en conectores sin ficha: solo lectura) · `values: dict[str, str]` (sin los campos marcados como secreto) · `errors: dict[str, list[str]]` por nombre de campo · `form_errors: list[str]` · `permissions`.
+`ConnectorForm`: `name`, `label`, `action`, `cancel_href` · `fields: tuple[FormField(name, label, kind: text|int|choice|lines|asset, required, hint, choices: tuple[Choice(value,label)])]` (el select de activo usa `choices`) · `asset_choices`, `asset_type_label` · `preserved: tuple[str]` (claves que se conservan) · `needs_confirmation: bool` (casilla `confirmar_sobrescritura`) · `writes_blocked: bool`, `blocked_notice: str | None` (formulario inactivo con el aviso) · `credential: CredentialInfo` · `doc_href`.
+Solo se pinta el formulario con `block.can_configure`; el lector no ve formulario ni botones.
 
 ### `views/preauditoria.html`
 Formularios: `POST /preauditoria/preparar` (`dossier`, `by`), `/enviar` (`dossier`, `reviewed`, `confirm_sha256`, `by`, `accept_shell_risk` si el destino lo pide) y `/hallazgos/<id>` (`dossier`, `decision`, `evidence`, `reason`, `by`). La UI solo deja peticiones; las ejecuta el servicio `app`.

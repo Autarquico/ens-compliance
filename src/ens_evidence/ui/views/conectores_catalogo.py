@@ -161,7 +161,7 @@ _SPECS: tuple[ConnectorSpec, ...] = (
                 "Identificador de la cuenta",
                 "text",
                 True,
-                "32 caracteres hexadecimales.",
+                "32 caracteres hexadecimales en minúscula (0-9, a-f).",
             ),
             FieldSpec(
                 "token_kind",
@@ -176,7 +176,7 @@ _SPECS: tuple[ConnectorSpec, ...] = (
                 "Nombre de host de la interfaz",
                 "text",
                 False,
-                "Sin esquema, puerto ni ruta.",
+                "Como «panel.ejemplo.org»: sin https://, puerto, ruta ni comodín.",
             ),
         ),
         _env(CLOUDFLARE_TOKEN),
@@ -213,7 +213,11 @@ _SPECS: tuple[ConnectorSpec, ...] = (
                 "admin_subject", "Administrador delegado", "text", True, "Correo del administrador."
             ),
             FieldSpec(
-                "domains", "Dominios", "lines", True, "Uno por línea; incluye el del administrador."
+                "domains",
+                "Dominios",
+                "lines",
+                True,
+                "Uno por línea, como «ejemplo.org»; incluye el del correo del administrador.",
             ),
         ),
         _env(GOOGLE_KEY),
