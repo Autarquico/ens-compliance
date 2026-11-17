@@ -1,5 +1,6 @@
 """Configuración de un conector: `connectors/<name>.yaml` en el workspace (ADR 0006)."""
 
+from collections.abc import Mapping
 from typing import Any
 
 import yaml
@@ -34,7 +35,10 @@ def load_connector_config[M: BaseModel](store: WorkspaceStore, name: str, model:
         raise ConnectorConfigError(f"{key}: no es YAML UTF-8 válido") from None
     if not isinstance(raw, dict):
         raise ConnectorConfigError(f"{key}: debe ser un mapa YAML")
-    _reject_credentials(key, raw)
+    try:
+        reject_config_credentials(raw)
+    except ConnectorCredentialsRejected as exc:
+        raise ConnectorConfigError(f"{key}: {exc}") from None
     try:
         return model.model_validate(raw)
     except ValidationError as exc:
@@ -45,11 +49,50 @@ def load_connector_config[M: BaseModel](store: WorkspaceStore, name: str, model:
         raise ConnectorConfigError(f"{key}: {details}") from None
 
 
-def _reject_credentials(key: str, raw: dict[str, Any]) -> None:
-    candidate = {name: value for name, value in raw.items() if name not in _ALLOWED_KEYS}
-    try:
-        reject_credential_keys(candidate)
-    except WorkspaceError as exc:
-        raise ConnectorConfigError(f"{key}: {exc}") from None
-    if leaked := find_secrets(candidate):
-        raise ConnectorConfigError(f"{key}: parece contener secretos en {', '.join(leaked)}")
+class ConnectorCredentialsRejected(ConnectorConfigError):
+    """Credencial o secreto en la configuración; `fields`: claves de primer nivel afectadas."""
+
+    def __init__(self, message: str, fields: tuple[str, ...]) -> None:
+        super().__init__(message)
+        self.fields = fields
+
+
+def _credential_scan(raw: Mapping[str, Any]) -> tuple[str | None, tuple[str, ...]]:
+    """Mensaje (con rutas, sin valores) y claves de primer nivel que incumplen la política."""
+    flagged: list[str] = []
+    message: str | None = None
+    for name, value in raw.items():
+        entry = {name: value}
+        if name in _ALLOWED_KEYS:
+            # El nombre no es una credencial, pero el valor sí puede serlo.
+            leaked = find_secrets(entry, by_key_name=False)
+        else:
+            try:
+                reject_credential_keys(entry)
+            except WorkspaceError as exc:
+                message = message or str(exc)
+                flagged.append(str(name))
+                continue
+            leaked = find_secrets(entry)
+        if leaked:
+            flagged.append(str(name))
+    if message is None and flagged:
+        paths = [
+            path
+            for name, value in raw.items()
+            for path in find_secrets({name: value}, by_key_name=name not in _ALLOWED_KEYS)
+        ]
+        message = f"parece contener secretos en {', '.join(paths)}"
+    return message, tuple(flagged)
+
+
+def credential_fields(raw: Mapping[str, Any]) -> tuple[str, ...]:
+    """Claves de primer nivel que la política del cargador rechazaría; nunca valores."""
+    return _credential_scan(raw)[1]
+
+
+def reject_config_credentials(raw: Mapping[str, Any]) -> None:
+    """Política del cargador: ni claves de credencial ni valores con forma de secreto."""
+    message, fields = _credential_scan(raw)
+    if message is not None:
+        raise ConnectorCredentialsRejected(message, fields)

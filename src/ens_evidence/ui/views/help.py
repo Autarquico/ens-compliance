@@ -1,8 +1,9 @@
 """Ayuda: runbooks servidos en solo lectura desde el paquete.
 
 La copia de `ui/runbooks/` debe ser idéntica a `docs/runbooks/` (lo comprueba un test); se
-actualiza con `cp`. El Markdown se reduce a bloques de datos y la plantilla los escapa: nunca se
-emite HTML construido a mano.
+actualiza con `cp`. Los `conector-<name>.md` son copias de `docs/connectors/<name>.md`.
+El Markdown se reduce a bloques de datos y la plantilla los escapa: nunca se emite HTML construido
+a mano.
 """
 
 import re
@@ -27,6 +28,13 @@ RUNBOOKS = frozenset(
         "kit-antimalware",
         "monitorizacion",
         "restauracion-de-evidencias",
+        "conector-backups",
+        "conector-cloudflare",
+        "conector-github",
+        "conector-google-workspace",
+        "conector-keystore",
+        "conector-passwords",
+        "conector-restic",
     }
 )
 

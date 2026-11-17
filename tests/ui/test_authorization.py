@@ -22,6 +22,7 @@ from ens_evidence.scope import approve_scope
 from ens_evidence.ui import wizard
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.authz import (
+    CONNECTOR_FORMS,
     DOSSIER_ACTIONS,
     INCIDENT_ACTIONS,
     INVENTORY_ACTIONS,
@@ -113,6 +114,7 @@ def test_toda_ruta_repartida_por_parametro_tiene_su_tabla():
         ("POST", "/expediente/{dossier}/{accion}"),
         ("POST", "/incidentes/{incidente}/{accion}"),
         ("POST", "/inventario/activos/{activo}/{accion}"),
+        ("POST", "/conectores/{conector}"),
     }
 
 
@@ -696,3 +698,26 @@ def test_sin_direccion_se_guarda_el_resto_del_bloque_si_la_pregunta_no_cambia(do
     grant(store, True, Role.SYSTEM_OWNER)
 
     assert ui.post(f"/asistente/{slug}", form_for(slug, ANSWERS)).status_code == 303
+
+
+@pytest.mark.parametrize("conector", ["backups", "endpoint", "desconocido"])
+def test_un_conector_sin_formulario_se_deniega_antes_del_handler(ui, store, audit, conector):
+    grant(store, True, *Role)
+    before = snapshot_of(store)
+
+    response = attempt(ui, f"/conectores/{conector}")
+
+    assert response.status_code == 403
+    assert snapshot_of(store) == before
+    assert "reason=unknown_operation" in audit_lines(audit, "denied")[0]
+
+
+def test_los_conectores_editables_son_los_seis_con_formulario():
+    assert set(CONNECTOR_FORMS) == {
+        "github",
+        "cloudflare",
+        "google-workspace",
+        "keystore",
+        "passwords",
+        "restic",
+    }

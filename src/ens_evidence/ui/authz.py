@@ -81,6 +81,11 @@ DOSSIER_ACTIONS: dict[str, Requirement] = {
 }
 INCIDENT_ACTIONS: dict[str, Requirement] = {"actualizar": EDIT, "cerrar": EDIT, "historial": EDIT}
 INVENTORY_ACTIONS: dict[str, Requirement] = {"editar": EDIT, "baja": EDIT}
+# `backups` (solo lectura), `endpoint` (sin conector) y los desconocidos caen en unknown_operation.
+CONNECTOR_FORMS: dict[str, Requirement] = {
+    name: EDIT
+    for name in ("github", "cloudflare", "google-workspace", "keystore", "passwords", "restic")
+}
 
 WIZARD_PATH = "/asistente/{slug}"
 DOSSIER_PATH = "/expediente/{dossier}/{accion}"
@@ -95,6 +100,7 @@ OPERATIONS: Operations = {
     ("POST", "/incidentes/{incidente}/{accion}"): ByParam("accion", INCIDENT_ACTIONS),
     ("POST", "/inventario/alta"): EDIT,
     ("POST", "/inventario/activos/{activo}/{accion}"): ByParam("accion", INVENTORY_ACTIONS),
+    ("POST", "/conectores/{conector}"): ByParam("conector", CONNECTOR_FORMS),
     ("POST", "/preauditoria/preparar"): EDIT,
     ("POST", "/preauditoria/enviar"): SO,
     ("POST", "/preauditoria/hallazgos/{finding}"): SO,

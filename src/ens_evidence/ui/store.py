@@ -10,6 +10,7 @@ WRITABLE_PREFIXES = (
     "risk",
     "org",
     "incidents",
+    "connectors",
     "evidence/assessments",
     "evidence/key-custodians",
     "evidence/raw",
