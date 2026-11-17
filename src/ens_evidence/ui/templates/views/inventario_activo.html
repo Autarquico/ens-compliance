@@ -121,6 +121,12 @@
   {% else %}<p class="muted">Ningún servicio ni dependencia usa este activo.</p>{% endif %}
 </section>
 
+<section class="section" aria-labelledby="h-conectores">
+  <h2 id="h-conectores">Conectores que citan este activo</h2>
+  {% if detail.connectors %}<ul>{% for c in detail.connectors %}<li><a href="{{ c.href }}">{{ c.label }}</a></li>{% endfor %}</ul>
+  {% else %}<p class="muted">Ningún conector configurado cita este activo.</p>{% endif %}
+</section>
+
 <section class="section" aria-labelledby="h-resultados">
   <h2 id="h-resultados">Resultados por conector</h2>
   {% if e %}

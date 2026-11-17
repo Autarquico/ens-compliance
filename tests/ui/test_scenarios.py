@@ -158,7 +158,7 @@ def test_alcance_y_categorizacion_equivalentes_a_la_cli(
 
 
 HOSTILE_KEYS = [
-    "connectors/github.yaml",
+    "connectors/../settings.yaml",
     "../connectors/x.yaml",
     "settings.yaml",
     "reports/r.md",

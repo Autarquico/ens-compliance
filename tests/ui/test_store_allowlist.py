@@ -19,8 +19,9 @@ def test_allowed_prefixes_are_written(ui_store, store, prefix):
 @pytest.mark.parametrize(
     "key",
     [
-        "connectors/github.yaml",
         "reports/r.md",
+        "connectors",
+        "connectors-evil/a.yaml",
         "settings.yaml",
         "scope",
         "scopes/a.yaml",
@@ -31,7 +32,6 @@ def test_allowed_prefixes_are_written(ui_store, store, prefix):
         "evidence/key-custodians-evil/a.yaml",
         "evidence/key-custodians",
         "evidence/rawx/a",
-        "./connectors/a.yaml",
         "scope/../connectors/a.yaml",
         "/scope/a.yaml",
         "",
@@ -49,3 +49,9 @@ def test_reads_cover_the_whole_workspace(ui_store, store):
     assert ui_store.read_text("connectors/github.yaml") == "a: 1\n"
     assert ui_store.exists("connectors/github.yaml")
     assert ui_store.list("connectors") == ["connectors/github.yaml"]
+
+
+def test_a_normalized_connectors_key_is_the_allowed_key(ui_store, store):
+    ui_store.write_text("./connectors/github.yaml", "a: 1\n")
+    assert store.read_text("connectors/github.yaml") == "a: 1\n"
+    assert ui_store.written == ["connectors/github.yaml"]

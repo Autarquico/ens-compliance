@@ -110,3 +110,24 @@
 {% macro revision_humana() -%}
 <aside class="notice" role="note"><p><strong>Revisión humana obligatoria.</strong> Esta herramienta prepara la información. No declara conformidad: la declara una persona (nivel BÁSICA) o un auditor (nivel MEDIA).</p></aside>
 {%- endmacro %}
+
+{# El estado de la configuración dice si hay fichero y si carga; nunca que la configuración sea correcta. #}
+{% macro config_badge(config) -%}
+{%- set tone = {"configurado": "info", "sin-configurar": "neutral", "invalida": "bad", "ilegible": "warn"}[config.status] -%}
+<span class="badge tone-{{ tone }}">{{ icon(TONE_ICON[tone]) }}<span>{{ config.label }}</span></span>
+{%- endmacro %}
+{% macro names(list) -%}
+{%- for n in list %}<span class="mono">{{ n }}</span>{% if not loop.last %}, {% endif %}{% endfor -%}
+{%- endmacro %}
+{# El párrafo de la credencial depende de su tipo. La web nunca ve ni pide el valor. #}
+{% macro credential_text(c) -%}
+{%- if c.kind == "none" -%}
+<p>Este conector no necesita credencial.</p>
+{%- else -%}
+<p>
+{%- if c.kind == "env" %}Pon {{ names(c.names) }} en {{ c.where }}.
+{%- elif c.kind == "env_prefix" %}Define las variables {{ names(c.names) }} en {{ c.where }}; <span class="mono">&lt;ID&gt;</span> es el identificador de cada repositorio.
+{%- else %}Las credenciales salen de {{ c.where }}: {{ names(c.names) }}.{% endif %}
+La web no puede saber si la credencial está puesta: míralo en la última recogida.</p>
+{%- endif -%}
+{%- endmacro %}

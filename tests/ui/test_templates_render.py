@@ -9,6 +9,8 @@ import pytest
 
 from ens_evidence.ui.pages import STATUS_TEXT, install_template_helpers
 from ens_evidence.ui.views import check_history as ch
+from ens_evidence.ui.views import conectores as con
+from ens_evidence.ui.views import conectores_recogida as rec
 from ens_evidence.ui.views import copias as cop
 from ens_evidence.ui.views import inventory as inv
 from ens_evidence.ui.views.agents import (
@@ -18,6 +20,7 @@ from ens_evidence.ui.views.agents import (
     ContactRow,
     QueryRow,
 )
+from ens_evidence.ui.views.conectores_catalogo import Choice
 
 jinja2 = pytest.importorskip("jinja2")
 
@@ -86,6 +89,8 @@ VIEW_TEMPLATES = [
     "views/inventario_activo.html",
     "views/inventario_form.html",
     "views/copias.html",
+    "views/conectores.html",
+    "views/conectores_form.html",
 ]
 # Solo se importa desde otras plantillas.
 INDIRECT = {"_macros.html"}
@@ -659,6 +664,7 @@ _DETAIL = inv.AssetDetail(
     references_known=True,
     removal_blockers=(HOSTILE,),
     removable=False,
+    connectors=(inv.ConnectorLink(HOSTILE, HOSTILE, "/conectores/github"),),
 )
 _DETAIL_BARE = inv.AssetDetail(
     row=_asset_row("y", None),
@@ -777,6 +783,210 @@ def _copias_page(**fields):
     return {"page": cop.CopiasPage(**(base | fields)), "permissions": EDITOR}
 
 
+_CON_ENV = con.CredentialInfo("env", ("ENS_GITHUB_TOKEN",), "deploy/.env de la caja")
+_CON_PREFIX = con.CredentialInfo(
+    "env_prefix", ("ENS_BACKUPS_<ID>_PASSWORD",), "deploy/.env de la caja"
+)
+_CON_SETTINGS = con.CredentialInfo("settings", ("ENS_RESTIC_PASSWORD",), "ajustes backup.*")
+_CON_NONE = con.CredentialInfo("none", (), "")
+
+
+def _con_config(status="configurado", **fields):
+    labels = {
+        "sin-configurar": "Sin configurar",
+        "configurado": "Configurado",
+        "invalida": "Configuración no válida",
+        "ilegible": "Configuración ilegible",
+    }
+    base = {
+        "status": status,
+        "label": labels[status],
+        "problem": None,
+        "asset_id": None,
+        "asset_href": None,
+        "asset_note": None,
+        "shown": (),
+    }
+    return con.ConfigState(**(base | fields))
+
+
+_CON_CONFIGURED = _con_config(
+    asset_id=HOSTILE,
+    asset_href=None,
+    asset_note=HOSTILE,
+    shown=((HOSTILE, HOSTILE),),
+)
+
+
+def _con_last(**fields):
+    base = {
+        "evidence_id": HOSTILE,
+        "collected_at": "2026-11-08 10:00 UTC",
+        "status": "SUCCESS",
+        "status_label": "correcta",
+        "unreadable": False,
+        "partial": False,
+        "failure": None,
+        "sections": (rec.SectionRow(HOSTILE, "SUCCESS"),),
+    }
+    return rec.LastCollection(**(base | fields))
+
+
+def _con_block(name="github", **fields):
+    base = {
+        "name": name,
+        "label": HOSTILE,
+        "href": f"/conectores/{name}",
+        "editable": True,
+        "can_configure": True,
+        "config": _CON_CONFIGURED,
+        "credential": _CON_ENV,
+        "doc_href": f"/ayuda/conector-{name}",
+        "kit_href": None,
+        "status_href": None,
+        "last": None,
+        "evidence": None,
+        "results": (),
+        "history_notes": (HOSTILE,),
+    }
+    return con.ConnectorBlock(**(base | fields))
+
+
+_CON_EVIDENCE = con.ConnectorEvidence(
+    **vars(dataclasses.replace(_COPIAS_SUMMARY, connector="github", sentence=HOSTILE))
+)
+_CON_RESULTS = (
+    ch.ConnectorResults(
+        HOSTILE,
+        "2026-11-08 10:00 UTC",
+        False,
+        (
+            ch.CheckRow("GH-001", "PASS", "SUCCESS", None, ()),
+            ch.CheckRow(HOSTILE, "FAIL", "PERMISSION_DENIED", HOSTILE, (HOSTILE,)),
+        ),
+    ),
+)
+_CON_BACKUPS = _con_block(
+    "backups",
+    editable=False,
+    can_configure=False,
+    credential=_CON_PREFIX,
+    kit_href="/herramientas/copias",
+    status_href="/copias",
+    last=_con_last(),
+    repositories=(
+        rec.RepositoryState(HOSTILE, "SUCCESS", "correcta", None),
+        rec.RepositoryState(
+            "otro",
+            "ERROR",
+            "con error",
+            rec.Failure("credential_missing", "credencial ausente", HOSTILE),
+        ),
+        rec.RepositoryState("tercero", None, "sin estado", None),
+    ),
+)
+_CON_BLOCKS = (
+    _con_block("github", config=_con_config("sin-configurar")),
+    _con_block("cloudflare", last=None),
+    _con_block("google-workspace", config=_con_config("invalida", problem=HOSTILE)),
+    _con_block("keystore", config=_con_config("ilegible", problem=HOSTILE), credential=_CON_NONE),
+    _con_block(
+        "passwords",
+        last=_con_last(
+            status="ERROR",
+            status_label="con error",
+            failure=rec.Failure("credential_missing", "credencial ausente", HOSTILE),
+            sections=(),
+        ),
+    ),
+    _con_block(
+        "restic",
+        credential=_CON_SETTINGS,
+        last=_con_last(
+            partial=True,
+            sections=(
+                rec.SectionRow(HOSTILE, "SUCCESS"),
+                rec.SectionRow("repos", "PERMISSION_DENIED"),
+            ),
+            sections_unreadable=True,
+        ),
+        evidence=_CON_EVIDENCE,
+        results=_CON_RESULTS,
+    ),
+    _con_block(
+        "scheduler",
+        last=_con_last(status=None, status_label="estado no legible", unreadable=True, sections=()),
+    ),
+    _CON_BACKUPS,
+    _con_block(
+        "otro",
+        editable=False,
+        can_configure=False,
+        credential=None,
+        doc_href=None,
+    ),
+)
+
+
+def _con_page(blocks=_CON_BLOCKS, **fields):
+    page = con.ConectoresPage(
+        blocks=blocks,
+        manifest_notes=(HOSTILE,),
+        inventory_notes=(HOSTILE,),
+        generated_at="2026-11-08 12:00 UTC",
+    )
+    return {
+        "page": dataclasses.replace(page, **fields),
+        "saved": None,
+        "saved_text": HOSTILE,
+        "permissions": EDITOR,
+    }
+
+
+_CON_FIELDS = (
+    con.FormField("asset_id", "Activo", "asset", True, HOSTILE, (Choice(HOSTILE, HOSTILE),)),
+    con.FormField("organization", HOSTILE, "text", True, HOSTILE, ()),
+    con.FormField("max_key_age_days", HOSTILE, "int", False, None, ()),
+    con.FormField("token_kind", HOSTILE, "choice", False, None, (Choice("a", HOSTILE),)),
+    con.FormField("domains", HOSTILE, "lines", False, None, ()),
+)
+
+
+def _con_form(**fields):
+    base = {
+        "name": "github",
+        "label": HOSTILE,
+        "action": "/conectores/github",
+        "cancel_href": "/conectores",
+        "fields": _CON_FIELDS,
+        "asset_choices": (Choice(HOSTILE, HOSTILE),),
+        "asset_type_label": HOSTILE,
+        "preserved": ("public_routes",),
+        "needs_confirmation": False,
+        "writes_blocked": False,
+        "blocked_notice": None,
+        "credential": _CON_ENV,
+        "doc_href": "/ayuda/conector-github",
+    }
+    return con.ConnectorForm(**(base | fields))
+
+
+def _con_form_context(form=None, block=None, **extra):
+    return {
+        "form": form or _con_form(),
+        "block": block or _con_block(),
+        "values": {f.name: HOSTILE for f in _CON_FIELDS},
+        "errors": {},
+        "form_errors": [],
+        "permissions": EDITOR,
+    } | extra
+
+
+_CON_FIELD_ERRORS = {f.name: [HOSTILE] for f in _CON_FIELDS} | {
+    "confirmar_sobrescritura": [HOSTILE]
+}
+
+
 VIEW_CONTEXT = {
     "agents.html": {"rows": [_AGENT_ROW, _AGENT_BARE], "problems": [HOSTILE], "notes": [HOSTILE]},
     "agents_detail.html": {
@@ -808,6 +1018,35 @@ VIEW_CONTEXT = {
         ),
         _copias_page(
             repositories=(dataclasses.replace(_COPIAS_REPOSITORY_BARE, tests_unattributable=True),)
+        ),
+    ],
+    "views/conectores.html": [
+        _con_page(),
+        _con_page(blocks=(), manifest_notes=(), inventory_notes=()) | {"saved_text": None},
+        _con_page() | {"permissions": READER},
+    ],
+    "views/conectores_form.html": [
+        _con_form_context(),
+        _con_form_context(
+            form=_con_form(needs_confirmation=True, preserved=()),
+            block=_con_block(config=_con_config("invalida", problem=HOSTILE)),
+            errors=_CON_FIELD_ERRORS,
+            form_errors=[HOSTILE],
+        ),
+        _con_form_context(
+            form=_con_form(writes_blocked=True, blocked_notice=HOSTILE, asset_choices=()),
+        ),
+        _con_form_context(
+            form=_con_form(
+                fields=(con.FormField("asset_id", "Activo", "asset", True, None, ()),),
+            ),
+            values={},
+        ),
+        _con_form_context(block=_con_block(can_configure=False), permissions=READER),
+        _con_form_context(form=None, block=_CON_BACKUPS),
+        _con_form_context(
+            form=None,
+            block=_con_block("otro", editable=False, can_configure=False, credential=None),
         ),
     ],
     "views/inventario.html": [
@@ -1557,3 +1796,109 @@ def test_copias_sin_backrest_lo_dice_y_no_enlaza_a_ningun_host():
     html = _render("views/copias.html", VIEW_CONTEXT["views/copias.html"][1])
     assert "Backrest no está desplegado en esta caja" in html
     assert "https://" not in html.split("<main", 1)[-1]
+
+
+def test_conectores_sin_recogidas_es_neutral_y_sin_configurar_no_es_favorable():
+    sin = _con_page(blocks=(_CON_BLOCKS[0],))
+    html = _render("views/conectores.html", sin)
+    assert "Sin recogidas todavía" in html and "Sin configurar" in html
+    assert "tone-ok" not in html.split("<main", 1)[-1].split("Datos leídos", 1)[0]
+
+
+def test_conectores_parcial_credencial_y_enlaces_de_ayuda():
+    html = _render("views/conectores.html", _con_page())
+    assert "Recogida parcial" in html and "credencial ausente" in html
+    assert '<span class="mono">ENS_GITHUB_TOKEN</span> en deploy/.env de la caja' in html
+    assert (
+        "La web no puede saber si la credencial está puesta: míralo en la última recogida." in html
+    )
+    assert 'href="/ayuda/conector-github"' in html and 'href="/copias"' in html
+    assert 'href="/herramientas/copias"' in html and "Sin ficha en esta versión" in html
+
+
+def _main(html):
+    return html.split("<main", 1)[-1]
+
+
+def test_conectores_resumen_lista_los_mismos_conectores_y_no_es_favorable_sin_recogidas():
+    page = _con_page()
+    html = _render("views/conectores.html", page)
+    resumen = html.split('aria-labelledby="h-resumen"', 1)[1].split("</section>", 1)[0]
+    for i in range(1, len(page["page"].blocks) + 1):
+        assert f'href="#h-conector-{i}"' in resumen
+    assert resumen.count("<tr>") == len(page["page"].blocks) + 1  # + cabecera
+    sin = _render("views/conectores.html", _con_page(blocks=(_CON_BLOCKS[1],)))
+    fila = sin.split('aria-labelledby="h-resumen"', 1)[1].split("</section>", 1)[0]
+    assert "Sin recogidas todavía" in fila and "tone-ok" not in fila
+
+
+@pytest.mark.parametrize(
+    ("outcome", "text"),
+    [
+        ("failed", "anteriores a la última recogida, que falló"),
+        ("partial", "anteriores a la última recogida, que fue parcial"),
+        ("ok", "anteriores a la última recogida: no la reflejan todavía."),
+        ("unreadable", "anteriores a una recogida posterior que no se pudo verificar."),
+    ],
+)
+def test_conectores_resultados_anteriores_a_la_ultima_recogida_llevan_aviso(outcome, text):
+    stale = dataclasses.replace(_CON_EVIDENCE, stale=True, last_outcome=outcome)
+    block = dataclasses.replace(_CON_BLOCKS[5], evidence=stale)
+    html = _render("views/conectores.html", _con_page(blocks=(block,)))
+    assert text in html and html.index(text) < html.index("Resultados de las comprobaciones") + 900
+
+
+def test_conectores_credencial_aparece_una_sola_vez_por_bloque():
+    block = _CON_BLOCKS[4]
+    html = _render("views/conectores.html", _con_page(blocks=(block,)))
+    assert html.count("La web no puede saber si la credencial está puesta") == 1
+
+
+def test_conectores_ficha_solo_si_no_hay_boton_y_registro_ilegible_avisa():
+    html = _render("views/conectores.html", _con_page(blocks=(_CON_BLOCKS[0],)))
+    assert "Ver la ficha de" not in html
+    reader = _render(
+        "views/conectores.html", _con_page(blocks=(_CON_BLOCKS[0],)) | {"permissions": READER}
+    )
+    assert "No se pudo leer el registro" not in reader
+    broken = _render("views/conectores.html", _con_page(registry_unreadable=True))
+    assert "No se pudo leer el registro de conectores" in broken
+
+
+def test_conectores_lector_no_ve_botones_ni_formularios():
+    readers = _con_page(
+        blocks=tuple(dataclasses.replace(b, can_configure=False) for b in _CON_BLOCKS)
+    )
+    html = _render("views/conectores.html", readers | {"permissions": READER})
+    assert "Configurar" not in html and 'method="post"' not in html and "<button" not in html
+
+
+def test_conectores_form_con_confirmacion_errores_y_estado_inactivo():
+    html = _render(
+        "views/conectores_form.html",
+        _con_form_context(
+            form=_con_form(needs_confirmation=True),
+            errors=_CON_FIELD_ERRORS,
+        ),
+    )
+    assert 'name="confirmar_sobrescritura"' in html and 'id="err-organization"' in html
+    assert "<select" in html and "<textarea" in html
+    blocked = _render(
+        "views/conectores_form.html",
+        _con_form_context(form=_con_form(writes_blocked=True, blocked_notice="Aviso fijo")),
+    )
+    assert "Aviso fijo" in blocked and '<fieldset class="gate" disabled>' in blocked
+
+
+def test_conectores_form_lector_y_backups_no_tienen_formulario():
+    for context in (
+        _con_form_context(block=_con_block(can_configure=False), permissions=READER),
+        _con_form_context(form=None, block=_CON_BACKUPS),
+    ):
+        html = _render("views/conectores_form.html", context)
+        assert 'method="post"' not in html and "<button" not in html
+
+
+def test_inventario_activo_lista_los_conectores_que_lo_citan():
+    html = _render("views/inventario_activo.html", VIEW_CONTEXT["views/inventario_activo.html"][0])
+    assert "Conectores que citan este activo" in html and 'href="/conectores/github"' in html

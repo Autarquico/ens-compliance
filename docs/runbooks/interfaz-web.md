@@ -295,5 +295,23 @@ solo lectura, no tiene acciones y no muestra datos en bruto de osquery. Un
 activo no inscrito da 404. No muestra el contacto «según el servicio»: el estado
 del servicio de agentes no está al alcance de `ui`.
 
+
+## 10. Conectores
+
+`/conectores` muestra un bloque por conector registrado: si su
+`connectors/<name>.yaml` falta, carga o no es válido, la última recogida
+importada (fecha, estado, estado por sección y motivo del fallo en categorías
+fijas) y cómo poner su credencial, con enlace a `/ayuda/conector-<name>`.
+`/conectores/{conector}` es la ficha; con permiso de edición tiene el
+formulario de configuración. Las copias (`backups`) son de solo lectura y
+enlazan a `/copias` y `/herramientas/copias`.
+
+- La web no ve, pide ni guarda credenciales: van en `deploy/.env` de la caja.
+  Tampoco puede saber si están puestas; se ve en la última recogida.
+- Guardar escribe solo `connectors/<name>.yaml` y se audita. Un valor con forma
+  de secreto se rechaza sin repetirlo.
+- Si el fichero actual no es válido, guardar pide confirmar que se sustituye.
+- Sin recogidas, sin configuración o sin evidencia no es un estado favorable.
+
 Nada de esto se ha verificado con Docker ni con Cloudflare reales, salvo el
 enrutado por host de Caddy y la validación del Caddyfile.

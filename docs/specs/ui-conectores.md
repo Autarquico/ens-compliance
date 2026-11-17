@@ -6,7 +6,7 @@ status: active
 priority: P0
 size: M
 issue: 94
-prs: []
+prs: [96]
 related_issues: [94]
 depends_on: [ui-inventario, ui-copias]
 supersedes: []

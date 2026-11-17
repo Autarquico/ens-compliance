@@ -1,0 +1,155 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{# Resultado de un check: icono + texto + código; PASS no es «correcto», solo «sin fallos». #}
+{% macro resultado(status, partial=False) -%}
+{%- set tone, text = status_badge(status, partial) -%}
+<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ text }}</span> <span class="badge-code">{{ status }}</span></span>
+{%- endmacro %}
+{% block content %}
+{%- set p = page %}
+<h1>Conectores</h1>
+<p class="lead">Un conector recoge evidencias de un sistema. Aquí ves cuáles están configurados, cuándo recogió cada uno por última vez y qué falló. Esta página lee lo ya guardado: no recoge nada ni muestra credenciales.</p>
+{{ m.revision_humana() }}
+{% if saved_text %}<section class="notice notice-ok" role="status"><p>{{ saved_text }}</p></section>{% endif %}
+{% if p.registry_unreadable %}<section class="notice notice-warn" role="note"><p>{{ m.icon("alert") }} No se pudo leer el registro de conectores: se muestra el catálogo de esta versión. Puede faltar algún conector instalado, y su ausencia no es un estado favorable.</p></section>{% endif %}
+{% for note in p.manifest_notes %}<p class="muted">{{ m.icon("alert") }} {{ note }}</p>{% endfor %}
+{% for note in p.inventory_notes %}<p class="muted">{{ m.icon("alert") }} {{ note }}</p>{% endfor %}
+
+{% if p.blocks %}
+<section class="section conectores-resumen" aria-labelledby="h-resumen">
+  <h2 id="h-resumen">Resumen</h2>
+  <div class="table-wrap"><table>
+    <caption>Un conector por fila; el detalle está debajo.</caption>
+    <thead><tr><th scope="col">Conector</th><th scope="col">Configuración</th><th scope="col">Última recogida</th><th scope="col">Fallo</th></tr></thead>
+    <tbody>
+    {%- for b in p.blocks %}
+    {%- set l = b.last %}
+    <tr>
+      <th scope="row"><a href="#h-conector-{{ loop.index }}">{{ b.label }}</a></th>
+      <td>{{ m.config_badge(b.config) }}</td>
+      <td>
+        {%- if not l %}<span class="badge tone-neutral">{{ m.icon("help") }}<span>Sin recogidas todavía</span></span>
+        {%- elif l.unreadable %}<span class="badge tone-warn">{{ m.icon("alert") }}<span>{{ l.status_label }}</span></span> <span class="mono">{{ l.collected_at }}</span>
+        {%- elif l.partial %}<span class="badge tone-warn">{{ m.icon("alert") }}<span>Recogida parcial</span></span> <span class="mono">{{ l.collected_at }}</span>
+        {%- else %}{{ m.badge(l.status, False) }} <span class="mono">{{ l.collected_at }}</span>{% endif -%}
+      </td>
+      <td>{% if l and l.failure %}{{ l.failure.label }}{% else %}—{% endif %}</td>
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+</section>
+{% endif %}
+
+{% for b in p.blocks %}
+{%- set bi = loop.index %}
+{%- set l = b.last %}
+{%- set credential_in_reason = l and not l.unreadable and l.failure and l.failure.category == "credential_missing" and b.credential and b.credential.kind != "none" %}
+<section class="section conector" aria-labelledby="h-conector-{{ bi }}">
+  <h2 id="h-conector-{{ bi }}">{{ b.label }}</h2>
+  <article class="card">
+    <p>{{ m.config_badge(b.config) }}
+      {% if b.config.problem %}{{ b.config.problem }}.{% endif %}</p>
+    {% if b.config.status == "sin-configurar" %}<p class="muted">{{ m.icon("help") }} Sin configuración no hay recogidas de este conector. Eso no es un estado favorable.</p>{% endif %}
+    {% if b.config.shown or b.config.asset_id %}
+    <dl class="facts">
+      {% if b.config.asset_id %}
+      <dt>Activo</dt>
+      <dd>{% if b.config.asset_href %}<a class="mono" href="{{ b.config.asset_href }}">{{ b.config.asset_id }}</a>{% else %}<span class="mono">{{ b.config.asset_id }}</span> {% if b.config.asset_note %}<span class="muted">{{ b.config.asset_note }}</span>{% endif %}{% endif %}</dd>
+      {% endif %}
+      {% for label, value in b.config.shown %}
+      <dt>{{ label }}</dt>
+      <dd>{{ value }}</dd>
+      {% endfor %}
+    </dl>
+    {% endif %}
+
+    <h3 class="sub">Última recogida</h3>
+    {% if not l %}
+    <p>{{ m.icon("help") }} <strong>Sin recogidas todavía.</strong> No consta ninguna recogida de este conector: no hay evidencia, y eso no es un estado favorable.</p>
+    {% elif l.unreadable %}
+    <p><span class="badge tone-warn">{{ m.icon("alert") }}<span>{{ l.status_label }}</span></span> La recogida del <span class="mono">{{ l.collected_at }}</span> consta, pero su contenido no se ha podido verificar. No se muestra nada de ella.</p>
+    {% else %}
+    <p>
+      {% if l.partial %}<span class="badge tone-warn">{{ m.icon("alert") }}<span>Recogida parcial</span> <span class="badge-code">{{ l.status }}</span></span>
+      {% else %}{{ m.badge(l.status) }}{% endif %}
+      el <span class="mono">{{ l.collected_at }}</span> · evidencia <span class="mono">{{ l.evidence_id }}</span>
+    </p>
+    {% if l.partial %}<p class="muted">{{ m.icon("alert") }} Parcial: la recogida terminó, pero alguna sección no se pudo recoger. Lo que falta no se da por bueno.</p>{% endif %}
+    {% if l.failure %}<p><strong>Motivo: {{ l.failure.label }}.</strong>{% if l.failure.detail %} {{ l.failure.detail }}.{% endif %}</p>
+    {% if credential_in_reason %}{{ m.credential_text(b.credential) }}{% endif %}{% endif %}
+    {% if l.sections %}
+    <div class="table-wrap"><table>
+      <caption>Estado por sección en esa recogida. Fuente: recogida <span class="mono">{{ b.name }}</span> del <span class="mono">{{ l.collected_at }}</span> · evidencia <span class="mono">{{ l.evidence_id }}</span>.</caption>
+      <thead><tr><th scope="col">Sección</th><th scope="col">Estado</th></tr></thead>
+      <tbody>
+      {%- for s in l.sections %}
+      <tr><th scope="row" class="mono">{{ s.name }}</th><td>{{ m.badge(s.status) }}</td></tr>
+      {%- endfor %}
+      </tbody>
+    </table></div>
+    {% endif %}
+    {% if l.sections_unreadable %}<p class="muted">{{ m.icon("alert") }} Hay secciones no legibles: no se muestran.</p>{% endif %}
+    <p class="muted">Una recogida que termina bien solo dice que se pudo leer el sistema, no que se cumpla nada.</p>
+    {% endif %}
+
+    {% if b.name == "backups" %}
+    <h3 class="sub">Repositorios</h3>
+    {% if b.repositories %}
+    <ul>
+      {%- for r in b.repositories %}
+      <li><span class="mono">{{ r.id }}</span> · {% if r.status %}{{ m.badge(r.status) }}{% else %}<span class="badge tone-neutral">{{ m.icon("help") }}<span>{{ r.status_label }}</span></span>{% endif %}{% if r.failure %} {{ r.failure.label }}{% if r.failure.detail %}: {{ r.failure.detail }}{% endif %}.{% endif %}</li>
+      {%- endfor %}
+    </ul>
+    {% else %}<p class="muted">{{ m.icon("help") }} Sin estado de repositorios en la última recogida.</p>{% endif %}
+    <p>Las copias se gestionan aparte: este bloque solo lee. Sus comprobaciones y pruebas de restauración están en su propia página.</p>
+    <div class="actions">
+      {% if b.status_href %}<a class="btn" href="{{ b.status_href }}">Ver el estado de las copias</a>{% endif %}
+      {% if b.kit_href %}<a class="btn" href="{{ b.kit_href }}">Preparar las copias</a>{% endif %}
+    </div>
+    {% elif b.evidence %}
+    {%- set e = b.evidence %}
+    <h3 class="sub">Resultados de las comprobaciones</h3>
+    {% if e.stale %}<p class="notice notice-warn" role="note">{{ m.icon("alert") }} {% if e.last_outcome == "failed" %}Estos resultados son anteriores a la última recogida, que falló.
+    {%- elif e.last_outcome == "partial" %}Estos resultados son anteriores a la última recogida, que fue parcial.
+    {%- elif e.last_outcome == "unreadable" %}Estos resultados son anteriores a una recogida posterior que no se pudo verificar.
+    {%- else %}Estos resultados son anteriores a la última recogida: no la reflejan todavía.{% endif %}</p>{% endif %}
+    <p><span class="badge tone-{{ e.tone }}">{{ m.icon(m.TONE_ICON[e.tone]) }}<span>{{ e.label }}</span> <span class="badge-code">{{ e.status }}</span></span> {{ e.sentence }}</p>
+    {% if e.coverage == "parcial" %}<p class="muted">{{ m.icon("alert") }} Cobertura parcial: no se puede dar por completo.{% for reason in e.partial_reasons %} {{ reason }}{% endfor %}</p>{% endif %}
+    {% for c in b.results %}
+    <p class="muted"><span class="mono">{{ c.connector }}</span> · <span class="mono">{{ c.finished_at }}</span>{% if not c.complete %} · {{ m.icon("alert") }} Resultados incompletos: faltan datos de esta ejecución.{% endif %}</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">Comprobación</th><th scope="col">Resultado</th><th scope="col">Recogida</th><th scope="col">Motivo</th><th scope="col">Evidencia</th></tr></thead>
+      <tbody>
+      {%- for row in c.rows %}
+      <tr>
+        <th scope="row" class="mono">{{ row.check_id }}</th>
+        <td>{{ resultado(row.status, e.coverage == "parcial" or not c.complete) }}</td>
+        <td>{{ m.badge(row.collection_status, False) }}</td>
+        <td>{% if row.reason_code %}<span class="mono">{{ row.reason_code }}</span>{% else %}—{% endif %}</td>
+        <td class="id">{{ row.evidence_ids | join(", ") or "—" }}</td>
+      </tr>
+      {%- endfor %}
+      </tbody>
+    </table></div>
+    {% endfor %}
+    {% endif %}
+    {% for note in b.history_notes %}<p class="muted">{{ m.icon("alert") }} {{ note }}</p>{% endfor %}
+
+    {% if not credential_in_reason %}
+    <h3 class="sub">Credencial y guía</h3>
+    {% if b.credential %}{{ m.credential_text(b.credential) }}
+    {% else %}<p>{{ m.icon("info") }} <strong>Sin ficha en esta versión.</strong> El conector está registrado, pero no se muestra cómo configurarlo desde aquí.</p>{% endif %}
+    {% endif %}
+    <div class="actions">
+      {% if b.can_configure %}<a class="btn btn-primary" href="{{ b.href }}">Configurar</a>{% endif %}
+      {% if b.doc_href %}<a class="btn" href="{{ b.doc_href }}">Guía de {{ b.label }}</a>{% endif %}
+    </div>
+    {% if not b.can_configure %}<p><a href="{{ b.href }}">Ver la ficha de {{ b.label }}</a></p>{% endif %}
+  </article>
+</section>
+{% else %}
+<p class="muted">{{ m.icon("help") }} No hay conectores registrados.</p>
+{% endfor %}
+<p class="muted">Datos leídos el {{ p.generated_at }}. La ausencia de evidencia no es un estado favorable. Esta vista no declara conformidad.</p>
+{% endblock %}

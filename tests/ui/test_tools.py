@@ -444,6 +444,8 @@ RUNBOOK_SOURCE = Path(__file__).resolve().parents[2] / "docs" / "runbooks" / "ki
 @pytest.mark.parametrize("name", sorted(RUNBOOKS))
 def test_el_runbook_servido_es_el_de_docs(name):
     source = RUNBOOK_SOURCE.with_name(f"{name}.md")
+    if name.startswith("conector-"):
+        source = RUNBOOK_SOURCE.parents[1] / "connectors" / f"{name.removeprefix('conector-')}.md"
     assert (RUNBOOKS_DIR / f"{name}.md").read_bytes() == source.read_bytes()
 
 
@@ -454,6 +456,14 @@ def test_el_runbook_se_sirve_en_ayuda(session):
     assert "Kit de copias" in response.text and "Primera prueba de restauración" in response.text
     assert "deploy/box.sh kit enable copias /ruta/al/paquete.tar.gz" in response.text
     assert "<script>" not in response.text
+
+
+def test_la_doc_de_un_conector_se_sirve_en_ayuda(session):
+    assert session.get("/ayuda/conector-github").status_code == 200
+
+
+def test_la_doc_del_conector_endpoint_no_se_sirve(session):
+    assert session.get("/ayuda/conector-endpoint").status_code == 404
 
 
 @pytest.mark.parametrize("name", ["otro", "caja", "kit-copias.md", "..%2Fcaja", "%2e%2e/caja"])
