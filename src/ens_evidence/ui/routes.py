@@ -3,6 +3,7 @@
 from starlette.routing import BaseRoute
 
 from ens_evidence.ui.views.agents import AGENT_ROUTES
+from ens_evidence.ui.views.copias import COPIAS_ROUTES
 from ens_evidence.ui.views.custody import CUSTODY_ROUTES
 from ens_evidence.ui.views.dossier import DOSSIER_ROUTES
 from ens_evidence.ui.views.evidence import EVIDENCE_ROUTES
@@ -28,6 +29,7 @@ def ui_routes() -> list[BaseRoute]:
         *INCIDENT_ROUTES,
         *PREAUDIT_ROUTES,
         *TOOLS_ROUTES,
+        *COPIAS_ROUTES,
         *MONITORING_ROUTES,
         *INVENTORY_ROUTES,
         *AGENT_ROUTES,

@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from ens_evidence.ui.pages import STATUS_TEXT, install_template_helpers
+from ens_evidence.ui.views import copias as cop
 from ens_evidence.ui.views import inventory as inv
 from ens_evidence.ui.views.agents import (
     AgentDetail,
@@ -82,6 +83,7 @@ VIEW_TEMPLATES = [
     "views/inventario.html",
     "views/inventario_activo.html",
     "views/inventario_form.html",
+    "views/copias.html",
 ]
 # Solo se importa desde otras plantillas.
 INDIRECT = {"_macros.html"}
@@ -686,6 +688,93 @@ _ACTIVO = {
     **_BLOCKED,
 }
 
+_COPIAS_SUMMARY = inv.EvidenceSummary(
+    status="PASS",
+    label="Sin fallos",
+    favorable=False,
+    coverage="parcial",
+    partial_reasons=(HOSTILE,),
+    connector="backups",
+    finished_at="2026-11-08 10:00 UTC",
+    checks=2,
+    evidence_ids=("ev-1",),
+    sentence=HOSTILE,
+)
+_COPIAS_REPOSITORY = cop.RepositoryBlock(
+    id=HOSTILE,
+    asset_id=HOSTILE,
+    asset_href=None,
+    asset_note=HOSTILE,
+    frequency=HOSTILE,
+    thresholds=cop.Thresholds(24, 90, 7),
+    last_snapshot=cop.LastSnapshot("2026-11-08 08:00 UTC", 2),
+    checked_at="2026-11-08 10:00 UTC",
+    evidence=_COPIAS_SUMMARY,
+    results=(
+        inv.ConnectorResults(
+            HOSTILE,
+            "2026-11-08 10:00 UTC",
+            False,
+            (
+                inv.CheckRow("backups.backup_001_recent", "FAIL", "SUCCESS", HOSTILE, (HOSTILE,)),
+                inv.CheckRow("backups.backup_005_restore_test", "UNKNOWN", "NOT_FOUND", None, ()),
+                inv.CheckRow(HOSTILE, "PASS", "SUCCESS", None, ()),
+            ),
+        ),
+    ),
+    check_labels=cop.CHECK_LABELS,
+    problem=True,
+    restore_test=cop.RestoreDeclaration(
+        HOSTILE, "2026-11-01 10:00 UTC", HOSTILE, HOSTILE, "2027-02-01 11:00 UTC", False
+    ),
+    guide=cop.Guide(command=HOSTILE, yaml=HOSTILE, steps=(HOSTILE,)),
+)
+_COPIAS_REPOSITORY_BARE = cop.RepositoryBlock(
+    id="caja",
+    asset_id="bk-diario",
+    asset_href="/inventario/activos/bk-diario",
+    asset_note=None,
+    frequency=None,
+    thresholds=cop.Thresholds(24, 90, 7),
+    last_snapshot=None,
+    checked_at=None,
+    evidence=None,
+    results=(),
+    check_labels=cop.CHECK_LABELS,
+    problem=False,
+    restore_test=None,
+    guide=cop.Guide(command="ens-evidence x", yaml="a: 1\n", steps=("Paso",)),
+)
+_COPIAS_BOX = cop.BoxBackup(
+    last=cop.BoxRun(HOSTILE, "started", HOSTILE, HOSTILE, None, HOSTILE),
+    interrupted=(cop.InterruptedRun(HOSTILE, HOSTILE),),
+    unreadable_count=2,
+    note=HOSTILE,
+)
+_COPIAS_BOX_EMPTY = cop.BoxBackup(last=None, interrupted=(), unreadable_count=0, note="nota")
+
+
+def _copias_page(**fields):
+    base = {
+        "configured": True,
+        "config_error": None,
+        "backrest_href": "https://copias.example.org",
+        "wizard_href": "/herramientas/copias",
+        "runbook_href": "/ayuda/kit-copias",
+        "history_notes": (HOSTILE,),
+        "repositories": (_COPIAS_REPOSITORY, _COPIAS_REPOSITORY_BARE),
+        "box": _COPIAS_BOX,
+        "history": (
+            cop.HistoryRow(HOSTILE, HOSTILE, HOSTILE, "sí", HOSTILE, HOSTILE, HOSTILE),
+            cop.HistoryRow("RT-2", "caja", "x", "no", "Ana", "r", "y"),
+            cop.HistoryRow("RT-3", "caja", "x", "sin verificar", "Ana", "r", "y"),
+        ),
+        "unreadable_tests": 2,
+        "generated_at": "2026-11-08 12:00 UTC",
+    }
+    return {"page": cop.CopiasPage(**(base | fields)), "permissions": EDITOR}
+
+
 VIEW_CONTEXT = {
     "agents.html": {"rows": [_AGENT_ROW, _AGENT_BARE], "problems": [HOSTILE], "notes": [HOSTILE]},
     "agents_detail.html": {
@@ -697,6 +786,25 @@ VIEW_CONTEXT = {
         ),
         "problems": [HOSTILE],
     },
+    "views/copias.html": [
+        _copias_page(),
+        _copias_page(backrest_href=None, repositories=(_COPIAS_REPOSITORY_BARE,)),
+        _copias_page(
+            configured=False,
+            repositories=(),
+            box=_COPIAS_BOX_EMPTY,
+            history=(),
+            unreadable_tests=0,
+            history_notes=(),
+        ),
+        _copias_page(
+            config_error=HOSTILE,
+            repositories=(),
+            box=_COPIAS_BOX_EMPTY,
+            history=(),
+            unreadable_tests=0,
+        ),
+    ],
     "views/inventario.html": [
         {
             "page": _PAGE,
@@ -1132,6 +1240,7 @@ VIEW_CONTEXT = {
                 "measures_note": HOSTILE,
                 "hints": {"down": HOSTILE},
                 "open_url": "https://copias.example.org",
+                "status_url": "/copias",
                 "wizard_url": "/herramientas/copias",
                 "cta": "Añadir las copias",
                 "help_url": "/ayuda/kit-copias",
@@ -1158,6 +1267,7 @@ VIEW_CONTEXT = {
                 "measures_note": "",
                 "hints": {},
                 "open_url": None,
+                "status_url": None,
                 "wizard_url": "/herramientas/claves",
                 "cta": "Añadir las claves",
                 "help_url": "/ayuda/kit-claves",
@@ -1416,3 +1526,29 @@ def test_inventory_pages_carry_the_no_conformity_note():
     for name in ("views/inventario.html", "views/inventario_activo.html"):
         context = VIEW_CONTEXT[name][0]
         assert "Esta vista no declara conformidad." in _render(name, context)
+
+
+def test_copias_sin_configurar_no_es_favorable_y_lleva_al_asistente():
+    html = _render("views/copias.html", VIEW_CONTEXT["views/copias.html"][2])
+    assert "No hay copias configuradas" in html
+    assert 'href="/herramientas/copias"' in html
+    assert "tone-ok" not in html and 'method="post"' not in html
+
+
+def test_copias_con_error_de_configuracion_muestra_el_mensaje_escapado_y_nada_favorable():
+    html = _render("views/copias.html", VIEW_CONTEXT["views/copias.html"][3])
+    assert "Sin copias configuradas que se puedan leer" in html
+    assert "&lt;script&gt;" in html and "tone-ok" not in html
+
+
+def test_copias_con_problema_ofrece_backrest_y_el_procedimiento():
+    html = _render("views/copias.html", VIEW_CONTEXT["views/copias.html"][0])
+    assert "Con problemas" in html
+    assert 'href="https://copias.example.org"' in html and 'href="/ayuda/kit-copias"' in html
+    assert "Esta vista no declara conformidad." in html
+
+
+def test_copias_sin_backrest_lo_dice_y_no_enlaza_a_ningun_host():
+    html = _render("views/copias.html", VIEW_CONTEXT["views/copias.html"][1])
+    assert "Backrest no está desplegado en esta caja" in html
+    assert "https://" not in html.split("<main", 1)[-1]

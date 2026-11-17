@@ -1,0 +1,146 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{# Resultado de un check: icono + texto + código; PASS no es «correcto», solo «sin fallos». #}
+{% macro resultado(status, partial=False) -%}
+{%- set tone, text = status_badge(status, partial) -%}
+<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ text }}</span> <span class="badge-code">{{ status }}</span></span>
+{%- endmacro %}
+{% block content %}
+{%- set p = page %}
+<h1>Copias de seguridad</h1>
+<p class="lead">Lo que consta de las copias: la última evidencia guardada, no una consulta en vivo. Esta página solo lee y no hace ni restaura copias.</p>
+{{ m.revision_humana() }}
+{% for note in p.history_notes %}<p class="muted">{{ m.icon("alert") }} {{ note }}</p>{% endfor %}
+
+<section class="section" aria-labelledby="h-backrest">
+  <h2 id="h-backrest">Backrest</h2>
+  {% if p.backrest_href %}
+  <p>Backrest es el programa que hace las copias de los servidores. Desde él se ven los snapshots y se lanza una copia o una restauración.</p>
+  <div class="actions"><a class="btn btn-primary" href="{{ p.backrest_href }}">Abrir Backrest</a><a class="btn" href="{{ p.runbook_href }}">Cómo se prueba una restauración</a></div>
+  {% else %}
+  <p>{{ m.icon("info") }} Backrest no está desplegado en esta caja.</p>
+  <div class="actions"><a class="btn" href="{{ p.wizard_href }}">Preparar las copias</a><a class="btn" href="{{ p.runbook_href }}">Leer el procedimiento</a></div>
+  {% endif %}
+</section>
+
+<section class="section" aria-labelledby="h-repos">
+  <h2 id="h-repos">Repositorios de copias</h2>
+  {% if p.config_error %}
+  <div class="notice notice-warn" role="alert"><p><strong>{{ m.icon("alert") }} Sin copias configuradas que se puedan leer.</strong> {{ p.config_error }}. No se puede decir nada de las copias hasta corregirlo.</p>
+    <div class="actions"><a class="btn" href="{{ p.wizard_href }}">Preparar las copias</a></div></div>
+  {% elif not p.configured %}
+  <div class="notice notice-warn" role="status"><p><strong>{{ m.icon("help") }} No hay copias configuradas.</strong> Sin configuración no hay evidencia de copias: eso no es un estado favorable.</p>
+    <div class="actions"><a class="btn btn-primary" href="{{ p.wizard_href }}">Preparar las copias</a></div></div>
+  {% elif not p.repositories %}
+  <p class="muted">{{ m.icon("help") }} El fichero de configuración no declara ningún repositorio.</p>
+  {% endif %}
+
+  {% for r in p.repositories %}
+  {%- set e = r.evidence %}
+  <article class="card" aria-labelledby="h-repo-{{ loop.index }}">
+    <h3 id="h-repo-{{ loop.index }}">Repositorio <span class="mono">{{ r.id }}</span></h3>
+    <p>
+      {% if r.problem %}<span class="badge tone-bad">{{ m.icon("x") }}<span>Con problemas</span></span>
+      {% elif e %}<span class="badge tone-{{ e.tone }}">{{ m.icon(m.TONE_ICON[e.tone]) }}<span>{{ e.label }}</span> <span class="badge-code">{{ e.status }}</span></span>
+      {% else %}<span class="badge tone-neutral">{{ m.icon("help") }}<span>Sin evidencia</span></span>{% endif %}
+      {% if e %}{{ e.sentence }}{% endif %}
+    </p>
+    {% if e and e.coverage == "parcial" %}<p class="muted">{{ m.icon("alert") }} Cobertura parcial: no se puede dar por completo.{% for reason in e.partial_reasons %} {{ reason }}{% endfor %}</p>{% endif %}
+    {% if r.problem %}<p><strong>Hay comprobaciones que fallan.</strong> Abre Backrest para ver el repositorio y sigue el procedimiento.</p>
+    <div class="actions">{% if p.backrest_href %}<a class="btn btn-primary" href="{{ p.backrest_href }}">Abrir Backrest</a>{% endif %}<a class="btn{% if not p.backrest_href %} btn-primary{% endif %}" href="{{ p.runbook_href }}">Qué hacer</a></div>{% endif %}
+
+    <dl class="facts">
+      <dt>Activo</dt>
+      <dd>{% if r.asset_href %}<a class="mono" href="{{ r.asset_href }}">{{ r.asset_id }}</a>{% else %}<span class="mono">{{ r.asset_id }}</span> <span class="muted">{{ r.asset_note }}</span>{% endif %}</dd>
+      <dt>Frecuencia declarada en el inventario</dt>
+      <dd>{% if r.frequency %}{{ r.frequency }} <span class="muted">(texto libre; no es una comprobación)</span>{% else %}<span class="muted">No consta.</span>{% endif %}</dd>
+      <dt>Último snapshot en el repositorio</dt>
+      <dd>{% if r.last_snapshot %}<span class="mono">{{ r.last_snapshot.at }}</span> · hace {{ r.last_snapshot.age_hours }} h <span class="muted">(que exista un snapshot no dice que se pueda restaurar)</span>
+        {% else %}{{ m.icon("help") }} No consta la fecha del último snapshot.{% endif %}</dd>
+      <dt>Última comprobación</dt>
+      <dd>{% if r.checked_at %}<span class="mono">{{ r.checked_at }}</span> <span class="muted">(fecha de la comprobación BACKUP-001, no de una copia)</span>{% else %}{{ m.icon("help") }} Sin resultados todavía.{% endif %}</dd>
+      <dt>Umbrales configurados</dt>
+      <dd>Snapshot de menos de <span class="mono">{{ r.thresholds.max_backup_age_hours }}</span> h · comprobación de menos de <span class="mono">{{ r.thresholds.max_check_age_days }}</span> días · prueba de restauración de menos de <span class="mono">{{ r.thresholds.restore_test_validity_days }}</span> días. <span class="muted">Son los de la comprobación, no la política de la organización.</span></dd>
+    </dl>
+
+    <h4>Resultados de las comprobaciones</h4>
+    {% if r.results %}
+    {% for c in r.results %}
+    <p class="muted"><span class="mono">{{ c.connector }}</span> · <span class="mono">{{ c.finished_at }}</span>{% if not c.complete %} · {{ m.icon("alert") }} Resultados incompletos: faltan datos de esta ejecución.{% endif %}</p>
+    <div class="table-wrap"><table>
+      <thead><tr><th scope="col">Comprobación</th><th scope="col">Resultado</th><th scope="col">Recogida</th><th scope="col">Motivo</th><th scope="col">Evidencia</th></tr></thead>
+      <tbody>
+      {%- for row in c.rows %}
+      <tr>
+        <th scope="row">{{ r.check_labels.get(row.check_id, row.check_id) }} <span class="mono muted">{{ row.check_id }}</span></th>
+        <td>{{ resultado(row.status, (e and e.coverage == "parcial") or not c.complete) }}</td>
+        <td><span class="badge tone-neutral">{{ m.icon("help") }}<span>{{ (m.ESTADOS.get(row.collection_status) or (None, row.collection_status))[1] }}</span></span></td>
+        <td>{% if row.reason_code %}<span class="mono">{{ row.reason_code }}</span>{% else %}—{% endif %}</td>
+        <td class="id">{{ row.evidence_ids | join(", ") or "—" }}</td>
+      </tr>
+      {%- endfor %}
+      </tbody>
+    </table></div>
+    {% endfor %}
+    <p class="muted">BACKUP-002 no aplica a los repositorios que escribe Backrest.</p>
+    {% else %}<p class="muted">{{ m.icon("help") }} Sin evidencia: ningún resultado de las comprobaciones de copias para este repositorio.</p>{% endif %}
+
+    <h4>Prueba de restauración</h4>
+    {% if r.restore_test %}
+    <p>Última prueba declarada: <span class="mono">{{ r.restore_test.test_id }}</span>, hecha el <span class="mono">{{ r.restore_test.performed_at }}</span> por {{ r.restore_test.reviewer }} ({{ r.restore_test.role_label }}). Caducidad declarada: <span class="mono">{{ r.restore_test.valid_until }}</span>.</p>
+    {% if not r.restore_test.approved %}<p>{{ m.icon("alert") }} La revisión de esta prueba la marca como no aprobada.</p>{% endif %}
+    <p class="muted">La prueba la hace y registra una persona. Lo que vale es el resultado de BACKUP-005 en la tabla de arriba, no esta declaración.</p>
+    {% else %}
+    <p>{{ m.icon("help") }} Sin prueba vigente: no hay ninguna prueba de restauración registrada. Una copia que no se ha restaurado nunca no está probada.</p>
+    {% endif %}
+    <details>
+      <summary>Cómo registrar una prueba de restauración</summary>
+      <ol>{% for step in r.guide.steps %}<li>{{ step|code_spans }}</li>{% endfor %}</ol>
+      <p>Rellena el fichero de la prueba. El nombre de quien la declara lo escribe esa persona:</p>
+      <pre class="mono">{{ r.guide.yaml }}</pre>
+      <p>Después, en la caja:</p>
+      <pre class="mono">{{ r.guide.command }}</pre>
+    </details>
+  </article>
+  {% endfor %}
+</section>
+
+<section class="section" aria-labelledby="h-caja">
+  <h2 id="h-caja">Copia de la propia caja</h2>
+  {% if p.box.last %}
+  <p>Última ejecución de <span class="mono">backup</span>: <span class="mono">{{ p.box.last.run_id }}</span> · {{ p.box.last.status_label }} <span class="badge-code">{{ p.box.last.status }}</span>. Empezó el <span class="mono">{{ p.box.last.started_at }}</span>{% if p.box.last.finished_at %} y acabó el <span class="mono">{{ p.box.last.finished_at }}</span>{% endif %}.{% if p.box.last.snapshot_id %} Snapshot <span class="mono">{{ p.box.last.snapshot_id }}</span>.{% endif %}</p>
+  {% else %}<p>{{ m.icon("help") }} No consta ninguna copia propia de la caja.</p>{% endif %}
+  {% if p.box.interrupted %}
+  <div class="notice notice-warn" role="status"><p><strong>{{ m.icon("alert") }} Hay copias propias interrumpidas.</strong> Empezaron y no constan como terminadas.</p>
+    <ul>{% for run in p.box.interrupted %}<li><span class="mono">{{ run.run_id }}</span> · interrumpida, empezó el <span class="mono">{{ run.started_at }}</span></li>{% endfor %}</ul></div>
+  {% endif %}
+  {% if p.box.unreadable_count %}<p class="muted">{{ m.icon("alert") }} {{ p.box.unreadable_count }} {{ "registro no se pudo leer" if p.box.unreadable_count == 1 else "registros no se pudieron leer" }}.</p>{% endif %}
+  <p class="muted">{{ p.box.note|code_spans }}</p>
+</section>
+
+<section class="section" aria-labelledby="h-historial">
+  <h2 id="h-historial">Historial de pruebas de restauración</h2>
+  {% if p.history %}
+  <div class="table-wrap"><table>
+    <caption>Pruebas declaradas, de la más reciente a la más antigua. Son declaraciones de una persona, no un veredicto.</caption>
+    <thead><tr><th scope="col">Prueba</th><th scope="col">Repositorio</th><th scope="col">Hecha el</th><th scope="col">Quién</th><th scope="col">Caducidad declarada</th><th scope="col">Coincide con el original</th></tr></thead>
+    <tbody>
+    {%- for h in p.history %}
+    <tr>
+      <th scope="row" class="mono">{{ h.test_id }}</th>
+      <td>{{ h.repository_label|code_spans }}</td>
+      <td class="id">{{ h.performed_at }}</td>
+      <td>{{ h.reviewer }} <span class="muted">({{ h.role_label }})</span></td>
+      <td class="id">{{ h.valid_until }}</td>
+      <td>{% if h.matched == "sí" %}<span class="badge tone-neutral">{{ m.icon("check") }}<span>Sí, según el registro citado</span></span>
+        {% elif h.matched == "no" %}<span class="badge tone-bad">{{ m.icon("x") }}<span>No</span></span>
+        {% else %}<span class="badge tone-warn">{{ m.icon("help") }}<span>Sin verificar</span></span>{% endif %}</td>
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">{{ m.icon("help") }} No hay pruebas de restauración registradas.</p>{% endif %}
+  {% if p.unreadable_tests %}<p class="muted">{{ m.icon("alert") }} {{ p.unreadable_tests }} {{ "prueba no se pudo leer" if p.unreadable_tests == 1 else "pruebas no se pudieron leer" }}.</p>{% endif %}
+</section>
+<p class="muted">Datos leídos el {{ p.generated_at }}. La ausencia de evidencia no es un estado favorable. Esta vista no declara conformidad.</p>
+{% endblock %}
