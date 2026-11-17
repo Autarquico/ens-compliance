@@ -23,6 +23,7 @@
 - #71 Kit: protección frente a código dañino
 - #72 Kit: panel de monitorización
 - #77 Guía: Cloudflare Access con el proveedor de identidad de la pyme
+- #90 UI de inventario
 <!-- /pm-sync:done-this-week -->
 
 ---
