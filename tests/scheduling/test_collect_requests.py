@@ -41,11 +41,17 @@ ASKED_AT = NOW + timedelta(days=1)
 FIRST = f"{REQUESTS_PREFIX}/github/000001.json"
 CHECK_KEY = "evidence/checks/github/000001-20261030T120000000000Z-0123456789ab.json"
 
-CONFIRMED = '{"confirmed_at": "2026-11-09T00:00:00+00:00"}\n'
+IN_TIME = (ASKED_AT + timedelta(hours=1)).isoformat()
+CONFIRMED = f'{{"confirmed_at": "{IN_TIME}"}}\n'
 
 
 def ask(store, at=ASKED_AT, connector="github"):
     return request_collect(store, connector, email=EMAIL, now=at)
+
+
+def ask_other(store):
+    store.write_text(connector_config_key("other"), "kind: other\n")
+    return ask(store, connector="other")
 
 
 def run(store, settings, plugins, at=ASKED_AT, key=FIRST):
@@ -201,6 +207,49 @@ def test_a_claimed_request_past_24_hours_is_closed_as_interrupted(store, setting
         ChecksOutcome.NOT_RUN,
     )
     assert not any("manifests" in key for key in store.list("evidence"))
+
+
+DAMAGED_MARKERS = {
+    "null": "null",
+    "list": "[]",
+    "invalid_json": "{nope",
+    "empty": "",
+    "missing_confirmed_at": "{}",
+    "null_confirmed_at": '{"confirmed_at": null}',
+    "naive": f'{{"confirmed_at": "{IN_TIME[:-6]}"}}',
+    "before_request": '{"confirmed_at": "2000-01-01T00:00:00+00:00"}',
+    "after_expiry": '{"confirmed_at": "2999-01-01T00:00:00+00:00"}',
+    "extra_key": f'{{"confirmed_at": "{IN_TIME}", "x": 1}}',
+}
+
+
+@pytest.mark.parametrize("marker", DAMAGED_MARKERS.values(), ids=DAMAGED_MARKERS.keys())
+def test_a_damaged_started_marker_never_keeps_an_expired_request_alive(
+    store, settings, plugins, fake, marker
+):
+    ask(store)
+    ask_other(store)
+    store.write_text(f"{REQUESTS_PREFIX}/github/000001.started.json", marker)
+    late = ASKED_AT + EXPIRES_AFTER + timedelta(seconds=1)
+
+    assert requests_of(store, "github", late)[0].state is State.EXPIRED
+    assert [item.state for item in list_requests(store, late)] == [State.EXPIRED, State.EXPIRED]
+    assert pending_keys(store, late) == []
+    assert ask(store, late).key == f"{REQUESTS_PREFIX}/github/000002.json"
+
+
+@pytest.mark.parametrize("marker", DAMAGED_MARKERS.values(), ids=DAMAGED_MARKERS.keys())
+def test_a_damaged_started_marker_does_not_hide_the_other_connectors_requests(
+    store, settings, plugins, fake, marker
+):
+    ask(store)
+    ask_other(store)
+    store.write_text(f"{REQUESTS_PREFIX}/github/000001.started.json", marker)
+
+    keys = pending_keys(store, ASKED_AT)
+
+    assert f"{REQUESTS_PREFIX}/other/000001.json" in keys
+    assert requests_of(store, "github", ASKED_AT)[0].state is State.RUNNING
 
 
 # --- ejecutar ----------------------------------------------------------------------------------

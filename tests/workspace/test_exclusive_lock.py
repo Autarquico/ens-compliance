@@ -1,3 +1,5 @@
+import os
+
 import pytest
 
 from ens_evidence.workspace import AccessDenied, LocalStore
@@ -37,3 +39,41 @@ def test_un_fichero_de_lock_enlazado_fuera_se_rechaza(root, outside):
 
     with pytest.raises(AccessDenied), LocalStore(root).exclusive_lock("x.lock"):
         pytest.fail("no debe entrar")
+
+
+def _swap_parent_for_link(monkeypatch, root, outside, name):
+    """Antes de abrir el componente `name` lo sustituye por un enlace hacia fuera (la carrera)."""
+    real_open = os.open
+    swapped = []
+
+    def racing_open(path, flags, *args, **kwargs):
+        if path == name and kwargs.get("dir_fd") is not None and not swapped:
+            swapped.append(path)
+            target = root / "a" / name
+            target.rename(root / "a" / f"{name}-moved")
+            target.symlink_to(outside, target_is_directory=True)
+        return real_open(path, flags, *args, **kwargs)
+
+    monkeypatch.setattr(os, "open", racing_open)
+    return swapped
+
+
+@pytest.mark.parametrize("operation", ["lock", "write", "create"])
+def test_un_padre_sustituido_por_un_enlace_entre_pasos_se_rechaza(
+    monkeypatch, root, outside, operation
+):
+    (root / "a" / "b").mkdir(parents=True)
+    store = LocalStore(root)
+    swapped = _swap_parent_for_link(monkeypatch, root, outside, "b")
+
+    with pytest.raises(AccessDenied):
+        if operation == "lock":
+            with store.exclusive_lock("a/b/c/x.lock"):
+                pytest.fail("no debe entrar")
+        elif operation == "write":
+            store.write_bytes("a/b/c/x.txt", b"pwned")
+        else:
+            store.create_bytes("a/b/c/x.txt", b"pwned")
+
+    assert swapped == ["b"]
+    assert list(outside.iterdir()) == []

@@ -372,6 +372,30 @@ def test_una_peticion_sin_atender_pasadas_24_horas_aparece_caducada_y_se_puede_p
     assert f"{REQUESTS_PREFIX}/github/000002.json" in requests_listed(configured)
 
 
+@pytest.mark.parametrize(
+    "marker",
+    [
+        "null",
+        "[]",
+        "{nope",
+        "{}",
+        '{"confirmed_at": null}',
+        '{"confirmed_at": "2020-01-01T00:00:00"}',
+    ],
+)
+def test_un_marcador_started_danado_pasado_el_plazo_no_rompe_la_pagina_y_se_puede_pedir_otra(
+    web, configured, marker
+):
+    request_collect(configured, "github", email=EMAIL, now=NOW - EXPIRES_AFTER - timedelta(hours=1))
+    configured.write_text(CLAIM, marker)
+
+    block = github_block(web)
+
+    assert "Caducada" in block and BUTTON in block
+    assert web.post("/conectores/github/recoger", {}).status_code == 303
+    assert f"{REQUESTS_PREFIX}/github/000002.json" in requests_listed(configured)
+
+
 def test_caducada_con_la_configuracion_invalida_no_invita_a_pedir_otra(web, configured):
     request_collect(configured, "github", email=EMAIL, now=NOW - EXPIRES_AFTER - timedelta(hours=1))
     configured.write_text(GITHUB_FILE, "asset_id: [sin cerrar")
@@ -464,7 +488,8 @@ def test_una_reclamada_pasadas_24_horas_se_interrumpe_y_el_boton_vuelve(
     web, configured, settings, plugins, fake
 ):
     request_collect(configured, "github", email=EMAIL, now=NOW - timedelta(hours=30))
-    configured.write_text(CLAIM, '{"confirmed_at": "2026-11-07T00:00:00+00:00"}\n')
+    confirmed_at = (NOW - timedelta(hours=29)).isoformat()
+    configured.write_text(CLAIM, f'{{"confirmed_at": "{confirmed_at}"}}\n')
     assert "En curso" in github_block(web)
 
     result = run(configured, settings, plugins, at=NOW)

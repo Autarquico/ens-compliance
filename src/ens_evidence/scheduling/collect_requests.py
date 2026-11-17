@@ -15,7 +15,6 @@ con formato canónico): nunca un mensaje, porque el motivo legible de un fallo p
 secreto de un tercero.
 """
 
-import json
 import re
 from collections.abc import Iterator
 from contextlib import contextmanager, nullcontext
@@ -90,6 +89,13 @@ class CollectRequest(Strict):
     email: str
     """Identidad de Access de quien la pide (no es una decisión ENS: no hay `by`)."""
     requested_at: AwareDatetime
+
+
+class StartedMarker(Strict):
+    """`<n>.started.json` confirmado: la hora en que el planificador, ya publicado el reclamo, vio
+    que la petición no había caducado."""
+
+    confirmed_at: AwareDatetime
 
 
 class Outcome(StrEnum):
@@ -283,19 +289,21 @@ def _status(
         return RequestStatus(key, connector, request, State.DONE, result)
     late = now - request.requested_at >= EXPIRES_AFTER
     started = _key(connector, number, ".started")
-    if started in keys and (_confirmed(store, started) or not late):
+    if started in keys and (_confirmed(store, started, request) or not late):
         return RequestStatus(key, connector, request, State.RUNNING)
     if late:
         return RequestStatus(key, connector, request, State.EXPIRED)
     return RequestStatus(key, connector, request, State.PENDING)
 
 
-def _confirmed(store: WorkspaceStore, key: str) -> bool:
-    """El reclamo se confirmó: se leyó el reloj *después* de publicarlo y no había caducado."""
+def _confirmed(store: WorkspaceStore, key: str, request: CollectRequest) -> bool:
+    """El reclamo se confirmó: se leyó el reloj *después* de publicarlo y dentro del plazo. Un
+    marcador ilegible, mal formado o con una hora fuera de plazo no confirma nada."""
     try:
-        return "confirmed_at" in json.loads(store.read_bytes(key))
-    except (ValueError, NotFound):
+        marker = StartedMarker.model_validate_json(store.read_bytes(key))
+    except (ValidationError, ValueError, NotFound):
         return False
+    return request.requested_at <= marker.confirmed_at < request.requested_at + EXPIRES_AFTER
 
 
 def _unreadable(at: datetime) -> CollectRequestResult:
