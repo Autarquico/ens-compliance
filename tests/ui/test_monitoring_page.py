@@ -11,7 +11,7 @@ from ens_evidence.monitoring.model import Item, MailState, Point, Snapshot, Stat
 from ens_evidence.monitoring.snapshot import write_heartbeat, write_snapshot
 from ens_evidence.ui.app import TEMPLATES_DIR
 from ens_evidence.ui.monitoring_banner import banner_for
-from ens_evidence.ui.pages import code_spans
+from ens_evidence.ui.pages import install_template_helpers
 from ens_evidence.workspace.cycle_lock import STATE_DIR_ENV
 
 from .conftest import NOW, Session
@@ -182,8 +182,9 @@ CHROME = {"product_name": "P", "identity_email": "a@b.c", "nav_active": "estado"
 
 
 def base_html(banner, **chrome):
-    env = jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATES_DIR), autoescape=True)
-    env.filters["code_spans"] = code_spans
+    env = install_template_helpers(
+        jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATES_DIR), autoescape=True)
+    )
     return env.get_template("error.html").render(
         **{**CHROME, **chrome}, status=500, message=None, monitoring_banner=banner
     )

@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ens_evidence.ui.pages import STATUS_TEXT, code_spans, status_badge
+from ens_evidence.ui.pages import STATUS_TEXT, install_template_helpers
 from ens_evidence.ui.views import inventory as inv
 from ens_evidence.ui.views.agents import (
     AgentDetail,
@@ -1241,10 +1241,7 @@ def _environment():
         autoescape=jinja2.select_autoescape(["html"], default=True),
         undefined=jinja2.StrictUndefined,
     )
-    environment.filters["code_spans"] = code_spans
-    environment.globals["status_badge"] = status_badge
-    environment.globals["STATUS_TEXT"] = STATUS_TEXT
-    return environment
+    return install_template_helpers(environment)
 
 
 def _cases():
