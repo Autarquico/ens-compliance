@@ -7,12 +7,22 @@ import yaml
 from pydantic import BaseModel
 
 from ens_evidence.connectors.registry import ConnectorLoadError
-from ens_evidence.models.enums import CheckStatus
+from ens_evidence.models.enums import CheckStatus, CollectionStatus
+from ens_evidence.scheduling.collect_requests import (
+    ChecksOutcome,
+    CollectRequest,
+    CollectRequestResult,
+    ErrorCode,
+    Outcome,
+    RequestStatus,
+    State,
+)
 from ens_evidence.ui.views import conectores as view
 from ens_evidence.ui.views import conectores_recogida
+from ens_evidence.ui.views.conectores_peticion import request_view
 from ens_evidence.workspace import WorkspaceError
 
-from .conftest import snapshot_of
+from .conftest import NOW, snapshot_of
 from .test_conectores import artifact_document, collect, put_raw
 from .test_inventory import record, result
 from .test_inventory_view import build_ui
@@ -266,3 +276,206 @@ def test_con_el_registro_sano_la_pagina_no_avisa(ui):
     ui.get("/conectores")
 
     assert ui.context["page"].registry_unreadable is False
+
+
+# --- peticiones de recogida -----------------------------------------------------------------------
+
+REQUEST_PREFIX = "evidence/collect-requests"
+EVIDENCE_ID = "EV-20261108-abcd1234"
+
+
+def _result(**fields) -> CollectRequestResult:
+    base = {
+        "outcome": Outcome.DONE,
+        "at": NOW,
+        "collection_status": CollectionStatus.SUCCESS,
+        "evidence_id": EVIDENCE_ID,
+        "attempts": 1,
+        "checks": ChecksOutcome.RECORDED,
+    }
+    return CollectRequestResult(**(base | fields))
+
+
+def _status(state: State, result: CollectRequestResult | None = None) -> RequestStatus:
+    request = CollectRequest(connector="github", email="ana@example.com", requested_at=NOW)
+    return RequestStatus(f"{REQUEST_PREFIX}/github/000001.json", "github", request, state, result)
+
+
+def test_las_peticiones_vivas_y_caducadas_tienen_su_etiqueta_fija():
+    pending = request_view(_status(State.PENDING))
+    assert (pending.label, pending.tone, pending.alive) == ("Pendiente", "warn", True)
+    assert pending.text == (
+        "Se recogerá en cuanto el servicio esté libre; normalmente en menos de un minuto."
+    )
+    running = request_view(_status(State.RUNNING))
+    assert (running.label, running.tone, running.alive) == ("En curso", "warn", True)
+    expired = request_view(_status(State.EXPIRED))
+    assert (expired.label, expired.tone, expired.alive) == ("Caducada", "neutral", False)
+    assert "runbook" in expired.text and "pídela de nuevo" in expired.text
+
+
+@pytest.mark.parametrize(
+    ("result", "label", "tone"),
+    [
+        (_result(), "Terminada", "neutral"),
+        (_result(checks=ChecksOutcome.UNCHANGED), "Terminada", "neutral"),
+        (
+            _result(collection_status=CollectionStatus.ERROR),
+            "Terminada con error de recogida",
+            "bad",
+        ),
+        (
+            _result(collection_status=CollectionStatus.PERMISSION_DENIED),
+            "Terminada con error de recogida",
+            "bad",
+        ),
+        (
+            _result(checks=ChecksOutcome.REJECTED),
+            "Terminada; comprobaciones no registradas",
+            "warn",
+        ),
+        (
+            _result(checks=ChecksOutcome.SKIPPED_SCOPE),
+            "Terminada; comprobaciones no registradas",
+            "warn",
+        ),
+        (
+            _result(checks=ChecksOutcome.ERROR),
+            "Terminada; comprobaciones no registradas",
+            "warn",
+        ),
+        (
+            _result(outcome=Outcome.ERROR, code=ErrorCode.INTERRUPTED, evidence_id=None),
+            "No se pudo hacer: la ejecución se interrumpió",
+            "bad",
+        ),
+    ],
+)
+def test_terminada_nunca_es_favorable_por_si_sola(result, label, tone):
+    shown = request_view(_status(State.DONE, result))
+
+    assert (shown.label, shown.tone, shown.alive) == (label, tone, False)
+    assert shown.tone != "ok"
+
+
+def test_los_dos_fallos_se_distinguen_en_texto_y_el_de_recogida_prevalece():
+    both = _result(collection_status=CollectionStatus.ERROR, checks=ChecksOutcome.ERROR)
+
+    shown = request_view(_status(State.DONE, both))
+
+    assert shown.label == "Terminada con error de recogida"
+    assert "comprobaciones no registradas" in shown.result.checks_label
+    assert shown.result.collection_label == "recogida con error"
+
+
+def test_un_identificador_no_canonico_no_se_proyecta():
+    hostile = CollectRequestResult.model_construct(
+        **(_result().model_dump() | {"evidence_id": "<b>x"})
+    )
+
+    shown = request_view(_status(State.DONE, hostile)).result
+
+    assert shown.evidence_id is None and shown.evidence_invalid is True
+
+
+def test_una_peticion_ilegible_no_es_viva_ni_favorable(ui):
+    ui.post("/conectores/github", GITHUB)
+    ui.store.write_text(f"{REQUEST_PREFIX}/github/000001.json", "{no es json")
+
+    ui.get("/conectores")
+
+    github = blocks(ui)["github"]
+    assert github.request.state == "DONE" and github.request.tone == "bad"
+    assert github.request.alive is False and github.can_collect is True
+
+
+def test_recoger_escribe_la_peticion_audita_y_redirige(ui, audit):
+    ui.post("/conectores/github", GITHUB)
+
+    response = ui.post("/conectores/github/recoger", {})
+
+    key = f"{REQUEST_PREFIX}/github/000001.json"
+    assert response.status_code == 303
+    assert response.headers["location"] == "/conectores?pedida=github"
+    assert ui.store.exists(key)
+    [line] = [
+        r.message for r in audit.records if "outcome=saved" in r.message and "recoger" in r.message
+    ]
+    assert "step=conectores action=recoger asset=github" in line and key in line
+
+
+def test_tras_pedir_el_listado_muestra_pendiente_sin_boton(ui):
+    ui.post("/conectores/github", GITHUB)
+    ui.post("/conectores/github/recoger", {})
+
+    ui.get("/conectores?pedida=github")
+
+    github = blocks(ui)["github"]
+    assert github.request.state == "PENDING" and github.can_collect is False
+    assert github.request.label == "Pendiente"
+    assert ui.context["requested_text"].startswith("Petición de recogida de GitHub creada")
+    ui.get("/conectores?pedida=<script>")
+    assert ui.context["requested_text"] is None
+
+
+def test_el_boton_sale_solo_con_configuracion_y_permiso(ui):
+    ui.get("/conectores")
+    assert blocks(ui)["github"].can_collect is False  # sin configurar
+    ui.post("/conectores/github", GITHUB)
+
+    ui.get("/conectores")
+
+    github = blocks(ui)["github"]
+    assert github.can_collect is True
+    assert github.collect_action == "/conectores/github/recoger"
+
+
+def test_una_segunda_peticion_viva_da_422_y_no_escribe_otra(ui, audit):
+    ui.post("/conectores/github", GITHUB)
+    ui.post("/conectores/github/recoger", {})
+    before = snapshot_of(ui.store)
+    audit.clear()
+
+    response = ui.post("/conectores/github/recoger", {})
+
+    assert response.status_code == 422
+    assert snapshot_of(ui.store) == before
+    assert any("Ya hay una petición" in e for e in ui.context["form_errors"])
+    assert not [r for r in audit.records if "outcome=saved" in r.message]
+
+
+def test_recoger_sin_configurar_da_422_sin_escribir(ui):
+    before = snapshot_of(ui.store)
+
+    response = ui.post("/conectores/github/recoger", {})
+
+    assert response.status_code == 422
+    assert snapshot_of(ui.store) == before
+    assert ui.context["form_errors"] == ["El conector github no está configurado"]
+
+
+def test_un_fallo_de_persistencia_se_audita_como_fallido(ui, audit, monkeypatch):
+    ui.post("/conectores/github", GITHUB)
+
+    def boom(*args, **kwargs):
+        raise OSError("disco lleno")
+
+    monkeypatch.setattr(view, "request_collect", boom)
+
+    with pytest.raises(OSError):
+        ui.post("/conectores/github/recoger", {})
+
+    [line] = [r.message for r in audit.records if "action=recoger" in r.message]
+    assert "outcome=failed" in line
+
+
+def test_recoger_un_conector_desconocido_no_llega_al_handler(ui):
+    assert ui.post("/conectores/desconocido/recoger", {}).status_code in (403, 404)
+
+
+def test_un_lector_no_puede_recoger_aunque_el_conector_este_configurado(ui):
+    ui.post("/conectores/github", GITHUB)
+
+    page = view.build_page(ui.store, False, NOW)
+
+    assert {b.name: b.can_collect for b in page.blocks}["github"] is False

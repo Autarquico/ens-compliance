@@ -8,9 +8,11 @@
 {% block content %}
 {%- set p = page %}
 <h1>Conectores</h1>
-<p class="lead">Un conector recoge evidencias de un sistema. Aquí ves cuáles están configurados, cuándo recogió cada uno por última vez y qué falló. Esta página lee lo ya guardado: no recoge nada ni muestra credenciales.</p>
+<p class="lead">Un conector recoge evidencias de un sistema. Aquí ves cuáles están configurados, cuándo recogió cada uno por última vez y qué falló. Esta página lee lo ya guardado y no muestra credenciales: «Recoger ahora» solo deja una petición, la recoge el servicio de recogida.</p>
 {{ m.revision_humana() }}
+{% for e in form_errors %}<section class="notice notice-warn" role="alert"><p>{{ m.icon("alert") }} {{ e }}</p></section>{% endfor %}
 {% if saved_text %}<section class="notice notice-ok" role="status"><p>{{ saved_text }}</p></section>{% endif %}
+{% if requested_text %}<section class="notice notice-ok" role="status"><p>{{ requested_text }}</p></section>{% endif %}
 {% if p.registry_unreadable %}<section class="notice notice-warn" role="note"><p>{{ m.icon("alert") }} No se pudo leer el registro de conectores: se muestra el catálogo de esta versión. Puede faltar algún conector instalado, y su ausencia no es un estado favorable.</p></section>{% endif %}
 {% for note in p.manifest_notes %}<p class="muted">{{ m.icon("alert") }} {{ note }}</p>{% endfor %}
 {% for note in p.inventory_notes %}<p class="muted">{{ m.icon("alert") }} {{ note }}</p>{% endfor %}
@@ -92,6 +94,8 @@
     {% if l.sections_unreadable %}<p class="muted">{{ m.icon("alert") }} Hay secciones no legibles: no se muestran.</p>{% endif %}
     <p class="muted">Una recogida que termina bien solo dice que se pudo leer el sistema, no que se cumpla nada.</p>
     {% endif %}
+
+    {% if b.request or b.can_collect %}{% include "partials/conector_peticion.html" %}{% endif %}
 
     {% if b.name == "backups" %}
     <h3 class="sub">Repositorios</h3>

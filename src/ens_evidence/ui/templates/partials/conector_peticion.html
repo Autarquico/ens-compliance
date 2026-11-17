@@ -1,0 +1,17 @@
+{# Petición de recogida de un conector (`b: ConnectorBlock`; `read_only` oculta el botón). Estados fijos: nunca un mensaje en bruto. #}
+{% import "_macros.html" as m with context %}
+{%- set r = b.request %}
+<h3 class="sub">Recoger ahora</h3>
+{% if r %}
+<p><span class="badge tone-{{ r.tone }}">{{ m.icon(m.TONE_ICON[r.tone]) }}<span>{{ r.label }}</span> <span class="badge-code">{{ r.state }}</span></span>
+  {% if r.requested_at %}pedida el <span class="mono">{{ r.requested_at }}</span>{% endif %}</p>
+{% if r.text %}<p>{{ r.text }}</p>{% endif %}
+{% if r.result %}
+<p class="muted">{% if r.result.collection_label %}{{ r.result.collection_label }}{% if r.result.phase_label %} ({{ r.result.phase_label }}){% endif %}; {% endif %}{{ r.result.checks_label }}{% if r.result.evidence_id %} · evidencia <span class="mono">{{ r.result.evidence_id }}</span>{% elif r.result.evidence_invalid %} · evidencia: identificador no válido{% endif %}.</p>
+{% endif %}
+{% else %}
+<p class="muted">{{ m.icon("help") }} Ninguna petición de recogida de este conector.</p>
+{% endif %}
+{% if b.can_collect and not (read_only is defined and read_only) %}
+<form method="post" action="{{ b.collect_action }}"><div class="actions"><button class="btn" type="submit">Recoger ahora</button></div></form>
+{% endif %}

@@ -37,6 +37,12 @@ from ens_evidence.connectors.registry import (
 )
 from ens_evidence.models.contracts import EvidenceManifest
 from ens_evidence.models.enums import CollectionStatus
+from ens_evidence.scheduling.collect_requests import (
+    REQUESTS_PREFIX,
+    RequestRejected,
+    RequestStatus,
+    request_collect,
+)
 from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.models import Asset
 from ens_evidence.ui.audit import audit_write
@@ -72,6 +78,7 @@ from ens_evidence.ui.views.conectores_catalogo import (
     document_to_values,
     form_fields_to_document,
 )
+from ens_evidence.ui.views.conectores_peticion import RequestView, index_requests, request_view
 from ens_evidence.ui.views.conectores_recogida import (
     CollectionIndex,
     LastCollection,
@@ -86,6 +93,7 @@ from ens_evidence.workspace import WorkspaceError
 
 STEP = "conectores"
 ACTION = "configurar"
+COLLECT_ACTION = "recoger"
 LIST_PATH = "/conectores"
 ASSET_PATH = "/inventario/activos"
 NO_CHANGES = "sin-cambios"
@@ -160,6 +168,9 @@ class ConnectorBlock:
     results: tuple[ConnectorResults, ...]
     history_notes: tuple[str, ...]
     repositories: tuple[RepositoryState, ...] = ()  # solo `backups`
+    request: RequestView | None = None  # la última petición de recogida del conector
+    can_collect: bool = False
+    collect_action: str = ""
 
 
 @dataclass(frozen=True)
@@ -327,6 +338,7 @@ def _block(
     spec: ConnectorSpec,
     registered: Mapping[str, type[BaseModel]],
     index: CollectionIndex,
+    requests: Mapping[str, RequestStatus],
     inventory: _Inventory,
     can_edit: bool,
 ) -> ConnectorBlock:
@@ -339,6 +351,8 @@ def _block(
     asset_id = config.asset_id if name != "backups" else None
     contributions = latest_results(scan).get(asset_id, []) if asset_id else []
     last = last_collection(store, manifest, name) if manifest else None
+    latest = requests.get(name)
+    pending = request_view(latest) if latest else None
     return ConnectorBlock(
         name=name,
         label=spec.label,
@@ -359,15 +373,19 @@ def _block(
             if name == "backups" and manifest
             else ()
         ),
+        request=pending,
+        can_collect=can_edit and config.status == "configurado" and not (pending and pending.alive),
+        collect_action=f"{LIST_PATH}/{quote(name, safe='')}/{COLLECT_ACTION}",
     )
 
 
 def build_page(store: UiStore, can_edit: bool, now: datetime) -> ConectoresPage:
     registered, registry_failed = registered_connectors()
     index = index_collections(store)  # un solo `list_manifests` por petición
+    requests = index_requests(store, now)  # y un solo `list` de peticiones
     inventory = _inventory(store)
     blocks = tuple(
-        _block(store, spec, registered, index, inventory, can_edit)
+        _block(store, spec, registered, index, requests, inventory, can_edit)
         for spec in catalogue_for(registered)
     )
     return ConectoresPage(
@@ -450,7 +468,16 @@ def _page_of(
     store: UiStore = request.app.state.store
     inventory = _inventory(store)
     can_edit = permissions_of(request).edit
-    block = _block(store, spec, registered or {}, index_collections(store), inventory, can_edit)
+    now = request.app.state.clock()
+    block = _block(
+        store,
+        spec,
+        registered or {},
+        index_collections(store),
+        index_requests(store, now),
+        inventory,
+        can_edit,
+    )
     form = None
     prefill: dict[str, str] = {}
     if spec.editable:
@@ -482,7 +509,19 @@ def _saved(request: Request) -> tuple[str | None, str | None]:
     return None, None
 
 
-def listado(request: Request) -> Response:
+def _requested(request: Request) -> str | None:
+    name = request.query_params.get("pedida", "")
+    if name not in CATALOGUE:
+        return None
+    return (
+        f"Petición de recogida de {CATALOGUE[name].label} creada. "
+        "Se recogerá en cuanto el servicio esté libre; normalmente en menos de un minuto."
+    )
+
+
+def _listing(
+    request: Request, *, form_errors: list[str] | None = None, status: int = 200
+) -> Response:
     page = build_page(
         request.app.state.store, permissions_of(request).edit, request.app.state.clock()
     )
@@ -490,11 +529,18 @@ def listado(request: Request) -> Response:
     return render(
         request,
         "views/conectores.html",
+        status_code=status,
         **page_context(request, "conectores", "Conectores"),
         page=page,
         saved=saved,
         saved_text=saved_text,
+        requested_text=_requested(request),
+        form_errors=list(form_errors or []),
     )
+
+
+def listado(request: Request) -> Response:
+    return _listing(request)
 
 
 def ficha(request: Request) -> Response:
@@ -546,12 +592,21 @@ async def _read(request: Request) -> Form | Response:
         return error_page(request, 400, "No se ha entendido el formulario.")
 
 
-def _audit(request: Request, name: str, failed: bool, keys: list[str], at: datetime) -> None:
+def _audit(
+    request: Request,
+    name: str,
+    failed: bool,
+    keys: list[str],
+    at: datetime,
+    *,
+    action: str = ACTION,
+    fallback: str | None = None,
+) -> None:
     audit_write(
         identity=identity_of(request).email,
         step=STEP,
-        action=ACTION,
-        keys=(keys or [connector_config_key(name)]) if failed else keys,
+        action=action,
+        keys=(keys or [fallback or connector_config_key(name)]) if failed else keys,
         at=at,
         asset=name,
         failed=failed,
@@ -625,6 +680,27 @@ async def escribir(request: Request) -> Response:
     return RedirectResponse(f"{LIST_PATH}?hecho={name if changed else NO_CHANGES}", status_code=303)
 
 
+async def recoger(request: Request) -> Response:
+    """Deja una petición de recogida: no recoge nada; el fichero lo ejecuta el servicio `app`."""
+    name = request.path_params["conector"]
+    if name not in CATALOGUE:
+        raise HTTPException(404)
+    store, now = request.app.state.store.recording(), request.app.state.clock()
+    audit = {"action": COLLECT_ACTION, "fallback": f"{REQUESTS_PREFIX}/{name}/"}
+    try:
+        await run_in_threadpool(
+            request_collect, store, name, email=identity_of(request).email, now=now
+        )
+    except RequestRejected as rejected:
+        errors = [e[:1].upper() + e[1:] for e in rejected.errors]
+        return _listing(request, form_errors=errors, status=422)
+    except Exception:
+        _audit(request, name, True, store.written, now, **audit)
+        raise
+    _audit(request, name, False, store.written, now, **audit)
+    return RedirectResponse(f"{LIST_PATH}?pedida={quote(name, safe='')}", status_code=303)
+
+
 def _secret_fields(rejected: ConnectorEditRejected) -> set[str]:
     """Campos que el escritor rechazó por secreto: tampoco se repiten."""
     return {f for f, messages in rejected.errors.items() if SECRET_IN_FIELD in messages}
@@ -634,4 +710,5 @@ CONECTORES_ROUTES: list[BaseRoute] = [
     Route(LIST_PATH, listado, methods=["GET"]),
     Route(f"{LIST_PATH}/{{conector}}", ficha, methods=["GET"]),
     Route(f"{LIST_PATH}/{{conector}}", escribir, methods=["POST"]),
+    Route(f"{LIST_PATH}/{{conector}}/{COLLECT_ACTION}", recoger, methods=["POST"]),
 ]
