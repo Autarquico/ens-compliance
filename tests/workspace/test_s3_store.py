@@ -168,7 +168,20 @@ class _RecordingClient:
         self.calls.append(kwargs)
         if self._error:
             raise self._error
-        return {"Body": io.BytesIO(self._body)}
+        self.body = _CountingBody(self._body)
+        return {"Body": self.body}
+
+
+class _CountingBody(io.BytesIO):
+    """Cuerpo que anota cuántos bytes se le piden en cada lectura."""
+
+    def __init__(self, data):
+        super().__init__(data)
+        self.requested = []
+
+    def read(self, size=-1):
+        self.requested.append(size)
+        return super().read(size)
 
 
 def test_lectura_con_limite_envia_range_y_devuelve_el_prefijo():
@@ -181,9 +194,12 @@ def test_lectura_con_limite_envia_range_y_devuelve_el_prefijo():
 
 
 def test_lectura_con_limite_no_devuelve_mas_de_lo_pedido_aunque_el_backend_ignore_range():
-    store = S3Store(BUCKET, "org", client=_RecordingClient(b"abcdefgh"))
+    client = _RecordingClient(b"abcdefgh")
+    store = S3Store(BUCKET, "org", client=client)
 
     assert store.read_bytes("a.bin", 3) == b"abc"
+    assert client.body.requested == [3]
+    assert client.body.closed
 
 
 def test_lectura_sin_limite_no_envia_range():

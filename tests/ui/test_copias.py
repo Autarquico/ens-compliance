@@ -634,3 +634,13 @@ def test_una_prueba_rechazada_dice_que_su_revision_no_la_aprueba(web, example_st
     write_restore(example_store)
 
     assert "la marca como no aprobada" in block_of(web.get("/copias").text)
+
+
+def test_con_una_prueba_ilegible_no_dice_que_no_conste_ninguna(web, example_store):
+    seed(example_store)
+    example_store.write_text("evidence/restore-tests/RT-ROTO.yaml", ": no es yaml [")
+
+    block = block_of(web.get("/copias").text)
+
+    assert "ninguna prueba de restauración consta" not in block
+    assert "no se pueden atribuir" in block

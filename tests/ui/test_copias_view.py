@@ -425,6 +425,14 @@ def test_historial_ilegible_no_permite_negar_las_pruebas(local):
     assert p.repositories[0].tests_unattributable is True
 
 
+def test_una_prueba_ilegible_no_permite_negar_que_haya_prueba(local):
+    configured_with_snapshot(local)
+    local.write_text("evidence/restore-tests/RT-ROTO.yaml", ": no es yaml [")
+    block = page(local).repositories[0]
+    assert block.restore_test is None
+    assert block.tests_unattributable is True
+
+
 def test_la_atribucion_funciona_con_los_sujetos_de_los_checks_reales(local):
     write_config(local)
     manifest = evidence(local)

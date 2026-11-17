@@ -47,13 +47,17 @@ class S3Store:
             return b""
         extra = {} if limit is None else {"Range": f"bytes=0-{limit - 1}"}
         try:
-            body = self._client.get_object(Bucket=self._bucket, Key=self._full(key), **extra)
-            data: bytes = body["Body"].read()
+            body = self._client.get_object(Bucket=self._bucket, Key=self._full(key), **extra)[
+                "Body"
+            ]
+            data: bytes = body.read() if limit is None else body.read(limit)
+            if limit is not None:
+                body.close()
         except Exception as exc:
             if limit is not None and _error_code(exc) in _EMPTY_RANGE:
                 return b""
             raise _translate(exc) from exc
-        return data if limit is None else data[:limit]
+        return data
 
     def write_text(self, key: str, text: str) -> None:
         self.write_bytes(key, text.encode("utf-8"))

@@ -399,10 +399,8 @@ def _block(
         store, [e for _, r in recent for e in r.evidence_ids], repository, recent_subjects, now
     )
     own_tests = [t for t in tests if t.repository_id in subjects]
-    unattributable = (
-        not own_tests
-        and bool(tests or unreadable_tests)
-        and (not subjects or bool(scan.unreadable))
+    unattributable = not own_tests and (
+        unreadable_tests > 0 or (bool(tests) and (not subjects or bool(scan.unreadable)))
     )
     asset = assets.get(repository.asset_id)
     href, note = _asset_link(repository.asset_id, assets)
