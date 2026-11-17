@@ -86,6 +86,19 @@ CONNECTOR_FORMS: dict[str, Requirement] = {
     name: EDIT
     for name in ("github", "cloudflare", "google-workspace", "keystore", "passwords", "restic")
 }
+# Recoger solo lee del conector: los 7 del catálogo, `backups` incluido. Un test exige que coincida.
+COLLECT_CONNECTORS: dict[str, Requirement] = {
+    name: EDIT
+    for name in (
+        "backups",
+        "cloudflare",
+        "github",
+        "google-workspace",
+        "keystore",
+        "passwords",
+        "restic",
+    )
+}
 
 WIZARD_PATH = "/asistente/{slug}"
 DOSSIER_PATH = "/expediente/{dossier}/{accion}"
@@ -101,6 +114,7 @@ OPERATIONS: Operations = {
     ("POST", "/inventario/alta"): EDIT,
     ("POST", "/inventario/activos/{activo}/{accion}"): ByParam("accion", INVENTORY_ACTIONS),
     ("POST", "/conectores/{conector}"): ByParam("conector", CONNECTOR_FORMS),
+    ("POST", "/conectores/{conector}/recoger"): ByParam("conector", COLLECT_CONNECTORS),
     ("POST", "/preauditoria/preparar"): EDIT,
     ("POST", "/preauditoria/enviar"): SO,
     ("POST", "/preauditoria/hallazgos/{finding}"): SO,

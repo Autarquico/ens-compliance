@@ -17,6 +17,7 @@ WRITABLE_PREFIXES = (
     "evidence/manifests",
     "evidence/preaudits/requests",
     "evidence/preaudits/dispositions",
+    "evidence/collect-requests",
 )
 
 

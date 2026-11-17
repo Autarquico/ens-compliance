@@ -22,6 +22,7 @@ from ens_evidence.scope import approve_scope
 from ens_evidence.ui import wizard
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.authz import (
+    COLLECT_CONNECTORS,
     CONNECTOR_FORMS,
     DOSSIER_ACTIONS,
     INCIDENT_ACTIONS,
@@ -39,6 +40,7 @@ from ens_evidence.ui.views import dossier as dossier_view
 from ens_evidence.ui.views import incidents as incidents_view
 from ens_evidence.ui.views import inventory as inventory_view
 from ens_evidence.ui.views import matrix as matrix_view
+from ens_evidence.ui.views.conectores_catalogo import CATALOGUE
 from ens_evidence.ui.views.dossier import DOSSIER_ROUTES
 from ens_evidence.ui.views.matrix import MATRIX_ROUTES
 from ens_evidence.ui.views.status import STATUS_ROUTES
@@ -106,6 +108,7 @@ def test_la_tabla_clasifica_exactamente_las_acciones_de_cada_vista():
     assert set(incidents_view.ACTIONS) == set(INCIDENT_ACTIONS)
     assert set(inventory_view.ACTIONS) == set(INVENTORY_ACTIONS)
     assert set(conectores_view.EDITABLE) == set(CONNECTOR_FORMS)
+    assert set(CATALOGUE) == set(COLLECT_CONNECTORS)
 
 
 def test_toda_ruta_repartida_por_parametro_tiene_su_tabla():
@@ -117,6 +120,7 @@ def test_toda_ruta_repartida_por_parametro_tiene_su_tabla():
         ("POST", "/incidentes/{incidente}/{accion}"),
         ("POST", "/inventario/activos/{activo}/{accion}"),
         ("POST", "/conectores/{conector}"),
+        ("POST", "/conectores/{conector}/recoger"),
     }
 
 
@@ -137,6 +141,20 @@ def test_una_operacion_sin_clasificar_se_deniega_antes_de_escribir(
     assert response.status_code == 403
     assert snapshot_of(store) == before
     assert "reason=unknown_operation" in audit_lines(audit, "denied")[0]
+
+
+def test_recoger_con_un_conector_fuera_del_catalogo_se_deniega(ui, store, audit):
+    grant(store, True, *Role)
+
+    response = attempt(ui, "/conectores/desconocido/recoger")
+
+    assert response.status_code == 403
+    assert "reason=unknown_operation" in audit_lines(audit, "denied")[0]
+
+
+def test_recoger_lo_puede_pedir_quien_edita_para_cada_conector_del_catalogo():
+    for name in CATALOGUE:
+        assert COLLECT_CONNECTORS[name] is Need.EDIT
 
 
 async def _write_probe(request):
