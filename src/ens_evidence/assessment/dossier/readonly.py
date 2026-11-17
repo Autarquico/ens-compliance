@@ -39,8 +39,10 @@ class ReadOnlyStore:
         except UnicodeDecodeError as exc:
             raise NotText("el fichero no es texto UTF-8") from exc
 
-    def read_bytes(self, key: str) -> bytes:
-        return self._once("bytes", key, self._store.read_bytes)
+    def read_bytes(self, key: str, limit: int | None = None) -> bytes:
+        if limit is None:
+            return self._once("bytes", key, self._store.read_bytes)
+        return self._once(f"bytes[{limit}]", key, lambda k: self._store.read_bytes(k, limit))
 
     def exists(self, key: str) -> bool:
         return self._once("exists", key, self._store.exists)

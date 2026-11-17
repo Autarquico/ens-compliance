@@ -238,6 +238,27 @@ def test_tamano_excedido_cae_al_check(local, monkeypatch):
     assert page(local).repositories[0].last_snapshot is None
 
 
+def test_artefacto_excedido_se_lee_acotado(local, monkeypatch):
+    write_config(local)
+    manifest = evidence(local)
+    run(local, [check(manifest)])
+    size = len(local.read_bytes(manifest.artifact.key))
+    monkeypatch.setattr(copias, "MAX_ARTIFACT_BYTES", size - 1)
+    asked = []
+    original = UiStore.read_bytes
+
+    def spy(self, key, limit=None):
+        data = original(self, key, limit)
+        asked.append((key, limit, len(data)))
+        return data
+
+    monkeypatch.setattr(UiStore, "read_bytes", spy)
+    assert page(local).repositories[0].last_snapshot is None
+    mine = [call for call in asked if call[0] == manifest.artifact.key]
+    assert mine == [(manifest.artifact.key, size, size)]
+    assert all(read <= copias.MAX_ARTIFACT_BYTES + 1 for _, _, read in mine)
+
+
 def test_repositorio_ajeno_en_el_artefacto_cae_al_check(local):
     write_config(local)
     manifest = evidence(local, repo_id="otro", asset_id="otro-activo")

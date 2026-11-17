@@ -25,10 +25,13 @@ class LocalStore:
         except UnicodeDecodeError as exc:
             raise NotText("el fichero no es texto UTF-8") from exc
 
-    def read_bytes(self, key: str) -> bytes:
+    def read_bytes(self, key: str, limit: int | None = None) -> bytes:
         path = self._contained(normalize_key(key))
         try:
-            return path.read_bytes()
+            if limit is None:
+                return path.read_bytes()
+            with path.open("rb") as handle:
+                return handle.read(max(limit, 0))
         except (FileNotFoundError, IsADirectoryError, NotADirectoryError) as exc:
             raise NotFound("clave no encontrada") from exc
         except OSError as exc:

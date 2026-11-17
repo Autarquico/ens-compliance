@@ -894,8 +894,8 @@ class _Overlay:
     def read_text(self, key: str) -> str:
         return self._pending[key] if key in self._pending else self._inner.read_text(key)
 
-    def read_bytes(self, key: str) -> bytes:
-        return self.read_text(key).encode()
+    def read_bytes(self, key: str, limit: int | None = None) -> bytes:
+        return self.read_text(key).encode()[:limit]
 
     def write_text(self, key: str, text: str) -> None:
         self._pending[key] = text

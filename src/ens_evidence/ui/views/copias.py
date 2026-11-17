@@ -252,7 +252,7 @@ def _snapshot_time(
             or artifact.key != artifact_key(artifact.sha256)
         ):
             return None
-        raw = store.read_bytes(artifact.key)
+        raw = store.read_bytes(artifact.key, MAX_ARTIFACT_BYTES + 1)
         if len(raw) > MAX_ARTIFACT_BYTES or hashlib.sha256(raw).hexdigest() != artifact.sha256:
             return None
         return _newest(json.loads(raw), repository, subjects, now)

@@ -35,8 +35,8 @@ class UiStore:
     def read_text(self, key: str) -> str:
         return self._inner.read_text(key)
 
-    def read_bytes(self, key: str) -> bytes:
-        return self._inner.read_bytes(key)
+    def read_bytes(self, key: str, limit: int | None = None) -> bytes:
+        return self._inner.read_bytes(key, limit)
 
     def exists(self, key: str) -> bool:
         return self._inner.exists(key)
