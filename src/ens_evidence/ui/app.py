@@ -22,7 +22,7 @@ from ens_evidence.ui.authz import (
     role_denied_handler,
 )
 from ens_evidence.ui.config import UiConfig
-from ens_evidence.ui.pages import code_spans, error_page
+from ens_evidence.ui.pages import error_page, install_template_helpers
 from ens_evidence.ui.roles import RoleDenied
 from ens_evidence.ui.security import (
     SECURITY_HEADERS,
@@ -53,10 +53,9 @@ def create_ui_app(
     app.state.config = config
     app.state.store = UiStore(store)
     app.state.clock = clock
-    app.state.templates = jinja2.Environment(
-        loader=jinja2.FileSystemLoader(TEMPLATES_DIR), autoescape=True
+    app.state.templates = install_template_helpers(
+        jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATES_DIR), autoescape=True)
     )
-    app.state.templates.filters["code_spans"] = code_spans
     verifier = AccessVerifier(
         issuer=config.issuer, audience=config.access_aud, jwks_loader=jwks_loader, clock=clock
     )

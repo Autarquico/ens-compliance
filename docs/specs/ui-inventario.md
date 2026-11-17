@@ -6,13 +6,13 @@ status: active
 priority: P0
 size: M
 issue: 90
-prs: []
+prs: [91]
 related_issues: [90]
 depends_on: [web-ui, discovery-inventory, osquery-agents]
 supersedes: []
 related_specs: [web-ui, ui-copias, ui-conectores]
 created: 2026-11-16
-updated: 2026-11-16
+updated: 2026-11-17
 ---
 
 # UI de inventario

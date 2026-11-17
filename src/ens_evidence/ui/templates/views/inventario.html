@@ -1,0 +1,84 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{# Resumen de evidencia: icono + texto + código; un PASS solo es favorable con cobertura completa y nunca equivale a conformidad. #}
+{% macro evidencia(e) -%}
+{%- if e -%}
+<span class="badge tone-{{ e.tone }}">{{ m.icon(m.TONE_ICON[e.tone]) }}<span>{{ e.label }}</span> <span class="badge-code">{{ e.status }}</span></span>
+<div class="muted">{{ e.sentence }}</div>
+{%- if e.coverage == "parcial" %}<div class="muted">Cobertura parcial: no se puede dar por completo.{% for reason in e.partial_reasons %} {{ reason }}{% endfor %}</div>{% endif -%}
+{%- else -%}
+<span class="muted">{{ m.icon("help") }} sin evidencia</span>
+{%- endif -%}
+{%- endmacro %}
+{% block content %}
+{%- set can_write = permissions is defined and permissions.edit and not page.writes_blocked %}
+<h1>Inventario</h1>
+<p class="lead">Los activos de tu sistema: equipos, servidores, bases de datos y cuentas. Aquí ves qué hay, si entra en el alcance y qué resultados hay de cada uno. Un resultado es lo último que recogió un conector (una pieza que lee datos de un sistema), no una valoración.</p>
+{% if saved %}<section class="notice notice-ok" role="status"><p>{{ saved }}</p></section>{% endif %}
+{% if revoked_notice %}<section class="notice notice-warn" role="status"><p>{{ revoked_notice }}</p></section>{% endif %}
+{% if page.file_errors %}<section class="notice notice-warn" role="status" aria-labelledby="h-errores"><p id="h-errores"><strong>Hay ficheros del inventario con errores.</strong> {% if page.writes_blocked %}Hasta que los corrijas no se puede añadir, editar ni dar de baja nada.{% endif %}</p>
+  <ul>{% for e in page.file_errors %}<li>{{ e }}</li>{% endfor %}</ul></section>{% endif %}
+{% if page.integrity_warnings %}<section class="notice notice-warn" role="status"><p><strong>Avisos de coherencia.</strong> No impiden dar de alta activos, pero conviene revisarlos.</p>
+  <ul>{% for e in page.integrity_warnings %}<li>{{ e }}</li>{% endfor %}</ul></section>{% endif %}
+{% for note in page.history_notes %}<p class="muted">{{ note }}</p>{% endfor %}
+{% if page.writes_blocked %}<p class="muted">Solo lectura mientras el inventario no sea válido.</p>
+{% elif permissions is defined and permissions.edit %}<p><a class="btn btn-primary" href="/inventario/alta">Añadir un activo</a></p>
+{% else %}<p class="muted">Solo lectura: para añadir o editar activos hace falta permiso de edición.</p>{% endif %}
+
+<form class="filters" method="get" action="/inventario" aria-label="Filtros del listado">
+  {%- for name, label, options, chosen in [("tipo", "Tipo", page.filter_options.tipo, page.filters.tipo), ("despliegue", "Despliegue", page.filter_options.despliegue, page.filters.despliegue), ("alcance", "Alcance", page.filter_options.alcance, page.filters.alcance), ("estado", "Evidencia", page.filter_options.estado, page.filters.estado)] %}
+  <div class="field">
+    <label for="f-{{ name }}">{{ label }}</label>
+    <select id="f-{{ name }}" name="{{ name }}">
+      <option value="">Todos</option>
+      {%- for o in options %}<option value="{{ o.value }}"{% if o.value == chosen %} selected{% endif %}>{{ o.label }}</option>{% endfor %}
+    </select>
+  </div>
+  {%- endfor %}
+  <button class="btn" type="submit">Filtrar</button>
+  {% if page.filters.tipo or page.filters.despliegue or page.filters.alcance or page.filters.estado %}<a class="btn btn-ghost" href="/inventario">Quitar filtros</a>{% endif %}
+</form>
+
+<div class="table-wrap"><table>
+  <caption>{{ rows | length }} de {{ page.total }} activos</caption>
+  <thead><tr><th scope="col">Activo</th><th scope="col">Tipo</th><th scope="col">Despliegue</th><th scope="col">Alcance</th><th scope="col">Evidencia</th><th scope="col">Agente</th></tr></thead>
+  <tbody>
+  {%- for r in rows %}
+  <tr>
+    <th scope="row"><a href="{{ r.href }}">{{ r.id }}</a>{% if r.summary %}<div class="muted">{{ r.summary }}</div>{% endif %}</th>
+    <td>{{ r.type_label }}</td>
+    <td>{{ r.deployment_label }}</td>
+    <td>{{ r.scope_label }}{% if r.justification %}<div class="muted">{{ r.justification }}</div>{% endif %}</td>
+    <td>{{ evidencia(r.evidence) }}</td>
+    <td>{% if r.agent_href %}<a href="{{ r.agent_href }}">Ver agente</a>{% else %}<span class="muted">—</span>{% endif %}</td>
+  </tr>
+  {%- else %}
+  <tr><td colspan="6" class="muted">{% if page.total %}Ningún activo coincide con los filtros.{% else %}El inventario está vacío.{% endif %}</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+
+<section class="section" aria-labelledby="h-reconciliacion">
+  <h2 id="h-reconciliacion">Inventario frente a agentes</h2>
+  <p>Compara los equipos con agente con lo que has inventariado. Una diferencia no es un fallo: es algo que revisar. Esta comparación no cambia nada.</p>
+  {% for note in page.reconciliation.notes %}<p class="muted">{{ note }}</p>{% endfor %}
+  {% if page.reconciliation.rows %}
+  <div class="table-wrap"><table>
+    <caption>{{ page.reconciliation.rows | length }} diferencias</caption>
+    <thead><tr><th scope="col">Qué pasa</th><th scope="col">Activo</th><th scope="col">Nombre del equipo</th><th scope="col"><span class="sr-only">Acción</span></th></tr></thead>
+    <tbody>
+    {%- for r in page.reconciliation.rows %}
+    <tr>
+      <td>{{ m.icon("alert") }} {{ r.kind_label }}{% if r.detail %}<div class="muted">{{ r.detail }}</div>{% endif %}</td>
+      <th scope="row">{% if r.asset_href %}<a href="{{ r.asset_href }}">{{ r.asset_id }}</a>{% else %}<span class="mono">{{ r.asset_id }}</span>{% endif %}</th>
+      <td>{% if r.hostname %}<span class="mono">{{ r.hostname }}</span> <span class="muted">(agentes)</span>{% else %}<span class="muted">—</span>{% endif %}
+        {%- if r.hostname_mismatch %}<div>{{ m.icon("alert") }} <strong>Nombre distinto.</strong> En el inventario: {% if r.inventory_hostname %}<span class="mono">{{ r.inventory_hostname }}</span>{% else %}<span class="muted">sin nombre</span>{% endif %}.</div>{% endif %}</td>
+      <td>{% if r.prefill_href and can_write %}<a href="{{ r.prefill_href }}">Añadir al inventario</a>{% endif %}</td>
+    </tr>
+    {%- endfor %}
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No hay diferencias que mostrar.</p>{% endif %}
+</section>
+<p class="muted">Datos leídos el {{ page.generated_at }}. Un activo sin resultados no es un activo correcto: es un activo sin evidencia. Esta vista no declara conformidad.</p>
+{% endblock %}

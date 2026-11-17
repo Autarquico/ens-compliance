@@ -1,0 +1,59 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+<p><a href="{{ form.cancel_href }}">Volver al inventario</a></p>
+<h1>Añadir un activo</h1>
+<p class="lead">Un activo es cualquier cosa que forma parte del sistema: un portátil, un servidor, una base de datos, una cuenta en la nube. Se guarda en el inventario y en el alcance.</p>
+{% for e in form_errors %}<section class="notice notice-warn" role="alert"><p>{{ e }}</p></section>{% endfor %}
+{% if file_errors %}<section class="notice notice-warn" role="status"><p><strong>Hay ficheros del inventario con errores.</strong> No se puede guardar nada hasta corregirlos.</p>
+  <ul>{% for e in file_errors %}<li>{{ e }}</li>{% endfor %}</ul></section>{% endif %}
+{% if integrity_warnings %}<section class="notice notice-warn" role="status"><p><strong>Avisos de coherencia.</strong> No impiden guardar.</p>
+  <ul>{% for e in integrity_warnings %}<li>{{ e }}</li>{% endfor %}</ul></section>{% endif %}
+{% if not form.type %}
+<form method="get" action="{{ form.action }}">
+  <div class="field">
+    <label for="f-tipo">Tipo de activo</label>
+    <select id="f-tipo" name="tipo">
+      {%- for t in form.asset_types %}<option value="{{ t.value }}">{{ t.label }}</option>{% endfor %}
+    </select>
+    {{ m.field_errors("asset_type") }}
+  </div>
+  <div class="actions"><button class="btn btn-primary" type="submit">Elegir tipo</button><a class="btn" href="{{ form.cancel_href }}">Cancelar</a></div>
+</form>
+{% else %}
+<form method="post" action="{{ form.action }}" novalidate>{{ m.gate_open(blocked=writes_blocked) }}
+  <input type="hidden" name="asset_type" value="{{ form.type }}">
+  <p>Tipo: <strong>{{ form.type_label }}</strong></p>
+  {{ m.text_field("asset_id", "Identificador", hint="Sin espacios ni «/», por ejemplo «portatil-ana». No se puede cambiar después.") }}
+  {%- for f in form.fields %}
+  {{ m.text_field(f.name, f.label ~ ("" if f.required else " (opcional)"), hint=("Escribe sí o no." if f.kind == "bool" else None)) }}
+  {%- endfor %}
+  <div class="field">
+    <label for="f-asset_deployment">Despliegue<span class="hint">«Planificado» es un activo que aún no existe.</span></label>
+    <select id="f-asset_deployment" name="asset_deployment">
+      <option value="deployed"{% if form.deployment == "deployed" %} selected{% endif %}>Desplegado</option>
+      <option value="planned"{% if form.deployment == "planned" %} selected{% endif %}>Planificado</option>
+    </select>
+    {{ m.field_errors("asset_deployment") }}
+  </div>
+  <fieldset class="radios">
+    <legend>Alcance</legend>
+    <div class="check"><input type="radio" id="f-scope-included" name="scope" value="included"{% if form.scope == "included" %} checked{% endif %}><label for="f-scope-included">Entra en el alcance</label></div>
+    <div class="check"><input type="radio" id="f-scope-excluded" name="scope" value="excluded"{% if form.scope == "excluded" %} checked{% endif %}><label for="f-scope-excluded">Queda fuera del alcance</label></div>
+    {{ m.field_errors("scope") }}
+  </fieldset>
+  {{ m.text_field("justification", "Justificación", hint="Obligatoria si queda fuera del alcance: explica por qué.", multiline=True) }}
+  {% if form.approval_warning %}
+  <div class="notice notice-warn" role="note"><p><strong>Guardar revoca la aprobación del alcance.</strong> La aprobó {{ form.approval_warning.approved_by }} el {{ form.approval_warning.approved_at }}. Habrá que aprobarla de nuevo en el asistente.</p>
+    <div class="check"><input type="checkbox" id="f-acepto_revocacion" name="acepto_revocacion" value="1"{% if (values or {}).get("acepto_revocacion") %} checked{% endif %}><label for="f-acepto_revocacion">Lo entiendo y quiero guardar</label></div>
+    {{ m.field_errors("acepto_revocacion") }}</div>
+  {% endif %}
+  <p class="muted">No pegues contraseñas ni claves: se rechazan.</p>
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">Añadir activo</button>
+    <a class="btn" href="{{ form.cancel_href }}">Cancelar</a>
+  </div>
+{{ m.gate_close() }}</form>
+{% endif %}
+<p class="muted">Un activo sin resultados no es un activo correcto: es un activo sin evidencia. Esta vista no declara conformidad.</p>
+{% endblock %}

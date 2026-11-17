@@ -20,6 +20,7 @@ from ens_evidence.scope.inventory import (
     load_assets,
     load_inventory,
 )
+from ens_evidence.scope.loader import Document, ScopeDocuments, load_documents
 from ens_evidence.scope.models import (
     Asset,
     AssetsFile,
@@ -54,6 +55,7 @@ __all__ = [
     "DependenciesFile",
     "Dependency",
     "Deployment",
+    "Document",
     "Discrepancy",
     "DiscrepancyKind",
     "Exclusion",
@@ -66,6 +68,7 @@ __all__ = [
     "ReconciliationReport",
     "Revocation",
     "ScopeApprovalRejected",
+    "ScopeDocuments",
     "ScopeNotApproved",
     "ScopeState",
     "ScopeStatus",
@@ -77,6 +80,7 @@ __all__ = [
     "find_secrets",
     "fingerprint",
     "load_assets",
+    "load_documents",
     "load_inventory",
     "parse_observed",
     "reconcile",
