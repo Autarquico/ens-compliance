@@ -1,3 +1,4 @@
+import io
 import sys
 
 import boto3
@@ -153,3 +154,87 @@ def test_sin_boto3_el_mensaje_indica_el_extra(monkeypatch):
 
     with pytest.raises(StorageUnavailable, match=r"ens-evidence\[s3\]"):
         S3Store(BUCKET, "org")
+
+
+class _RecordingClient:
+    """Cliente que anota los argumentos de get_object y sirve un cuerpo fijo."""
+
+    def __init__(self, body, error=None):
+        self.calls = []
+        self._body = body
+        self._error = error
+
+    def get_object(self, **kwargs):
+        self.calls.append(kwargs)
+        if self._error:
+            raise self._error
+        self.body = _CountingBody(self._body)
+        return {"Body": self.body}
+
+
+class _CountingBody(io.BytesIO):
+    """Cuerpo que anota cuántos bytes se le piden en cada lectura."""
+
+    def __init__(self, data):
+        super().__init__(data)
+        self.requested = []
+
+    def read(self, size=-1):
+        self.requested.append(size)
+        return super().read(size)
+
+
+def test_lectura_con_limite_envia_range_y_devuelve_el_prefijo():
+    client = _RecordingClient(b"abcd")
+    store = S3Store(BUCKET, "org", client=client)
+
+    assert store.read_bytes("a.bin", 4) == b"abcd"
+    assert client.calls[0]["Range"] == "bytes=0-3"
+    assert client.calls[0]["Key"] == "org/a.bin"
+
+
+def test_lectura_con_limite_no_devuelve_mas_de_lo_pedido_aunque_el_backend_ignore_range():
+    client = _RecordingClient(b"abcdefgh")
+    store = S3Store(BUCKET, "org", client=client)
+
+    assert store.read_bytes("a.bin", 3) == b"abc"
+    assert client.body.requested == [3]
+    assert client.body.closed
+
+
+def test_lectura_sin_limite_no_envia_range():
+    client = _RecordingClient(b"abc")
+
+    assert S3Store(BUCKET, "org", client=client).read_bytes("a.bin") == b"abc"
+    assert "Range" not in client.calls[0]
+
+
+def test_limite_mayor_que_el_objeto_devuelve_todo():
+    store = S3Store(BUCKET, "org")
+    store.write_bytes("a.bin", b"abc")
+
+    assert store.read_bytes("a.bin", 100) == b"abc"
+    assert store.read_bytes("a.bin", 2) == b"ab"
+    assert store.read_bytes("a.bin") == b"abc"
+
+
+def test_objeto_vacio_con_limite_es_vacio():
+    store = S3Store(BUCKET, "org")
+    store.write_bytes("vacio.bin", b"")
+
+    assert store.read_bytes("vacio.bin", 10) == b""
+
+
+def test_rango_no_satisfacible_es_objeto_vacio():
+    client = _RecordingClient(b"", error=_client_error("InvalidRange"))
+
+    assert S3Store(BUCKET, "org", client=client).read_bytes("a.bin", 10) == b""
+
+
+def test_limite_cero_no_pide_cuerpo_y_respeta_la_ausencia():
+    store = S3Store(BUCKET, "org")
+    store.write_bytes("a.bin", b"abc")
+
+    assert store.read_bytes("a.bin", 0) == b""
+    with pytest.raises(NotFound):
+        store.read_bytes("nada.bin", 0)

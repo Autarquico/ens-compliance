@@ -110,11 +110,21 @@ esta pantalla muestra y guía, pero no ejecuta copias ni restauraciones.
     cobertura parcial (K6 de `ui-inventario`);
   - la copia propia sale de `backup.backup_status`;
   - las pruebas salen de `evidence/restore-tests`.
-- **Sin verificar:** qué guarda el conector de Restic de cada snapshot. Si no queda la fecha de
-  la última copia correcta fuera del resultado del check, se muestra la del resultado de
-  BACKUP-001 y se dice así.
-- **Sin verificar:** dónde consta la periodicidad de la política. Si no es legible por la
-  máquina, se muestra el umbral que usa BACKUP-001.
+- **Fecha de la última copia** (verificado en el plan):
+  - El conector guarda, por snapshot, solo su id, su fecha y si lo escribió el workspace. Ese
+    dato está en el artefacto en bruto que cita el resultado BACKUP-001.
+  - La página lo lee solo si cuadra todo: la clave canónica, la fuente `backups`, el sha256,
+    un máximo de 4 MiB y el mismo repositorio.
+  - Si algo no cuadra, muestra la fecha de la comprobación BACKUP-001 y lo dice, sin
+    atribuirle antigüedad de copia.
+- **Periodicidad** (verificado en el plan):
+  - La política no es legible por la máquina.
+  - Se muestra la frecuencia declarada en el activo del inventario, como texto.
+  - También se muestran los umbrales configurados para las comprobaciones (`max_backup_age_hours`,
+    `restore_test_validity_days`), presentados como umbrales y no como la política.
+- **Prueba de restauración.** Se muestran los datos declarados (fecha, revisor, caducidad
+  declarada y si la revisión la aprueba). El veredicto es solo el resultado registrado de
+  BACKUP-005.
 - La URL de Backrest sale de la configuración del kit (`copias.<dominio>`), nunca de un dato
   de la petición.
 

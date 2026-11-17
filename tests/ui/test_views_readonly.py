@@ -15,7 +15,7 @@ from ens_evidence.scope import approve_scope
 
 from .conftest import NOW, Session, snapshot_of, ui_client
 
-VIEWS = ["/", "/matriz", "/evidencias", "/expediente", "/preauditoria"]
+VIEWS = ["/", "/matriz", "/evidencias", "/expediente", "/preauditoria", "/copias"]
 BODY_MARKER = "CUERPO-EN-BRUTO-NO-MOSTRAR"
 
 

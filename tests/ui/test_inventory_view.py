@@ -35,6 +35,7 @@ from ens_evidence.ui.authz import INVENTORY_ACTIONS, OPERATIONS, ByParam
 from ens_evidence.ui.roles import ROLES_KEY, Grant, dump_roles
 from ens_evidence.ui.routes import ui_routes
 from ens_evidence.ui.store import UiStore
+from ens_evidence.ui.views import check_history
 from ens_evidence.ui.views import inventory as view
 from ens_evidence.ui.wizard import scope as wizard_scope
 from ens_evidence.ui.wizard.base import StepInput
@@ -1084,6 +1085,7 @@ LEAKS = (
     "hardware_uuid",
 )
 ALLOWED_LEAVES = (str, int, float, bool, type(None))
+VIEW_MODULES = (view.__name__, check_history.__name__)
 
 
 def leaves(value, path="ctx"):
@@ -1091,7 +1093,7 @@ def leaves(value, path="ctx"):
     if isinstance(value, ALLOWED_LEAVES):
         yield path, value
     elif dataclasses.is_dataclass(value) and not isinstance(value, type):
-        assert type(value).__module__ == view.__name__, f"{path}: {type(value)}"
+        assert type(value).__module__ in VIEW_MODULES, f"{path}: {type(value)}"
         for f in dataclasses.fields(value):
             yield from leaves(getattr(value, f.name), f"{path}.{f.name}")
     elif isinstance(value, dict):

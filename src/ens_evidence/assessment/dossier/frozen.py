@@ -42,9 +42,9 @@ class _WithoutLaterRuns:
         self._require_visible(key)
         return self._store.read_text(key)
 
-    def read_bytes(self, key: str) -> bytes:
+    def read_bytes(self, key: str, limit: int | None = None) -> bytes:
         self._require_visible(key)
-        return self._store.read_bytes(key)
+        return self._store.read_bytes(key, limit)
 
     def _require_visible(self, key: str) -> None:
         if key in self._hidden:

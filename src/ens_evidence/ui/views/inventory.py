@@ -5,11 +5,10 @@ paso «activos» del asistente. La plantilla recibe solo los DTO de este módulo
 `CheckResult` (su `reason` puede citar valores), un `AgentRecord` ni el uuid de un equipo.
 """
 
-from collections import defaultdict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any, NamedTuple
+from typing import Any
 from urllib.parse import quote, urlencode
 
 from starlette.concurrency import run_in_threadpool
@@ -19,14 +18,11 @@ from starlette.responses import RedirectResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from ens_evidence.agent.registry import RegistryError, load_registry
-from ens_evidence.checks.model import StoredCheckRun
 from ens_evidence.checks.store import RunScan, scan_runs
 from ens_evidence.connectors.config import connector_config_key, load_connector_config
 from ens_evidence.endpoint.agent_view import AgentView, build_views
 from ens_evidence.endpoint.config import CONFIG_NAME, EndpointConfig
 from ens_evidence.endpoint.evidence import load_host_evidence
-from ens_evidence.models.contracts import CheckResult
-from ens_evidence.models.enums import CheckStatus, CollectionStatus
 from ens_evidence.scope import (
     Asset,
     AssetType,
@@ -59,10 +55,17 @@ from ens_evidence.ui.pages import (
     page_context,
     permissions_of,
     render,
-    status_badge,
 )
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
+from ens_evidence.ui.views.check_history import (
+    ConnectorResults,
+    EvidenceSummary,
+    detail_results,
+    latest_results,
+    summary,
+    unreadable_notes,
+)
 from ens_evidence.ui.views.matrix import plain
 from ens_evidence.ui.wizard.base import StepRejected
 from ens_evidence.ui.wizard.scope import (
@@ -89,8 +92,6 @@ SCOPE_LABELS = {
 }
 STATUS_LABELS = {code: f"{text} ({code})" for code, (_, text) in STATUS_TEXT.items()}
 NO_EVIDENCE = "sin-evidencia"
-_WORST_FIRST = (CheckStatus.FAIL, CheckStatus.ERROR, CheckStatus.UNKNOWN, CheckStatus.PASS)
-_RANK = {status: rank for rank, status in enumerate(_WORST_FIRST)}
 
 NO_AGENTS_NOTE = "No hay agentes configurados: no hay equipos que comparar con el inventario."
 SAVED_TEXTS = {
@@ -130,26 +131,6 @@ class Choice:
 
 
 @dataclass(frozen=True)
-class EvidenceSummary:
-    """Lo que dicen los últimos resultados del activo, sin darlo por bueno más de lo que consta."""
-
-    status: str  # el peor: FAIL > ERROR > UNKNOWN > PASS
-    label: str  # texto llano del estado (con «parcial» si un PASS no tiene cobertura completa)
-    favorable: bool  # solo un PASS con cobertura completa; nunca implica conformidad
-    coverage: str  # "completa" | "parcial"
-    partial_reasons: tuple[str, ...]
-    connector: str  # los conectores de los que salen los resultados, separados por coma
-    finished_at: str  # la ejecución más reciente
-    checks: int
-    evidence_ids: tuple[str, ...]
-    sentence: str  # «Último resultado de N checks de <conector> el <fecha>»
-
-    @property
-    def tone(self) -> str:
-        return status_badge(self.status, self.status == "PASS" and not self.favorable)[0]
-
-
-@dataclass(frozen=True)
 class AssetRow:
     id: str
     href: str
@@ -163,23 +144,6 @@ class AssetRow:
     summary: str | None
     evidence: EvidenceSummary | None
     agent_href: str | None
-
-
-@dataclass(frozen=True)
-class CheckRow:
-    check_id: str
-    status: str
-    collection_status: str
-    reason_code: str | None
-    evidence_ids: tuple[str, ...]
-
-
-@dataclass(frozen=True)
-class ConnectorResults:
-    connector: str
-    finished_at: str
-    complete: bool
-    rows: tuple[CheckRow, ...]
 
 
 @dataclass(frozen=True)
@@ -360,113 +324,6 @@ def _errors(messages: list[str]) -> tuple[str, ...]:
     return tuple(dict.fromkeys(plain(m) for m in messages))
 
 
-# --- evidencia por activo ------------------------------------------------------------------------
-
-
-class Contribution(NamedTuple):
-    """La ejecución más reciente de un conector con resultados del activo."""
-
-    run: StoredCheckRun
-    results: list[CheckResult]
-    superseded: bool  # una ejecución posterior del conector ya no incluyó el activo
-
-
-def _latest_results(scan: RunScan) -> dict[str, list[Contribution]]:
-    """Por activo y conector legible, la última ejecución vigente que trae resultados suyos."""
-    found: dict[str, list[Contribution]] = defaultdict(list)
-    for connector in sorted(scan.runs):
-        live = scan.live(connector)
-        newest = len(live) - 1
-        seen: set[str] = set()
-        for position in range(newest, -1, -1):
-            run = live[position].run
-            mine: dict[str, list[CheckResult]] = defaultdict(list)
-            for result in run.results:
-                mine[result.asset_id].append(result)
-            for asset_id, results in mine.items():
-                if asset_id not in seen:
-                    seen.add(asset_id)
-                    found[asset_id].append(Contribution(run, results, position != newest))
-    return found
-
-
-def _unreadable_notes(scan: RunScan) -> tuple[str, ...]:
-    return tuple(
-        f"El historial de checks de {connector or 'un conector sin identificar'} no se ha podido "
-        "leer: no se muestran sus resultados."
-        for connector in sorted(scan.unreadable)
-    )
-
-
-def _partial_reasons(scan: RunScan, contributions: list[Contribution]) -> tuple[str, ...]:
-    reasons = [
-        "No se ha podido leer el historial de checks de "
-        f"{connector or 'un conector sin identificar'}."
-        for connector in sorted(scan.unreadable)
-    ]
-    for run, results, superseded in contributions:
-        if superseded:
-            reasons.append(
-                f"Una ejecución posterior de {run.connector} no incluyó este activo: "
-                "el resultado puede estar desactualizado."
-            )
-        if not run.complete:
-            reasons.append(f"La última ejecución de {run.connector} quedó incompleta.")
-        if any(r.collection_status is not CollectionStatus.SUCCESS for r in results):
-            reasons.append(f"En {run.connector}, algún check no pudo recoger sus datos.")
-    return tuple(dict.fromkeys(reasons))
-
-
-def _sentence(contributions: list[Contribution]) -> str:
-    parts = [
-        f"{len(results)} {'check' if len(results) == 1 else 'checks'} de {run.connector} "
-        f"el {format_instant(run.finished_at)}"
-        for run, results, _ in contributions
-    ]
-    return "Último resultado de " + "; ".join(parts)
-
-
-def _summary(scan: RunScan, contributions: list[Contribution]) -> EvidenceSummary:
-    results = [r for _, rs, _ in contributions for r in rs]
-    worst = min((r.status for r in results), key=_RANK.__getitem__)
-    reasons = _partial_reasons(scan, contributions)
-    coverage = "parcial" if reasons else "completa"
-    _, label = status_badge(worst.value, worst is CheckStatus.PASS and bool(reasons))
-    return EvidenceSummary(
-        status=worst.value,
-        label=label,
-        favorable=worst is CheckStatus.PASS and not reasons,
-        coverage=coverage,
-        partial_reasons=reasons,
-        connector=", ".join(run.connector for run, _, _ in contributions),
-        finished_at=format_instant(max(run.finished_at for run, _, _ in contributions)),
-        checks=len(results),
-        evidence_ids=tuple(sorted({e for r in results for e in r.evidence_ids})),
-        sentence=_sentence(contributions),
-    )
-
-
-def _detail_results(contributions: list[Contribution]) -> tuple[ConnectorResults, ...]:
-    return tuple(
-        ConnectorResults(
-            connector=run.connector,
-            finished_at=format_instant(run.finished_at),
-            complete=run.complete,
-            rows=tuple(
-                CheckRow(
-                    r.check_id,
-                    r.status.value,
-                    r.collection_status.value,
-                    r.reason_code,
-                    tuple(r.evidence_ids),
-                )  # nunca `reason`: puede citar valores de las filas
-                for r in sorted(results, key=lambda r: r.check_id)
-            ),
-        )
-        for run, results, _ in contributions
-    )
-
-
 # --- filas y ficha -------------------------------------------------------------------------------
 
 
@@ -483,7 +340,7 @@ def _placements(system: SystemScope | None) -> dict[str, tuple[str, str | None]]
 def _rows(loaded: Loaded) -> list[AssetRow]:
     placements = _placements(loaded.docs.system.model)
     unknown = loaded.docs.system.model is None
-    evidence = _latest_results(loaded.scan)
+    evidence = latest_results(loaded.scan)
     rows = []
     for asset in loaded.assets:
         scope, justification = placements.get(
@@ -502,7 +359,7 @@ def _rows(loaded: Loaded) -> list[AssetRow]:
                 scope_label=SCOPE_LABELS[scope],
                 justification=justification,
                 summary=asset_summary(asset.model_dump(exclude_none=True)),
-                evidence=_summary(loaded.scan, contributions) if contributions else None,
+                evidence=summary(loaded.scan, contributions) if contributions else None,
                 agent_href=f"/agentes/{_quoted(asset.id)}" if asset.id in loaded.admitted else None,
             )
         )
@@ -553,13 +410,13 @@ def _detail(loaded: Loaded, row: AssetRow, asset: Asset) -> AssetDetail:
         *((REMOVAL_UNKNOWN,) if not known else ()),
         *((REMOVAL_REFERENCED,) if referenced else ()),
     )
-    contributions = _latest_results(loaded.scan).get(asset.id, [])
+    contributions = latest_results(loaded.scan).get(asset.id, [])
     return AssetDetail(
         row=row,
         fields=_fields(asset),
         services=services,
         dependencies=dependencies,
-        results=_detail_results(contributions),
+        results=detail_results(contributions),
         referenced=referenced,
         references_known=known,
         removal_blockers=blockers,
@@ -754,7 +611,7 @@ def _list_page(
         integrity_warnings=_errors(loaded.docs.integrity_errors),
         writes_blocked=loaded.writes_blocked,
         reconciliation=reconciliation,
-        history_notes=_unreadable_notes(loaded.scan),
+        history_notes=unreadable_notes(loaded.scan),
         generated_at=format_instant(loaded.now),
     )
     return render(
@@ -858,7 +715,7 @@ def _blocked_context(loaded: Loaded) -> dict[str, Any]:
         "writes_blocked": loaded.writes_blocked,
         "file_errors": _errors(loaded.docs.document_errors),
         "integrity_warnings": _errors(loaded.docs.integrity_errors),
-        "history_notes": _unreadable_notes(loaded.scan),
+        "history_notes": unreadable_notes(loaded.scan),
         "generated_at": format_instant(loaded.now),
     }
 
@@ -1037,8 +894,8 @@ class _Overlay:
     def read_text(self, key: str) -> str:
         return self._pending[key] if key in self._pending else self._inner.read_text(key)
 
-    def read_bytes(self, key: str) -> bytes:
-        return self.read_text(key).encode()
+    def read_bytes(self, key: str, limit: int | None = None) -> bytes:
+        return self.read_text(key).encode()[:limit]
 
     def write_text(self, key: str, text: str) -> None:
         self._pending[key] = text

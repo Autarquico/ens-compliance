@@ -129,5 +129,5 @@ class _AsKnown:
     def list(self, prefix: str = "") -> list[str]:
         return [key for key in self._store.list(prefix) if self._shown(key)]
 
-    def read_bytes(self, key: str) -> bytes:
-        return self._store.read_bytes(key)
+    def read_bytes(self, key: str, limit: int | None = None) -> bytes:
+        return self._store.read_bytes(key, limit)

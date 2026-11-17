@@ -150,3 +150,32 @@ def test_fallo_de_almacenamiento_se_traduce_a_error_tipado(store, monkeypatch):
     monkeypatch.setattr(os, "replace", boom)
     with pytest.raises(StorageUnavailable):
         store.write_text("a.txt", "x")
+
+
+def test_lectura_con_limite_devuelve_el_prefijo(store):
+    store.write_bytes("a.bin", b"abcdef")
+
+    assert store.read_bytes("a.bin", 3) == b"abc"
+    assert store.read_bytes("a.bin", 6) == b"abcdef"
+    assert store.read_bytes("a.bin", 0) == b""
+
+
+def test_lectura_sin_limite_devuelve_todo_y_limite_mayor_tambien(store):
+    store.write_bytes("a.bin", b"abcdef")
+
+    assert store.read_bytes("a.bin") == b"abcdef"
+    assert store.read_bytes("a.bin", 1000) == b"abcdef"
+
+
+def test_lectura_con_limite_de_clave_inexistente_lanza_not_found(store):
+    with pytest.raises(NotFound):
+        store.read_bytes("nada.bin", 5)
+
+
+def test_lectura_con_limite_no_carga_el_fichero_entero(store, monkeypatch):
+    store.write_bytes("a.bin", b"x" * 1000)
+    monkeypatch.setattr(
+        "pathlib.Path.read_bytes", lambda self: (_ for _ in ()).throw(AssertionError("completo"))
+    )
+
+    assert store.read_bytes("a.bin", 10) == b"x" * 10

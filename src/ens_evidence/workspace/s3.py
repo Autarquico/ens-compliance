@@ -15,6 +15,7 @@ from ens_evidence.workspace.keys import normalize_key
 _NOT_FOUND = {"404", "NoSuchKey", "NotFound"}
 _EXISTS = {"412", "PreconditionFailed"}
 _UNSUPPORTED = {"501", "NotImplemented", "InvalidArgument", "UnsupportedOperation"}
+_EMPTY_RANGE = {"416", "InvalidRange"}
 _DENIED = {"401", "403", "AccessDenied", "InvalidAccessKeyId", "SignatureDoesNotMatch"}
 
 
@@ -39,11 +40,24 @@ class S3Store:
         except UnicodeDecodeError as exc:
             raise NotText("el fichero no es texto UTF-8") from exc
 
-    def read_bytes(self, key: str) -> bytes:
+    def read_bytes(self, key: str, limit: int | None = None) -> bytes:
+        if limit is not None and limit <= 0:
+            if not self.exists(key):
+                raise NotFound("clave no encontrada")
+            return b""
+        extra = {} if limit is None else {"Range": f"bytes=0-{limit - 1}"}
         try:
-            return self._client.get_object(Bucket=self._bucket, Key=self._full(key))["Body"].read()
+            body = self._client.get_object(Bucket=self._bucket, Key=self._full(key), **extra)[
+                "Body"
+            ]
+            data: bytes = body.read() if limit is None else body.read(limit)
+            if limit is not None:
+                body.close()
         except Exception as exc:
+            if limit is not None and _error_code(exc) in _EMPTY_RANGE:
+                return b""
             raise _translate(exc) from exc
+        return data
 
     def write_text(self, key: str, text: str) -> None:
         self.write_bytes(key, text.encode("utf-8"))

@@ -35,6 +35,7 @@ from ens_evidence.ui.views import NO_DATE, format_instant
 
 CONNECTOR = "backups"
 STEP = "copias"
+STATUS_URLS = {"copias": "/copias"}
 ENABLE_COMMAND = "deploy/box.sh kit enable copias <fichero>"
 
 STATES = {
@@ -168,7 +169,8 @@ def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any
         "measures": list(tool.measures),
         "measures_note": tool.measures_note,
         "hints": tool.hints,
-        "open_url": _open_url(host),
+        "open_url": open_url(host),
+        "status_url": STATUS_URLS.get(tool.id),
         "wizard_url": tool.wizard_url,
         "cta": tool.cta,
         "help_url": f"/ayuda/{tool.help_slug}",
@@ -178,7 +180,7 @@ def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any
     }
 
 
-def _open_url(host: str | None) -> str | None:
+def open_url(host: str | None) -> str | None:
     return f"https://{host}" if host else None
 
 
