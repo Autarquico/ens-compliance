@@ -1,14 +1,16 @@
 """Edición mínima del alcance: añadir un activo y rellenar el sistema, sin tocar la aprobación."""
 
-from collections.abc import Mapping
+import threading
+from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime
+from functools import wraps
 from typing import Any, get_args, get_origin
 
 import yaml
 from pydantic import BaseModel, ValidationError
 
-from ens_evidence.scope.approval import revoke_approval
+from ens_evidence.scope.approval import APPROVAL_KEY, revoke_approval
 from ens_evidence.scope.inventory import (
     ASSETS_KEY,
     DEPENDENCIES_KEY,
@@ -32,6 +34,20 @@ from ens_evidence.yaml_unique import safe_load_unique
 
 _TRUE = {"true", "si", "sí", "yes"}
 _FALSE = {"false", "no"}
+
+
+_WRITES = threading.Lock()  # una escritura del alcance a la vez dentro de este proceso
+
+
+def serialized[**P, R](operation: Callable[P, R]) -> Callable[P, R]:
+    """Lectura, validación, escritura y revocación de una operación, sin intercalarse con otra."""
+
+    @wraps(operation)
+    def run(*args: P.args, **kwargs: P.kwargs) -> R:
+        with _WRITES:
+            return operation(*args, **kwargs)
+
+    return run
 
 
 class ScopeEditRejected(Exception):
@@ -116,6 +132,7 @@ def _with_included(system: dict[str, Any], list_name: str, ref: str) -> dict[str
     return {**system, list_name: [*(system.get(list_name) or []), ref]}
 
 
+@serialized
 def add_asset(store: WorkspaceStore, fields: dict[str, Any], include: bool, now: datetime) -> bool:
     """Añade un activo (y lo incluye en el alcance si include). True si revocó la aprobación.
 
@@ -131,6 +148,7 @@ def add_asset(store: WorkspaceStore, fields: dict[str, Any], include: bool, now:
     return revoke_approval(store, "scope add-asset", now)
 
 
+@serialized
 def add_service(
     store: WorkspaceStore,
     service_id: str,
@@ -150,6 +168,7 @@ def add_service(
     return revoke_approval(store, "scope add-service", now)
 
 
+@serialized
 def include_asset(store: WorkspaceStore, asset_id: str, now: datetime) -> bool:
     """Incluye en el alcance un activo existente. True si revocó la aprobación.
 
@@ -167,6 +186,7 @@ def include_asset(store: WorkspaceStore, asset_id: str, now: datetime) -> bool:
     return revoke_approval(store, "scope include-asset", now)
 
 
+@serialized
 def include_service(store: WorkspaceStore, service_id: str, now: datetime) -> bool:
     """Incluye en el alcance un servicio existente. True si revocó la aprobación.
 
@@ -184,6 +204,7 @@ def include_service(store: WorkspaceStore, service_id: str, now: datetime) -> bo
     return revoke_approval(store, "scope include-service", now)
 
 
+@serialized
 def add_dependency(
     store: WorkspaceStore,
     dependency_id: str,
@@ -201,6 +222,7 @@ def add_dependency(
     return revoke_approval(store, "scope add-dependency", now)
 
 
+@serialized
 def set_system(store: WorkspaceStore, name: str, description: str, now: datetime) -> bool:
     """Rellena nombre y descripción del sistema. True si revocó la aprobación."""
     _reject_secrets(SYSTEM_KEY, {"name": name, "description": description})
@@ -301,18 +323,23 @@ def _commit(
 ) -> bool:
     """Escribe (clave, texto previo, documento nuevo); si una falla, restaura las anteriores.
 
-    Revoca la aprobación solo tras escribir todo. False si no había nada que escribir.
+    Revoca la aprobación solo tras escribir todo; si la revocación falla, restaura también
+    todo lo escrito. False si no había nada que escribir.
     """
     written: list[tuple[str, str]] = []
     try:
         for key, previous, document in changed:
             _write(store, key, document)
             written.append((key, previous))
+        if not changed:
+            return False
+        if store.exists(APPROVAL_KEY):
+            written.append((APPROVAL_KEY, store.read_text(APPROVAL_KEY)))
+        return revoke_approval(store, reason, now)
     except Exception:
         for key, previous in reversed(written):
             store.write_text(key, previous)
         raise
-    return revoke_approval(store, reason, now) if changed else False
 
 
 def _asset_documents(
@@ -322,6 +349,7 @@ def _asset_documents(
     return assets, system, store.read_text(ASSETS_KEY), store.read_text(SYSTEM_KEY)
 
 
+@serialized
 def save_asset(
     store: WorkspaceStore,
     asset_id: str,
@@ -387,6 +415,7 @@ def asset_references(
     return found
 
 
+@serialized
 def remove_asset(store: WorkspaceStore, asset_id: str, now: datetime) -> bool:
     """Da de baja un activo del inventario y del alcance. True si revocó la aprobación.
 

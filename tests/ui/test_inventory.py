@@ -221,6 +221,44 @@ def test_un_filtro_sin_coincidencias_lo_dice(web):
 # --- Scenario: ficha del activo ----------------------------------------------------------------
 
 
+def partial_history(store):
+    """Ejecución 1 con SERVER y facturas; la 2, posterior, solo con facturas."""
+    record(
+        store,
+        "endpoint",
+        [result(SERVER, CheckStatus.PASS), result("app-facturas", CheckStatus.PASS)],
+        ago=2,
+    )
+    record(store, "endpoint", [result("app-facturas", CheckStatus.PASS)], ago=1)
+
+
+def test_el_listado_conserva_el_ultimo_resultado_de_un_activo_que_una_ejecucion_posterior_omite(
+    web, example_store
+):
+    partial_history(example_store)
+
+    html = web.get("/inventario").text
+
+    omitted = row_of(html, SERVER)
+    assert "sin evidencia" not in omitted
+    assert "2026-11-08 10:00 UTC" in text(omitted)  # la fecha de la ejecución que lo trae
+    assert "Sin fallos, parcial" in omitted and "tone-ok" not in omitted  # nunca favorable
+    covered = row_of(html, "app-facturas")
+    assert favorable(covered) and "2026-11-08 11:00 UTC" in text(covered)
+
+
+def test_la_ficha_conserva_el_ultimo_resultado_de_un_activo_que_una_ejecucion_posterior_omite(
+    web, example_store
+):
+    partial_history(example_store)
+
+    page = text(web.get(f"/inventario/activos/{SERVER}").text)
+
+    assert "HOST-001" in page and "EV-1" in page
+    assert "2026-11-08 10:00 UTC" in page and "Cobertura parcial" in page
+    assert "no incluyó este activo" in page
+
+
 def test_la_ficha_muestra_campos_servicio_y_resultados_por_conector_con_fuente_y_fecha(
     web, example_store
 ):

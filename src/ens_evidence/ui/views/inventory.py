@@ -5,12 +5,11 @@ paso «activos» del asistente. La plantilla recibe solo los DTO de este módulo
 `CheckResult` (su `reason` puede citar valores), un `AgentRecord` ni el uuid de un equipo.
 """
 
-import threading
 from collections import defaultdict
 from collections.abc import Callable, Mapping
 from dataclasses import dataclass
 from datetime import datetime, timedelta
-from typing import Any
+from typing import Any, NamedTuple
 from urllib.parse import quote, urlencode
 
 from starlette.concurrency import run_in_threadpool
@@ -80,7 +79,6 @@ LIST_PATH = "/inventario"
 NEW_PATH = "/inventario/alta"
 ASSET_PATH = "/inventario/activos"
 
-_LOCK = threading.Lock()  # una escritura a la vez dentro de este proceso (K2)
 
 DEPLOYMENT_LABELS = {Deployment.DEPLOYED: "Desplegado", Deployment.PLANNED: "Planificado"}
 SCOPE_LABELS = {
@@ -364,22 +362,31 @@ def _errors(messages: list[str]) -> tuple[str, ...]:
 
 # --- evidencia por activo ------------------------------------------------------------------------
 
-Contribution = tuple[StoredCheckRun, list[CheckResult]]  # la ejecución y sus resultados del activo
+
+class Contribution(NamedTuple):
+    """La ejecución más reciente de un conector con resultados del activo."""
+
+    run: StoredCheckRun
+    results: list[CheckResult]
+    superseded: bool  # una ejecución posterior del conector ya no incluyó el activo
 
 
 def _latest_results(scan: RunScan) -> dict[str, list[Contribution]]:
-    """Por activo, los resultados de la última ejecución vigente de cada conector legible."""
+    """Por activo y conector legible, la última ejecución vigente que trae resultados suyos."""
     found: dict[str, list[Contribution]] = defaultdict(list)
     for connector in sorted(scan.runs):
         live = scan.live(connector)
-        if not live:
-            continue
-        run = live[-1].run
-        mine: dict[str, list[CheckResult]] = defaultdict(list)
-        for result in run.results:
-            mine[result.asset_id].append(result)
-        for asset_id, results in mine.items():
-            found[asset_id].append((run, results))
+        newest = len(live) - 1
+        seen: set[str] = set()
+        for position in range(newest, -1, -1):
+            run = live[position].run
+            mine: dict[str, list[CheckResult]] = defaultdict(list)
+            for result in run.results:
+                mine[result.asset_id].append(result)
+            for asset_id, results in mine.items():
+                if asset_id not in seen:
+                    seen.add(asset_id)
+                    found[asset_id].append(Contribution(run, results, position != newest))
     return found
 
 
@@ -397,7 +404,12 @@ def _partial_reasons(scan: RunScan, contributions: list[Contribution]) -> tuple[
         f"{connector or 'un conector sin identificar'}."
         for connector in sorted(scan.unreadable)
     ]
-    for run, results in contributions:
+    for run, results, superseded in contributions:
+        if superseded:
+            reasons.append(
+                f"Una ejecución posterior de {run.connector} no incluyó este activo: "
+                "el resultado puede estar desactualizado."
+            )
         if not run.complete:
             reasons.append(f"La última ejecución de {run.connector} quedó incompleta.")
         if any(r.collection_status is not CollectionStatus.SUCCESS for r in results):
@@ -409,13 +421,13 @@ def _sentence(contributions: list[Contribution]) -> str:
     parts = [
         f"{len(results)} {'check' if len(results) == 1 else 'checks'} de {run.connector} "
         f"el {format_instant(run.finished_at)}"
-        for run, results in contributions
+        for run, results, _ in contributions
     ]
     return "Último resultado de " + "; ".join(parts)
 
 
 def _summary(scan: RunScan, contributions: list[Contribution]) -> EvidenceSummary:
-    results = [r for _, rs in contributions for r in rs]
+    results = [r for _, rs, _ in contributions for r in rs]
     worst = min((r.status for r in results), key=_RANK.__getitem__)
     reasons = _partial_reasons(scan, contributions)
     coverage = "parcial" if reasons else "completa"
@@ -426,8 +438,8 @@ def _summary(scan: RunScan, contributions: list[Contribution]) -> EvidenceSummar
         favorable=worst is CheckStatus.PASS and not reasons,
         coverage=coverage,
         partial_reasons=reasons,
-        connector=", ".join(run.connector for run, _ in contributions),
-        finished_at=format_instant(max(run.finished_at for run, _ in contributions)),
+        connector=", ".join(run.connector for run, _, _ in contributions),
+        finished_at=format_instant(max(run.finished_at for run, _, _ in contributions)),
         checks=len(results),
         evidence_ids=tuple(sorted({e for r in results for e in r.evidence_ids})),
         sentence=_sentence(contributions),
@@ -451,7 +463,7 @@ def _detail_results(contributions: list[Contribution]) -> tuple[ConnectorResults
                 for r in sorted(results, key=lambda r: r.check_id)
             ),
         )
-        for run, results in contributions
+        for run, results, _ in contributions
     )
 
 
@@ -1056,66 +1068,63 @@ def _api_errors(store: UiStore, operation: Callable[[Any], bool]) -> list[str]:
 
 
 def _create(store: UiStore, now: datetime, form: Form) -> bool:
-    with _LOCK:
-        _, warning = _guard(store)
-        errors = _accepted(form, warning)
-        kind = _kind(first(form, "asset_type"))
-        if kind is None:
-            raise Rejected({**errors, "asset_type": ["Elige un tipo de activo."]})
-        changes, field_errors = _asset_changes(form, kind, blank_clears=False)
-        choice, scope_errors = _scope_choice(form, required=True)
-        errors = {**errors, **field_errors, **scope_errors, **_routable(first(form, "asset_id"))}
-        if errors:
-            ready = not field_errors and "id" in changes
-            raise Rejected(
-                errors,
-                _api_errors(
-                    store, lambda s: save_asset(s, changes["id"], changes, choice, now, create=True)
-                )
-                if ready
-                else [],
+    _, warning = _guard(store)
+    errors = _accepted(form, warning)
+    kind = _kind(first(form, "asset_type"))
+    if kind is None:
+        raise Rejected({**errors, "asset_type": ["Elige un tipo de activo."]})
+    changes, field_errors = _asset_changes(form, kind, blank_clears=False)
+    choice, scope_errors = _scope_choice(form, required=True)
+    errors = {**errors, **field_errors, **scope_errors, **_routable(first(form, "asset_id"))}
+    if errors:
+        ready = not field_errors and "id" in changes
+        raise Rejected(
+            errors,
+            _api_errors(
+                store, lambda s: save_asset(s, changes["id"], changes, choice, now, create=True)
             )
-        return _api(lambda: save_asset(store, changes["id"], changes, choice, now, create=True))
+            if ready
+            else [],
+        )
+    return _api(lambda: save_asset(store, changes["id"], changes, choice, now, create=True))
 
 
 def _edit(store: UiStore, now: datetime, asset_id: str, form: Form) -> bool:
-    with _LOCK:
-        docs, warning = _guard(store)
-        assert docs.assets.model is not None
-        existing = next((a for a in docs.assets.model.assets if a.id == asset_id), None)
-        if existing is None:
-            raise HTTPException(404)
-        kind_fields = [f.name for f in _form_fields(existing.type)[2]]
-        posted = {**form, "asset_id": [asset_id]}
-        changes, field_errors = _asset_changes(posted, existing.type, blank_clears=True)
-        for name in kind_fields:  # lo que el formulario no trae se conserva
-            if name not in form:
-                changes.pop(name.removeprefix("asset_"), None)
-        if "asset_deployment" not in form:
-            changes.pop("deployment", None)
-        choice, scope_errors = _scope_choice(form, required=False)
-        errors = {**_accepted(form, warning), **field_errors, **scope_errors}
-        if errors:
-            raise Rejected(
-                errors,
-                _api_errors(
-                    store, lambda s: save_asset(s, asset_id, changes, choice, now, create=False)
-                )
-                if not field_errors
-                else [],
+    docs, warning = _guard(store)
+    assert docs.assets.model is not None
+    existing = next((a for a in docs.assets.model.assets if a.id == asset_id), None)
+    if existing is None:
+        raise HTTPException(404)
+    kind_fields = [f.name for f in _form_fields(existing.type)[2]]
+    posted = {**form, "asset_id": [asset_id]}
+    changes, field_errors = _asset_changes(posted, existing.type, blank_clears=True)
+    for name in kind_fields:  # lo que el formulario no trae se conserva
+        if name not in form:
+            changes.pop(name.removeprefix("asset_"), None)
+    if "asset_deployment" not in form:
+        changes.pop("deployment", None)
+    choice, scope_errors = _scope_choice(form, required=False)
+    errors = {**_accepted(form, warning), **field_errors, **scope_errors}
+    if errors:
+        raise Rejected(
+            errors,
+            _api_errors(
+                store, lambda s: save_asset(s, asset_id, changes, choice, now, create=False)
             )
-        return _api(lambda: save_asset(store, asset_id, changes, choice, now, create=False))
+            if not field_errors
+            else [],
+        )
+    return _api(lambda: save_asset(store, asset_id, changes, choice, now, create=False))
 
 
 def _remove(store: UiStore, now: datetime, asset_id: str, form: Form) -> bool:
-    with _LOCK:
-        _, warning = _guard(store)
-        errors = _accepted(form, warning)
-        if first(form, "confirmar") != asset_id:
-            errors["confirmar"] = ["Escribe el identificador del activo para confirmar la baja."]
-        if errors:
-            raise Rejected(errors)
-        return _api(lambda: remove_asset(store, asset_id, now))
+    _, warning = _guard(store)
+    errors = _accepted(form, warning)
+    if first(form, "confirmar") != asset_id:
+        errors["confirmar"] = ["Escribe el identificador del activo para confirmar la baja."]
+    if errors:
+        raise Rejected(errors)
+    return _api(lambda: remove_asset(store, asset_id, now))
 
 
 ACTIONS: dict[str, Callable[[UiStore, datetime, str, Form], bool]] = {

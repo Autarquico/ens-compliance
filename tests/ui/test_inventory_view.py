@@ -36,6 +36,8 @@ from ens_evidence.ui.roles import ROLES_KEY, Grant, dump_roles
 from ens_evidence.ui.routes import ui_routes
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import inventory as view
+from ens_evidence.ui.wizard import scope as wizard_scope
+from ens_evidence.ui.wizard.base import StepInput
 from ens_evidence.workspace import LocalStore
 
 from .conftest import NOW, ORIGIN, Session, jwks_for, snapshot_of
@@ -833,6 +835,38 @@ def test_dos_altas_intercaladas_no_se_pisan_la_segunda_ve_lo_de_la_primera(examp
 
     assert outcomes["first"] is False
     rejected = outcomes["second"]
+    assert isinstance(rejected, view.Rejected)
+    assert any("ya existe" in e for e in rejected.form_errors)
+    document = yaml.safe_load(example_store.read_text("scope/assets.yaml"))
+    assert [a["id"] for a in document["assets"]].count("prov-x") == 1
+
+
+def test_un_alta_del_asistente_y_otra_del_inventario_intercaladas_no_se_pisan(example_store):
+    gated = GatedStore(example_store)
+    form = {k: [v] for k, v in PROVIDER.items()}
+    outcomes: dict[str, object] = {}
+
+    def wizard() -> None:
+        outcomes["wizard"] = wizard_scope._add_asset(StepInput(gated, NOW, "ana@x", form=form))
+
+    def inventory() -> None:
+        try:
+            outcomes["inventory"] = view._create(UiStore(example_store), NOW, form)
+        except view.Rejected as rejected:
+            outcomes["inventory"] = rejected
+
+    first = threading.Thread(target=wizard)
+    first.start()
+    assert gated.entered.wait(5)
+    second = threading.Thread(target=inventory)
+    second.start()
+    time.sleep(0.2)  # el inventario ya está esperando el lock del alcance, si lo hay
+    gated.release.set()
+    first.join(5)
+    second.join(5)
+
+    assert outcomes["wizard"] is None
+    rejected = outcomes["inventory"]
     assert isinstance(rejected, view.Rejected)
     assert any("ya existe" in e for e in rejected.form_errors)
     document = yaml.safe_load(example_store.read_text("scope/assets.yaml"))
