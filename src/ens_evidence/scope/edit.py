@@ -324,7 +324,8 @@ def _commit(
     """Escribe (clave, texto previo, documento nuevo); si una falla, restaura las anteriores.
 
     Revoca la aprobación solo tras escribir todo; si la revocación falla, restaura también
-    todo lo escrito. False si no había nada que escribir.
+    todo lo escrito. Cada restauración se intenta aunque otra falle, y sus fallos viajan
+    como notas del error original. False si no había nada que escribir.
     """
     written: list[tuple[str, str]] = []
     try:
@@ -336,9 +337,12 @@ def _commit(
         if store.exists(APPROVAL_KEY):
             written.append((APPROVAL_KEY, store.read_text(APPROVAL_KEY)))
         return revoke_approval(store, reason, now)
-    except Exception:
+    except Exception as error:
         for key, previous in reversed(written):
-            store.write_text(key, previous)
+            try:
+                store.write_text(key, previous)
+            except Exception as failure:
+                error.add_note(f"No se pudo restaurar {key}: {type(failure).__name__}")
         raise
 
 

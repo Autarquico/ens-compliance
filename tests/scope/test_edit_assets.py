@@ -234,14 +234,17 @@ def test_fallo_en_cada_escritura_de_la_baja_deja_todo_como_estaba(store, fail_at
     assert scope_status(store).state is ScopeState.APPROVED
 
 
-def _fail_on_approval(store, operation) -> None:
-    """Ejecuta la operación con la aprobación vigente y la escritura de approval.yaml rota."""
+def _fail_on_approval(store, operation, *, persistent: bool = False) -> None:
+    """Ejecuta la operación con la aprobación vigente y la escritura de approval.yaml rota.
+
+    `persistent`: approval.yaml rechaza también su propia restauración.
+    """
     approve(store)
     before = snapshot(store)
     real = store.write_text
 
     def write(key: str, text: str) -> None:
-        if key == "scope/approval.yaml" and "revoked" in text:
+        if key == "scope/approval.yaml" and (persistent or "revoked" in text):
             raise OSError("disco lleno")
         real(key, text)
 
@@ -267,6 +270,21 @@ def test_fallo_al_revocar_en_la_edicion_restaura_activos_y_aprobacion(store):
 
 def test_fallo_al_revocar_en_la_baja_restaura_activos_sistema_y_aprobacion(store):
     _fail_on_approval(store, lambda s: remove_asset(s, "lap-ana", NOW))
+
+
+@pytest.mark.parametrize(
+    "operation",
+    [
+        lambda s: save_asset(s, "srv-nuevo", SERVER, INCLUDED, NOW, create=True),
+        lambda s: save_asset(s, "srv-app", {"location": "Rack 2"}, None, NOW, create=False),
+        lambda s: remove_asset(s, "lap-ana", NOW),
+    ],
+    ids=["alta", "edicion", "baja"],
+)
+def test_aprobacion_que_no_admite_escrituras_no_impide_restaurar_activos_y_sistema(
+    store, operation
+):
+    _fail_on_approval(store, operation, persistent=True)
 
 
 def test_baja_quita_el_activo_del_inventario_y_del_alcance(store):
