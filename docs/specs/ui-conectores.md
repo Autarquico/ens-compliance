@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: UI de conectores — estado y configuración
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 94
