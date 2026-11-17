@@ -32,8 +32,7 @@ PENDING_TEXT = "Se recogerá en cuanto el servicio esté libre; normalmente en m
 RUNNING_TEXT = "El servicio la está recogiendo ahora."
 EXPIRED_TEXT = (
     "Pasaron 24 horas sin que el servicio la atendiera, así que no se ejecutará. Comprueba que el "
-    "servicio de recogida está en marcha (runbook de la interfaz web, «Recoger ahora») y pídela de "
-    "nuevo."
+    "servicio de recogida está en marcha (runbook de la interfaz web, «Recoger ahora»)."
 )
 INVALID_ID = "identificador no válido"
 CODE_LABELS = {
@@ -83,6 +82,7 @@ class RequestView:
     requested_at: str | None
     alive: bool
     result: ResultView | None
+    code: str | None = None  # causa fija de «No se pudo hacer»; sustituye al estado en la insignia
 
 
 def index_requests(store: UiStore, now: datetime) -> Mapping[str, RequestStatus]:
@@ -105,15 +105,15 @@ def _result_view(result: CollectRequestResult) -> ResultView:
 
 
 def _done(result: CollectRequestResult | None) -> tuple[str, Tone, str]:
+    """Con resultado, el detalle vive en `ResultView`: aquí no se repite en `text`."""
     if result is None or result.outcome is Outcome.ERROR:
         code = CODE_LABELS.get(result.code, NO_CODE) if result and result.code else NO_CODE
         return f"No se pudo hacer: {code}", "bad", ""
-    view = _result_view(result)
     if result.collection_status is not CollectionStatus.SUCCESS:
-        return "Terminada con error de recogida", "bad", view.checks_label
+        return "Terminada con error de recogida", "bad", ""
     if result.checks not in _CHECKS_DONE:
-        return "Terminada; comprobaciones no registradas", "warn", view.checks_label
-    return "Terminada", "neutral", view.checks_label
+        return "Terminada; comprobaciones no registradas", "warn", ""
+    return "Terminada", "neutral", ""
 
 
 def request_view(status: RequestStatus) -> RequestView:
@@ -125,6 +125,7 @@ def request_view(status: RequestStatus) -> RequestView:
         State.EXPIRED: ("Caducada", "neutral", EXPIRED_TEXT),
     }
     label, tone, text = fixed.get(status.state) or _done(result)
+    failed = status.state is State.DONE and result is not None and result.outcome is Outcome.ERROR
     return RequestView(
         state=status.state.value,
         label=label,
@@ -133,4 +134,5 @@ def request_view(status: RequestStatus) -> RequestView:
         requested_at=requested_at,
         alive=status.state.alive,
         result=_result_view(result) if result and status.state is State.DONE else None,
+        code=result.code.value if failed and result.code else None,
     )

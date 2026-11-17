@@ -39,6 +39,7 @@ from ens_evidence.models.contracts import EvidenceManifest
 from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.scheduling.collect_requests import (
     REQUESTS_PREFIX,
+    RejectReason,
     RequestRejected,
     RequestStatus,
     request_collect,
@@ -680,24 +681,49 @@ async def escribir(request: Request) -> Response:
     return RedirectResponse(f"{LIST_PATH}?hecho={name if changed else NO_CHANGES}", status_code=303)
 
 
+REJECTED_TEXTS = {
+    RejectReason.NOT_CONFIGURED: "El conector {label} no está configurado.",
+    RejectReason.BUSY: "Ya hay una petición de recogida de {label} sin terminar.",
+    RejectReason.CONCURRENT: "Otra petición de {label} se creó a la vez; revisa y reintenta.",
+}
+
+
+def _rejected_messages(rejected: RequestRejected, label: str) -> list[str]:
+    template = REJECTED_TEXTS.get(rejected.reason)
+    if template:
+        return [template.format(label=label)]
+    return [e[:1].upper() + e[1:] for e in rejected.errors]
+
+
+def _audit_collect(request: Request, name: str, failed: bool, keys: list[str], at: datetime):
+    _audit(
+        request,
+        name,
+        failed,
+        keys,
+        at,
+        action=COLLECT_ACTION,
+        fallback=f"{REQUESTS_PREFIX}/{name}/",
+    )
+
+
 async def recoger(request: Request) -> Response:
     """Deja una petición de recogida: no recoge nada; el fichero lo ejecuta el servicio `app`."""
     name = request.path_params["conector"]
     if name not in CATALOGUE:
         raise HTTPException(404)
     store, now = request.app.state.store.recording(), request.app.state.clock()
-    audit = {"action": COLLECT_ACTION, "fallback": f"{REQUESTS_PREFIX}/{name}/"}
     try:
         await run_in_threadpool(
             request_collect, store, name, email=identity_of(request).email, now=now
         )
     except RequestRejected as rejected:
-        errors = [e[:1].upper() + e[1:] for e in rejected.errors]
-        return _listing(request, form_errors=errors, status=422)
+        messages = _rejected_messages(rejected, CATALOGUE[name].label)
+        return _listing(request, form_errors=messages, status=422)
     except Exception:
-        _audit(request, name, True, store.written, now, **audit)
+        _audit_collect(request, name, True, store.written, now)
         raise
-    _audit(request, name, False, store.written, now, **audit)
+    _audit_collect(request, name, False, store.written, now)
     return RedirectResponse(f"{LIST_PATH}?pedida={quote(name, safe='')}", status_code=303)
 
 

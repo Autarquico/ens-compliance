@@ -31,6 +31,7 @@ from ens_evidence.scheduling.config import CollectConfig
 from ens_evidence.scope.approval import APPROVAL_KEY, approve_scope
 from ens_evidence.ui.roles import ROLES_KEY, Grant, dump_roles
 from ens_evidence.ui.views.conectores import CATALOGUE
+from ens_evidence.ui.views.conectores_peticion import CHECKS_LABELS
 from ens_evidence.workspace.settings import load_settings
 
 from .conftest import NOW, Session, mint, snapshot_of, ui_client
@@ -38,6 +39,7 @@ from .test_conectores import (
     GITHUB,
     GITHUB_FILE,
     HOSTILE,
+    REPOSITORY,
     audit_lines,
     block_of,
 )
@@ -140,6 +142,10 @@ def request_card(block: str) -> str:
     return block[start:]
 
 
+def checks_label_count(web, result) -> int:
+    return plain(request_card(github_block(web))).count(CHECKS_LABELS[result.checks])
+
+
 def ask_through_the_ui(web):
     response = web.post("/conectores/github/recoger", {})
     assert response.status_code == 303
@@ -177,6 +183,7 @@ def test_el_scheduler_recoge_evalua_y_la_pagina_muestra_la_nueva_recogida(
     assert result.evidence_id in block and "Última recogida" in block
     assert BUTTON in github_block(web)
     assert request_card(github_block(web)).count("tone-ok") == 0
+    assert checks_label_count(web, result) == 1
 
 
 def test_el_estado_en_curso_se_muestra_mientras_esta_reclamada(web, configured):
@@ -219,7 +226,8 @@ def test_otro_editor_no_crea_una_segunda_peticion_y_la_pagina_lo_dice(
     response = other_web.post("/conectores/github/recoger", {})
 
     assert response.status_code == 422
-    assert "ya hay una petición" in response.text.lower()
+    assert "ya hay una petición de recogida de github" not in response.text
+    assert "Ya hay una petición de recogida de GitHub sin terminar." in response.text
     assert configured.list(REQUESTS_PREFIX) == [FIRST]
     assert audit_lines(audit, "saved") == []
 
@@ -236,12 +244,22 @@ def test_una_peticion_sin_atender_pasadas_24_horas_aparece_caducada_y_se_puede_p
 
     assert "Caducada" in block
     assert "Comprueba que el servicio de recogida está en marcha" in plain(block)
-    assert BUTTON in block
+    assert BUTTON in block and "ídela de nuevo" in plain(block)
     assert pending_keys(configured, NOW) == []
     assert run(configured, settings, plugins) is None
     assert configured.list(REQUESTS_PREFIX) == [FIRST]
     assert web.post("/conectores/github/recoger", {}).status_code == 303
     assert f"{REQUESTS_PREFIX}/github/000002.json" in configured.list(REQUESTS_PREFIX)
+
+
+def test_caducada_con_la_configuracion_invalida_no_invita_a_pedir_otra(web, configured):
+    request_collect(configured, "github", email=EMAIL, now=NOW - EXPIRES_AFTER - timedelta(hours=1))
+    configured.write_text(GITHUB_FILE, "asset_id: [sin cerrar")
+
+    for page in (web.get("/conectores").text, web.get("/conectores/github").text):
+        shown = plain(page)
+        assert "Caducada" in shown and "Corrige la configuración antes de pedir otra." in shown
+        assert "ídela de nuevo" not in shown and BUTTON not in page
 
 
 # --- Scenario: solo lectura --------------------------------------------------------------------
@@ -304,6 +322,19 @@ def test_el_boton_solo_aparece_en_los_conectores_configurados(name, web):
     block = block_of(web.get("/conectores").text, name)
 
     assert (BUTTON in block) is (name == "github")
+
+
+@pytest.mark.parametrize("name", ["github", "backups", "cloudflare"])
+def test_la_lista_y_la_ficha_coinciden_en_el_boton(name, web, configured):
+    configured.write_text(
+        "connectors/backups.yaml",
+        yaml.safe_dump({"repositories": [{**REPOSITORY, "id": "caja", "asset_id": "bk-diario"}]}),
+    )
+
+    in_list = BUTTON in block_of(web.get("/conectores").text, name)
+    in_detail = BUTTON in web.get(f"/conectores/{name}").text
+
+    assert in_list is in_detail is (name != "cloudflare")
 
 
 # --- D3: reclamada pasadas 24 h ----------------------------------------------------------------
@@ -384,6 +415,7 @@ def test_terminada_con_error_de_recogida_no_es_favorable(web, configured, settin
     assert "tone-bad" in block and "tone-ok" not in block
     assert not favorable(block)
     assert CANARY not in web.get("/conectores").text
+    assert checks_label_count(web, result) == 1
 
 
 def test_terminada_con_las_comprobaciones_sin_registrar_no_es_favorable(
@@ -400,6 +432,7 @@ def test_terminada_con_las_comprobaciones_sin_registrar_no_es_favorable(
     assert "el alcance no está aprobado" in block
     assert "tone-warn" in block and "tone-ok" not in block
     assert not favorable(block)
+    assert checks_label_count(web, result) == 1
 
 
 def test_con_la_configuracion_estropeada_dice_no_se_pudo_hacer_sin_valores_del_fichero(

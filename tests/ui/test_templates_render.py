@@ -1967,8 +1967,48 @@ def test_conectores_pendiente_y_en_curso_no_ofrecen_el_boton_y_dicen_cuando_se_r
 
 def test_conectores_caducada_remite_al_runbook_y_vuelve_a_ofrecer_el_boton():
     html = _request_html("caducada")
-    assert "runbook" in html and "pídela de nuevo" in html
+    assert "runbook" in html and "Pídela de nuevo." in html
     assert 'action="/conectores/github/recoger"' in html and "Recoger ahora</button>" in html
+
+
+def test_conectores_caducada_sin_configuracion_valida_no_invita_a_pedir_otra():
+    block = dataclasses.replace(
+        _CON_REQUEST_BLOCKS[list(_CON_REQUESTS).index("caducada")],
+        config=_con_config("invalida", problem="x"),
+        can_collect=False,
+    )
+    html = _render("views/conectores.html", _con_page(blocks=(block,)))
+    assert "Corrige la configuración antes de pedir otra." in html
+    assert "ídela de nuevo" not in html and "Recoger ahora</button>" not in html
+
+
+def test_conectores_la_ficha_y_la_lista_pintan_el_boton_igual():
+    for can_collect in (True, False):
+        block = dataclasses.replace(_CON_REQUEST_BLOCKS[0], request=None, can_collect=can_collect)
+        listing = _render("views/conectores.html", _con_page(blocks=(block,)))
+        for form in (None, _con_form()):
+            detail = _render(
+                "views/conectores_form.html", _con_form_context(block=block, form=form)
+            )
+            assert ("Recoger ahora</button>" in listing) is can_collect
+            assert ("Recoger ahora</button>" in detail) is can_collect
+
+
+def test_conectores_peticion_fallida_muestra_su_codigo_y_no_done():
+    html = _render(
+        "views/conectores.html",
+        _con_page(
+            blocks=(
+                dataclasses.replace(
+                    _CON_REQUEST_BLOCKS[0],
+                    request=_con_request(
+                        label="No se pudo hacer: x", tone="bad", code="CONFIG_INVALID"
+                    ),
+                ),
+            )
+        ),
+    )
+    assert "CONFIG_INVALID" in html and 'badge-code">DONE' not in html
 
 
 def test_conectores_terminada_nunca_lleva_tono_favorable():
@@ -2000,7 +2040,6 @@ def test_conectores_errores_de_formulario_y_aviso_de_peticion_arriba():
 def test_conectores_ficha_de_solo_lectura_muestra_la_peticion_sin_boton():
     block = _CON_REQUEST_BLOCKS[0]
     block = dataclasses.replace(block, request=_CON_REQUESTS["caducada"], can_collect=True)
+    block = dataclasses.replace(block, can_collect=False)
     html = _render("views/conectores_form.html", _con_form_context(block=block) | {"form": None})
     assert "Caducada" in html and "Recoger ahora</button>" not in html
-    with_form = _render("views/conectores_form.html", _con_form_context(block=block))
-    assert 'action="/conectores/github/recoger"' in with_form

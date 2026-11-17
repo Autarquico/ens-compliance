@@ -464,3 +464,9 @@ def test_the_result_has_no_free_text_field():
     assert text_fields == {"evidence_id", "check_key", "error_type"}
     assert CollectRequestResult.model_fields["error_type"].metadata
     assert "message" not in CollectRequestResult.model_fields
+
+
+def test_cada_resultado_del_motor_tiene_su_resultado_de_comprobaciones():
+    from ens_evidence.checks.engine import OutcomeKind
+
+    assert set(module.CHECKS_OF_OUTCOME) == set(OutcomeKind)

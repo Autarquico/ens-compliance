@@ -615,7 +615,7 @@ def test_backups_se_muestra_sin_formulario_con_el_estado_de_cada_repositorio(web
     assert "SUCCESS" in block and "ERROR" in block
     assert 'href="/copias"' in block and 'href="/herramientas/copias"' in block
     assert HOSTILE not in listing and TOKEN not in listing
-    assert detail.status_code == 200 and 'method="post"' not in detail.text
+    assert detail.status_code == 200 and 'action="/conectores/backups"' not in detail.text
     assert ">Configurar<" not in block
 
 

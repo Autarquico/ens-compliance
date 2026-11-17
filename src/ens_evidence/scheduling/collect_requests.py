@@ -24,7 +24,7 @@ from typing import Annotated, Literal
 from pydantic import AfterValidator, AwareDatetime, Field, ValidationError
 
 from ens_evidence.checks.engine import OutcomeKind, run_one
-from ens_evidence.checks.store import _NAME as _CHECK_RUN_NAME
+from ens_evidence.checks.store import RUN_FILE_NAME
 from ens_evidence.connectors.config import connector_config_key
 from ens_evidence.evidence.layout import CHECKS_PREFIX, is_evidence_id
 from ens_evidence.models.contracts import Strict
@@ -47,17 +47,26 @@ _KEY = re.compile(
     r"(?P<part>\.started|\.result)?\.json"
 )
 _CHECK_KEY = re.compile(
-    rf"{re.escape(CHECKS_PREFIX)}/(?P<connector>[a-z][a-z0-9-]{{0,39}})/{_CHECK_RUN_NAME.pattern}"
+    rf"{re.escape(CHECKS_PREFIX)}/(?P<connector>[a-z][a-z0-9-]{{0,39}})/{RUN_FILE_NAME.pattern}"
 )
 _EMAIL = re.compile(r"[^@\s]+@[^@\s]+")
 
 
-class RequestRejected(Exception):
-    """No se crea la petición; `errors` dice por qué (nunca el valor de lo rechazado)."""
+class RejectReason(StrEnum):
+    INVALID = "INVALID"
+    NOT_CONFIGURED = "NOT_CONFIGURED"
+    BUSY = "BUSY"
+    CONCURRENT = "CONCURRENT"
 
-    def __init__(self, errors: list[str]) -> None:
+
+class RequestRejected(Exception):
+    """No se crea la petición; `errors` dice por qué (nunca el valor de lo rechazado) y `reason`
+    permite a quien llama componer su propio texto."""
+
+    def __init__(self, errors: list[str], reason: RejectReason = RejectReason.INVALID) -> None:
         super().__init__("; ".join(errors))
         self.errors = errors
+        self.reason = reason
 
 
 def _evidence_id(value: str | None) -> str | None:
@@ -95,6 +104,15 @@ class ChecksOutcome(StrEnum):
     REJECTED = "REJECTED"
     ERROR = "ERROR"
     NOT_RUN = "NOT_RUN"
+
+
+CHECKS_OF_OUTCOME = {
+    OutcomeKind.NOT_CONFIGURED: ChecksOutcome.NOT_RUN,
+    OutcomeKind.RECORDED: ChecksOutcome.RECORDED,
+    OutcomeKind.UNCHANGED: ChecksOutcome.UNCHANGED,
+    OutcomeKind.HISTORY_UNREADABLE: ChecksOutcome.HISTORY_UNREADABLE,
+    OutcomeKind.REJECTED: ChecksOutcome.REJECTED,
+}
 
 
 class ErrorCode(StrEnum):
@@ -157,20 +175,25 @@ def request_collect(
     """Pide recoger `connector` y evaluar sus checks. `RequestRejected` si no se puede pedir (nombre
     inválido, sin configurar, identidad que no es un email, o ya hay otra petición viva)."""
     errors = _identity_problems(connector, email)
-    if not errors and not store.exists(connector_config_key(connector)):
-        errors.append(f"el conector {connector} no está configurado")
     if errors:
         raise RequestRejected(errors)
+    if not store.exists(connector_config_key(connector)):
+        raise RequestRejected(
+            [f"el conector {connector} no está configurado"], RejectReason.NOT_CONFIGURED
+        )
     existing = requests_of(store, connector, now)
     if any(item.state.alive for item in existing):
-        raise RequestRejected([f"ya hay una petición de recogida de {connector} sin terminar"])
+        raise RequestRejected(
+            [f"ya hay una petición de recogida de {connector} sin terminar"], RejectReason.BUSY
+        )
     request = CollectRequest(connector=connector, email=email, requested_at=now)
     key = _key(connector, len(existing) + 1)
     try:
         store.create_bytes(key, canonical_json(request.model_dump(mode="json")))
     except AlreadyExists:
         raise RequestRejected(
-            [f"otra petición de {connector} se creó a la vez; revisa y reintenta"]
+            [f"otra petición de {connector} se creó a la vez; revisa y reintenta"],
+            RejectReason.CONCURRENT,
         ) from None
     return RequestStatus(key, connector, request, State.PENDING)
 
@@ -375,9 +398,10 @@ def _run_checks(store: WorkspaceStore, connector: str, clock: Clock) -> dict[str
         return {"checks": ChecksOutcome.ERROR}
     if outcome is None:
         return {"checks": ChecksOutcome.NOT_APPLICABLE}
-    if outcome.kind is OutcomeKind.NOT_CONFIGURED:
-        return {"checks": ChecksOutcome.NOT_RUN}
-    return {"checks": ChecksOutcome(outcome.kind.name), "check_key": outcome.key}
+    checks = CHECKS_OF_OUTCOME[outcome.kind]
+    if checks is ChecksOutcome.NOT_RUN:
+        return {"checks": checks}
+    return {"checks": checks, "check_key": outcome.key}
 
 
 def _failed(code: ErrorCode, at: datetime) -> CollectRequestResult:

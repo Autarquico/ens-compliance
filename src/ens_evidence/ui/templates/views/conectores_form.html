@@ -2,7 +2,6 @@
 {% import "_macros.html" as m with context %}
 {% block content %}
 {%- set b = block %}
-{%- set read_only = not form %}
 <p><a href="/conectores">Volver a los conectores</a></p>
 <h1>{{ b.label }}</h1>
 {% for e in form_errors %}<section class="notice notice-warn" role="alert"><p>{{ m.icon("alert") }} {{ e }}</p></section>{% endfor %}

@@ -92,7 +92,7 @@
     </table></div>
     {% endif %}
     {% if l.sections_unreadable %}<p class="muted">{{ m.icon("alert") }} Hay secciones no legibles: no se muestran.</p>{% endif %}
-    <p class="muted">Una recogida que termina bien solo dice que se pudo leer el sistema, no que se cumpla nada.</p>
+    {% if l.status == "SUCCESS" %}<p class="muted">Una recogida que termina bien solo dice que se pudo leer el sistema, no que se cumpla nada.</p>{% endif %}
     {% endif %}
 
     {% if b.request or b.can_collect %}{% include "partials/conector_peticion.html" %}{% endif %}

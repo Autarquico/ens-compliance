@@ -1,9 +1,9 @@
-{# Petición de recogida de un conector (`b: ConnectorBlock`; `read_only` oculta el botón). Estados fijos: nunca un mensaje en bruto. #}
+{# Petición de recogida de un conector (`b: ConnectorBlock`; el botón sale si y solo si `b.can_collect`). Estados fijos: nunca un mensaje en bruto. #}
 {% import "_macros.html" as m with context %}
 {%- set r = b.request %}
 <h3 class="sub">Recoger ahora</h3>
 {% if r %}
-<p><span class="badge tone-{{ r.tone }}">{{ m.icon(m.TONE_ICON[r.tone]) }}<span>{{ r.label }}</span> <span class="badge-code">{{ r.state }}</span></span>
+<p><span class="badge tone-{{ r.tone }}">{{ m.icon(m.TONE_ICON[r.tone]) }}<span>{{ r.label }}</span> <span class="badge-code">{{ r.code or r.state }}</span></span>
   {% if r.requested_at %}pedida el <span class="mono">{{ r.requested_at }}</span>{% endif %}</p>
 {% if r.text %}<p>{{ r.text }}</p>{% endif %}
 {% if r.result %}
@@ -12,6 +12,10 @@
 {% else %}
 <p class="muted">{{ m.icon("help") }} Ninguna petición de recogida de este conector.</p>
 {% endif %}
-{% if b.can_collect and not (read_only is defined and read_only) %}
+{% if r and r.state == "EXPIRED" and b.config.status != "configurado" %}
+<p>Corrige la configuración antes de pedir otra.</p>
+{% endif %}
+{% if b.can_collect %}
+{% if r and r.state == "EXPIRED" %}<p>Pídela de nuevo.</p>{% endif %}
 <form method="post" action="{{ b.collect_action }}"><div class="actions"><button class="btn" type="submit">Recoger ahora</button></div></form>
 {% endif %}

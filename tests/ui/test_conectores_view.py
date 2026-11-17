@@ -311,7 +311,7 @@ def test_las_peticiones_vivas_y_caducadas_tienen_su_etiqueta_fija():
     assert (running.label, running.tone, running.alive) == ("En curso", "warn", True)
     expired = request_view(_status(State.EXPIRED))
     assert (expired.label, expired.tone, expired.alive) == ("Caducada", "neutral", False)
-    assert "runbook" in expired.text and "pídela de nuevo" in expired.text
+    assert "runbook" in expired.text and "ídela de nuevo" not in expired.text
 
 
 @pytest.mark.parametrize(
@@ -356,6 +356,8 @@ def test_terminada_nunca_es_favorable_por_si_sola(result, label, tone):
 
     assert (shown.label, shown.tone, shown.alive) == (label, tone, False)
     assert shown.tone != "ok"
+    assert shown.text == ""
+    assert shown.code == ("INTERRUPTED" if label.startswith("No se pudo") else None)
 
 
 def test_los_dos_fallos_se_distinguen_en_texto_y_el_de_recogida_prevalece():
@@ -451,7 +453,7 @@ def test_recoger_sin_configurar_da_422_sin_escribir(ui):
 
     assert response.status_code == 422
     assert snapshot_of(ui.store) == before
-    assert ui.context["form_errors"] == ["El conector github no está configurado"]
+    assert ui.context["form_errors"] == ["El conector GitHub no está configurado."]
 
 
 def test_un_fallo_de_persistencia_se_audita_como_fallido(ui, audit, monkeypatch):
