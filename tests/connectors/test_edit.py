@@ -291,3 +291,15 @@ def test_reparar_descarta_un_token_kind_con_forma_de_secreto(store):
     save(store, "cloudflare", CloudflareConfig, {"asset_id": "cf", "account_id": ACCOUNT}, True)
 
     assert SECRET not in text(store, "cloudflare")
+
+
+def test_un_campo_enviado_como_none_se_quita_aunque_el_modelo_tenga_valor_por_defecto(store):
+    put(store, "github", GITHUB | {"unknown_key": 1})
+    cloudflare = {"asset_id": "cf", "account_id": ACCOUNT, "token_kind": "user"}
+    put(store, "cloudflare", cloudflare | {"public_routes": [ROUTE]})
+
+    assert save(store, "cloudflare", CloudflareConfig, {**cloudflare, "token_kind": None})
+
+    saved = yaml.safe_load(text(store, "cloudflare"))
+    assert "token_kind" not in saved and saved["public_routes"] == [ROUTE]
+    assert not save(store, "cloudflare", CloudflareConfig, {**cloudflare, "token_kind": None})

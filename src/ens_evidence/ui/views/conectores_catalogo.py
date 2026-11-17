@@ -324,18 +324,13 @@ def _convert(field: FieldSpec, raw: str) -> tuple[Any, str | None]:
     return text, None
 
 
-def _nullable(spec: ConnectorSpec, field: FieldSpec) -> bool:
-    assert spec.model is not None
-    return spec.model.model_fields[field.name].default is None
-
-
 def form_fields_to_document(
     spec: ConnectorSpec, form: Mapping[str, str]
 ) -> tuple[dict[str, Any], dict[str, list[str]]]:
     """Documento para validar con el modelo y errores por campo.
 
-    Un campo opcional vacío es `None` si el modelo lo admite (su valor por defecto es `None`) y
-    se omite si no, para que actúe el valor por defecto del modelo.
+    Un campo opcional vacío es `None`: quien guarda lo quita del fichero y actúa el valor por
+    defecto del modelo. Los campos que el formulario no muestra no aparecen aquí y se conservan.
     """
     document: dict[str, Any] = {}
     errors: dict[str, list[str]] = {}
@@ -347,7 +342,7 @@ def form_fields_to_document(
             document[field.name] = value
         elif field.required:
             errors[field.name] = [REQUIRED]
-        elif _nullable(spec, field):
+        else:
             document[field.name] = None
     return document, errors
 
@@ -369,10 +364,10 @@ def document_to_values(spec: ConnectorSpec, raw: Mapping[str, Any]) -> dict[str,
 def _cited_assets(name: str, raw: Any) -> set[str]:
     if not isinstance(raw, dict):
         return set()
-    cited = {raw.get("asset_id")}
+    values: list[Any] = [raw.get("asset_id")]
     if name == "backups" and isinstance(raw.get("repositories"), list):
-        cited |= {r.get("asset_id") for r in raw["repositories"] if isinstance(r, dict)}
-    return {c for c in cited if isinstance(c, str)}
+        values += [r.get("asset_id") for r in raw["repositories"] if isinstance(r, dict)]
+    return {value for value in values if isinstance(value, str)}
 
 
 def configs_citing(store: WorkspaceStore, asset_id: str) -> tuple[str, ...]:

@@ -1829,7 +1829,7 @@ def test_conectores_resumen_lista_los_mismos_conectores_y_no_es_favorable_sin_re
     assert resumen.count("<tr>") == len(page["page"].blocks) + 1  # + cabecera
     sin = _render("views/conectores.html", _con_page(blocks=(_CON_BLOCKS[1],)))
     fila = sin.split('aria-labelledby="h-resumen"', 1)[1].split("</section>", 1)[0]
-    assert "sin recogidas todavía" in fila and "tone-ok" not in fila
+    assert "Sin recogidas todavía" in fila and "tone-ok" not in fila
 
 
 @pytest.mark.parametrize(
@@ -1837,7 +1837,8 @@ def test_conectores_resumen_lista_los_mismos_conectores_y_no_es_favorable_sin_re
     [
         ("failed", "anteriores a la última recogida, que falló"),
         ("partial", "anteriores a la última recogida, que fue parcial"),
-        ("ok", "anteriores a la última recogida: se recalculan en el próximo ciclo."),
+        ("ok", "anteriores a la última recogida: no la reflejan todavía."),
+        ("unreadable", "anteriores a una recogida posterior que no se pudo verificar."),
     ],
 )
 def test_conectores_resultados_anteriores_a_la_ultima_recogida_llevan_aviso(outcome, text):

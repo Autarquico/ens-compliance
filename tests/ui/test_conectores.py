@@ -833,3 +833,118 @@ def test_el_texto_del_bloque_se_escapa_con_valores_hostiles_en_la_configuracion(
     page = web.get("/conectores").text
 
     assert HOSTILE not in page
+
+
+# --- Revisión externa r1 ---------------------------------------------------------------------
+
+
+def _saved(store, name) -> dict:
+    return yaml.safe_load(store.read_text(f"connectors/{name}.yaml"))
+
+
+@pytest.mark.parametrize("bad", [[], ["gh-taller"], {"a": 1}, 5, None])
+def test_un_asset_id_que_no_es_texto_no_rompe_la_ficha_de_ningun_activo(web, example_store, bad):
+    example_store.write_text("connectors/github.yaml", yaml.safe_dump({**GITHUB, "asset_id": bad}))
+    repo = {**REPOSITORY, "id": "caja", "asset_id": bad}
+    example_store.write_text("connectors/backups.yaml", yaml.safe_dump({"repositories": [repo]}))
+
+    page = web.get("/inventario/activos/gh-taller")
+
+    assert page.status_code == 200
+    assert 'href="/conectores/github"' not in page.text
+
+
+def test_un_asset_id_de_texto_junto_a_otro_que_no_lo_es_sigue_enlazando_backups(web, example_store):
+    repos = [
+        {**REPOSITORY, "id": "uno", "asset_id": ["x"]},
+        {**REPOSITORY, "id": "dos", "asset_id": "bk-diario"},
+    ]
+    example_store.write_text("connectors/backups.yaml", yaml.safe_dump({"repositories": repos}))
+
+    page = web.get("/inventario/activos/bk-diario")
+
+    assert page.status_code == 200 and 'href="/conectores/backups"' in page.text
+
+
+@pytest.mark.parametrize(
+    ("conector", "base", "campo", "valor", "ausente"),
+    [
+        ("cloudflare", CLOUDFLARE, "token_kind", "user", "token_kind"),
+        ("cloudflare", CLOUDFLARE, "ui_hostname", "ui.example.org", "ui_hostname"),
+        ("google-workspace", GWS, "customer", "C01abc", "customer"),
+        ("keystore", KEYSTORE, "address", "https://keys.example.org:8200", "address"),
+        ("keystore", KEYSTORE, "max_token_period_hours", "48", "max_token_period_hours"),
+        (
+            "passwords",
+            {"asset_id": "app-facturas", "inactive_days": "7", "max_export_age_minutes": "30"},
+            "export_path",
+            "/srv/x.csv",
+            "export_path",
+        ),
+    ],
+)
+def test_vaciar_un_opcional_ya_guardado_lo_quita_del_fichero_y_el_cargador_lo_acepta(
+    web, example_store, conector, base, campo, valor, ausente
+):
+    spec = conectores_catalogo.CATALOGUE[conector]
+    assert web.post(f"/conectores/{conector}", base | {campo: valor}).status_code == 303
+    assert _saved(example_store, conector)[campo]
+
+    response = web.post(f"/conectores/{conector}", base | {campo: ""})
+
+    assert response.headers["location"] == f"/conectores?hecho={conector}"
+    assert ausente not in _saved(example_store, conector)
+    load_connector_config(example_store, conector, spec.model)
+
+
+def test_vaciar_un_opcional_conserva_lo_que_el_formulario_no_muestra(web, example_store):
+    web.post("/conectores/cloudflare", CLOUDFLARE | {"token_kind": "user"})
+    saved = _saved(example_store, "cloudflare") | {"public_routes": [ROUTE]}
+    example_store.write_text("connectors/cloudflare.yaml", yaml.safe_dump(saved))
+
+    web.post("/conectores/cloudflare", CLOUDFLARE | {"token_kind": ""})
+
+    after = _saved(example_store, "cloudflare")
+    assert "token_kind" not in after and after["public_routes"] == [ROUTE]
+
+
+def test_sin_cambios_solo_si_no_cambia_nada_tras_vaciar_un_opcional(web, example_store):
+    web.post("/conectores/cloudflare", CLOUDFLARE | {"token_kind": "user"})
+    web.post("/conectores/cloudflare", CLOUDFLARE)  # lo quita
+    before = snapshot_of(example_store)
+
+    response = web.post("/conectores/cloudflare", CLOUDFLARE)
+
+    assert response.headers["location"] == "/conectores?hecho=sin-cambios"
+    assert snapshot_of(example_store) == before
+
+
+def test_una_recogida_posterior_ilegible_no_deja_los_checks_antiguos_como_vigentes(
+    web, example_store
+):
+    web.post("/conectores/github", GITHUB)
+    record(example_store, "github", [result("gh-taller", CheckStatus.PASS, "GITHUB-001")], ago=24)
+    put_raw(example_store, artifact_document({}))
+    manifest_id = next(k for k in example_store.list("") if k.endswith(".yaml") and "EV-" in k)
+    stored = yaml.safe_load(example_store.read_text(manifest_id))
+    example_store.write_bytes(stored["artifact"]["key"], b"{}")
+
+    page = web.get("/conectores").text
+
+    block = block_of(page, "github")
+    assert (
+        "Estos resultados son anteriores a una recogida posterior que no se pudo verificar."
+        in block
+    )
+    assert "tone-ok" not in block.split("Resultados de las comprobaciones")[1].split("<table")[0]
+
+
+def test_la_tabla_de_secciones_dice_su_fuente_y_su_fecha(web, example_store):
+    web.post("/conectores/github", GITHUB)
+    collect(example_store, "github", "SUCCESS", {"sections": {"repos": {"status": "SUCCESS"}}})
+
+    block = block_of(web.get("/conectores").text, "github")
+
+    caption = re.search(r"<caption>Estado por sección.*?</caption>", block, re.DOTALL)
+    assert caption and "Fuente: recogida" in caption.group(0)
+    assert "github" in caption.group(0) and "EV-" in caption.group(0)

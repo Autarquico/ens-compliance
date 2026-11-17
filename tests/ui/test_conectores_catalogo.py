@@ -141,17 +141,21 @@ def test_las_lineas_pasan_a_lista_sin_blancos():
 
     assert errors == {}
     assert document["domains"] == ["acme.com", "otro.es"]
-    assert "customer" not in document
+    assert document["customer"] is None
 
 
-def test_un_opcional_vacio_es_none_si_el_modelo_lo_admite_y_si_no_se_omite():
+def test_un_opcional_vacio_es_none_para_que_quien_guarda_lo_quite():
     document, errors = form_fields_to_document(
         CATALOGUE["cloudflare"], {"asset_id": "a", "account_id": "0" * 32, "ui_hostname": "  "}
     )
 
     assert errors == {}
-    assert document == {"asset_id": "a", "account_id": "0" * 32, "ui_hostname": None}
-    assert CATALOGUE["cloudflare"].model.model_validate(document).token_kind == "account"
+    assert document == {
+        "asset_id": "a",
+        "account_id": "0" * 32,
+        "token_kind": None,
+        "ui_hostname": None,
+    }
 
 
 @pytest.mark.parametrize("bad", ["abc", "1.5", "-3", "+4", "", "١٢", "1" * 10])

@@ -28,7 +28,7 @@
       <th scope="row"><a href="#h-conector-{{ loop.index }}">{{ b.label }}</a></th>
       <td>{{ m.config_badge(b.config) }}</td>
       <td>
-        {%- if not l %}<span class="badge tone-neutral">{{ m.icon("help") }}<span>sin recogidas todavía</span></span>
+        {%- if not l %}<span class="badge tone-neutral">{{ m.icon("help") }}<span>Sin recogidas todavía</span></span>
         {%- elif l.unreadable %}<span class="badge tone-warn">{{ m.icon("alert") }}<span>{{ l.status_label }}</span></span> <span class="mono">{{ l.collected_at }}</span>
         {%- elif l.partial %}<span class="badge tone-warn">{{ m.icon("alert") }}<span>Recogida parcial</span></span> <span class="mono">{{ l.collected_at }}</span>
         {%- else %}{{ m.badge(l.status, False) }} <span class="mono">{{ l.collected_at }}</span>{% endif -%}
@@ -80,7 +80,7 @@
     {% if credential_in_reason %}{{ m.credential_text(b.credential) }}{% endif %}{% endif %}
     {% if l.sections %}
     <div class="table-wrap"><table>
-      <caption>Estado por sección en esa recogida.</caption>
+      <caption>Estado por sección en esa recogida. Fuente: recogida <span class="mono">{{ b.name }}</span> del <span class="mono">{{ l.collected_at }}</span> · evidencia <span class="mono">{{ l.evidence_id }}</span>.</caption>
       <thead><tr><th scope="col">Sección</th><th scope="col">Estado</th></tr></thead>
       <tbody>
       {%- for s in l.sections %}
@@ -112,7 +112,8 @@
     <h3 class="sub">Resultados de las comprobaciones</h3>
     {% if e.stale %}<p class="notice notice-warn" role="note">{{ m.icon("alert") }} {% if e.last_outcome == "failed" %}Estos resultados son anteriores a la última recogida, que falló.
     {%- elif e.last_outcome == "partial" %}Estos resultados son anteriores a la última recogida, que fue parcial.
-    {%- else %}Estos resultados son anteriores a la última recogida: se recalculan en el próximo ciclo.{% endif %}</p>{% endif %}
+    {%- elif e.last_outcome == "unreadable" %}Estos resultados son anteriores a una recogida posterior que no se pudo verificar.
+    {%- else %}Estos resultados son anteriores a la última recogida: no la reflejan todavía.{% endif %}</p>{% endif %}
     <p><span class="badge tone-{{ e.tone }}">{{ m.icon(m.TONE_ICON[e.tone]) }}<span>{{ e.label }}</span> <span class="badge-code">{{ e.status }}</span></span> {{ e.sentence }}</p>
     {% if e.coverage == "parcial" %}<p class="muted">{{ m.icon("alert") }} Cobertura parcial: no se puede dar por completo.{% for reason in e.partial_reasons %} {{ reason }}{% endfor %}</p>{% endif %}
     {% for c in b.results %}

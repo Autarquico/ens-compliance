@@ -103,7 +103,7 @@ CONFIG_LABELS = {
 }
 
 ConfigStatus = Literal["sin-configurar", "configurado", "invalida", "ilegible"]
-LastOutcome = Literal["failed", "partial", "ok"]
+LastOutcome = Literal["failed", "partial", "ok", "unreadable"]
 
 
 def config_invalid(name: str) -> str:
@@ -290,15 +290,21 @@ def _evidence(
     manifest: EvidenceManifest | None,
     last: LastCollection | None,
 ) -> ConnectorEvidence | None:
-    """Los resultados de checks; si una recogida legible es posterior, no se dan por vigentes."""
+    """Los resultados de checks; si una recogida posterior consta, no se dan por vigentes."""
     if not contributions:
         return None
     base = summary(scan, contributions)
     newest = max(run.finished_at for run, _, _ in contributions)
-    if manifest is None or last is None or last.unreadable or manifest.collected_at <= newest:
+    if manifest is None or last is None or manifest.collected_at <= newest:
         return ConnectorEvidence(**vars(base))
     outcome: LastOutcome = (
-        "partial" if last.partial else "ok" if last.status == CollectionStatus.SUCCESS else "failed"
+        "unreadable"
+        if last.unreadable
+        else "partial"
+        if last.partial
+        else "ok"
+        if last.status == CollectionStatus.SUCCESS
+        else "failed"
     )
     _, label = status_badge(base.status, True)
     return ConnectorEvidence(

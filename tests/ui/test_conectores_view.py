@@ -13,7 +13,7 @@ from ens_evidence.ui.views import conectores_recogida
 from ens_evidence.workspace import WorkspaceError
 
 from .conftest import snapshot_of
-from .test_conectores import collect
+from .test_conectores import artifact_document, collect, put_raw
 from .test_inventory import record, result
 from .test_inventory_view import build_ui
 
@@ -222,6 +222,20 @@ def test_unos_resultados_anteriores_a_una_recogida_fallida_salen_como_no_vigente
     assert evidence.stale is True and evidence.last_outcome == "failed"
     assert evidence.favorable is False and evidence.coverage == "parcial"
     assert evidence.tone == "warn" and "parcial" in evidence.label
+
+
+def test_unos_resultados_anteriores_a_una_recogida_ilegible_salen_como_no_vigentes(ui):
+    ui.post("/conectores/github", GITHUB)
+    record(ui.store, "github", [result("gh-taller", CheckStatus.PASS, "GITHUB-001")], ago=24)
+    put_raw(ui.store, artifact_document({}))
+    manifest = next(k for k in ui.store.list("") if k.endswith(".yaml") and "EV-" in k)
+    ui.store.write_bytes(yaml.safe_load(ui.store.read_text(manifest))["artifact"]["key"], b"{}")
+
+    ui.get("/conectores")
+    evidence = blocks(ui)["github"].evidence
+
+    assert evidence.stale is True and evidence.last_outcome == "unreadable"
+    assert evidence.favorable is False and evidence.coverage == "parcial"
 
 
 def test_unos_resultados_posteriores_a_la_recogida_siguen_vigentes(ui):
