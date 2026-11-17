@@ -7,7 +7,7 @@ el proceso muere a mitad. Los puntos de pausa son deterministas (relojes que esp
 
 import multiprocessing
 import threading
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 from checks.test_engine import NOW
@@ -258,3 +258,29 @@ def test_el_lock_excluye_a_otro_proceso(store):
     waiter.join(10)
     assert child.exitcode == 0
     assert store.list(f"{REQUESTS_PREFIX}/github/") == [FIRST]
+
+
+# --- el fin del calendario no desborda las fechas ------------------------------------------------
+
+FAR = datetime(9999, 12, 31, tzinfo=UTC)
+
+
+def test_un_marcador_confirmado_en_el_ultimo_dia_representable_no_desborda(
+    store, settings, plugins, monkeypatch
+):
+    ask(store, FAR)
+    monkeypatch.setattr(module, "_carry_out", lambda *a: (_ for _ in ()).throw(KeyboardInterrupt))
+    with pytest.raises(KeyboardInterrupt):
+        run(store, settings, plugins, FakeClock(FAR + timedelta(hours=12)))
+
+    at = FAR + timedelta(hours=13)
+    assert [item.state for item in list_requests(store, at)] == [State.RUNNING]
+    assert pending_keys(store, at) == [FIRST]
+
+
+def test_una_peticion_en_el_ultimo_segundo_representable_tiene_estado_fijo(store):
+    last = datetime(9999, 12, 31, 23, 59, 59, tzinfo=UTC)
+    ask(store, last)
+
+    assert [item.state for item in list_requests(store, last)] == [State.PENDING]
+    assert pending_keys(store, last) == [FIRST]

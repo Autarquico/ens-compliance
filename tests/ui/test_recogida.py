@@ -8,7 +8,7 @@ Fronteras reales: el reloj (`FakeClock`) y el conector (falso, en subproceso `sp
 import json
 import threading
 import time
-from datetime import timedelta
+from datetime import UTC, datetime, timedelta
 
 import pytest
 import yaml
@@ -658,3 +658,21 @@ def test_un_fallo_al_importar_deja_la_peticion_sin_evidencia_y_nunca_favorable(
     assert "la recogida falló de forma inesperada" in plain(block)
     assert "Sin recogidas todavía" in plain(github_block(web))
     assert CANARY not in page and CANARY not in configured.read_bytes(RESULT).decode()
+
+
+# --- el fin del calendario no desborda las fechas ------------------------------------------------
+
+
+@pytest.mark.parametrize("confirmed", [True, False])
+def test_peticiones_en_el_ultimo_dia_representable_no_rompen_la_pagina(web, configured, confirmed):
+    far = datetime(9999, 12, 31, tzinfo=UTC)
+    asked = request_collect(configured, "github", email="ana@clinica.example", now=far)
+    if confirmed:
+        marker = {"confirmed_at": (far + timedelta(hours=12)).isoformat()}
+        configured.write_bytes(CLAIM, json.dumps(marker).encode())
+
+    assert [item.state for item in list_requests(configured, far)] == [
+        State.RUNNING if confirmed else State.PENDING
+    ]
+    assert pending_keys(configured, far) == [asked.key]
+    assert web.get("/conectores").status_code == 200

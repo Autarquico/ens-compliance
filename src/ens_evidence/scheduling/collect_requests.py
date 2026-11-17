@@ -303,7 +303,7 @@ def _confirmed(store: WorkspaceStore, key: str, request: CollectRequest) -> bool
         marker = StartedMarker.model_validate_json(store.read_bytes(key))
     except (ValidationError, ValueError, NotFound):
         return False
-    return request.requested_at <= marker.confirmed_at < request.requested_at + EXPIRES_AFTER
+    return timedelta(0) <= marker.confirmed_at - request.requested_at < EXPIRES_AFTER
 
 
 def _unreadable(at: datetime) -> CollectRequestResult:

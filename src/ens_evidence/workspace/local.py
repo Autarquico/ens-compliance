@@ -22,6 +22,28 @@ from ens_evidence.workspace.keys import normalize_key
 class LocalStore:
     def __init__(self, root: Path) -> None:
         self._root = Path(root).resolve()
+        self._root_fd: int | None = None
+        self._closed = False
+        if _DIR_FD_SUPPORTED and self._root.is_dir():
+            self._root_fd = _open_root(self._root)
+
+    def close(self) -> None:
+        """Libera el descriptor de la raíz; las operaciones posteriores fallan cerradas."""
+        fd, self._root_fd, self._closed = self._root_fd, None, True
+        if fd is not None:
+            os.close(fd)
+
+    def __enter__(self) -> "LocalStore":
+        return self
+
+    def __exit__(self, *exc_info: object) -> None:
+        self.close()
+
+    def __del__(self) -> None:
+        try:
+            self.close()
+        except Exception:
+            pass
 
     def read_text(self, key: str) -> str:
         try:
@@ -91,17 +113,25 @@ class LocalStore:
         finally:
             os.close(fd)
 
+    def _root_descriptor(self) -> int:
+        """La raíz se abre una sola vez: al construir si ya existía, o en la primera escritura si
+        no (leer nunca la crea). Después, sustituir su ruta no cambia dónde se escribe."""
+        if self._closed or not _DIR_FD_SUPPORTED:
+            raise StorageUnavailable("almacenamiento no disponible: sin descriptor de raíz")
+        if self._root_fd is None:
+            self._root.mkdir(parents=True, exist_ok=True)
+            self._root_fd = _open_root(self._root)
+        return self._root_fd
+
     @contextmanager
     def _parent(self, key: str) -> Iterator[tuple[int, str]]:
-        """Descriptor del directorio padre de `key` y el nombre de la hoja. Se llega desde la raíz
-        abriendo cada componente relativo al anterior con `O_NOFOLLOW`, y se crean los que faltan:
-        nada se resuelve dos veces, así que un directorio sustituido por un enlace entre pasos no
-        puede sacar la escritura del workspace."""
-        if not _DIR_FD_SUPPORTED:
-            raise StorageUnavailable("el sistema no soporta operaciones relativas a directorio")
+        """Descriptor del directorio padre de `key` y el nombre de la hoja. Se parte del descriptor
+        de raíz abierto al construir (la ruta de la raíz no se reabre) y se abre cada componente
+        relativo al anterior con `O_NOFOLLOW`, creando los que faltan: nada se resuelve dos veces,
+        así que un directorio sustituido por un enlace entre pasos no puede sacar la escritura
+        del workspace."""
         *parents, leaf = key.split("/")
-        self._root.mkdir(parents=True, exist_ok=True)
-        fd = os.open(self._root, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+        fd = os.dup(self._root_descriptor())
         try:
             for name in parents:
                 child = _descend(fd, name)
@@ -226,3 +256,7 @@ def _discard(parent: int, name: str) -> None:
         os.unlink(name, dir_fd=parent)
     except FileNotFoundError:
         pass
+
+
+def _open_root(path: Path) -> int:
+    return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)

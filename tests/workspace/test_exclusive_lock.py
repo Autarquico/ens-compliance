@@ -2,7 +2,7 @@ import os
 
 import pytest
 
-from ens_evidence.workspace import AccessDenied, LocalStore
+from ens_evidence.workspace import AccessDenied, LocalStore, StorageUnavailable
 
 
 @pytest.fixture
@@ -77,3 +77,50 @@ def test_un_padre_sustituido_por_un_enlace_entre_pasos_se_rechaza(
 
     assert swapped == ["b"]
     assert list(outside.iterdir()) == []
+
+
+# --- la raíz se abre una sola vez ----------------------------------------------------------------
+
+
+def _swap_root_for_link(root, outside):
+    root.rename(root.with_name("ws-moved"))
+    root.symlink_to(outside, target_is_directory=True)
+
+
+@pytest.mark.parametrize("operation", ["lock", "write", "create"])
+def test_una_raiz_sustituida_por_un_enlace_tras_construir_no_saca_nada_del_workspace(
+    root, outside, operation
+):
+    with LocalStore(root) as store:
+        _swap_root_for_link(root, outside)
+
+        if operation == "lock":
+            with store.exclusive_lock("a/x.lock"):
+                pass
+        elif operation == "write":
+            store.write_bytes("a/x.txt", b"data")
+        else:
+            store.create_bytes("a/x.txt", b"data")
+
+    assert list(outside.iterdir()) == []
+    assert (root.with_name("ws-moved") / "a").is_dir()
+
+
+def test_una_raiz_que_es_un_enlace_al_construir_funciona(tmp_path, outside):
+    link = tmp_path / "srv-ws"
+    link.symlink_to(outside, target_is_directory=True)
+
+    with LocalStore(link) as store:
+        store.write_bytes("a/x.txt", b"data")
+        assert store.read_bytes("a/x.txt") == b"data"
+
+    assert (outside / "a" / "x.txt").read_bytes() == b"data"
+
+
+def test_tras_cerrar_el_almacen_las_escrituras_fallan_cerradas(root):
+    store = LocalStore(root)
+    store.close()
+    store.close()
+
+    with pytest.raises(StorageUnavailable):
+        store.write_bytes("x.txt", b"data")
