@@ -175,6 +175,28 @@ def test_sin_prueba_dice_que_no_hay_prueba_muestra_la_guia_y_no_da_el_repositori
     assert "No hay pruebas de restauración registradas" in page
 
 
+def test_prueba_caducada_dice_sin_prueba_vigente_y_no_deriva_vigente(web, example_store):
+    seed(example_store, {CHECKS[3]: CheckStatus.UNKNOWN})
+    write_test(example_store, declaration(valid_until="2026-11-02T11:00:00+00:00"))
+    write_restore(example_store)
+
+    block = block_of(web.get("/copias").text)
+
+    assert "Sin prueba vigente" in block and "caducó el" in block
+    assert "--repository caja" in unescape(block)
+    assert not favorable(header_of(block))
+
+
+def test_prueba_no_caducada_no_dice_que_caducó(web, example_store):
+    seed(example_store)
+    write_test(example_store, declaration())
+    write_restore(example_store)
+
+    block = block_of(web.get("/copias").text)
+
+    assert "caducó" not in block and "Sin prueba vigente" not in block
+
+
 # --- Scenario: copia propia de la caja interrumpida --------------------------------------------
 
 

@@ -124,7 +124,14 @@ def check(manifest, status=CheckStatus.PASS, check_id=RECENT, reason="ok"):
     )
 
 
-def declaration(test_id="RT-1", repository_id=RID, restore_id="R-1", snapshot=SNAP, reviewer="Ana"):
+def declaration(
+    test_id="RT-1",
+    repository_id=RID,
+    restore_id="R-1",
+    snapshot=SNAP,
+    reviewer="Ana",
+    valid_until="2027-02-01T11:00:00+00:00",
+):
     return RestoreTest.model_validate(
         {
             "test_id": test_id,
@@ -143,7 +150,7 @@ def declaration(test_id="RT-1", repository_id=RID, restore_id="R-1", snapshot=SN
                 "reviewer": reviewer,
                 "role": "security_officer",
                 "reviewed_at": "2026-11-01T11:00:00+00:00",
-                "valid_until": "2027-02-01T11:00:00+00:00",
+                "valid_until": valid_until,
             },
             "repository_id": repository_id,
         }

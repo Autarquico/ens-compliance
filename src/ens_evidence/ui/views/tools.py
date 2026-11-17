@@ -169,7 +169,7 @@ def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any
         "measures": list(tool.measures),
         "measures_note": tool.measures_note,
         "hints": tool.hints,
-        "open_url": _open_url(host),
+        "open_url": open_url(host),
         "status_url": STATUS_URLS.get(tool.id),
         "wizard_url": tool.wizard_url,
         "cta": tool.cta,
@@ -180,7 +180,7 @@ def _tool_card(store: UiStore, tool: KitTool, host: str | None) -> dict[str, Any
     }
 
 
-def _open_url(host: str | None) -> str | None:
+def open_url(host: str | None) -> str | None:
     return f"https://{host}" if host else None
 
 

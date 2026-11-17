@@ -56,7 +56,7 @@ from ens_evidence.ui.views.check_history import (
     summary,
     unreadable_notes,
 )
-from ens_evidence.ui.views.tools import _open_url
+from ens_evidence.ui.views.tools import open_url
 from ens_evidence.workspace import WorkspaceError
 
 KIT = "copias"
@@ -113,6 +113,7 @@ class RestoreDeclaration:
     role_label: str
     valid_until: str
     approved: bool
+    expired: bool
 
 
 @dataclass(frozen=True)
@@ -271,7 +272,7 @@ def _instant(value: Any) -> datetime | None:
 # --- pruebas de restauración ---------------------------------------------------------------------
 
 
-def _declaration(test: RestoreTest) -> RestoreDeclaration:
+def _declaration(test: RestoreTest, now: datetime) -> RestoreDeclaration:
     return RestoreDeclaration(
         test_id=test.test_id,
         performed_at=format_instant(test.performed_at),
@@ -279,6 +280,7 @@ def _declaration(test: RestoreTest) -> RestoreDeclaration:
         role_label=ROLE_LABELS[test.review.role],
         valid_until=format_instant(test.review.valid_until),
         approved=test.review.approved,
+        expired=test.review.valid_until <= now,
     )
 
 
@@ -395,7 +397,7 @@ def _block(
         results=detail_results(contributions),
         check_labels=dict(CHECK_LABELS),
         problem=any(r.status in _WORST_STATUSES for r in results),
-        restore_test=_declaration(max(own_tests, key=lambda t: t.performed_at))
+        restore_test=_declaration(max(own_tests, key=lambda t: t.performed_at), now)
         if own_tests
         else None,
         guide=_guide(repository.id, repository.asset_id),
@@ -460,7 +462,7 @@ def build_page(store: UiStore, kit_host: str | None, now: datetime) -> CopiasPag
     return CopiasPage(
         configured=configured,
         config_error=config_error,
-        backrest_href=_open_url(kit_host),
+        backrest_href=open_url(kit_host),
         wizard_href=WIZARD_HREF,
         runbook_href=RUNBOOK_HREF,
         history_notes=unreadable_notes(scan),

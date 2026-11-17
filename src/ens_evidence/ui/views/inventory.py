@@ -58,7 +58,6 @@ from ens_evidence.ui.pages import (
 )
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
-from ens_evidence.ui.views.check_history import CheckRow as CheckRow
 from ens_evidence.ui.views.check_history import (
     ConnectorResults,
     EvidenceSummary,

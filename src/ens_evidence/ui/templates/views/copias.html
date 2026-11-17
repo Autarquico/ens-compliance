@@ -85,15 +85,18 @@
     <p class="muted">BACKUP-002 no aplica a los repositorios que escribe Backrest.</p>
     {% else %}<p class="muted">{{ m.icon("help") }} Sin evidencia: ningún resultado de las comprobaciones de copias para este repositorio.</p>{% endif %}
 
-    <h4>Prueba de restauración</h4>
-    {% if r.restore_test %}
+    <h4 class="sub">Prueba de restauración</h4>
+    {% if r.restore_test and r.restore_test.expired %}
+    <p>{{ m.icon("help") }} Sin prueba vigente: la última declarada (<span class="mono">{{ r.restore_test.test_id }}</span>) caducó el <span class="mono">{{ r.restore_test.valid_until }}</span>.</p>
+    <p class="muted">La prueba la hace y registra una persona. Lo que vale es el resultado de BACKUP-005 en la tabla de arriba, no esta declaración.</p>
+    {% elif r.restore_test %}
     <p>Última prueba declarada: <span class="mono">{{ r.restore_test.test_id }}</span>, hecha el <span class="mono">{{ r.restore_test.performed_at }}</span> por {{ r.restore_test.reviewer }} ({{ r.restore_test.role_label }}). Caducidad declarada: <span class="mono">{{ r.restore_test.valid_until }}</span>.</p>
     {% if not r.restore_test.approved %}<p>{{ m.icon("alert") }} La revisión de esta prueba la marca como no aprobada.</p>{% endif %}
     <p class="muted">La prueba la hace y registra una persona. Lo que vale es el resultado de BACKUP-005 en la tabla de arriba, no esta declaración.</p>
     {% else %}
-    <p>{{ m.icon("help") }} Sin prueba vigente: no hay ninguna prueba de restauración registrada. Una copia que no se ha restaurado nunca no está probada.</p>
+    <p>{{ m.icon("help") }} Sin prueba vigente: ninguna prueba de restauración consta para este repositorio. Una copia que no se ha restaurado nunca no está probada.</p>
     {% endif %}
-    <details>
+    <details class="guide">
       <summary>Cómo registrar una prueba de restauración</summary>
       <ol>{% for step in r.guide.steps %}<li>{{ step|code_spans }}</li>{% endfor %}</ol>
       <p>Rellena el fichero de la prueba. El nombre de quien la declara lo escribe esa persona:</p>

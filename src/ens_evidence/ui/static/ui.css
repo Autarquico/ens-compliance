@@ -170,6 +170,7 @@ fieldset.gate { border: 0; padding: 0; margin: 0; min-width: 0; }
 fieldset.gate:disabled { opacity: 0.6; }
 
 /* copias */
-pre { margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); max-width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); white-space: pre-wrap; overflow-wrap: anywhere; }
-details > summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; color: var(--accent); }
-h4 { font-family: var(--font-body); font-size: var(--text-base); font-weight: 600; margin: var(--space-5) 0 var(--space-2); }
+.guide pre { margin: 0 0 var(--space-4); padding: var(--space-3) var(--space-4); max-width: 100%; overflow-x: auto; background: var(--surface); border: 1px solid var(--border); border-radius: var(--radius-card); white-space: pre-wrap; overflow-wrap: anywhere; }
+.guide > summary { display: flex; align-items: center; min-height: var(--tap); cursor: pointer; color: var(--accent); }
+.sub { font-family: var(--font-body); font-size: var(--text-base); font-weight: 600; margin: var(--space-5) 0 var(--space-2); }
+.actions + .facts { margin-top: var(--space-5); }

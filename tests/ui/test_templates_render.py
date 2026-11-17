@@ -7,6 +7,7 @@ from types import SimpleNamespace
 import pytest
 
 from ens_evidence.ui.pages import STATUS_TEXT, install_template_helpers
+from ens_evidence.ui.views import check_history as ch
 from ens_evidence.ui.views import copias as cop
 from ens_evidence.ui.views import inventory as inv
 from ens_evidence.ui.views.agents import (
@@ -643,13 +644,13 @@ _DETAIL = inv.AssetDetail(
     services=(inv.RefRow("service", "svc-1", HOSTILE),),
     dependencies=(inv.RefRow("dependency", "dep-1", HOSTILE),),
     results=(
-        inv.ConnectorResults(
+        ch.ConnectorResults(
             HOSTILE,
             "2026-11-08 10:00 UTC",
             False,
             (
-                inv.CheckRow("HOST-001", "PASS", "SUCCESS", None, ("ev-2",)),
-                inv.CheckRow("HOST-002", "FAIL", "PERMISSION_DENIED", HOSTILE, ()),
+                ch.CheckRow("HOST-001", "PASS", "SUCCESS", None, ("ev-2",)),
+                ch.CheckRow("HOST-002", "FAIL", "PERMISSION_DENIED", HOSTILE, ()),
             ),
         ),
     ),
@@ -711,21 +712,21 @@ _COPIAS_REPOSITORY = cop.RepositoryBlock(
     checked_at="2026-11-08 10:00 UTC",
     evidence=_COPIAS_SUMMARY,
     results=(
-        inv.ConnectorResults(
+        ch.ConnectorResults(
             HOSTILE,
             "2026-11-08 10:00 UTC",
             False,
             (
-                inv.CheckRow("backups.backup_001_recent", "FAIL", "SUCCESS", HOSTILE, (HOSTILE,)),
-                inv.CheckRow("backups.backup_005_restore_test", "UNKNOWN", "NOT_FOUND", None, ()),
-                inv.CheckRow(HOSTILE, "PASS", "SUCCESS", None, ()),
+                ch.CheckRow("backups.backup_001_recent", "FAIL", "SUCCESS", HOSTILE, (HOSTILE,)),
+                ch.CheckRow("backups.backup_005_restore_test", "UNKNOWN", "NOT_FOUND", None, ()),
+                ch.CheckRow(HOSTILE, "PASS", "SUCCESS", None, ()),
             ),
         ),
     ),
     check_labels=cop.CHECK_LABELS,
     problem=True,
     restore_test=cop.RestoreDeclaration(
-        HOSTILE, "2026-11-01 10:00 UTC", HOSTILE, HOSTILE, "2027-02-01 11:00 UTC", False
+        HOSTILE, "2026-11-01 10:00 UTC", HOSTILE, HOSTILE, "2027-02-01 11:00 UTC", False, True
     ),
     guide=cop.Guide(command=HOSTILE, yaml=HOSTILE, steps=(HOSTILE,)),
 )
