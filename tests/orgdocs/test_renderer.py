@@ -208,10 +208,10 @@ def failing_replace(monkeypatch):
     real = os.replace
     failing = {"suffix": None}
 
-    def replace(source, target):
+    def replace(source, target, **dir_fds):
         if failing["suffix"] and str(target).endswith(failing["suffix"]):
             raise OSError("disco lleno")
-        real(source, target)
+        real(source, target, **dir_fds)
 
     monkeypatch.setattr(os, "replace", replace)
     return failing
