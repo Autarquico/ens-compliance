@@ -375,6 +375,20 @@ escribir el resultado. Al recuperarse, el scheduler la cierra como
 pasado más de 24 h desde que se reclamó. Lo ya importado queda como en
 `collect`. Pide otra recogida.
 
+### Caducada al reclamar
+
+Si el scheduler lee la petición poco antes de las 24 h y la reclama a las 24 h
+o después, la cierra como `EXPIRED` («Caducada: no se llegó a ejecutar») sin
+recoger: así nunca corre a la vez que la petición nueva que la web permite
+desde las 24 h. Una reclamada antes de las 24 h sigue su curso aunque pase ese
+límite. Pide otra recogida.
+
+### Orden
+
+Las peticiones de recogida de varios conectores se atienden de la más antigua a
+la más reciente, no por nombre de conector. Van después de las del ciclo y de
+las de pre-auditoría.
+
 ### Acumulación
 
 Las peticiones no se borran nunca de forma automática: cada pulsación deja sus

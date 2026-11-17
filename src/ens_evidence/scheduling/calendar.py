@@ -103,7 +103,8 @@ def due_jobs(
     Solo el periodo en curso: antes de la hora no hay nada; pasada la hora se ejecuta si no está
     en `done`; el mensual pendiente se recupera durante todo el mes. No se rellenan días pasados.
     Las peticiones (`requests`: tipo y clave) vencen en el acto, tras los dos: primero las de
-    pre-auditoría y luego las de recogida, cada tipo por clave.
+    pre-auditoría (por clave) y luego las de recogida, en el orden recibido: `pending_keys` las da
+    de la más antigua a la más reciente entre conectores y el orden de claves los mezclaría.
     """
     now = _require_aware(now)
     local = now.astimezone(cfg.zone)
@@ -114,7 +115,12 @@ def due_jobs(
     monthly = _monthly_due(local.year, local.month, cfg)
     if monthly <= now and ("monthly", monthly_period(monthly, cfg)) not in done:
         jobs.append(Job("monthly", monthly_period(monthly, cfg), monthly))
-    for kind in (PREAUDIT, COLLECT):
-        keys = sorted(key for requested, key in requests if requested == kind)
-        jobs += [Job(kind, key, now) for key in keys if (kind, key) not in done]
+    preaudit = sorted(key for requested, key in requests if requested == PREAUDIT)
+    collect = [key for requested, key in requests if requested == COLLECT]
+    jobs += [
+        Job(kind, key, now)
+        for kind, keys in ((PREAUDIT, preaudit), (COLLECT, collect))
+        for key in keys
+        if (kind, key) not in done
+    ]
     return jobs

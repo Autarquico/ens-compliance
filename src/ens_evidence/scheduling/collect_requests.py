@@ -122,6 +122,8 @@ class ErrorCode(StrEnum):
     CONFIG_INVALID = "CONFIG_INVALID"
     COLLECT_CRASHED = "COLLECT_CRASHED"
     UNREADABLE = "UNREADABLE"
+    EXPIRED = "EXPIRED"
+    """Se reclamó a las 24 h o después: no se ejecuta."""
 
 
 class CollectRequestResult(Strict):
@@ -307,17 +309,23 @@ def execute(
     """Ejecuta la petición `key` y registra su resultado; None si ya no está viva (otra orden la
     cerró). El llamador tiene el lock del ciclo: una petición en curso es de un proceso muerto.
 
-    Se reclama con creación exclusiva antes de actuar. Recoge un solo conector (el de la clave) con
-    un intento (`retries=0`: los reintentos del diario esperan minutos con el lock tomado) y el
-    tiempo límite de `cfg`; los checks se evalúan siempre que el conector tenga configuración.
-    Un fallo de la recogida o de los checks queda en el resultado; uno al escribir el resultado se
+    Se reclama con creación exclusiva antes de actuar y el reloj se lee de nuevo tras reclamar: una
+    lectura por debajo de 24 h posterior a la creación del `.started` prueba que existía antes de
+    las 24 h, y desde las 24 h la UI la ve `RUNNING` y no abre otra; una reclamada a las 24 h o
+    después se cierra `EXPIRED` sin recoger (si no, correría a la vez que la petición siguiente).
+    Una reclamada antes de las 24 h sigue viva pasado ese límite.
+
+    Recoge un solo conector (el de la clave) con un intento (`retries=0`: los reintentos del
+    diario esperan minutos con el lock tomado) y el tiempo límite de `cfg`; los checks se evalúan
+    siempre que el conector tenga configuración. Un fallo de la recogida o de los checks queda en
+    el resultado; uno al escribir el resultado se
     propaga."""
     match = _KEY.fullmatch(key)
     if match is None or match["part"]:
         return None
     connector, number = match["connector"], int(match["n"])
     status = _status(store, key, connector, number, set(store.list(REQUESTS_PREFIX)), clock.now())
-    if not status.state.alive:
+    if not status.state.alive or status.request is None:
         return None
     if status.state is State.RUNNING:
         return _finish(store, connector, number, _failed(ErrorCode.INTERRUPTED, clock.now()))
@@ -325,6 +333,8 @@ def execute(
         store.create_bytes(_key(connector, number, ".started"), b"{}\n")
     except AlreadyExists:
         return None
+    if clock.now() - status.request.requested_at >= EXPIRES_AFTER:
+        return _finish(store, connector, number, _failed(ErrorCode.EXPIRED, clock.now()))
     result = _carry_out(store, settings, connector, plugins, cfg, clock)
     return _finish(store, connector, number, result)
 

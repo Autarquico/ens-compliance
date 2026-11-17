@@ -41,6 +41,7 @@ CODE_LABELS = {
     ErrorCode.CONNECTOR_UNKNOWN: "el conector no está registrado",
     ErrorCode.CONFIG_INVALID: "la configuración no es válida",
     ErrorCode.COLLECT_CRASHED: "la recogida falló de forma inesperada",
+    ErrorCode.EXPIRED: "Caducada: no se llegó a ejecutar",
     ErrorCode.UNREADABLE: "la petición o su resultado no se pueden leer",
 }
 NO_CODE = "sin causa indicada"

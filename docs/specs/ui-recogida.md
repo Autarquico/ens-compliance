@@ -6,7 +6,7 @@ status: active
 priority: P1
 size: M
 issue: 95
-prs: []
+prs: [97]
 related_issues: [95]
 depends_on: [ui-conectores]
 supersedes: []

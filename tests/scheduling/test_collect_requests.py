@@ -297,6 +297,85 @@ def test_a_claim_without_result_is_closed_as_interrupted_without_collecting(
     assert stored_result(store) == result
 
 
+def advance_on_claim(store, monkeypatch, clock, by):
+    """Gancho determinista: el reloj avanza `by` justo tras crear el `.started`."""
+    create = store.create_bytes
+
+    def create_then_advance(key, data):
+        create(key, data)
+        if key.endswith(".started.json"):
+            clock.current += by
+
+    monkeypatch.setattr(store, "create_bytes", create_then_advance)
+
+
+def test_a_request_claimed_after_the_deadline_is_closed_expired_and_never_runs(
+    store, settings, plugins, fake, monkeypatch
+):
+    ask(store)
+    clock = FakeClock(ASKED_AT + EXPIRES_AFTER - timedelta(seconds=1))
+    advance_on_claim(store, monkeypatch, clock, timedelta(seconds=2))
+
+    result = execute(store, settings, FIRST, plugins=plugins, cfg=CollectConfig(), clock=clock)
+
+    assert (result.outcome, result.code) == (Outcome.ERROR, ErrorCode.EXPIRED)
+    assert result.evidence_id is None
+    assert not (fake.state / "calls").exists()
+    assert stored_result(store) == result
+    after = ASKED_AT + EXPIRES_AFTER + timedelta(seconds=2)
+    [old] = requests_of(store, "github", after)
+    assert old.state is State.DONE
+    # la UI ya puede pedir la siguiente y esa sí se ejecuta
+    second = ask(store, at=after)
+    assert second.key == f"{REQUESTS_PREFIX}/github/000002.json"
+    assert pending_keys(store, after) == [second.key]
+    ran = run(store, settings, plugins, at=after, key=second.key)
+    assert (ran.outcome, ran.checks) == (Outcome.DONE, ChecksOutcome.RECORDED)
+    assert (fake.state / "calls").exists()
+
+
+def test_a_request_claimed_one_second_before_the_deadline_runs(
+    store, settings, plugins, fake, monkeypatch
+):
+    ask(store)
+    clock = FakeClock(ASKED_AT + EXPIRES_AFTER - timedelta(seconds=2))
+    advance_on_claim(store, monkeypatch, clock, timedelta(seconds=1))
+
+    result = execute(store, settings, FIRST, plugins=plugins, cfg=CollectConfig(), clock=clock)
+
+    assert (result.outcome, result.checks) == (Outcome.DONE, ChecksOutcome.RECORDED)
+    assert (fake.state / "calls").exists()
+
+
+def test_a_request_claimed_exactly_at_the_deadline_never_runs(store, settings, plugins, fake):
+    ask(store)
+    clock = FakeClock(ASKED_AT + EXPIRES_AFTER - timedelta(seconds=1))
+    clock.auto_advance = timedelta(seconds=1)
+
+    result = execute(store, settings, FIRST, plugins=plugins, cfg=CollectConfig(), clock=clock)
+
+    assert (result.outcome, result.code) == (Outcome.ERROR, ErrorCode.EXPIRED)
+    assert not (fake.state / "calls").exists()
+
+
+def test_pending_keys_are_oldest_first_across_connectors(store):
+    ask(store)
+    write_raw(
+        store,
+        "000001.json",
+        request_document(
+            connector="aaa-first-by-name",
+            requested_at=(ASKED_AT + timedelta(minutes=5)).isoformat(),
+        ),
+        connector="aaa-first-by-name",
+    )
+
+    assert pending_keys(store, ASKED_AT + timedelta(minutes=6)) == [
+        FIRST,
+        f"{REQUESTS_PREFIX}/aaa-first-by-name/000001.json",
+    ]
+
+
 def test_the_scope_not_approved_skips_the_checks_but_the_collection_is_imported(
     store, settings, plugins, fake
 ):

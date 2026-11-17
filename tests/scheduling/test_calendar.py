@@ -229,3 +229,23 @@ def test_round_trip_local_utc_of_every_due_instant():
         due = next_daily(now, config)
         assert due.astimezone(MADRID).astimezone(UTC) == due
         now = due
+
+
+def test_collect_requests_keep_the_order_received_while_preaudit_is_sorted_by_key():
+    now = dt.datetime(2026, 11, 2, 0, 0, tzinfo=dt.UTC)
+    cfg = ScheduleConfig()
+    requests = [
+        ("collect", "evidence/collect-requests/zeta/000001.json"),
+        ("preaudit", "evidence/preaudits/requests/b/000001.json"),
+        ("collect", "evidence/collect-requests/alfa/000001.json"),
+        ("preaudit", "evidence/preaudits/requests/a/000001.json"),
+    ]
+
+    jobs = due_jobs(now, cfg, {("monthly", "2026-11"), ("daily", "2026-11-02")}, requests)
+
+    assert [(job.kind, job.period) for job in jobs] == [
+        ("preaudit", "evidence/preaudits/requests/a/000001.json"),
+        ("preaudit", "evidence/preaudits/requests/b/000001.json"),
+        ("collect", "evidence/collect-requests/zeta/000001.json"),
+        ("collect", "evidence/collect-requests/alfa/000001.json"),
+    ]

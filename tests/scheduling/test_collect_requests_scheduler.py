@@ -1,11 +1,14 @@
 """Las peticiones de recogida de la UI se comprueban en cada tick, bajo el lock del ciclo."""
 
+import json
 import threading
-from datetime import UTC, datetime
+from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 
 from ens_evidence.scheduling import scheduler as scheduler_module
 from ens_evidence.scheduling.calendar import Job, due_jobs
+from ens_evidence.scheduling.collect_requests import pending_keys as pending_collect_keys
+from ens_evidence.scheduling.collect_requests import request_collect
 from ens_evidence.scheduling.scheduler import CycleExecutor, JobResult, Scheduler
 from ens_evidence.workspace.cycle_lock import CycleBusy, CycleLock
 from scheduling.fakes import FakeClock, FakeExecutor
@@ -120,7 +123,38 @@ def test_requests_run_after_the_daily_and_monthly_and_preaudit_before_collect():
         "collect",
         "collect",
     ]
-    assert [period for kind, period in executor.periods if kind == "collect"] == [KEY, OTHER]
+    assert [period for kind, period in executor.periods if kind == "collect"] == [OTHER, KEY]
+
+
+def test_collect_requests_of_several_connectors_run_oldest_first_not_by_connector_name(store):
+    first = request_collect(store, "github", email="ana@clinica.example", now=EARLY)
+    store.write_text(
+        "evidence/collect-requests/aaa/000001.json",
+        first_document("aaa", EARLY + timedelta(minutes=5)),
+    )
+    now = EARLY + timedelta(minutes=6)
+    clock, done = FakeClock(now), set()
+    scheduler, executor = scheduler_with(
+        clock, done, collect=lambda at: pending_collect_keys(store, at)
+    )
+
+    scheduler.tick()
+
+    assert [period for _, period in executor.periods] == [
+        first.key,
+        "evidence/collect-requests/aaa/000001.json",
+    ]
+
+
+def first_document(connector, at):
+    return json.dumps(
+        {
+            "format": "ens-collect-request/1",
+            "connector": connector,
+            "email": "ana@clinica.example",
+            "requested_at": at.isoformat(),
+        }
+    )
 
 
 def request_executor(clock, stop, tmp_path) -> CycleExecutor:

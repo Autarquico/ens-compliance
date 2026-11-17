@@ -6,15 +6,18 @@ Fronteras reales: el reloj (`FakeClock`) y el conector (falso, en subproceso `sp
 """
 
 import json
+import threading
 from datetime import timedelta
 
 import pytest
 import yaml
 from scheduling.collect_fakes import CANARY, FakeConnector
 from scheduling.fakes import FakeClock
+from scheduling.test_scheduler import CFG
 
 from ens_evidence.connectors.registry import ConnectorRegistry
-from ens_evidence.models.enums import Role
+from ens_evidence.models.enums import CollectionStatus, Role
+from ens_evidence.scheduling import collect_requests
 from ens_evidence.scheduling.collect import Plugins
 from ens_evidence.scheduling.collect_requests import (
     EXPIRES_AFTER,
@@ -28,10 +31,12 @@ from ens_evidence.scheduling.collect_requests import (
     request_collect,
 )
 from ens_evidence.scheduling.config import CollectConfig
+from ens_evidence.scheduling.scheduler import CycleExecutor, Scheduler
 from ens_evidence.scope.approval import APPROVAL_KEY, approve_scope
 from ens_evidence.ui.roles import ROLES_KEY, Grant, dump_roles
 from ens_evidence.ui.views.conectores import CATALOGUE
 from ens_evidence.ui.views.conectores_peticion import CHECKS_LABELS
+from ens_evidence.workspace.cycle_lock import CycleLock
 from ens_evidence.workspace.settings import load_settings
 
 from .conftest import NOW, Session, mint, snapshot_of, ui_client
@@ -184,6 +189,73 @@ def test_el_scheduler_recoge_evalua_y_la_pagina_muestra_la_nueva_recogida(
     assert BUTTON in github_block(web)
     assert request_card(github_block(web)).count("tone-ok") == 0
     assert checks_label_count(web, result) == 1
+
+
+def test_el_flujo_completo_la_web_pide_y_un_tick_real_del_scheduler_la_atiende(
+    web, configured, settings, plugins, fake, tmp_path
+):
+    state = tmp_path / "lock-state"
+    clock = FakeClock(RAN_AT)
+    executor = CycleExecutor(
+        configured,
+        settings,
+        {},
+        clock,
+        threading.Event(),
+        plugins=plugins,
+        lock_factory=lambda _settings, _env: CycleLock("ws", state),
+    )
+    scheduler = Scheduler(
+        clock,
+        executor,
+        lambda: CFG,
+        lambda: {("daily", "2026-11-08")},
+        threading.Event(),
+        log=lambda line: None,
+        collect_requests=lambda now: pending_keys(configured, now),
+    )
+    ask_through_the_ui(web)
+    assert "Pendiente" in github_block(web)
+
+    [(job, outcome)] = scheduler.tick()
+
+    assert (job.kind, job.period, outcome.status) == ("collect", FIRST, "completed")
+    result = stored_result(configured)
+    assert (result.outcome, result.checks) == (Outcome.DONE, ChecksOutcome.RECORDED)
+    block = plain(github_block(web))
+    assert "Terminada" in block and "comprobaciones registradas" in block
+    assert result.evidence_id in block and "Última recogida" in block
+    assert BUTTON in github_block(web)
+    assert scheduler.tick() == []
+
+
+def test_un_fallo_de_los_checks_tras_importar_conserva_la_evidencia_y_la_pagina_lo_dice(
+    web, configured, settings, plugins, fake, monkeypatch
+):
+    def exploding_checks(*args, **kwargs):
+        raise RuntimeError(CANARY)
+
+    monkeypatch.setattr(collect_requests, "run_one", exploding_checks)
+    ask_through_the_ui(web)
+
+    result = run(configured, settings, plugins)
+
+    assert result.collection_status is CollectionStatus.SUCCESS
+    assert (result.outcome, result.checks, result.check_key) == (
+        Outcome.DONE,
+        ChecksOutcome.ERROR,
+        None,
+    )
+    stored = stored_result(configured)
+    assert stored == result and stored.evidence_id is not None
+    assert any(stored.evidence_id in key for key in configured.list("evidence"))
+    assert not configured.list("evidence/checks")
+    card = request_card(github_block(web))
+    assert "Terminada; comprobaciones no registradas" in card
+    assert "fallaron" in card and stored.evidence_id in card
+    assert "tone-warn" in card and "tone-ok" not in card
+    assert CANARY not in web.get("/conectores").text
+    assert CANARY not in configured.read_bytes(RESULT).decode()
 
 
 def test_el_estado_en_curso_se_muestra_mientras_esta_reclamada(web, configured):
@@ -353,6 +425,23 @@ def test_una_reclamada_pasadas_24_horas_se_interrumpe_y_el_boton_vuelve(
     assert not (fake.state / "calls").exists()
     block = plain(github_block(web))
     assert "No se pudo hacer: la ejecución se interrumpió" in block
+    assert BUTTON in github_block(web)
+
+
+def test_reclamada_a_las_24_horas_se_cierra_caducada_y_la_pagina_lo_dice(
+    web, configured, settings, plugins, fake
+):
+    request_collect(
+        configured, "github", email=EMAIL, now=NOW - EXPIRES_AFTER + timedelta(seconds=1)
+    )
+    assert "Pendiente" in github_block(web)
+    clock = FakeClock(NOW, auto_advance=timedelta(seconds=1))
+
+    result = execute(configured, settings, FIRST, plugins=plugins, cfg=CollectConfig(), clock=clock)
+
+    assert (result.outcome, result.code) == (Outcome.ERROR, ErrorCode.EXPIRED)
+    assert not (fake.state / "calls").exists()
+    assert "No se pudo hacer: Caducada: no se llegó a ejecutar" in plain(github_block(web))
     assert BUTTON in github_block(web)
 
 
