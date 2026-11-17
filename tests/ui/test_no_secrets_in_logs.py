@@ -76,6 +76,24 @@ def test_los_logs_no_llevan_las_claves_del_asistente_de_copias_ni_en_los_errores
     assert not any(secret in logged for secret in SENTINELS)
 
 
+def test_los_logs_no_llevan_un_secreto_pegado_en_el_formulario_de_conectores(
+    caplog, raw_client, token
+):
+    secret = "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+    good = {**auth(token), **WRITE_HEADERS}
+    caplog.set_level(logging.DEBUG)
+    form = {"asset_id": "gh-taller", "organization": secret}
+
+    rejected = raw_client.post("/conectores/github", data=form, headers=good)
+    raw_client.post("/conectores/github", data=form, headers=auth(token))
+    raw_client.post("/conectores/github", data=form, headers=WRITE_HEADERS)
+    raw_client.post("/conectores/backups", data=form, headers=good)
+
+    assert rejected.status_code == 422
+    assert secret not in rejected.text
+    assert secret not in all_logged_text(caplog)
+
+
 def test_los_logs_no_llevan_nada_del_asistente_de_claves_ni_de_custodios(caplog, raw_client, token):
     from .test_custody import FORM as CUSTODIOS_FORM
     from .test_tools_claves import FORM as CLAVES_FORM

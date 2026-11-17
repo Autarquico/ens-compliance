@@ -12,7 +12,7 @@ from ens_evidence.workspace.settings import reject_credential_keys
 from ens_evidence.yaml_unique import safe_load_unique
 
 # Claves de configuración cuyo nombre contiene un marcador de credencial pero no lo es.
-_ALLOWED_KEYS = frozenset({"token_kind"})
+_ALLOWED_KEYS = frozenset({"token_kind", "max_token_period_hours"})
 
 
 class ConnectorConfigError(WorkspaceError):

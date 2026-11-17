@@ -49,6 +49,13 @@ def test_sin_edicion_todo_formulario_que_escribe_queda_inactivo(session, reader,
     assert "Solo lectura: para editar hace falta permiso de edición." in page
 
 
+def test_sin_edicion_la_ficha_de_un_conector_no_ofrece_formulario_y_lo_explica(session, reader):
+    page = session.get("/conectores/github").text
+
+    assert 'method="post"' not in page
+    assert "Solo lectura: para configurar este conector hace falta permiso de edición." in page
+
+
 @pytest.mark.parametrize("path", ["/asistente/sistema", "/evidencias/nueva", "/incidentes/nuevo"])
 def test_con_edicion_los_formularios_estan_activos(session, example_store, path):
     grant(example_store, True)
