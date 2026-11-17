@@ -139,6 +139,9 @@ class RepositoryBlock:
     problem: bool
     restore_test: RestoreDeclaration | None
     guide: Guide
+    tests_unattributable: bool = (
+        False  # hay pruebas registradas que no se saben de este repositorio
+    )
 
 
 @dataclass(frozen=True)
@@ -211,23 +214,32 @@ def load_repositories(store: UiStore) -> tuple[bool, str | None, tuple[Repositor
 
 
 def latest_snapshot_time(
-    store: UiStore, evidence_ids: list[str], repository: RepositoryConfig, now: datetime
+    store: UiStore,
+    evidence_ids: list[str],
+    repository: RepositoryConfig,
+    subjects: set[str],
+    now: datetime,
 ) -> datetime | None:
     """El snapshot más reciente que lista la evidencia citada por BACKUP-001, o `None`.
 
     Solo se da por bueno un artefacto del workspace, direccionado por su hash, de la fuente
-    `backups` y con el repositorio del bloque; ante cualquier duda, `None` (se cae a la fecha
-    del check). El tamaño se comprueba antes de hashear y de interpretar el JSON.
+    `backups` y con una entrada cuyo `id`, `asset_id` y `repository_id` son los del bloque (el
+    último, el sujeto de BACKUP-001); ante cualquier duda, `None` (se cae a la fecha del check).
+    El tamaño se comprueba antes de hashear y de interpretar el JSON.
     """
     for evidence_id in evidence_ids:
-        found = _snapshot_time(store, evidence_id, repository, now)
+        found = _snapshot_time(store, evidence_id, repository, subjects, now)
         if found is not None:
             return found
     return None
 
 
 def _snapshot_time(
-    store: UiStore, evidence_id: str, repository: RepositoryConfig, now: datetime
+    store: UiStore,
+    evidence_id: str,
+    repository: RepositoryConfig,
+    subjects: set[str],
+    now: datetime,
 ) -> datetime | None:
     try:
         manifest = load_manifest_by_id(store, evidence_id)
@@ -243,16 +255,22 @@ def _snapshot_time(
         raw = store.read_bytes(artifact.key)
         if len(raw) > MAX_ARTIFACT_BYTES or hashlib.sha256(raw).hexdigest() != artifact.sha256:
             return None
-        return _newest(json.loads(raw), repository, now)
+        return _newest(json.loads(raw), repository, subjects, now)
     except (ManifestError, WorkspaceError, ValueError, TypeError, KeyError, AttributeError):
         return None
 
 
-def _newest(document: Any, repository: RepositoryConfig, now: datetime) -> datetime | None:
+def _newest(
+    document: Any, repository: RepositoryConfig, subjects: set[str], now: datetime
+) -> datetime | None:
     if document["source"] != SOURCE or document["collector"] != SOURCE:
         return None
     for entry in document["data"]["repositories"]:
-        if entry.get("id") == repository.id or entry.get("asset_id") == repository.asset_id:
+        if (
+            entry.get("id") == repository.id
+            and entry.get("asset_id") == repository.asset_id
+            and entry.get("repository_id") in subjects
+        ):
             items = entry["sections"]["snapshots"]["items"]
             times = [t for t in map(_instant, (i.get("time") for i in items)) if t and t <= now]
             return max(times, default=None)
@@ -369,15 +387,23 @@ def _block(
     contributions: list[Contribution],
     assets: dict[str, Asset],
     tests: list[RestoreTest],
+    unreadable_tests: int,
     now: datetime,
 ) -> tuple[RepositoryBlock, set[str]]:
     results = [r for c in contributions for r in c.results]
-    subjects = {r.subject for r in results if r.subject}
+    # BACKUP-005 usa el `test_id` como sujeto: no identifica el repositorio.
+    subjects = {r.subject for r in results if r.subject and r.check_id != RESTORE_TEST}
     recent = [(c, r) for c in contributions for r in c.results if r.check_id == RECENT]
+    recent_subjects = {r.subject for _, r in recent if r.subject}
     snapshot_at = latest_snapshot_time(
-        store, [e for _, r in recent for e in r.evidence_ids], repository, now
+        store, [e for _, r in recent for e in r.evidence_ids], repository, recent_subjects, now
     )
     own_tests = [t for t in tests if t.repository_id in subjects]
+    unattributable = (
+        not own_tests
+        and bool(tests or unreadable_tests)
+        and (not subjects or bool(scan.unreadable))
+    )
     asset = assets.get(repository.asset_id)
     href, note = _asset_link(repository.asset_id, assets)
     block = RepositoryBlock(
@@ -401,6 +427,7 @@ def _block(
         if own_tests
         else None,
         guide=_guide(repository.id, repository.asset_id),
+        tests_unattributable=unattributable,
     )
     return block, subjects
 
@@ -455,6 +482,7 @@ def build_page(store: UiStore, kit_host: str | None, now: datetime) -> CopiasPag
             found.get(repository.asset_id, []),
             assets,
             records.restore_tests,
+            len(records.unreadable.get("restore_tests", [])),
             now,
         )
         blocks.append(block)

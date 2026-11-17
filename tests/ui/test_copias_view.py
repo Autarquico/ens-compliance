@@ -11,6 +11,7 @@ from ens_evidence.backup.records import BackupRun, RestoreRecord, dump
 from ens_evidence.backup.restore_test import RestoreTest
 from ens_evidence.checks.model import StoredCheckRun
 from ens_evidence.checks.store import record_run
+from ens_evidence.connectors.backups import checks as backups_checks
 from ens_evidence.evidence.importer import import_collected
 from ens_evidence.models.contracts import CheckResult, CollectionResult
 from ens_evidence.models.enums import CheckStatus
@@ -68,13 +69,13 @@ def write_assets(local, frequency="Diaria"):
     local.write_text("scope/assets.yaml", yaml.safe_dump(assets))
 
 
-def evidence(local, items=None, repo_id="caja", asset_id="bk-diario"):
+def evidence(local, items=None, repo_id="caja", asset_id="bk-diario", repository_id=RID):
     snapshots = [{"id": SNAP, "time": (NOW - timedelta(hours=2)).isoformat(), "foreign": True}]
     entry = {
         "id": repo_id,
         "asset_id": asset_id,
         "collection_status": "SUCCESS",
-        "repository_id": RID,
+        "repository_id": repository_id,
         "sections": {
             "snapshots": {"status": "SUCCESS", "items": snapshots if items is None else items}
         },
@@ -131,6 +132,7 @@ def declaration(
     snapshot=SNAP,
     reviewer="Ana",
     valid_until="2027-02-01T11:00:00+00:00",
+    approved=True,
 ):
     return RestoreTest.model_validate(
         {
@@ -146,7 +148,7 @@ def declaration(
                 "application_started": True,
             },
             "review": {
-                "approved": True,
+                "approved": approved,
                 "reviewer": reviewer,
                 "role": "security_officer",
                 "reviewed_at": "2026-11-01T11:00:00+00:00",
@@ -269,6 +271,66 @@ def test_un_snapshot_futuro_no_cuenta(local):
     assert page(local).repositories[0].last_snapshot is None
 
 
+@pytest.mark.parametrize(
+    "entry",
+    [
+        {"repo_id": "caja", "asset_id": "otro-activo"},
+        {"repo_id": "otro", "asset_id": "bk-diario"},
+        {"repository_id": "d" * 64},
+    ],
+    ids=["solo_id", "solo_asset_id", "otro_repository_id"],
+)
+def test_el_artefacto_exige_id_activo_y_repositorio_a_la_vez(local, entry):
+    write_config(local)
+    manifest = evidence(local, **entry)
+    run(local, [check(manifest)])
+    assert page(local).repositories[0].last_snapshot is None
+
+
+def structure_evidence(local, data):
+    return import_collected(
+        local,
+        CollectionResult(
+            source="backups",
+            collector="backups",
+            asset_id="backups",
+            collected_at=NOW,
+            collection_status="SUCCESS",
+            data=data,
+        ),
+        collector_version="1",
+        now=NOW,
+    )
+
+
+@pytest.mark.parametrize(
+    "data",
+    [
+        {"repositories": 5},
+        {"repositories": [{"id": "caja", "asset_id": "bk-diario", "repository_id": RID}]},
+        {
+            "repositories": [
+                {
+                    "id": "caja",
+                    "asset_id": "bk-diario",
+                    "repository_id": RID,
+                    "sections": {"snapshots": {"items": "no"}},
+                }
+            ]
+        },
+        {},
+    ],
+    ids=["no_lista", "sin_secciones", "items_no_lista", "sin_repositorios"],
+)
+def test_estructura_malformada_con_hash_valido_cae_al_check(local, data):
+    write_config(local)
+    manifest = structure_evidence(local, data)
+    run(local, [check(manifest)])
+    block = page(local).repositories[0]
+    assert block.last_snapshot is None
+    assert block.checked_at is not None
+
+
 # --- C6: ausencia --------------------------------------------------------------------------------
 
 
@@ -312,6 +374,59 @@ def test_prueba_atribuida_por_el_sujeto_del_check(local):
     )
     assert not hasattr(declared, "current")
     assert [(h.repository_label, h.matched) for h in p.history] == [("caja", "sí")]
+
+
+def test_sin_resultados_las_pruebas_registradas_no_se_atribuyen_ni_se_niegan(local):
+    write_config(local)
+    write_test(local, declaration())
+    block = page(local).repositories[0]
+    assert block.restore_test is None
+    assert block.tests_unattributable is True
+
+
+def test_sin_pruebas_registradas_no_hay_nada_que_atribuir(local):
+    write_config(local)
+    assert page(local).repositories[0].tests_unattributable is False
+
+
+def test_con_sujetos_y_una_prueba_ajena_consta_que_no_hay_prueba_propia(local):
+    configured_with_snapshot(local)
+    write_test(local, declaration(repository_id="d" * 64))
+    assert page(local).repositories[0].tests_unattributable is False
+
+
+def test_historial_ilegible_no_permite_negar_las_pruebas(local):
+    configured_with_snapshot(local)
+    write_test(local, declaration(repository_id="d" * 64))
+    local.write_text("evidence/checks/backups/000009-roto.json", "{no es json")
+    p = page(local)
+    assert p.history_notes
+    assert p.repositories[0].tests_unattributable is True
+
+
+def test_la_atribucion_funciona_con_los_sujetos_de_los_checks_reales(local):
+    write_config(local)
+    manifest = evidence(local)
+    result = CollectionResult(
+        source="backups",
+        collector="backups",
+        asset_id="backups",
+        collected_at=NOW,
+        collection_status="SUCCESS",
+        data={
+            "repositories": [
+                json.loads(local.read_bytes(manifest.artifact.key))["data"]["repositories"][0]
+            ]
+        },
+    )
+    real = [r for c in backups_checks.ALL_CHECKS for r in c(result, manifest.id, NOW)]
+    assert {r.check_id for r in real} >= {RECENT, RESTORE_TEST}
+    run(local, real)
+    write_test(local, declaration(test_id="RT-9"))
+    block = page(local).repositories[0]
+    assert block.restore_test is not None and block.restore_test.test_id == "RT-9"
+    assert block.tests_unattributable is False
+    assert block.last_snapshot is not None
 
 
 def test_prueba_ajena_va_al_historial_sin_atribuir(local):

@@ -145,6 +145,19 @@ def test_backup_001_en_fail_marca_el_bloque_como_problema_y_ofrece_backrest_y_el
     assert not favorable(header_of(block))
 
 
+def test_backup_001_en_fail_con_una_copia_antigua_muestra_su_antiguedad_real(web, example_store):
+    old = [{"id": SNAP, "time": (NOW - timedelta(hours=60)).isoformat()}]
+    seed(example_store, {CHECKS[0]: CheckStatus.FAIL}, items=old)
+
+    block = block_of(web.get("/copias").text)
+
+    assert "Con problemas" in block and "tone-bad" in block
+    assert "hace 60 h" in " ".join(text(block).split())
+    assert re.search(r"backup_001_recent</span>.*?<span class=\"badge-code\">FAIL", block, re.S)
+    assert ">Abrir Backrest<" in block and 'href="/ayuda/kit-copias"' in block
+    assert not favorable(header_of(block))
+
+
 def test_backup_001_en_fail_sin_snapshots_no_inventa_antiguedad(web, example_store):
     seed(example_store, {CHECKS[0]: CheckStatus.FAIL}, items=[])
 
@@ -184,6 +197,33 @@ def test_prueba_caducada_dice_sin_prueba_vigente_y_no_deriva_vigente(web, exampl
 
     assert "Sin prueba vigente" in block and "caducó el" in block
     assert "--repository caja" in unescape(block)
+    assert not favorable(header_of(block))
+
+
+def test_prueba_caducada_sigue_mostrando_fecha_revisor_y_que_no_esta_aprobada(web, example_store):
+    seed(example_store, {CHECKS[3]: CheckStatus.UNKNOWN})
+    write_test(
+        example_store,
+        declaration(valid_until="2026-11-02T11:00:00+00:00", reviewer="Berta", approved=False),
+    )
+    write_restore(example_store)
+
+    body = " ".join(text(block_of(web.get("/copias").text)).split())
+
+    assert "caducó el 2026-11-02 11:00 UTC" in body
+    assert "2026-11-01 10:00 UTC" in body and "Berta" in body
+    assert "no aprobada" in body
+
+
+def test_sin_resultados_dice_que_las_pruebas_no_se_pueden_atribuir(web, example_store):
+    write_config(example_store)
+    write_test(example_store, declaration())
+
+    block = block_of(web.get("/copias").text)
+
+    flat = " ".join(text(block).split())
+    assert "no se pueden atribuir a este repositorio" in flat
+    assert "ninguna prueba de restauración consta" not in flat
     assert not favorable(header_of(block))
 
 

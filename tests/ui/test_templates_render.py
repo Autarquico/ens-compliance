@@ -1,5 +1,6 @@
 """Renderiza las plantillas con el contexto de docs/ui/contrato-de-plantillas.md."""
 
+import dataclasses
 import re
 from pathlib import Path
 from types import SimpleNamespace
@@ -804,6 +805,9 @@ VIEW_CONTEXT = {
             box=_COPIAS_BOX_EMPTY,
             history=(),
             unreadable_tests=0,
+        ),
+        _copias_page(
+            repositories=(dataclasses.replace(_COPIAS_REPOSITORY_BARE, tests_unattributable=True),)
         ),
     ],
     "views/inventario.html": [

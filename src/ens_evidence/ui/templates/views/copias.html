@@ -87,12 +87,15 @@
 
     <h4 class="sub">Prueba de restauración</h4>
     {% if r.restore_test and r.restore_test.expired %}
-    <p>{{ m.icon("help") }} Sin prueba vigente: la última declarada (<span class="mono">{{ r.restore_test.test_id }}</span>) caducó el <span class="mono">{{ r.restore_test.valid_until }}</span>.</p>
+    <p>{{ m.icon("help") }} Sin prueba vigente: la última declarada (<span class="mono">{{ r.restore_test.test_id }}</span>) caducó el <span class="mono">{{ r.restore_test.valid_until }}</span>. Se hizo el <span class="mono">{{ r.restore_test.performed_at }}</span> por {{ r.restore_test.reviewer }} ({{ r.restore_test.role_label }}).</p>
+    {% if not r.restore_test.approved %}<p>{{ m.icon("alert") }} La revisión de esta prueba la marca como no aprobada.</p>{% endif %}
     <p class="muted">La prueba la hace y registra una persona. Lo que vale es el resultado de BACKUP-005 en la tabla de arriba, no esta declaración.</p>
     {% elif r.restore_test %}
     <p>Última prueba declarada: <span class="mono">{{ r.restore_test.test_id }}</span>, hecha el <span class="mono">{{ r.restore_test.performed_at }}</span> por {{ r.restore_test.reviewer }} ({{ r.restore_test.role_label }}). Caducidad declarada: <span class="mono">{{ r.restore_test.valid_until }}</span>.</p>
     {% if not r.restore_test.approved %}<p>{{ m.icon("alert") }} La revisión de esta prueba la marca como no aprobada.</p>{% endif %}
     <p class="muted">La prueba la hace y registra una persona. Lo que vale es el resultado de BACKUP-005 en la tabla de arriba, no esta declaración.</p>
+    {% elif r.tests_unattributable %}
+    <p>{{ m.icon("alert") }} Sin prueba vigente que se pueda atribuir: hay pruebas de restauración registradas (ver el historial) pero, con la evidencia disponible, no se pueden atribuir a este repositorio. Una copia que no se ha restaurado nunca no está probada.</p>
     {% else %}
     <p>{{ m.icon("help") }} Sin prueba vigente: ninguna prueba de restauración consta para este repositorio. Una copia que no se ha restaurado nunca no está probada.</p>
     {% endif %}
