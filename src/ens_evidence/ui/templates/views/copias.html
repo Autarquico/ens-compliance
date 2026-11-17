@@ -63,7 +63,7 @@
       <dd>Snapshot de menos de <span class="mono">{{ r.thresholds.max_backup_age_hours }}</span> h · comprobación de menos de <span class="mono">{{ r.thresholds.max_check_age_days }}</span> días · prueba de restauración de menos de <span class="mono">{{ r.thresholds.restore_test_validity_days }}</span> días. <span class="muted">Son los de la comprobación, no la política de la organización.</span></dd>
     </dl>
 
-    <h4>Resultados de las comprobaciones</h4>
+    <h4 class="sub">Resultados de las comprobaciones</h4>
     {% if r.results %}
     {% for c in r.results %}
     <p class="muted"><span class="mono">{{ c.connector }}</span> · <span class="mono">{{ c.finished_at }}</span>{% if not c.complete %} · {{ m.icon("alert") }} Resultados incompletos: faltan datos de esta ejecución.{% endif %}</p>
