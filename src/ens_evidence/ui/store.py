@@ -1,5 +1,8 @@
 """Almacén de la UI: lee todo el workspace, escribe solo bajo la lista blanca (ADR 0021)."""
 
+from collections.abc import Iterator
+from contextlib import contextmanager, nullcontext
+
 from ens_evidence.workspace.keys import normalize_key
 from ens_evidence.workspace.store import WorkspaceStore
 
@@ -54,6 +57,14 @@ class UiStore:
 
     def create_bytes(self, key: str, data: bytes) -> None:
         self._inner.create_bytes(self._allowed_and_noted(key), data)
+
+    @contextmanager
+    def exclusive_lock(self, key: str) -> Iterator[None]:
+        """Lock exclusivo bajo la lista blanca; sin esa capacidad en el almacén no hay lock."""
+        opener = getattr(self._inner, "exclusive_lock", None)
+        allowed = self._allowed(key)
+        with opener(allowed) if opener else nullcontext():
+            yield
 
     def _allowed_and_noted(self, key: str) -> str:
         allowed = self._allowed(key)

@@ -62,3 +62,11 @@ def test_a_normalized_connectors_key_is_the_allowed_key(ui_store, store):
 
 def test_collect_requests_prefix_is_writable():
     assert "evidence/collect-requests" in WRITABLE_PREFIXES
+
+
+def test_el_lock_exclusivo_respeta_la_lista_blanca(ui_store, store):
+    with ui_store.exclusive_lock("evidence/collect-requests/github.lock"):
+        assert store.exists("evidence/collect-requests/github.lock")
+    with pytest.raises(WriteNotAllowed), ui_store.exclusive_lock("evidence/checks/x.lock"):
+        pytest.fail("no debe entrar")
+    assert not store.exists("evidence/checks/x.lock")

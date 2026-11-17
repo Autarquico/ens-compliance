@@ -15,15 +15,13 @@ con formato canónico): nunca un mensaje, porque el motivo legible de un fallo p
 secreto de un tercero.
 """
 
-import fcntl
-import os
+import json
 import re
 from collections.abc import Iterator
-from contextlib import contextmanager
+from contextlib import contextmanager, nullcontext
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
-from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, AwareDatetime, Field, ValidationError
@@ -128,7 +126,7 @@ class ErrorCode(StrEnum):
     COLLECT_CRASHED = "COLLECT_CRASHED"
     UNREADABLE = "UNREADABLE"
     EXPIRED = "EXPIRED"
-    """Ya no se escribe (una caducada no se reclama); se lee por resultados de versiones previas."""
+    """Caducó durante el reclamo: no se recogió."""
 
 
 class CollectRequestResult(Strict):
@@ -207,38 +205,17 @@ def request_collect(
     return RequestStatus(key, connector, request, State.PENDING)
 
 
-def _local_root(store: object) -> Path | None:
-    """La carpeta del workspace local, atravesando envoltorios (`UiStore`); None si no es local."""
-    for _ in range(4):
-        root = getattr(store, "_root", None)
-        if isinstance(root, Path):
-            return root
-        inner = getattr(store, "_inner", None)
-        if inner is None:
-            return None
-        store = inner
-    return None
-
-
 @contextmanager
 def claim_lock(store: WorkspaceStore, connector: str) -> Iterator[None]:
     """Exclusión entre procesos (UI y planificador) de las dos transiciones que deciden qué petición
     está viva: admitir una nueva y reclamar una. Solo ellas; la recogida corre fuera.
 
-    `flock` sobre `evidence/collect-requests/<conector>.lock` (nunca se borra: lo libera el kernel
-    si el proceso muere). Sin carpeta local no hay lock: la UI no sirve sobre otro backend."""
-    root = _local_root(store)
-    if root is None:
+    El almacén abre `evidence/collect-requests/<conector>.lock` (`exclusive_lock`: contención y
+    lista blanca como el resto de sus escrituras; el fichero no se borra y lo libera el kernel si el
+    proceso muere). Un almacén sin esa capacidad (no local) no tiene lock: la UI no sirve ahí."""
+    opener = getattr(store, "exclusive_lock", None)
+    with opener(f"{REQUESTS_PREFIX}/{connector}.lock") if opener else nullcontext():
         yield
-        return
-    path = root / REQUESTS_PREFIX / f"{connector}.lock"
-    path.parent.mkdir(parents=True, exist_ok=True)
-    fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW, 0o600)
-    try:
-        fcntl.flock(fd, fcntl.LOCK_EX)
-        yield
-    finally:
-        os.close(fd)
 
 
 def _identity_problems(connector: str, email: str) -> list[str]:
@@ -304,11 +281,21 @@ def _status(
     result = _read_result(store, connector, _key(connector, number, ".result"), keys)
     if result is not None:
         return RequestStatus(key, connector, request, State.DONE, result)
-    if _key(connector, number, ".started") in keys:
+    late = now - request.requested_at >= EXPIRES_AFTER
+    started = _key(connector, number, ".started")
+    if started in keys and (_confirmed(store, started) or not late):
         return RequestStatus(key, connector, request, State.RUNNING)
-    if now - request.requested_at >= EXPIRES_AFTER:
+    if late:
         return RequestStatus(key, connector, request, State.EXPIRED)
     return RequestStatus(key, connector, request, State.PENDING)
+
+
+def _confirmed(store: WorkspaceStore, key: str) -> bool:
+    """El reclamo se confirmó: se leyó el reloj *después* de publicarlo y no había caducado."""
+    try:
+        return "confirmed_at" in json.loads(store.read_bytes(key))
+    except (ValueError, NotFound):
+        return False
 
 
 def _unreadable(at: datetime) -> CollectRequestResult:
@@ -351,9 +338,11 @@ def execute(
     cerró). El llamador tiene el lock del ciclo: una petición en curso es de un proceso muerto.
 
     El reclamo es una transición bajo `claim_lock`, la misma que usa la UI para admitir otra
-    petición: dentro se lee el reloj, se vuelve a leer el estado y se crea el `.started` solo si no
-    ha caducado (una caducada sin reclamar no se toca: nunca hay dos vivas). La recogida corre
-    fuera del lock. Una reclamada antes de las 24 h sigue viva pasado ese límite.
+    petición: dentro se lee el reloj, se vuelve a leer el estado y se publica el `.started`; se
+    lee el reloj otra vez y solo si no ha caducado se confirma (`confirmed_at`). Si caducó durante
+    la publicación se cierra como `EXPIRED` sin recoger. Un `.started` sin confirmar de una petición
+    ya caducada no cuenta como viva (el proceso murió entre publicar y confirmar); uno confirmado
+    antes de las 24 h sigue viva pasado ese límite. La recogida corre fuera del lock.
 
     Recoge un solo conector (el de la clave) con un intento (`retries=0`: los reintentos del
     diario esperan minutos con el lock tomado) y el tiempo límite de `cfg`; los checks se evalúan
@@ -375,6 +364,13 @@ def execute(
             store.create_bytes(_key(connector, number, ".started"), b"{}\n")
         except AlreadyExists:
             return None
+        claimed_at = clock.now()  # tras publicar: ninguna lectura anterior sirve para el plazo
+        if claimed_at - status.request.requested_at >= EXPIRES_AFTER:
+            return _finish(store, connector, number, _failed(ErrorCode.EXPIRED, claimed_at))
+        store.write_bytes(
+            _key(connector, number, ".started"),
+            canonical_json({"confirmed_at": claimed_at.isoformat()}),
+        )
     result = _carry_out(store, settings, connector, plugins, cfg, clock)
     return _finish(store, connector, number, result)
 

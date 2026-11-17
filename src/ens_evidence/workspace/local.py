@@ -1,8 +1,10 @@
 """Backend de carpeta local con contención verificada."""
 
+import fcntl
 import os
 import tempfile
-from collections.abc import MutableSequence
+from collections.abc import Iterator, MutableSequence
+from contextlib import contextmanager
 from pathlib import Path
 
 from ens_evidence.workspace.errors import (
@@ -60,6 +62,23 @@ class LocalStore:
             raise _translate(exc) from exc
         finally:
             _discard(tmp_name)
+
+    @contextmanager
+    def exclusive_lock(self, key: str) -> Iterator[None]:
+        """`flock` exclusivo sobre el fichero `key` (se crea si falta y no se borra: lo libera el
+        kernel si el proceso muere), con la misma contención que las demás escrituras."""
+        path = self._contained(normalize_key(key))
+        try:
+            path.parent.mkdir(parents=True, exist_ok=True)
+            path = self._contained(normalize_key(key))
+            fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW, 0o600)
+        except OSError as exc:
+            raise _translate(exc) from exc
+        try:
+            fcntl.flock(fd, fcntl.LOCK_EX)
+            yield
+        finally:
+            os.close(fd)
 
     def _stage(self, key: str, data: bytes) -> tuple[Path, str]:
         """Escribe `data` en un temporal junto al destino; devuelve (destino, temporal)."""

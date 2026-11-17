@@ -41,6 +41,8 @@ ASKED_AT = NOW + timedelta(days=1)
 FIRST = f"{REQUESTS_PREFIX}/github/000001.json"
 CHECK_KEY = "evidence/checks/github/000001-20261030T120000000000Z-0123456789ab.json"
 
+CONFIRMED = '{"confirmed_at": "2026-11-09T00:00:00+00:00"}\n'
+
 
 def ask(store, at=ASKED_AT, connector="github"):
     return request_collect(store, connector, email=EMAIL, now=at)
@@ -187,7 +189,7 @@ def test_an_expired_request_is_not_executed_and_a_new_one_can_be_asked(
 
 def test_a_claimed_request_past_24_hours_is_closed_as_interrupted(store, settings, plugins, fake):
     ask(store)
-    store.write_text(f"{REQUESTS_PREFIX}/github/000001.started.json", "{}\n")
+    store.write_text(f"{REQUESTS_PREFIX}/github/000001.started.json", CONFIRMED)
     late = ASKED_AT + EXPIRES_AFTER + timedelta(hours=3)
 
     assert requests_of(store, "github", late)[0].state is State.RUNNING

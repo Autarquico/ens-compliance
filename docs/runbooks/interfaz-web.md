@@ -380,12 +380,16 @@ pasado más de 24 h desde que se reclamó. Lo ya importado queda como en
 
 Admitir una petición nueva y reclamar la anterior son una sola transición por
 conector (un `flock` sobre `evidence/collect-requests/<conector>.lock`, que no
-es una petición y nunca se borra). El scheduler lee el reloj dentro de ese lock
-y solo crea `<n>.started.json` si no han pasado 24 h: si la petición caducó
-entre que la vio y que la reclamó, la deja sin reclamar (queda «Caducada») y la
-web puede aceptar la siguiente. Nunca hay dos vivas, tampoco si el proceso
-muere a mitad. Una reclamada antes de las 24 h sigue su curso aunque pase ese
-límite. La recogida corre fuera del lock. Pide otra recogida.
+es una petición y nunca se borra). El scheduler lee el reloj dentro de ese lock y solo crea `<n>.started.json` si no
+han pasado 24 h: si la petición caducó entre que la vio y que la reclamó, la deja
+sin reclamar (queda «Caducada») y la web puede aceptar la siguiente. Tras publicar
+el marcador vuelve a leer el reloj: si ya caducó durante la publicación, cierra la
+petición con error `EXPIRED` sin recoger (todo bajo el lock, nadie ve un «En
+curso» provisional); si no, lo confirma (`confirmed_at`). Un marcador sin
+confirmar de una petición ya caducada (el proceso murió entre publicar y
+confirmar) no cuenta como viva: queda «Caducada» y la web acepta otra. Nunca hay
+dos vivas. Una reclamada y confirmada antes de las 24 h sigue su curso aunque
+pase ese límite. La recogida corre fuera del lock. Pide otra recogida.
 
 ### Fallo durante la importación
 

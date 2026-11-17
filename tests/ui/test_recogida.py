@@ -7,6 +7,7 @@ Fronteras reales: el reloj (`FakeClock`) y el conector (falso, en subproceso `sp
 
 import json
 import threading
+import time
 from datetime import timedelta
 
 import pytest
@@ -274,6 +275,46 @@ def test_el_estado_en_curso_se_muestra_mientras_esta_reclamada(web, configured):
     assert "En curso" in block and BUTTON not in block
 
 
+def test_con_la_recogida_en_pausa_la_pagina_dice_en_curso_y_otro_post_se_rechaza_sin_esperar(
+    web, configured, settings, plugins, fake, monkeypatch
+):
+    inside, resume = threading.Event(), threading.Event()
+    real = collect_requests._carry_out
+
+    def paused(*args):
+        inside.set()
+        assert resume.wait(30)
+        return real(*args)
+
+    monkeypatch.setattr(collect_requests, "_carry_out", paused)
+    ask_through_the_ui(web)
+    outcome: dict[str, object] = {}
+
+    def body():
+        try:
+            outcome["result"] = run(configured, settings, plugins)
+        except BaseException as error:  # noqa: BLE001 - se devuelve al test
+            outcome["error"] = error
+
+    worker = threading.Thread(target=body)
+    worker.start()
+    try:
+        assert inside.wait(30)  # el lock por conector ya está libre
+        assert "En curso" in github_block(web) and BUTTON not in github_block(web)
+        started = time.monotonic()
+        refused = web.post("/conectores/github/recoger", {})
+        assert refused.status_code == 422
+        assert time.monotonic() - started < 5  # no espera a la recogida
+        assert requests_listed(configured) == [FIRST, CLAIM]
+    finally:
+        resume.set()
+        worker.join(60)
+
+    assert "error" not in outcome
+    assert stored_result(configured).outcome is Outcome.DONE
+    assert BUTTON in github_block(web)
+
+
 def test_una_peticion_hecha_permite_pedir_otra(web, configured, settings, plugins, fake):
     ask_through_the_ui(web)
     run(configured, settings, plugins)
@@ -423,7 +464,7 @@ def test_una_reclamada_pasadas_24_horas_se_interrumpe_y_el_boton_vuelve(
     web, configured, settings, plugins, fake
 ):
     request_collect(configured, "github", email=EMAIL, now=NOW - timedelta(hours=30))
-    configured.write_text(CLAIM, "{}\n")
+    configured.write_text(CLAIM, '{"confirmed_at": "2026-11-07T00:00:00+00:00"}\n')
     assert "En curso" in github_block(web)
 
     result = run(configured, settings, plugins, at=NOW)

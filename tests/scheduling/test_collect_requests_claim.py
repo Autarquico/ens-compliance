@@ -165,6 +165,62 @@ def test_si_el_planificador_muere_al_decidir_en_el_limite_no_quedan_dos_vivas(
     assert alive(store, LIMIT) == [second.key]
 
 
+# --- (d) el plazo se confirma tras publicar el reclamo -------------------------------------------
+
+
+class CrossesTheLimitOnPublish(FakeClock):
+    """La segunda lectura (tras crear `.started`) ya está en el límite de las 24 h."""
+
+    def __init__(self, start):
+        super().__init__(start)
+        self.reads = 0
+
+    def now(self):
+        self.reads += 1
+        if self.reads > 1:
+            self.current = LIMIT
+        return super().now()
+
+
+def test_si_cruza_las_24_horas_durante_la_publicacion_no_recoge_y_cierra_caducada(
+    store, settings, plugins, monkeypatch
+):
+    ask(store, ASKED_AT)
+    monkeypatch.setattr(module, "_carry_out", lambda *a: pytest.fail("recogió tras caducar"))
+
+    result = run(store, settings, plugins, CrossesTheLimitOnPublish(LIMIT - timedelta(seconds=1)))
+
+    assert result is not None and result.code is ErrorCode.EXPIRED
+    assert alive(store, LIMIT) == []  # nadie vio un RUNNING provisional: se cerró bajo el lock
+    assert ask(store, LIMIT).key == SECOND
+
+
+def test_un_reclamo_sin_confirmar_de_una_caducada_no_cuenta_como_viva(store):
+    ask(store, ASKED_AT)
+    store.create_bytes(f"{REQUESTS_PREFIX}/github/000001.started.json", b"{}\n")  # murió aquí
+
+    assert alive(store, LIMIT - timedelta(seconds=1)) == [
+        FIRST
+    ]  # aún en plazo: la cierra la recuperación
+    assert alive(store, LIMIT) == []
+    second = ask(store, LIMIT)  # se admite otra
+    assert alive(store, LIMIT) == [second.key]
+    assert [item.state for item in list_requests(store, LIMIT)] == [State.EXPIRED, State.PENDING]
+
+
+def test_un_reclamo_confirmado_antes_de_las_24_horas_sigue_viva_despues(
+    store, settings, plugins, monkeypatch
+):
+    ask(store, ASKED_AT)
+    monkeypatch.setattr(module, "_carry_out", lambda *a: (_ for _ in ()).throw(KeyboardInterrupt))
+    with pytest.raises(KeyboardInterrupt):
+        run(store, settings, plugins, FakeClock(LIMIT - timedelta(seconds=1)))
+
+    assert alive(store, LIMIT + timedelta(hours=5)) == [FIRST]
+    with pytest.raises(RequestRejected):
+        ask(store, LIMIT + timedelta(hours=5))
+
+
 # --- el fichero del lock ------------------------------------------------------------------------
 
 
