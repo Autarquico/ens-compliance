@@ -7,9 +7,8 @@ almacén y no hay deshacer (si falla, el fichero anterior sigue intacto).
 """
 
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
-from functools import wraps
 from typing import Any, Literal
 
 import yaml
@@ -21,6 +20,7 @@ from ens_evidence.connectors.config import (
     credential_fields,
     reject_config_credentials,
 )
+from ens_evidence.serialized import serializer
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
 from ens_evidence.yaml_unique import safe_load_unique
 
@@ -55,16 +55,7 @@ def fix_by_hand(field: str) -> str:
     return f"Hay que corregir «{field}» en el fichero a mano."
 
 
-_WRITES = threading.Lock()
-
-
-def serialized[**P, R](operation: Callable[P, R]) -> Callable[P, R]:
-    @wraps(operation)
-    def run(*args: P.args, **kwargs: P.kwargs) -> R:
-        with _WRITES:
-            return operation(*args, **kwargs)
-
-    return run
+serialized = serializer(threading.Lock())  # una escritura de conector a la vez en este proceso
 
 
 class ConnectorEditRejected(Exception):
@@ -133,7 +124,7 @@ def _merge(
         base = raw
     elif existing.state == "invalid":
         # Reparación: solo las claves del modelo; las desconocidas y las de credencial se descartan.
-        flagged = set(credential_fields(raw)) - {"token_kind"}
+        flagged = set(credential_fields(raw))
         base = {k: v for k, v in raw.items() if k in model.model_fields and k not in flagged}
     else:
         base = {}

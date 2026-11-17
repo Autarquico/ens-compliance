@@ -6,11 +6,15 @@ import pytest
 import yaml
 from pydantic import BaseModel
 
+from ens_evidence.connectors.registry import ConnectorLoadError
+from ens_evidence.models.enums import CheckStatus
 from ens_evidence.ui.views import conectores as view
 from ens_evidence.ui.views import conectores_recogida
 from ens_evidence.workspace import WorkspaceError
 
 from .conftest import snapshot_of
+from .test_conectores import collect
+from .test_inventory import record, result
 from .test_inventory_view import build_ui
 
 GITHUB = {"asset_id": "gh-taller", "organization": "taller"}
@@ -182,12 +186,12 @@ def test_un_conector_registrado_sin_ficha_sale_generico(ui, monkeypatch):
     class Model(BaseModel):
         pass
 
-    monkeypatch.setattr(view, "registered_connectors", lambda: {**real(), "nuevo": Model})
+    monkeypatch.setattr(view, "registered_connectors", lambda: ({**real(), "nuevo": Model}, False))
 
     ui.get("/conectores")
     generic = blocks(ui)["nuevo"]
 
-    assert (generic.has_sheet, generic.editable, generic.credential) == (False, False, None)
+    assert (generic.editable, generic.credential) == (False, None)
     assert generic.config.status == "sin-configurar"
     assert ui.get("/conectores/nuevo").status_code == 200
     assert ui.get("/conectores/otro").status_code == 404
@@ -205,3 +209,46 @@ def test_la_ficha_del_activo_enlaza_los_conectores_que_lo_citan(ui):
 
     links = ui.context["detail"].connectors
     assert [(c.name, c.href) for c in links] == [("github", "/conectores/github")]
+
+
+def test_unos_resultados_anteriores_a_una_recogida_fallida_salen_como_no_vigentes(ui):
+    ui.post("/conectores/github", GITHUB)
+    record(ui.store, "github", [result("gh-taller", CheckStatus.PASS, "GITHUB-001")], ago=24)
+    collect(ui.store, "github", "ERROR")
+
+    ui.get("/conectores")
+    evidence = blocks(ui)["github"].evidence
+
+    assert evidence.stale is True and evidence.last_outcome == "failed"
+    assert evidence.favorable is False and evidence.coverage == "parcial"
+    assert evidence.tone == "warn" and "parcial" in evidence.label
+
+
+def test_unos_resultados_posteriores_a_la_recogida_siguen_vigentes(ui):
+    ui.post("/conectores/github", GITHUB)
+    collect(ui.store, "github", "ERROR")
+    record(ui.store, "github", [result("gh-taller", CheckStatus.PASS, "GITHUB-001")], ago=0)
+
+    ui.get("/conectores")
+    evidence = blocks(ui)["github"].evidence
+
+    assert evidence.stale is False and evidence.last_outcome is None
+    assert evidence.favorable is True
+
+
+def test_si_el_registro_de_conectores_falla_se_avisa_en_la_pagina(ui, monkeypatch):
+    def broken(self, entries):
+        raise ConnectorLoadError("x")
+
+    monkeypatch.setattr(view.ConnectorRegistry, "load_entry_points", broken)
+
+    ui.get("/conectores")
+
+    assert ui.context["page"].registry_unreadable is True
+    assert "github" in blocks(ui)
+
+
+def test_con_el_registro_sano_la_pagina_no_avisa(ui):
+    ui.get("/conectores")
+
+    assert ui.context["page"].registry_unreadable is False

@@ -1,19 +1,5 @@
 {% extends "base.html" %}
 {% import "_macros.html" as m with context %}
-{% macro names(list) -%}
-{%- for n in list %}<span class="mono">{{ n }}</span>{% if not loop.last %}, {% endif %}{% endfor -%}
-{%- endmacro %}
-{% macro credential_text(c) -%}
-{%- if c.kind == "none" -%}
-<p>Este conector no necesita credencial.</p>
-{%- else -%}
-<p>
-{%- if c.kind == "env" %}Pon {{ names(c.names) }} en {{ c.where }}.
-{%- elif c.kind == "env_prefix" %}Define las variables {{ names(c.names) }} en {{ c.where }}; <span class="mono">&lt;ID&gt;</span> es el identificador de cada repositorio.
-{%- else %}Las credenciales salen de {{ c.where }}: {{ names(c.names) }}.{% endif %}
-La web no puede saber si la credencial está puesta: míralo en la última recogida.</p>
-{%- endif -%}
-{%- endmacro %}
 {% block content %}
 {%- set b = block %}
 <p><a href="/conectores">Volver a los conectores</a></p>
@@ -22,8 +8,7 @@ La web no puede saber si la credencial está puesta: míralo en la última recog
 
 <section class="section" aria-labelledby="h-estado">
   <h2 id="h-estado">Estado</h2>
-  {%- set tone = {"configurado": "info", "sin-configurar": "neutral", "invalida": "bad", "ilegible": "warn"}[b.config.status] %}
-  <p><span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ b.config.label }}</span> <span class="badge-code">{{ b.config.status }}</span></span>{% if b.config.problem %} {{ b.config.problem }}.{% endif %}</p>
+  <p>{{ m.config_badge(b.config) }}{% if b.config.problem %} {{ b.config.problem }}.{% endif %}</p>
   {% if b.config.shown or b.config.asset_id %}
   <dl class="facts">
     {% if b.config.asset_id %}
@@ -55,7 +40,7 @@ La web no puede saber si la credencial está puesta: míralo en la última recog
 {% else %}
 <section class="section" aria-labelledby="h-credencial">
   <h2 id="h-credencial">Credencial</h2>
-  {{ credential_text(form.credential) }}
+  {{ m.credential_text(form.credential) }}
   <p class="muted">Esta página nunca pide, guarda ni muestra una credencial: no pegues claves en el formulario, se rechazan.</p>
   {% if form.doc_href %}<div class="actions"><a class="btn" href="{{ form.doc_href }}">Guía de {{ form.label }}</a></div>{% endif %}
 </section>
@@ -69,11 +54,11 @@ La web no puede saber si la credencial está puesta: míralo en la última recog
   <form method="post" action="{{ form.action }}">
     {{ m.gate_open(blocked=form.writes_blocked, explain=False) }}
     {% if form.needs_confirmation %}
-    <div class="notice notice-warn" role="note"><p><strong>El fichero actual no es válido.</strong> Guardar lo sustituye: se descarta lo que no sea de este formulario{% if form.preserved %}, salvo {{ names(form.preserved) }}, que se conserva{% endif %}.</p>
+    <div class="notice notice-warn" role="note"><p><strong>El fichero actual no es válido.</strong> Guardar lo sustituye: se descarta lo que no sea de este formulario{% if form.preserved %}, salvo {{ m.names(form.preserved) }}, que se conserva{% endif %}.</p>
       <div class="check"><input type="checkbox" id="f-confirmar_sobrescritura" name="confirmar_sobrescritura" value="1"{% if (values or {}).get("confirmar_sobrescritura") %} checked{% endif %}><label for="f-confirmar_sobrescritura">Lo entiendo y quiero sustituirlo</label></div>
       {{ m.field_errors("confirmar_sobrescritura") }}</div>
     {% elif form.preserved %}
-    <p class="muted">Se conserva sin tocar: {{ names(form.preserved) }}.</p>
+    <p class="muted">Se conserva sin tocar: {{ m.names(form.preserved) }}.</p>
     {% endif %}
     {% for f in form.fields %}
     {%- set invalid = (errors or {}).get(f.name) %}

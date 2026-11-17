@@ -1,10 +1,9 @@
 """Edición mínima del alcance: añadir un activo y rellenar el sistema, sin tocar la aprobación."""
 
 import threading
-from collections.abc import Callable, Mapping
+from collections.abc import Mapping
 from dataclasses import dataclass
 from datetime import datetime
-from functools import wraps
 from typing import Any, get_args, get_origin
 
 import yaml
@@ -29,6 +28,7 @@ from ens_evidence.scope.models import (
     SystemScope,
 )
 from ens_evidence.scope.secrets import find_secrets
+from ens_evidence.serialized import serializer
 from ens_evidence.workspace import NotFound, NotText, WorkspaceStore
 from ens_evidence.yaml_unique import safe_load_unique
 
@@ -36,18 +36,7 @@ _TRUE = {"true", "si", "sí", "yes"}
 _FALSE = {"false", "no"}
 
 
-_WRITES = threading.Lock()  # una escritura del alcance a la vez dentro de este proceso
-
-
-def serialized[**P, R](operation: Callable[P, R]) -> Callable[P, R]:
-    """Lectura, validación, escritura y revocación de una operación, sin intercalarse con otra."""
-
-    @wraps(operation)
-    def run(*args: P.args, **kwargs: P.kwargs) -> R:
-        with _WRITES:
-            return operation(*args, **kwargs)
-
-    return run
+serialized = serializer(threading.Lock())  # una escritura del alcance a la vez en este proceso
 
 
 class ScopeEditRejected(Exception):

@@ -21,7 +21,7 @@ from starlette.requests import Request
 from starlette.responses import RedirectResponse, Response
 from starlette.routing import BaseRoute, Route
 
-from ens_evidence.checks.store import scan_runs
+from ens_evidence.checks.store import RunScan, scan_runs
 from ens_evidence.connectors.config import connector_config_key, credential_fields
 from ens_evidence.connectors.edit import (
     SECRET_IN_FIELD,
@@ -35,15 +35,25 @@ from ens_evidence.connectors.registry import (
     ConnectorLoadError,
     ConnectorRegistry,
 )
+from ens_evidence.models.contracts import EvidenceManifest
+from ens_evidence.models.enums import CollectionStatus
 from ens_evidence.scope.inventory import load_assets
 from ens_evidence.scope.models import Asset
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
-from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
+from ens_evidence.ui.pages import (
+    error_page,
+    identity_of,
+    page_context,
+    permissions_of,
+    render,
+    status_badge,
+)
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.views.check_history import (
     ConnectorResults,
+    Contribution,
     EvidenceSummary,
     detail_results,
     latest_results,
@@ -57,6 +67,7 @@ from ens_evidence.ui.views.conectores_catalogo import (
     ConnectorSpec,
     CredentialSpec,
     FieldSpec,
+    Kind,
     catalogue_for,
     document_to_values,
     form_fields_to_document,
@@ -92,7 +103,7 @@ CONFIG_LABELS = {
 }
 
 ConfigStatus = Literal["sin-configurar", "configurado", "invalida", "ilegible"]
-FieldKind = Literal["text", "int", "choice", "lines", "asset"]
+LastOutcome = Literal["failed", "partial", "ok"]
 
 
 def config_invalid(name: str) -> str:
@@ -125,6 +136,14 @@ class ConfigState:
 
 
 @dataclass(frozen=True)
+class ConnectorEvidence(EvidenceSummary):
+    """Resultados de checks; `stale`: una recogida posterior a ellos; `last_outcome`: cómo acabó."""
+
+    stale: bool = False
+    last_outcome: LastOutcome | None = None
+
+
+@dataclass(frozen=True)
 class ConnectorBlock:
     name: str
     label: str
@@ -137,11 +156,10 @@ class ConnectorBlock:
     kit_href: str | None
     status_href: str | None
     last: LastCollection | None
-    evidence: EvidenceSummary | None
+    evidence: ConnectorEvidence | None
     results: tuple[ConnectorResults, ...]
     history_notes: tuple[str, ...]
     repositories: tuple[RepositoryState, ...] = ()  # solo `backups`
-    has_sheet: bool = True
 
 
 @dataclass(frozen=True)
@@ -150,13 +168,14 @@ class ConectoresPage:
     manifest_notes: tuple[str, ...]
     inventory_notes: tuple[str, ...]
     generated_at: str
+    registry_unreadable: bool = False  # el catálogo se muestra sin el registro de conectores
 
 
 @dataclass(frozen=True)
 class FormField:
     name: str
     label: str
-    kind: FieldKind
+    kind: Kind
     required: bool
     hint: str | None
     choices: tuple[Choice, ...]
@@ -182,14 +201,14 @@ class ConnectorForm:
 # --- registro y recursos compartidos por petición ------------------------------------------------
 
 
-def registered_connectors() -> dict[str, type[BaseModel]]:
-    """Nombre → modelo de configuración de los conectores registrados (entry points)."""
+def registered_connectors() -> tuple[dict[str, type[BaseModel]], bool]:
+    """Nombre → modelo de los conectores registrados (entry points) y si el registro falló."""
     registry = ConnectorRegistry()
     try:
         registry.load_entry_points(entry_points(group=ENTRY_POINT_GROUP))
     except ConnectorLoadError:
-        return {n: s.model for n, s in CATALOGUE.items() if s.model is not None}
-    return {name: registry.get(name).config_model for name in registry.names()}
+        return {n: s.model for n, s in CATALOGUE.items() if s.model is not None}, True
+    return {name: registry.get(name).config_model for name in registry.names()}, False
 
 
 @dataclass(frozen=True)
@@ -265,6 +284,35 @@ def _repository_ids(existing: ExistingConfig | None) -> tuple[str, ...]:
     return tuple(r["id"] for r in existing.raw["repositories"])
 
 
+def _evidence(
+    scan: RunScan,
+    contributions: list[Contribution],
+    manifest: EvidenceManifest | None,
+    last: LastCollection | None,
+) -> ConnectorEvidence | None:
+    """Los resultados de checks; si una recogida legible es posterior, no se dan por vigentes."""
+    if not contributions:
+        return None
+    base = summary(scan, contributions)
+    newest = max(run.finished_at for run, _, _ in contributions)
+    if manifest is None or last is None or last.unreadable or manifest.collected_at <= newest:
+        return ConnectorEvidence(**vars(base))
+    outcome: LastOutcome = (
+        "partial" if last.partial else "ok" if last.status == CollectionStatus.SUCCESS else "failed"
+    )
+    _, label = status_badge(base.status, True)
+    return ConnectorEvidence(
+        **{
+            **vars(base),
+            "label": label,
+            "favorable": False,
+            "coverage": "parcial",
+        },
+        stale=True,
+        last_outcome=outcome,
+    )
+
+
 # --- bloque de un conector -----------------------------------------------------------------------
 
 
@@ -284,6 +332,7 @@ def _block(
     # `backups` se proyecta aparte (D3): sus checks y su detalle están en /copias.
     asset_id = config.asset_id if name != "backups" else None
     contributions = latest_results(scan).get(asset_id, []) if asset_id else []
+    last = last_collection(store, manifest, name) if manifest else None
     return ConnectorBlock(
         name=name,
         label=spec.label,
@@ -295,8 +344,8 @@ def _block(
         doc_href=spec.doc_href,
         kit_href=spec.kit_href,
         status_href=spec.status_href,
-        last=last_collection(store, manifest, name) if manifest else None,
-        evidence=summary(scan, contributions) if contributions else None,
+        last=last,
+        evidence=_evidence(scan, contributions, manifest, last),
         results=detail_results(contributions),
         history_notes=unreadable_notes(scan),
         repositories=(
@@ -304,12 +353,11 @@ def _block(
             if name == "backups" and manifest
             else ()
         ),
-        has_sheet=spec.model is not None,
     )
 
 
 def build_page(store: UiStore, can_edit: bool, now: datetime) -> ConectoresPage:
-    registered = registered_connectors()
+    registered, registry_failed = registered_connectors()
     index = index_collections(store)  # un solo `list_manifests` por petición
     inventory = _inventory(store)
     blocks = tuple(
@@ -327,6 +375,7 @@ def build_page(store: UiStore, can_edit: bool, now: datetime) -> ConectoresPage:
             else ()
         ),
         inventory_notes=() if inventory.readable else (INVENTORY_UNREADABLE,),
+        registry_unreadable=registry_failed,
         generated_at=format_instant(now),
     )
 
@@ -385,8 +434,8 @@ def _echo(spec: ConnectorSpec, form: Form, flagged: set[str]) -> dict[str, str]:
 def _page_of(
     request: Request,
     spec: ConnectorSpec,
-    registered: Mapping[str, type[BaseModel]] = {},  # noqa: B006 - solo se lee
     *,
+    registered: Mapping[str, type[BaseModel]] | None = None,
     values: Mapping[str, str] | None = None,
     errors: Mapping[str, list[str]] | None = None,
     form_errors: list[str] | None = None,
@@ -395,7 +444,7 @@ def _page_of(
     store: UiStore = request.app.state.store
     inventory = _inventory(store)
     can_edit = permissions_of(request).edit
-    block = _block(store, spec, registered, index_collections(store), inventory, can_edit)
+    block = _block(store, spec, registered or {}, index_collections(store), inventory, can_edit)
     form = None
     prefill: dict[str, str] = {}
     if spec.editable:
@@ -443,12 +492,12 @@ def listado(request: Request) -> Response:
 
 
 def ficha(request: Request) -> Response:
-    registered = registered_connectors()
+    registered, _ = registered_connectors()
     name = request.path_params["conector"]
     spec = next((s for s in catalogue_for(registered) if s.name == name), None)
     if spec is None:
         raise HTTPException(404)
-    return _page_of(request, spec, registered)
+    return _page_of(request, spec, registered=registered)
 
 
 # --- escritura -----------------------------------------------------------------------------------
@@ -461,10 +510,14 @@ class _Prepared:
     flagged: set[str]
 
 
+def _flagged(spec: ConnectorSpec, form: Form) -> set[str]:
+    """Campos del catálogo que la política de credenciales rechaza, en bruto y antes de nada."""
+    return set(credential_fields({f.name: list(form.get(f.name, [])) for f in spec.fields}))
+
+
 def _prepare(spec: ConnectorSpec, form: Form, choices: tuple[Choice, ...]) -> _Prepared:
     """D1: primero los secretos en bruto; solo con los campos del catálogo hacia el escritor."""
-    raw = {f.name: list(form.get(f.name, [])) for f in spec.fields}
-    flagged = set(credential_fields(raw))
+    flagged = _flagged(spec, form)
     clean = {f.name: "" if f.name in flagged else first(form, f.name) for f in spec.fields}
     document, errors = form_fields_to_document(spec, clean)
     for name in flagged:
@@ -472,7 +525,8 @@ def _prepare(spec: ConnectorSpec, form: Form, choices: tuple[Choice, ...]) -> _P
         document.pop(name, None)
     chosen = document.get("asset_id")
     if chosen is not None and chosen not in {c.value for c in choices}:
-        label = ASSET_TYPE_LABELS[spec.asset_type]  # type: ignore[index]
+        assert spec.asset_type is not None
+        label = ASSET_TYPE_LABELS[spec.asset_type]
         errors["asset_id"] = [f"Elige un activo de tipo «{label}» del inventario."]
     return _Prepared(document, errors, flagged)
 
@@ -522,17 +576,22 @@ async def escribir(request: Request) -> Response:
     if isinstance(form, Response):
         return form
     store, now = request.app.state.store.recording(), request.app.state.clock()
+    flagged = _flagged(spec, form)  # ningún 422 repite un valor marcado
     inventory = _inventory(store)
     if not inventory.readable:
         return _page_of(
-            request, spec, values=_echo(spec, form, set()), form_errors=[BLOCKED_NOTICE], status=422
+            request,
+            spec,
+            values=_echo(spec, form, flagged),
+            form_errors=[BLOCKED_NOTICE],
+            status=422,
         )
     prepared = _prepare(spec, form, inventory.choices(spec))
     if prepared.errors:
         return _page_of(
             request,
             spec,
-            values=_echo(spec, form, prepared.flagged),
+            values=_echo(spec, form, flagged),
             errors=prepared.errors,
             status=422,
         )
@@ -552,7 +611,7 @@ async def escribir(request: Request) -> Response:
         return _page_of(
             request,
             spec,
-            values=_echo(spec, form, _secret_fields(rejected)),
+            values=_echo(spec, form, flagged | _secret_fields(rejected)),
             errors=rejected.errors,
             form_errors=rejected.general,
             status=422,

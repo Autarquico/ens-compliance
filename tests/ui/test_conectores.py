@@ -29,6 +29,7 @@ from ens_evidence.models.contracts import (
     ProvenanceKind,
 )
 from ens_evidence.models.enums import CheckStatus
+from ens_evidence.scope.inventory import ASSETS_KEY
 from ens_evidence.ui.roles import ROLES_KEY, Grant, dump_roles
 from ens_evidence.ui.views import conectores_catalogo
 
@@ -371,6 +372,21 @@ def test_un_valor_con_forma_de_token_en_cualquier_campo_da_422_y_no_se_repite_ni
     assert TOKEN not in logged(audit)
     assert "parece contener un secreto" in response.text
     assert audit_lines(audit, "saved") == []
+
+
+@pytest.mark.parametrize(("conector", "base", "campo"), SECRET_CASES)
+def test_con_el_inventario_ilegible_el_422_tampoco_repite_un_valor_con_forma_de_token(
+    web, example_store, audit, conector, base, campo
+):
+    example_store.write_text(ASSETS_KEY, "assets: [\n")  # YAML roto: el inventario no se lee
+    before = snapshot_of(example_store)
+
+    response = web.post(f"/conectores/{conector}", {**base, campo: TOKEN})
+
+    assert response.status_code == 422
+    assert snapshot_of(example_store) == before
+    assert TOKEN not in response.text and "ghp_" not in response.text
+    assert TOKEN not in logged(audit)
 
 
 def test_un_secreto_oculto_en_una_linea_de_varias_no_se_repite_ni_se_escribe(

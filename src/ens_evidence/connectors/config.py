@@ -60,7 +60,8 @@ class ConnectorCredentialsRejected(ConnectorConfigError):
 def _credential_scan(raw: Mapping[str, Any]) -> tuple[str | None, tuple[str, ...]]:
     """Mensaje (con rutas, sin valores) y claves de primer nivel que incumplen la política."""
     flagged: list[str] = []
-    message: str | None = None
+    paths: list[str] = []
+    key_message: str | None = None
     for name, value in raw.items():
         entry = {name: value}
         if name in _ALLOWED_KEYS:
@@ -70,20 +71,16 @@ def _credential_scan(raw: Mapping[str, Any]) -> tuple[str | None, tuple[str, ...
             try:
                 reject_credential_keys(entry)
             except WorkspaceError as exc:
-                message = message or str(exc)
+                key_message = key_message or str(exc)
                 flagged.append(str(name))
                 continue
             leaked = find_secrets(entry)
         if leaked:
             flagged.append(str(name))
-    if message is None and flagged:
-        paths = [
-            path
-            for name, value in raw.items()
-            for path in find_secrets({name: value}, by_key_name=name not in _ALLOWED_KEYS)
-        ]
-        message = f"parece contener secretos en {', '.join(paths)}"
-    return message, tuple(flagged)
+            paths.extend(leaked)
+    if key_message is None and paths:
+        key_message = f"parece contener secretos en {', '.join(paths)}"
+    return key_message, tuple(flagged)
 
 
 def credential_fields(raw: Mapping[str, Any]) -> tuple[str, ...]:

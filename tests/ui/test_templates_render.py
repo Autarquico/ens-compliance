@@ -852,7 +852,9 @@ def _con_block(name="github", **fields):
     return con.ConnectorBlock(**(base | fields))
 
 
-_CON_EVIDENCE = dataclasses.replace(_COPIAS_SUMMARY, connector="github", sentence=HOSTILE)
+_CON_EVIDENCE = con.ConnectorEvidence(
+    **vars(dataclasses.replace(_COPIAS_SUMMARY, connector="github", sentence=HOSTILE))
+)
 _CON_RESULTS = (
     ch.ConnectorResults(
         HOSTILE,
@@ -922,7 +924,6 @@ _CON_BLOCKS = (
         can_configure=False,
         credential=None,
         doc_href=None,
-        has_sheet=False,
     ),
 )
 
@@ -1813,6 +1814,54 @@ def test_conectores_parcial_credencial_y_enlaces_de_ayuda():
     )
     assert 'href="/ayuda/conector-github"' in html and 'href="/copias"' in html
     assert 'href="/herramientas/copias"' in html and "Sin ficha en esta versión" in html
+
+
+def _main(html):
+    return html.split("<main", 1)[-1]
+
+
+def test_conectores_resumen_lista_los_mismos_conectores_y_no_es_favorable_sin_recogidas():
+    page = _con_page()
+    html = _render("views/conectores.html", page)
+    resumen = html.split('aria-labelledby="h-resumen"', 1)[1].split("</section>", 1)[0]
+    for i in range(1, len(page["page"].blocks) + 1):
+        assert f'href="#h-conector-{i}"' in resumen
+    assert resumen.count("<tr>") == len(page["page"].blocks) + 1  # + cabecera
+    sin = _render("views/conectores.html", _con_page(blocks=(_CON_BLOCKS[1],)))
+    fila = sin.split('aria-labelledby="h-resumen"', 1)[1].split("</section>", 1)[0]
+    assert "sin recogidas todavía" in fila and "tone-ok" not in fila
+
+
+@pytest.mark.parametrize(
+    ("outcome", "text"),
+    [
+        ("failed", "anteriores a la última recogida, que falló"),
+        ("partial", "anteriores a la última recogida, que fue parcial"),
+        ("ok", "anteriores a la última recogida: se recalculan en el próximo ciclo."),
+    ],
+)
+def test_conectores_resultados_anteriores_a_la_ultima_recogida_llevan_aviso(outcome, text):
+    stale = dataclasses.replace(_CON_EVIDENCE, stale=True, last_outcome=outcome)
+    block = dataclasses.replace(_CON_BLOCKS[5], evidence=stale)
+    html = _render("views/conectores.html", _con_page(blocks=(block,)))
+    assert text in html and html.index(text) < html.index("Resultados de las comprobaciones") + 900
+
+
+def test_conectores_credencial_aparece_una_sola_vez_por_bloque():
+    block = _CON_BLOCKS[4]
+    html = _render("views/conectores.html", _con_page(blocks=(block,)))
+    assert html.count("La web no puede saber si la credencial está puesta") == 1
+
+
+def test_conectores_ficha_solo_si_no_hay_boton_y_registro_ilegible_avisa():
+    html = _render("views/conectores.html", _con_page(blocks=(_CON_BLOCKS[0],)))
+    assert "Ver la ficha de" not in html
+    reader = _render(
+        "views/conectores.html", _con_page(blocks=(_CON_BLOCKS[0],)) | {"permissions": READER}
+    )
+    assert "No se pudo leer el registro" not in reader
+    broken = _render("views/conectores.html", _con_page(registry_unreadable=True))
+    assert "No se pudo leer el registro de conectores" in broken
 
 
 def test_conectores_lector_no_ve_botones_ni_formularios():

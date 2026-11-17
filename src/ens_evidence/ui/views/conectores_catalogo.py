@@ -92,7 +92,7 @@ def _asset(hint: str) -> FieldSpec:
     return FieldSpec("asset_id", "Activo del inventario", "asset", True, hint)
 
 
-def _days(name: str, label: str, required: bool = True, hint: str | None = None) -> FieldSpec:
+def _threshold(name: str, label: str, required: bool = True, hint: str | None = None) -> FieldSpec:
     return FieldSpec(name, label, "int", required, hint)
 
 
@@ -207,7 +207,8 @@ _SPECS: tuple[ConnectorSpec, ...] = (
                 "Cliente",
                 "text",
                 False,
-                "my_customer o un identificador que empieza por C.",
+                "Déjalo vacío salvo que Google te haya dado un identificador de cliente "
+                "(empieza por C).",
             ),
             FieldSpec(
                 "admin_subject", "Administrador delegado", "text", True, "Correo del administrador."
@@ -232,12 +233,12 @@ _SPECS: tuple[ConnectorSpec, ...] = (
             FieldSpec(
                 "address", "Dirección", "text", False, "Si lo dejas vacío, se usa la de la caja."
             ),
-            _days(
+            _threshold(
                 "max_key_age_days",
                 "Edad máxima de una clave (días)",
                 hint="La decide la organización.",
             ),
-            _days("max_token_period_hours", "Periodo máximo del token (horas)", False),
+            _threshold("max_token_period_hours", "Periodo máximo del token (horas)", False),
         ),
         _env(KEYSTORE_TOKEN),
         kit_href="/herramientas/claves",
@@ -256,8 +257,8 @@ _SPECS: tuple[ConnectorSpec, ...] = (
                 False,
                 "Si lo dejas vacío, se usa la del kit.",
             ),
-            _days("inactive_days", "Días de inactividad"),
-            _days("max_export_age_minutes", "Antigüedad máxima del volcado (minutos)"),
+            _threshold("inactive_days", "Días de inactividad"),
+            _threshold("max_export_age_minutes", "Antigüedad máxima del volcado (minutos)"),
         ),
         CredentialSpec("none", (), ""),
         kit_href="/herramientas/contrasenas",
@@ -269,9 +270,11 @@ _SPECS: tuple[ConnectorSpec, ...] = (
         AssetType.BACKUP,
         (
             _asset("Activo de tipo copia de seguridad."),
-            _days("max_backup_age_hours", "Antigüedad máxima de la copia (horas)"),
-            _days("max_check_age_days", "Antigüedad máxima de la comprobación (días)"),
-            _days("restore_test_validity_days", "Vigencia de la prueba de restauración (días)"),
+            _threshold("max_backup_age_hours", "Antigüedad máxima de la copia (horas)"),
+            _threshold("max_check_age_days", "Antigüedad máxima de la comprobación (días)"),
+            _threshold(
+                "restore_test_validity_days", "Vigencia de la prueba de restauración (días)"
+            ),
             FieldSpec(
                 "min_check_read_data_percent",
                 "Porcentaje mínimo de datos leídos",

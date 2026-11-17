@@ -283,3 +283,11 @@ def test_los_guardados_concurrentes_se_serializan(store, monkeypatch):
         thread.join()
 
     assert max(overlap) == 1
+
+
+def test_reparar_descarta_un_token_kind_con_forma_de_secreto(store):
+    put(store, "cloudflare", {"asset_id": "cf", "token_kind": SECRET})
+
+    save(store, "cloudflare", CloudflareConfig, {"asset_id": "cf", "account_id": ACCOUNT}, True)
+
+    assert SECRET not in text(store, "cloudflare")
