@@ -24,6 +24,7 @@
 - #72 Kit: panel de monitorización
 - #77 Guía: Cloudflare Access con el proveedor de identidad de la pyme
 - #90 UI de inventario
+- #92 UI de copias de seguridad
 <!-- /pm-sync:done-this-week -->
 
 ---

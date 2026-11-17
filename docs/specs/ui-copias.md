@@ -2,11 +2,11 @@
 codename: ens-compliance
 title: UI de copias de seguridad
 type: task
-status: active
+status: shipped
 priority: P0
 size: M
 issue: 92
-prs: []
+prs: [93]
 related_issues: [92]
 depends_on: [kit-backups, collector-restic, ui-inventario]
 supersedes: []
