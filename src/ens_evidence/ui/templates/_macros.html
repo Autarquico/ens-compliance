@@ -1,6 +1,6 @@
 {# Macros compartidas. Se importan con contexto: {% import "_macros.html" as m with context %} #}
-{% set ESTADOS = {
-  "PASS": ("ok", "Correcto"), "FAIL": ("bad", "Falla"), "ERROR": ("bad", "Error al comprobar"), "UNKNOWN": ("neutral", "Sin datos"),
+{# Los estados de check salen de STATUS_TEXT (ui/pages.py); aquí, el resto. #}
+{% set ESTADOS = dict(STATUS_TEXT, **{
   "APPLICABLE": ("neutral", "Aplica"), "NOT_APPLICABLE": ("neutral", "No aplica"), "UNDETERMINED": ("warn", "Sin decidir"),
   "COMPLIANT": ("ok", "Favorable"), "NON_COMPLIANT": ("bad", "Desfavorable"), "REQUIRES_REVIEW": ("warn", "Pide revisión"), "NOT_ASSESSED": ("neutral", "Sin evaluar"),
   "READY": ("ok", "Preparado para revisión"), "NOT_READY": ("bad", "Aún no preparado"),
@@ -12,7 +12,7 @@
   "SUCCESS": ("ok", "Recogida"), "PERMISSION_DENIED": ("bad", "Sin permiso"), "NOT_SUPPORTED": ("neutral", "No soportada"),
   "NOT_RUN": ("neutral", "No ejecutada"), "DONE": ("ok", "Hecha"), "DELIVERED": ("ok", "Entregado"),
   "OPEN": ("warn", "Abierto"), "ACCEPTED": ("neutral", "Aceptado"), "RESOLVED": ("ok", "Resuelto"), "DISMISSED": ("neutral", "Descartado"),
-} %}
+}) %}
 {% set DIMENSIONES = [
   {"code": "C", "name": "Confidencialidad", "explain": "Que solo vea la información quien debe verla. Pregúntate qué pasaría si se filtrara."},
   {"code": "I", "name": "Integridad", "explain": "Que la información sea exacta y no se altere sin permiso. Qué pasaría si alguien la modificara sin que te enteres."},

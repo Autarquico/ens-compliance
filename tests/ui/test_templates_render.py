@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ens_evidence.ui.pages import code_spans, status_badge
+from ens_evidence.ui.pages import STATUS_TEXT, code_spans, status_badge
 from ens_evidence.ui.views import inventory as inv
 from ens_evidence.ui.views.agents import (
     AgentDetail,
@@ -1243,6 +1243,7 @@ def _environment():
     )
     environment.filters["code_spans"] = code_spans
     environment.globals["status_badge"] = status_badge
+    environment.globals["STATUS_TEXT"] = STATUS_TEXT
     return environment
 
 
@@ -1314,6 +1315,11 @@ def test_template_renders_clean(name, context):
     env = _environment()
     for ctx in (context, _with_errors(name, context)):
         _assert_clean(name, env.get_template(name).render(**ctx))
+
+
+def test_las_macros_usan_el_mismo_texto_de_estado_de_check_que_las_vistas():
+    estados = _environment().get_template("_macros.html").make_module({}).ESTADOS
+    assert all(estados[code] == pair for code, pair in STATUS_TEXT.items())
 
 
 def test_every_template_is_covered():
