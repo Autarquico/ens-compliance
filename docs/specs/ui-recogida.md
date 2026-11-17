@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: UI — «Recoger ahora» por petición en cola
 type: task
-status: draft
+status: active
 priority: P1
 size: M
 issue: 95
@@ -35,7 +35,8 @@ Este tramo usa el mismo mecanismo para recoger un conector y evaluar sus checks 
   - se escribe una petición con creación exclusiva;
   - hay como mucho una petición viva por conector;
   - caduca a las 24 h.
-- **El scheduler** la atiende en el siguiente tick (≤ 60 s) bajo el lock del ciclo:
+- **El scheduler** la atiende en cuanto queda libre (normalmente en menos de un minuto) bajo el
+  lock del ciclo, con un solo intento:
   - ejecuta `collect` de ese conector y después `check`;
   - escribe el resultado: estado, hora e identificador de la ejecución, sin mensajes en bruto.
 - **La página muestra la petición** como pendiente, en curso o hecha (con su resultado), y
@@ -52,7 +53,7 @@ Este tramo usa el mismo mecanismo para recoger un conector y evaluar sus checks 
 ### Scenario: petición atendida
 - **Given** GitHub configurado y el scheduler en marcha
 - **When** un editor pulsa «Recoger ahora»
-- **Then** la página muestra la petición pendiente; en el siguiente tick el scheduler recoge GitHub, evalúa sus checks y marca la petición hecha con su resultado; la página muestra la nueva recogida
+- **Then** la página muestra la petición pendiente; en cuanto queda libre, el scheduler recoge GitHub, evalúa sus checks y marca la petición hecha con su resultado; la página muestra la nueva recogida
 
 ### Scenario: una sola petición viva
 - **Given** una petición pendiente para GitHub
