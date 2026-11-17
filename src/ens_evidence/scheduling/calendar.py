@@ -14,9 +14,12 @@ from ens_evidence.scheduling.config import ScheduleConfig
 
 JobKind = Literal["daily", "monthly"]
 PREAUDIT: Literal["preaudit"] = "preaudit"
-AnyJobKind = Literal["daily", "monthly", "preaudit"]
-"""`preaudit` no es del calendario: es una petición de la UI (`preaudit/requests.py`) y su
-`period` es la clave de la petición. Se comprueba en cada tick, sin hora de disparo."""
+COLLECT: Literal["collect"] = "collect"
+AnyJobKind = Literal["daily", "monthly", "preaudit", "collect"]
+RequestKind = Literal["preaudit", "collect"]
+"""`preaudit` y `collect` no son del calendario: son peticiones de la UI
+(`preaudit/requests.py`, `scheduling/collect_requests.py`) y su `period` es la clave de la
+petición. Se comprueban en cada tick, sin hora de disparo."""
 UTC = dt.UTC
 
 
@@ -93,13 +96,14 @@ def due_jobs(
     now: dt.datetime,
     cfg: ScheduleConfig,
     done: Collection[tuple[AnyJobKind, str]],
-    requests: Collection[str] = (),
+    requests: Collection[tuple[RequestKind, str]] = (),
 ) -> list[Job]:
     """Trabajos vencidos y sin terminar en `now`, el diario primero.
 
     Solo el periodo en curso: antes de la hora no hay nada; pasada la hora se ejecuta si no está
     en `done`; el mensual pendiente se recupera durante todo el mes. No se rellenan días pasados.
-    Las peticiones de pre-auditoría (`requests`: sus claves) vencen en el acto, tras los dos.
+    Las peticiones (`requests`: tipo y clave) vencen en el acto, tras los dos: primero las de
+    pre-auditoría y luego las de recogida, cada tipo por clave.
     """
     now = _require_aware(now)
     local = now.astimezone(cfg.zone)
@@ -110,5 +114,7 @@ def due_jobs(
     monthly = _monthly_due(local.year, local.month, cfg)
     if monthly <= now and ("monthly", monthly_period(monthly, cfg)) not in done:
         jobs.append(Job("monthly", monthly_period(monthly, cfg), monthly))
-    jobs += [Job(PREAUDIT, key, now) for key in sorted(requests) if (PREAUDIT, key) not in done]
+    for kind in (PREAUDIT, COLLECT):
+        keys = sorted(key for requested, key in requests if requested == kind)
+        jobs += [Job(kind, key, now) for key in keys if (kind, key) not in done]
     return jobs

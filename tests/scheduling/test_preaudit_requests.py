@@ -16,8 +16,10 @@ EARLY = datetime(2026, 11, 2, 0, 0, tzinfo=UTC)
 
 
 def test_a_request_is_due_at_once_and_only_until_done():
-    assert [(j.kind, j.period) for j in due_jobs(EARLY, CFG, set(), [KEY])] == [("preaudit", KEY)]
-    assert due_jobs(EARLY, CFG, {("preaudit", KEY)}, [KEY]) == []
+    assert [(j.kind, j.period) for j in due_jobs(EARLY, CFG, set(), [("preaudit", KEY)])] == [
+        ("preaudit", KEY)
+    ]
+    assert due_jobs(EARLY, CFG, {("preaudit", KEY)}, [("preaudit", KEY)]) == []
 
 
 def test_every_tick_looks_for_new_requests_and_runs_each_once():
