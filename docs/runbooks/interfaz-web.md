@@ -315,3 +315,68 @@ enlazan a `/copias` y `/herramientas/copias`.
 
 Nada de esto se ha verificado con Docker ni con Cloudflare reales, salvo el
 enrutado por host de Caddy y la validación del Caddyfile.
+
+## 11. Recoger ahora
+
+Cada conector configurado de `/conectores` tiene el botón «Recoger ahora». La
+web no recoge: solo deja una petición y el scheduler del servicio `app` la
+atiende (la web no tiene credenciales ni salida a Internet).
+
+- **Qué escribe.** `evidence/collect-requests/<conector>/<n>.json` con el
+  conector, el correo de quien lo pide y la hora. El scheduler añade
+  `<n>.started.json` al reclamarla y `<n>.result.json` al terminar. El
+  resultado guarda estado, hora e identificador de la ejecución, sin mensajes
+  en bruto ni credenciales.
+- **Quién puede pulsarlo.** Solo quien tiene permiso de edición (sección 7).
+  Sin él, el POST da 403 y queda auditado sin escribir nada.
+- **Una petición viva por conector.** Si ya hay una pendiente o en curso, no se
+  crea otra y la página lo dice. Una caducada o terminada no bloquea.
+- **Cuándo se atiende.** En cuanto el scheduler queda libre, normalmente en
+  menos de un minuto. No hay garantía de 60 s: si el ciclo diario está en
+  marcha (o hay otra petición ejecutándose), espera al lock del ciclo y no
+  gasta intentos.
+- **Un solo intento.** Recoge ese conector y después evalúa sus checks, sin
+  los reintentos del ciclo diario. El tiempo límite es `collect.timeout_minutes`
+  de `reports/schedule.yaml` (15 por defecto, máximo 240) y el lock del ciclo
+  está tomado durante toda la ejecución: el ciclo diario y otras peticiones
+  esperan hasta ese tiempo.
+
+### Estados
+
+| Estado | Significa |
+|---|---|
+| Pendiente | Escrita y sin reclamar. Se atenderá en cuanto el servicio esté libre. |
+| En curso | El scheduler la reclamó (`.started.json`) y aún no hay resultado. |
+| Terminada | Hay `.result.json`. Neutral: no significa que el conector esté bien; lo dice «Última recogida». |
+| Terminada con error de recogida | Se ejecutó pero la recogida falló; queda una evidencia en `ERROR`. |
+| Terminada; comprobaciones no registradas | Se recogió, pero los checks no pudieron evaluarse o registrarse. |
+| No se pudo hacer | No se ejecutó (sin configuración, conector desconocido, configuración inválida, fallo interno) o se interrumpió. |
+| Caducada | Pasaron 24 h sin que nadie la reclamara. No se ejecutará. |
+
+### Una petición caducada
+
+El servicio no la atendió en 24 h, así que probablemente `app` no está
+funcionando. Comprueba el scheduler y pide la recogida de nuevo:
+
+```bash
+docker compose -p ens-box exec app ens-evidence scheduler status
+docker compose -p ens-box logs app
+docker compose -p ens-box exec app stat -c %y /tmp/scheduler-heartbeat
+```
+
+Si el latido es antiguo, mira `docs/runbooks/caja.md`, sección 9, y arranca
+`app` de nuevo. Después pulsa «Recoger ahora»; la caducada no se reutiliza.
+
+### INTERRUPTED
+
+La petición estaba en curso y el servicio se paró (reinicio, caída) antes de
+escribir el resultado. Al recuperarse, el scheduler la cierra como
+`INTERRUPTED` («la ejecución se interrumpió») sin reintentarla, también si han
+pasado más de 24 h desde que se reclamó. Lo ya importado queda como en
+`collect`. Pide otra recogida.
+
+### Acumulación
+
+Las peticiones no se borran nunca de forma automática: cada pulsación deja sus
+ficheros en `evidence/collect-requests/<conector>/` como parte del rastro de
+auditoría. Solo las vivas cuentan para el límite de una por conector.

@@ -56,6 +56,18 @@ def test_sin_edicion_la_ficha_de_un_conector_no_ofrece_formulario_y_lo_explica(s
     assert "Solo lectura: para configurar este conector hace falta permiso de edición." in page
 
 
+def test_sin_edicion_el_listado_de_conectores_no_ofrece_recoger_ahora(session, example_store):
+    example_store.write_text("connectors/github.yaml", "asset_id: gh-taller\norganization: acme\n")
+    grant(example_store, True)
+    assert "Recoger ahora</button>" in session.get("/conectores").text
+    grant(example_store, False)
+
+    page = session.get("/conectores").text
+
+    assert "Recoger ahora</button>" not in page
+    assert 'method="post"' not in page
+
+
 @pytest.mark.parametrize("path", ["/asistente/sistema", "/evidencias/nueva", "/incidentes/nuevo"])
 def test_con_edicion_los_formularios_estan_activos(session, example_store, path):
     grant(example_store, True)
