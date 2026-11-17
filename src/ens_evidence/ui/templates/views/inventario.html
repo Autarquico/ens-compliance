@@ -3,8 +3,7 @@
 {# Resumen de evidencia: icono + texto + código; un PASS solo es favorable con cobertura completa y nunca equivale a conformidad. #}
 {% macro evidencia(e) -%}
 {%- if e -%}
-{%- set tone = "bad" if e.status in ("FAIL", "ERROR") else ("ok" if e.favorable else ("warn" if e.status == "PASS" else "neutral")) -%}
-<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ e.label }}</span></span>
+<span class="badge tone-{{ e.tone }}">{{ m.icon(m.TONE_ICON[e.tone]) }}<span>{{ e.label }}</span> <span class="badge-code">{{ e.status }}</span></span>
 <div class="muted">{{ e.sentence }}</div>
 {%- if e.coverage == "parcial" %}<div class="muted">Cobertura parcial: no se puede dar por completo.{% for reason in e.partial_reasons %} {{ reason }}{% endfor %}</div>{% endif -%}
 {%- else -%}

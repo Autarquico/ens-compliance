@@ -16,6 +16,19 @@ PRODUCT_NAME = "ens-compliance"
 ROLES_RUNBOOK = "docs/runbooks/interfaz-web.md, sección 7"
 ON_THE_BOX = "En la caja se ejecuta con `docker compose -p ens-box exec app`."
 
+STATUS_TEXT = {  # única fuente: tono y texto llano de cada estado de check
+    "FAIL": ("bad", "Falla"),
+    "ERROR": ("bad", "Error al comprobar"),
+    "UNKNOWN": ("neutral", "Sin datos"),
+    "PASS": ("ok", "Sin fallos"),
+}
+
+
+def status_badge(status: str, partial: bool = False) -> tuple[str, str]:
+    """Tono y texto llano de un estado; un PASS con cobertura parcial nunca es favorable."""
+    tone, text = STATUS_TEXT.get(status, ("neutral", status))
+    return ("warn", f"{text}, parcial") if partial and status == "PASS" else (tone, text)
+
 
 def code_spans(text: str) -> Markup:
     """Pinta como código lo que va entre acentos graves; todo lo demás, escapado (nunca `|safe`)."""

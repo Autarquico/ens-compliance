@@ -2,9 +2,8 @@
 {% import "_macros.html" as m with context %}
 {# Resultado de un check: icono + texto + código; PASS no es «correcto», solo «sin fallos». #}
 {% macro resultado(status, partial=False) -%}
-{%- set known = {"PASS": ("ok", "Sin fallos"), "FAIL": ("bad", "Falla"), "ERROR": ("bad", "Error al comprobar"), "UNKNOWN": ("neutral", "Sin datos")}.get(status) -%}
-{%- set tone = "warn" if partial and status == "PASS" else (known[0] if known else "neutral") -%}
-<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ "PASS parcial" if partial and status == "PASS" else (known[1] if known else status) }}</span> <span class="badge-code">{{ status }}</span></span>
+{%- set tone, text = status_badge(status, partial) -%}
+<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ text }}</span> <span class="badge-code">{{ status }}</span></span>
 {%- endmacro %}
 {% block content %}
 {%- set r = detail.row %}
@@ -125,7 +124,7 @@
 <section class="section" aria-labelledby="h-resultados">
   <h2 id="h-resultados">Resultados por conector</h2>
   {% if e %}
-  <p>{% set tone = "bad" if e.status in ("FAIL", "ERROR") else ("ok" if e.favorable else ("warn" if e.status == "PASS" else "neutral")) %}<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ e.label }}</span></span> {{ e.sentence }}</p>
+  <p><span class="badge tone-{{ e.tone }}">{{ m.icon(m.TONE_ICON[e.tone]) }}<span>{{ e.label }}</span> <span class="badge-code">{{ e.status }}</span></span> {{ e.sentence }}</p>
   {% if e.coverage == "parcial" %}<p class="muted">Cobertura parcial: no se puede dar por completo.{% for reason in e.partial_reasons %} {{ reason }}{% endfor %}</p>{% endif %}
   {% for c in detail.results %}
   <h3><span class="mono">{{ c.connector }}</span> <span class="muted">· {{ c.finished_at }}</span></h3>

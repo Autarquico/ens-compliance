@@ -338,6 +338,8 @@ def save_asset(
     escritura falla, restaura la primera. Sin cambios efectivos no escribe ni revoca.
     """
     _reject_secrets(ASSETS_KEY, dict(changes))
+    if scope_choice and scope_choice.justification:
+        _reject_secrets(SYSTEM_KEY, {"justification": scope_choice.justification})
     assets, system, assets_text, system_text = _asset_documents(store)
     current = _entries(assets, "assets")
     existing = next((a for a in current if a.get("id") == asset_id), None)

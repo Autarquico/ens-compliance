@@ -6,7 +6,7 @@ from types import SimpleNamespace
 
 import pytest
 
-from ens_evidence.ui.pages import code_spans
+from ens_evidence.ui.pages import code_spans, status_badge
 from ens_evidence.ui.views import inventory as inv
 from ens_evidence.ui.views.agents import (
     AgentDetail,
@@ -1242,6 +1242,7 @@ def _environment():
         undefined=jinja2.StrictUndefined,
     )
     environment.filters["code_spans"] = code_spans
+    environment.globals["status_badge"] = status_badge
     return environment
 
 

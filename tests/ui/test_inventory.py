@@ -141,7 +141,7 @@ def test_el_primero_muestra_su_peor_estado_con_fecha_y_fuente_y_el_segundo_sin_e
 
     assert response.status_code == 200
     with_evidence = text(row_of(response.text, SERVER))
-    assert "FAIL" in with_evidence
+    assert "Falla" in with_evidence and "FAIL" in with_evidence
     assert "2026-11-08 11:00 UTC" in with_evidence and "endpoint" in with_evidence
     without = row_of(response.text, LAPTOP)
     assert "sin evidencia" in without
@@ -168,7 +168,7 @@ def test_un_pass_completo_se_pinta_como_resultado_no_como_conformidad(web, examp
 
     assert favorable(row_of(html, SERVER))  # control: el detector sí ve un tono favorable
     row = text(row_of(html, SERVER))
-    assert "PASS" in row and "Último resultado de 1 check de endpoint" in row
+    assert "Sin fallos" in row and "Último resultado de 1 check de endpoint" in row
     assert not FORBIDDEN.search(row)
 
 
@@ -179,7 +179,7 @@ def test_un_pass_con_historial_ilegible_no_lleva_tono_favorable(web, example_sto
     html = web.get("/inventario").text
 
     row = row_of(html, SERVER)
-    assert "PASS parcial" in row and "tone-ok" not in row and "Cobertura parcial" in row
+    assert "Sin fallos, parcial" in row and "tone-ok" not in row and "Cobertura parcial" in row
 
 
 def test_el_listado_dice_alcance_justificacion_y_despliegue(web):
@@ -261,6 +261,7 @@ def test_la_ficha_de_un_activo_inexistente_es_404(web):
 
 def test_la_ficha_de_un_equipo_inscrito_enlaza_el_panel_de_agentes(web, example_store):
     example_store.write_text("connectors/endpoint.yaml", yaml.safe_dump(ENDPOINT_CONFIG))
+    admit(example_store)
 
     assert f'href="/agentes/{LAPTOP}"' in web.get(f"/inventario/activos/{LAPTOP}").text
 
@@ -537,6 +538,14 @@ def test_un_equipo_que_reporta_y_no_esta_inventariado_aparece_con_el_alta_prelle
     )
 
 
+def test_un_activo_en_la_config_sin_alta_en_el_registro_no_ofrece_ver_agente(web, agents):
+    contact(agents)  # reporta pero no está admitido: no hay alta en agents/registry.yaml
+
+    assert f'href="/agentes/{LAPTOP}"' not in web.get("/inventario").text
+    admit(agents)
+    assert f'href="/agentes/{LAPTOP}"' in web.get("/inventario").text
+
+
 def test_la_reconciliacion_no_bloquea_nada_y_no_escribe(web, agents):
     agents.write_text("scope/assets.yaml", LAPTOP_MISSING)
     admit(agents)
@@ -764,7 +773,7 @@ def test_un_pass_de_una_ejecucion_incompleta_no_lleva_tono_ok(web, example_store
 
     html = web.get("/inventario").text
 
-    assert "PASS parcial" in row_of(html, SERVER) and not favorable(row_of(html, SERVER))
+    assert "Sin fallos, parcial" in row_of(html, SERVER) and not favorable(row_of(html, SERVER))
     detail = web.get(f"/inventario/activos/{SERVER}").text
     assert "Resultados incompletos" in detail
 
@@ -784,7 +793,7 @@ def test_la_ficha_no_pinta_tono_favorable_en_filas_pass_con_cobertura_parcial(
 
     detail = web.get(f"/inventario/activos/{SERVER}").text
 
-    assert "PASS parcial" in detail
+    assert "Sin fallos, parcial" in detail
     assert not favorable(detail)
 
 

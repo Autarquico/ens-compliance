@@ -53,7 +53,15 @@ from ens_evidence.scope.models import Dependency, Service
 from ens_evidence.scope.reconcile import RECONCILED_TYPES, normalize_hostname
 from ens_evidence.ui.audit import audit_write
 from ens_evidence.ui.forms import Form, FormInvalid, FormTooLarge, first, read_form
-from ens_evidence.ui.pages import error_page, identity_of, page_context, permissions_of, render
+from ens_evidence.ui.pages import (
+    STATUS_TEXT,
+    error_page,
+    identity_of,
+    page_context,
+    permissions_of,
+    render,
+    status_badge,
+)
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
 from ens_evidence.ui.views.matrix import plain
@@ -81,12 +89,7 @@ SCOPE_LABELS = {
     "undecided": "Sin decidir",
     "unknown": "No se puede leer el alcance",
 }
-STATUS_LABELS = {
-    "FAIL": "Falla (FAIL)",
-    "ERROR": "Error al comprobar (ERROR)",
-    "UNKNOWN": "Sin datos (UNKNOWN)",
-    "PASS": "Sin fallos (PASS)",
-}
+STATUS_LABELS = {code: f"{text} ({code})" for code, (_, text) in STATUS_TEXT.items()}
 NO_EVIDENCE = "sin-evidencia"
 _WORST_FIRST = (CheckStatus.FAIL, CheckStatus.ERROR, CheckStatus.UNKNOWN, CheckStatus.PASS)
 _RANK = {status: rank for rank, status in enumerate(_WORST_FIRST)}
@@ -133,7 +136,7 @@ class EvidenceSummary:
     """Lo que dicen los últimos resultados del activo, sin darlo por bueno más de lo que consta."""
 
     status: str  # el peor: FAIL > ERROR > UNKNOWN > PASS
-    label: str  # `status`, o «PASS parcial» si la cobertura no es completa
+    label: str  # texto llano del estado (con «parcial» si un PASS no tiene cobertura completa)
     favorable: bool  # solo un PASS con cobertura completa; nunca implica conformidad
     coverage: str  # "completa" | "parcial"
     partial_reasons: tuple[str, ...]
@@ -142,6 +145,10 @@ class EvidenceSummary:
     checks: int
     evidence_ids: tuple[str, ...]
     sentence: str  # «Último resultado de N checks de <conector> el <fecha>»
+
+    @property
+    def tone(self) -> str:
+        return status_badge(self.status, self.status == "PASS" and not self.favorable)[0]
 
 
 @dataclass(frozen=True)
@@ -302,6 +309,7 @@ class Loaded:
     scan: RunScan
     endpoint: Endpoint
     now: datetime
+    admitted: frozenset[str]  # con alta vigente en el registro de agentes (no revocada)
 
     @property
     def writes_blocked(self) -> bool:
@@ -324,9 +332,22 @@ def _endpoint(store: UiStore) -> Endpoint:
         )
 
 
+def _admitted(store: UiStore, endpoint: Endpoint) -> frozenset[str]:
+    if endpoint.config is None:
+        return frozenset()
+    try:
+        registry = load_registry(store).agents
+    except RegistryError:
+        return frozenset()
+    return frozenset(i for i, r in registry.items() if i in endpoint.config.hosts and not r.revoked)
+
+
 def _load(request: Request) -> Loaded:
     store, now = request.app.state.store, request.app.state.clock()
-    return Loaded(load_documents(store), scan_runs(store), _endpoint(store), now)
+    endpoint = _endpoint(store)
+    return Loaded(
+        load_documents(store), scan_runs(store), endpoint, now, _admitted(store, endpoint)
+    )
 
 
 def _quoted(asset_id: str) -> str:
@@ -398,10 +419,10 @@ def _summary(scan: RunScan, contributions: list[Contribution]) -> EvidenceSummar
     worst = min((r.status for r in results), key=_RANK.__getitem__)
     reasons = _partial_reasons(scan, contributions)
     coverage = "parcial" if reasons else "completa"
-    partial = worst is CheckStatus.PASS and bool(reasons)
+    _, label = status_badge(worst.value, worst is CheckStatus.PASS and bool(reasons))
     return EvidenceSummary(
         status=worst.value,
-        label=f"{worst.value} parcial" if partial else worst.value,
+        label=label,
         favorable=worst is CheckStatus.PASS and not reasons,
         coverage=coverage,
         partial_reasons=reasons,
@@ -451,7 +472,6 @@ def _rows(loaded: Loaded) -> list[AssetRow]:
     placements = _placements(loaded.docs.system.model)
     unknown = loaded.docs.system.model is None
     evidence = _latest_results(loaded.scan)
-    enrolled = loaded.endpoint.config.hosts if loaded.endpoint.config else {}
     rows = []
     for asset in loaded.assets:
         scope, justification = placements.get(
@@ -471,7 +491,7 @@ def _rows(loaded: Loaded) -> list[AssetRow]:
                 justification=justification,
                 summary=asset_summary(asset.model_dump(exclude_none=True)),
                 evidence=_summary(loaded.scan, contributions) if contributions else None,
-                agent_href=f"/agentes/{_quoted(asset.id)}" if asset.id in enrolled else None,
+                agent_href=f"/agentes/{_quoted(asset.id)}" if asset.id in loaded.admitted else None,
             )
         )
     return rows

@@ -243,7 +243,11 @@ def test_un_pass_completo_es_favorable_solo_como_resultado_de_checks(ui, example
     ui.get("/inventario")
 
     evidence = rows_by_id(ui)[SERVER].evidence
-    assert (evidence.label, evidence.coverage, evidence.favorable) == ("PASS", "completa", True)
+    assert (evidence.label, evidence.coverage, evidence.favorable) == (
+        "Sin fallos",
+        "completa",
+        True,
+    )
     assert evidence.sentence.startswith("Último resultado de 1 check de endpoint")
 
 
@@ -255,7 +259,7 @@ def test_pass_con_el_historial_de_otro_conector_ilegible_es_parcial(ui, example_
     page = ui.context["page"]
     evidence = rows_by_id(ui)[SERVER].evidence
     assert (evidence.label, evidence.coverage, evidence.favorable) == (
-        "PASS parcial",
+        "Sin fallos, parcial",
         "parcial",
         False,
     )
@@ -268,7 +272,7 @@ def test_pass_de_una_ejecucion_incompleta_es_parcial(ui, example_store):
     ui.get("/inventario")
 
     evidence = rows_by_id(ui)[SERVER].evidence
-    assert (evidence.label, evidence.favorable) == ("PASS parcial", False)
+    assert (evidence.label, evidence.favorable) == ("Sin fallos, parcial", False)
     assert any("incompleta" in reason for reason in evidence.partial_reasons)
 
 
@@ -1025,6 +1029,7 @@ def test_endpoint_yaml_corrupto_es_una_nota(ui, example_store):
 
 
 def test_la_ficha_enlaza_el_panel_de_agentes_solo_de_los_equipos_inscritos(ui, agents):
+    admit(agents)
     ui.get("/inventario")
     rows = rows_by_id(ui)
 

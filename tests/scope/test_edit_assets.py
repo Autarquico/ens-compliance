@@ -170,6 +170,22 @@ def test_secreto_en_los_cambios_se_rechaza_sin_escribir(store):
     assert snapshot(store) == before
 
 
+def test_secreto_en_la_justificacion_de_exclusion_se_rechaza_sin_escribir(store):
+    before = snapshot(store)
+
+    with pytest.raises(ScopeEditRejected, match="secreto"):
+        save_asset(
+            store,
+            "srv-app",
+            {},
+            ScopeChoice(False, "ghp_" + "A1b2C3d4E5" * 4),
+            NOW,
+            create=False,
+        )
+
+    assert snapshot(store) == before
+
+
 def test_sin_cambios_efectivos_no_escribe_ni_revoca(store):
     approve(store)
     before = snapshot(store)
