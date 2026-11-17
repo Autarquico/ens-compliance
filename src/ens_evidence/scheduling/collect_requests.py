@@ -15,10 +15,15 @@ con formato canónico): nunca un mensaje, porque el motivo legible de un fallo p
 secreto de un tercero.
 """
 
+import fcntl
+import os
 import re
+from collections.abc import Iterator
+from contextlib import contextmanager
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
 from enum import StrEnum
+from pathlib import Path
 from typing import Annotated, Literal
 
 from pydantic import AfterValidator, AwareDatetime, Field, ValidationError
@@ -123,7 +128,7 @@ class ErrorCode(StrEnum):
     COLLECT_CRASHED = "COLLECT_CRASHED"
     UNREADABLE = "UNREADABLE"
     EXPIRED = "EXPIRED"
-    """Se reclamó a las 24 h o después: no se ejecuta."""
+    """Ya no se escribe (una caducada no se reclama); se lee por resultados de versiones previas."""
 
 
 class CollectRequestResult(Strict):
@@ -183,21 +188,57 @@ def request_collect(
         raise RequestRejected(
             [f"el conector {connector} no está configurado"], RejectReason.NOT_CONFIGURED
         )
-    existing = requests_of(store, connector, now)
-    if any(item.state.alive for item in existing):
-        raise RequestRejected(
-            [f"ya hay una petición de recogida de {connector} sin terminar"], RejectReason.BUSY
-        )
-    request = CollectRequest(connector=connector, email=email, requested_at=now)
-    key = _key(connector, len(existing) + 1)
-    try:
-        store.create_bytes(key, canonical_json(request.model_dump(mode="json")))
-    except AlreadyExists:
-        raise RequestRejected(
-            [f"otra petición de {connector} se creó a la vez; revisa y reintenta"],
-            RejectReason.CONCURRENT,
-        ) from None
+    with claim_lock(store, connector):  # leer lo vivo y crear la nueva, sin que el reclamo medie
+        existing = requests_of(store, connector, now)
+        if any(item.state.alive for item in existing):
+            raise RequestRejected(
+                [f"ya hay una petición de recogida de {connector} sin terminar"],
+                RejectReason.BUSY,
+            )
+        request = CollectRequest(connector=connector, email=email, requested_at=now)
+        key = _key(connector, len(existing) + 1)
+        try:
+            store.create_bytes(key, canonical_json(request.model_dump(mode="json")))
+        except AlreadyExists:
+            raise RequestRejected(
+                [f"otra petición de {connector} se creó a la vez; revisa y reintenta"],
+                RejectReason.CONCURRENT,
+            ) from None
     return RequestStatus(key, connector, request, State.PENDING)
+
+
+def _local_root(store: object) -> Path | None:
+    """La carpeta del workspace local, atravesando envoltorios (`UiStore`); None si no es local."""
+    for _ in range(4):
+        root = getattr(store, "_root", None)
+        if isinstance(root, Path):
+            return root
+        inner = getattr(store, "_inner", None)
+        if inner is None:
+            return None
+        store = inner
+    return None
+
+
+@contextmanager
+def claim_lock(store: WorkspaceStore, connector: str) -> Iterator[None]:
+    """Exclusión entre procesos (UI y planificador) de las dos transiciones que deciden qué petición
+    está viva: admitir una nueva y reclamar una. Solo ellas; la recogida corre fuera.
+
+    `flock` sobre `evidence/collect-requests/<conector>.lock` (nunca se borra: lo libera el kernel
+    si el proceso muere). Sin carpeta local no hay lock: la UI no sirve sobre otro backend."""
+    root = _local_root(store)
+    if root is None:
+        yield
+        return
+    path = root / REQUESTS_PREFIX / f"{connector}.lock"
+    path.parent.mkdir(parents=True, exist_ok=True)
+    fd = os.open(path, os.O_RDWR | os.O_CREAT | os.O_CLOEXEC | os.O_NOFOLLOW, 0o600)
+    try:
+        fcntl.flock(fd, fcntl.LOCK_EX)
+        yield
+    finally:
+        os.close(fd)
 
 
 def _identity_problems(connector: str, email: str) -> list[str]:
@@ -309,11 +350,10 @@ def execute(
     """Ejecuta la petición `key` y registra su resultado; None si ya no está viva (otra orden la
     cerró). El llamador tiene el lock del ciclo: una petición en curso es de un proceso muerto.
 
-    Se reclama con creación exclusiva antes de actuar y el reloj se lee de nuevo tras reclamar: una
-    lectura por debajo de 24 h posterior a la creación del `.started` prueba que existía antes de
-    las 24 h, y desde las 24 h la UI la ve `RUNNING` y no abre otra; una reclamada a las 24 h o
-    después se cierra `EXPIRED` sin recoger (si no, correría a la vez que la petición siguiente).
-    Una reclamada antes de las 24 h sigue viva pasado ese límite.
+    El reclamo es una transición bajo `claim_lock`, la misma que usa la UI para admitir otra
+    petición: dentro se lee el reloj, se vuelve a leer el estado y se crea el `.started` solo si no
+    ha caducado (una caducada sin reclamar no se toca: nunca hay dos vivas). La recogida corre
+    fuera del lock. Una reclamada antes de las 24 h sigue viva pasado ese límite.
 
     Recoge un solo conector (el de la clave) con un intento (`retries=0`: los reintentos del
     diario esperan minutos con el lock tomado) y el tiempo límite de `cfg`; los checks se evalúan
@@ -324,17 +364,17 @@ def execute(
     if match is None or match["part"]:
         return None
     connector, number = match["connector"], int(match["n"])
-    status = _status(store, key, connector, number, set(store.list(REQUESTS_PREFIX)), clock.now())
-    if not status.state.alive or status.request is None:
-        return None
-    if status.state is State.RUNNING:
-        return _finish(store, connector, number, _failed(ErrorCode.INTERRUPTED, clock.now()))
-    try:
-        store.create_bytes(_key(connector, number, ".started"), b"{}\n")
-    except AlreadyExists:
-        return None
-    if clock.now() - status.request.requested_at >= EXPIRES_AFTER:
-        return _finish(store, connector, number, _failed(ErrorCode.EXPIRED, clock.now()))
+    with claim_lock(store, connector):
+        now = clock.now()
+        status = _status(store, key, connector, number, set(store.list(REQUESTS_PREFIX)), now)
+        if not status.state.alive or status.request is None:
+            return None
+        if status.state is State.RUNNING:
+            return _finish(store, connector, number, _failed(ErrorCode.INTERRUPTED, now))
+        try:
+            store.create_bytes(_key(connector, number, ".started"), b"{}\n")
+        except AlreadyExists:
+            return None
     result = _carry_out(store, settings, connector, plugins, cfg, clock)
     return _finish(store, connector, number, result)
 

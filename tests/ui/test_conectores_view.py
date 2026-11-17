@@ -208,6 +208,36 @@ def test_un_conector_registrado_sin_ficha_sale_generico(ui, monkeypatch):
     assert ui.post("/conectores/nuevo", {}).status_code == 403
 
 
+def test_un_conector_registrado_sin_ficha_y_configurado_ofrece_recoger_y_el_post_lo_admite(
+    config, example_store, key, token, monkeypatch
+):
+    class Model(BaseModel):
+        asset_id: str
+
+    monkeypatch.setattr(view, "registered_connectors", lambda: ({**real(), "nuevo": Model}, False))
+    ui = build_ui(config, example_store, key, token)
+    example_store.write_text("connectors/nuevo.yaml", "asset_id: gh-taller\n")
+
+    ui.get("/conectores")
+    block = blocks(ui)["nuevo"]
+
+    assert block.config.status == "configurado" and block.can_collect
+    assert ui.post("/conectores/nuevo/recoger", {}).status_code == 303
+    assert "evidence/collect-requests/nuevo/000001.json" in example_store.list("evidence")
+    assert ui.post("/conectores/otro/recoger", {}).status_code == 403
+
+
+def test_un_conector_que_no_esta_registrado_no_se_admite_aunque_tenga_configuracion(
+    config, example_store, key, token
+):
+    ui = build_ui(config, example_store, key, token)
+    example_store.write_text("connectors/fantasma.yaml", "asset_id: x\n")
+    before = snapshot_of(example_store)
+
+    assert ui.post("/conectores/fantasma/recoger", {}).status_code == 403
+    assert snapshot_of(example_store) == before
+
+
 def real():
     return {n: s.model for n, s in view.CATALOGUE.items() if s.model is not None}
 
@@ -478,6 +508,6 @@ def test_recoger_un_conector_desconocido_no_llega_al_handler(ui):
 def test_un_lector_no_puede_recoger_aunque_el_conector_este_configurado(ui):
     ui.post("/conectores/github", GITHUB)
 
-    page = view.build_page(ui.store, False, NOW)
+    page = view.build_page(ui.store, False, NOW, view.collectable_connectors())
 
     assert {b.name: b.can_collect for b in page.blocks}["github"] is False

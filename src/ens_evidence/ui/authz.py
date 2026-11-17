@@ -5,7 +5,7 @@ Una operación es (método, ruta registrada) y, cuando la ruta reparte en varias
 antes de escribir. Un test exige que la tabla coincida con las rutas, los pasos y las acciones.
 """
 
-from collections.abc import Mapping
+from collections.abc import Iterable, Mapping
 from dataclasses import dataclass
 from enum import StrEnum
 
@@ -87,6 +87,7 @@ CONNECTOR_FORMS: dict[str, Requirement] = {
     for name in ("github", "cloudflare", "google-workspace", "keystore", "passwords", "restic")
 }
 # Recoger solo lee del conector: los 7 del catálogo, `backups` incluido. Un test exige que coincida.
+# Los registrados fuera del catálogo se añaden al montar la app (`with_collectable`).
 COLLECT_CONNECTORS: dict[str, Requirement] = {
     name: EDIT
     for name in (
@@ -100,6 +101,7 @@ COLLECT_CONNECTORS: dict[str, Requirement] = {
     )
 }
 
+COLLECT_PATH = "/conectores/{conector}/recoger"
 WIZARD_PATH = "/asistente/{slug}"
 DOSSIER_PATH = "/expediente/{dossier}/{accion}"
 OPERATIONS: Operations = {
@@ -114,7 +116,7 @@ OPERATIONS: Operations = {
     ("POST", "/inventario/alta"): EDIT,
     ("POST", "/inventario/activos/{activo}/{accion}"): ByParam("accion", INVENTORY_ACTIONS),
     ("POST", "/conectores/{conector}"): ByParam("conector", CONNECTOR_FORMS),
-    ("POST", "/conectores/{conector}/recoger"): ByParam("conector", COLLECT_CONNECTORS),
+    ("POST", COLLECT_PATH): ByParam("conector", COLLECT_CONNECTORS),
     ("POST", "/preauditoria/preparar"): EDIT,
     ("POST", "/preauditoria/enviar"): SO,
     ("POST", "/preauditoria/hallazgos/{finding}"): SO,
@@ -123,6 +125,16 @@ OPERATIONS: Operations = {
     ("POST", "/herramientas/claves"): EDIT,
     ("POST", "/herramientas/contrasenas"): EDIT,
 }
+
+
+def with_collectable(operations: Operations, names: Iterable[str]) -> Operations:
+    """La tabla con la recogida admitida (con edición) en `names`, además de en el catálogo."""
+    key = ("POST", COLLECT_PATH)
+    entry = operations.get(key)
+    if not isinstance(entry, ByParam):  # una tabla propia sin esta ruta (tests) no la tiene
+        return operations
+    policies = {**entry.policies, **{name: EDIT for name in names}}
+    return {**operations, key: ByParam(entry.param, policies)}
 
 
 def fixed_role(path: str, key: str | None = None) -> Role:

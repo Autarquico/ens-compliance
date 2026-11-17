@@ -57,6 +57,11 @@ def run(store, settings, plugins, at=ASKED_AT, key=FIRST):
     )
 
 
+def requests_listed(store):
+    """Las claves bajo `collect-requests` sin el fichero del lock por conector."""
+    return [key for key in store.list(REQUESTS_PREFIX) if not key.endswith(".lock")]
+
+
 def stored_result(store, number=1, connector="github"):
     key = f"{REQUESTS_PREFIX}/{connector}/{number:06d}.result.json"
     return CollectRequestResult.model_validate_json(store.read_bytes(key))
@@ -102,7 +107,7 @@ def test_asking_leaves_a_pending_request(store):
         (State.PENDING, EMAIL)
     ]
     assert pending_keys(store, ASKED_AT) == [FIRST]
-    assert store.list(REQUESTS_PREFIX) == [FIRST]
+    assert requests_listed(store) == [FIRST]
 
 
 @pytest.mark.parametrize("connector", ["../x", "GitHub", "git/hub", "", "restic"])
@@ -110,7 +115,7 @@ def test_an_unknown_or_unconfigured_connector_is_rejected_without_writing(store,
     with pytest.raises(RequestRejected):
         ask(store, connector=connector)
 
-    assert store.list(REQUESTS_PREFIX) == []
+    assert requests_listed(store) == []
 
 
 def test_an_identity_that_is_not_an_email_is_rejected(store):
@@ -124,7 +129,7 @@ def test_only_one_request_is_alive_per_connector(store):
     with pytest.raises(RequestRejected, match="sin terminar"):
         ask(store, ASKED_AT + timedelta(seconds=5))
 
-    assert store.list(REQUESTS_PREFIX) == [FIRST]
+    assert requests_listed(store) == [FIRST]
 
 
 def test_a_claimed_request_is_still_alive(store):
@@ -176,7 +181,7 @@ def test_an_expired_request_is_not_executed_and_a_new_one_can_be_asked(
     late = ASKED_AT + EXPIRES_AFTER + timedelta(seconds=1)
 
     assert run(store, settings, plugins, at=late) is None
-    assert store.list(REQUESTS_PREFIX) == [FIRST]
+    assert requests_listed(store) == [FIRST]
     assert ask(store, late).key == f"{REQUESTS_PREFIX}/github/000002.json"
 
 
@@ -297,67 +302,6 @@ def test_a_claim_without_result_is_closed_as_interrupted_without_collecting(
     assert stored_result(store) == result
 
 
-def advance_on_claim(store, monkeypatch, clock, by):
-    """Gancho determinista: el reloj avanza `by` justo tras crear el `.started`."""
-    create = store.create_bytes
-
-    def create_then_advance(key, data):
-        create(key, data)
-        if key.endswith(".started.json"):
-            clock.current += by
-
-    monkeypatch.setattr(store, "create_bytes", create_then_advance)
-
-
-def test_a_request_claimed_after_the_deadline_is_closed_expired_and_never_runs(
-    store, settings, plugins, fake, monkeypatch
-):
-    ask(store)
-    clock = FakeClock(ASKED_AT + EXPIRES_AFTER - timedelta(seconds=1))
-    advance_on_claim(store, monkeypatch, clock, timedelta(seconds=2))
-
-    result = execute(store, settings, FIRST, plugins=plugins, cfg=CollectConfig(), clock=clock)
-
-    assert (result.outcome, result.code) == (Outcome.ERROR, ErrorCode.EXPIRED)
-    assert result.evidence_id is None
-    assert not (fake.state / "calls").exists()
-    assert stored_result(store) == result
-    after = ASKED_AT + EXPIRES_AFTER + timedelta(seconds=2)
-    [old] = requests_of(store, "github", after)
-    assert old.state is State.DONE
-    # la UI ya puede pedir la siguiente y esa sí se ejecuta
-    second = ask(store, at=after)
-    assert second.key == f"{REQUESTS_PREFIX}/github/000002.json"
-    assert pending_keys(store, after) == [second.key]
-    ran = run(store, settings, plugins, at=after, key=second.key)
-    assert (ran.outcome, ran.checks) == (Outcome.DONE, ChecksOutcome.RECORDED)
-    assert (fake.state / "calls").exists()
-
-
-def test_a_request_claimed_one_second_before_the_deadline_runs(
-    store, settings, plugins, fake, monkeypatch
-):
-    ask(store)
-    clock = FakeClock(ASKED_AT + EXPIRES_AFTER - timedelta(seconds=2))
-    advance_on_claim(store, monkeypatch, clock, timedelta(seconds=1))
-
-    result = execute(store, settings, FIRST, plugins=plugins, cfg=CollectConfig(), clock=clock)
-
-    assert (result.outcome, result.checks) == (Outcome.DONE, ChecksOutcome.RECORDED)
-    assert (fake.state / "calls").exists()
-
-
-def test_a_request_claimed_exactly_at_the_deadline_never_runs(store, settings, plugins, fake):
-    ask(store)
-    clock = FakeClock(ASKED_AT + EXPIRES_AFTER - timedelta(seconds=1))
-    clock.auto_advance = timedelta(seconds=1)
-
-    result = execute(store, settings, FIRST, plugins=plugins, cfg=CollectConfig(), clock=clock)
-
-    assert (result.outcome, result.code) == (Outcome.ERROR, ErrorCode.EXPIRED)
-    assert not (fake.state / "calls").exists()
-
-
 def test_pending_keys_are_oldest_first_across_connectors(store):
     ask(store)
     write_raw(
@@ -432,7 +376,7 @@ def test_the_connector_error_message_reaches_no_file_of_the_request(store, setti
 
     assert result.collection_status is CollectionStatus.ERROR
     assert (result.phase.value, result.error_type) == ("prepare", "RuntimeError")
-    for key in store.list(REQUESTS_PREFIX):
+    for key in requests_listed(store):
         text = store.read_bytes(key).decode()
         assert CANARY not in text
         assert "ghp_" not in text

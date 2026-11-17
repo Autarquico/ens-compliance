@@ -20,6 +20,7 @@ from ens_evidence.ui.authz import (
     AuthorizationMiddleware,
     Operations,
     role_denied_handler,
+    with_collectable,
 )
 from ens_evidence.ui.config import UiConfig
 from ens_evidence.ui.pages import error_page, install_template_helpers
@@ -30,6 +31,7 @@ from ens_evidence.ui.security import (
     SecurityHeadersMiddleware,
 )
 from ens_evidence.ui.store import UiStore
+from ens_evidence.ui.views.conectores import collectable_connectors
 from ens_evidence.workspace.store import WorkspaceStore
 
 _LOGGER = logging.getLogger("ens_evidence.ui")
@@ -46,10 +48,15 @@ def create_ui_app(
     jwks_loader: JwksLoader,
     routes: Sequence[BaseRoute] = (),
     operations: Operations = OPERATIONS,
+    collectable: frozenset[str] | None = None,
 ) -> Starlette:
+    """`collectable`: conectores de los que se puede pedir una recogida (por defecto, catálogo y
+    registrados); es lo que muestra `/conectores` y lo que admite la autorización del POST."""
     app = create_app(
         [*routes, Mount("/static", StaticFiles(directory=STATIC_DIR, check_dir=False))]
     )
+    collectable = collectable_connectors() if collectable is None else collectable
+    app.state.collectable = collectable
     app.state.config = config
     app.state.store = UiStore(store)
     app.state.clock = clock
@@ -62,7 +69,9 @@ def create_ui_app(
     app.add_exception_handler(HTTPException, _http_error_page)
     app.add_exception_handler(RoleDenied, role_denied_handler)
     app.add_exception_handler(Exception, _unexpected_error_page)
-    app.add_middleware(AuthorizationMiddleware, operations=operations)
+    app.add_middleware(
+        AuthorizationMiddleware, operations=with_collectable(operations, collectable)
+    )
     app.add_middleware(OriginCheckMiddleware, origin=config.origin)
     app.add_middleware(AccessMiddleware, verifier=verifier)
     app.add_middleware(SecurityHeadersMiddleware)

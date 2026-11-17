@@ -213,6 +213,13 @@ class ConnectorForm:
 # --- registro y recursos compartidos por petición ------------------------------------------------
 
 
+def collectable_connectors() -> frozenset[str]:
+    """Los conectores de los que se puede pedir una recogida: los que lista `/conectores` (catálogo
+    y registrados). Una sola fuente para el botón y para la autorización del POST."""
+    registered, _ = registered_connectors()
+    return frozenset(CATALOGUE) | frozenset(registered)
+
+
 def registered_connectors() -> tuple[dict[str, type[BaseModel]], bool]:
     """Nombre → modelo de los conectores registrados (entry points) y si el registro falló."""
     registry = ConnectorRegistry()
@@ -342,6 +349,7 @@ def _block(
     requests: Mapping[str, RequestStatus],
     inventory: _Inventory,
     can_edit: bool,
+    collectable: frozenset[str],
 ) -> ConnectorBlock:
     name = spec.name
     existing = _existing(store, name, spec.model or registered.get(name))
@@ -375,18 +383,25 @@ def _block(
             else ()
         ),
         request=pending,
-        can_collect=can_edit and config.status == "configurado" and not (pending and pending.alive),
+        can_collect=(
+            can_edit
+            and name in collectable
+            and config.status == "configurado"
+            and not (pending and pending.alive)
+        ),
         collect_action=f"{LIST_PATH}/{quote(name, safe='')}/{COLLECT_ACTION}",
     )
 
 
-def build_page(store: UiStore, can_edit: bool, now: datetime) -> ConectoresPage:
+def build_page(
+    store: UiStore, can_edit: bool, now: datetime, collectable: frozenset[str]
+) -> ConectoresPage:
     registered, registry_failed = registered_connectors()
     index = index_collections(store)  # un solo `list_manifests` por petición
     requests = index_requests(store, now)  # y un solo `list` de peticiones
     inventory = _inventory(store)
     blocks = tuple(
-        _block(store, spec, registered, index, requests, inventory, can_edit)
+        _block(store, spec, registered, index, requests, inventory, can_edit, collectable)
         for spec in catalogue_for(registered)
     )
     return ConectoresPage(
@@ -478,6 +493,7 @@ def _page_of(
         index_requests(store, now),
         inventory,
         can_edit,
+        request.app.state.collectable,
     )
     form = None
     prefill: dict[str, str] = {}
@@ -510,12 +526,17 @@ def _saved(request: Request) -> tuple[str | None, str | None]:
     return None, None
 
 
+def _label(name: str) -> str:
+    spec = CATALOGUE.get(name)
+    return spec.label if spec else name
+
+
 def _requested(request: Request) -> str | None:
     name = request.query_params.get("pedida", "")
-    if name not in CATALOGUE:
+    if name not in request.app.state.collectable:
         return None
     return (
-        f"Petición de recogida de {CATALOGUE[name].label} creada. "
+        f"Petición de recogida de {_label(name)} creada. "
         "Se recogerá en cuanto el servicio esté libre; normalmente en menos de un minuto."
     )
 
@@ -524,7 +545,10 @@ def _listing(
     request: Request, *, form_errors: list[str] | None = None, status: int = 200
 ) -> Response:
     page = build_page(
-        request.app.state.store, permissions_of(request).edit, request.app.state.clock()
+        request.app.state.store,
+        permissions_of(request).edit,
+        request.app.state.clock(),
+        request.app.state.collectable,
     )
     saved, saved_text = _saved(request)
     return render(
@@ -710,7 +734,7 @@ def _audit_collect(request: Request, name: str, failed: bool, keys: list[str], a
 async def recoger(request: Request) -> Response:
     """Deja una petición de recogida: no recoge nada; el fichero lo ejecuta el servicio `app`."""
     name = request.path_params["conector"]
-    if name not in CATALOGUE:
+    if name not in request.app.state.collectable:
         raise HTTPException(404)
     store, now = request.app.state.store.recording(), request.app.state.clock()
     try:
@@ -718,7 +742,7 @@ async def recoger(request: Request) -> Response:
             request_collect, store, name, email=identity_of(request).email, now=now
         )
     except RequestRejected as rejected:
-        messages = _rejected_messages(rejected, CATALOGUE[name].label)
+        messages = _rejected_messages(rejected, _label(name))
         return _listing(request, form_errors=messages, status=422)
     except Exception:
         _audit_collect(request, name, True, store.written, now)

@@ -26,7 +26,9 @@ from ens_evidence.scheduling.collect_requests import (
     CollectRequestResult,
     ErrorCode,
     Outcome,
+    State,
     execute,
+    list_requests,
     pending_keys,
     request_collect,
 )
@@ -125,6 +127,11 @@ def fake(monkeypatch, tmp_path):
     return mode
 
 
+def requests_listed(store) -> list[str]:
+    """Las claves bajo `collect-requests` sin el fichero del lock por conector."""
+    return [key for key in store.list(REQUESTS_PREFIX) if not key.endswith(".lock")]
+
+
 def run(store, settings, plugins, at=RAN_AT, key=FIRST):
     return execute(store, settings, key, plugins=plugins, cfg=CollectConfig(), clock=FakeClock(at))
 
@@ -166,7 +173,7 @@ def test_la_pagina_muestra_la_peticion_pendiente_sin_boton(web, configured, audi
     response = ask_through_the_ui(web)
 
     assert response.headers["location"] == "/conectores?pedida=github"
-    assert configured.list(REQUESTS_PREFIX) == [FIRST]
+    assert requests_listed(configured) == [FIRST]
     block = github_block(web)
     assert "Pendiente" in block and BUTTON not in block
     assert "Petición de recogida de GitHub creada" in web.get("/conectores?pedida=github").text
@@ -274,7 +281,7 @@ def test_una_peticion_hecha_permite_pedir_otra(web, configured, settings, plugin
     again = web.post("/conectores/github/recoger", {})
 
     assert again.status_code == 303
-    assert f"{REQUESTS_PREFIX}/github/000002.json" in configured.list(REQUESTS_PREFIX)
+    assert f"{REQUESTS_PREFIX}/github/000002.json" in requests_listed(configured)
 
 
 def test_la_accion_se_audita_como_recoger_con_la_clave_de_la_peticion(web, audit):
@@ -300,7 +307,7 @@ def test_otro_editor_no_crea_una_segunda_peticion_y_la_pagina_lo_dice(
     assert response.status_code == 422
     assert "ya hay una petición de recogida de github" not in response.text
     assert "Ya hay una petición de recogida de GitHub sin terminar." in response.text
-    assert configured.list(REQUESTS_PREFIX) == [FIRST]
+    assert requests_listed(configured) == [FIRST]
     assert audit_lines(audit, "saved") == []
 
 
@@ -319,9 +326,9 @@ def test_una_peticion_sin_atender_pasadas_24_horas_aparece_caducada_y_se_puede_p
     assert BUTTON in block and "ídela de nuevo" in plain(block)
     assert pending_keys(configured, NOW) == []
     assert run(configured, settings, plugins) is None
-    assert configured.list(REQUESTS_PREFIX) == [FIRST]
+    assert requests_listed(configured) == [FIRST]
     assert web.post("/conectores/github/recoger", {}).status_code == 303
-    assert f"{REQUESTS_PREFIX}/github/000002.json" in configured.list(REQUESTS_PREFIX)
+    assert f"{REQUESTS_PREFIX}/github/000002.json" in requests_listed(configured)
 
 
 def test_caducada_con_la_configuracion_invalida_no_invita_a_pedir_otra(web, configured):
@@ -344,7 +351,7 @@ def test_un_post_de_un_lector_da_403_auditado_y_no_escribe_nada(reader, configur
 
     assert response.status_code == 403
     assert snapshot_of(configured) == before
-    assert configured.list(REQUESTS_PREFIX) == []
+    assert requests_listed(configured) == []
     [line] = audit_lines(audit, "denied")
     assert "path=/conectores/github/recoger" in line and "reason=no_edit" in line
 
@@ -385,7 +392,7 @@ def test_un_post_directo_a_un_conector_sin_configurar_da_422_y_no_escribe(
 
     assert response.status_code == 422
     assert snapshot_of(example_store) == before
-    assert example_store.list(REQUESTS_PREFIX) == []
+    assert requests_listed(example_store) == []
     assert audit_lines(audit, "saved") == []
 
 
@@ -428,21 +435,22 @@ def test_una_reclamada_pasadas_24_horas_se_interrumpe_y_el_boton_vuelve(
     assert BUTTON in github_block(web)
 
 
-def test_reclamada_a_las_24_horas_se_cierra_caducada_y_la_pagina_lo_dice(
+def test_leida_pendiente_y_reclamada_a_las_24_horas_no_se_reclama_y_queda_caducada(
     web, configured, settings, plugins, fake
 ):
     request_collect(
         configured, "github", email=EMAIL, now=NOW - EXPIRES_AFTER + timedelta(seconds=1)
     )
     assert "Pendiente" in github_block(web)
-    clock = FakeClock(NOW, auto_advance=timedelta(seconds=1))
+    clock = FakeClock(NOW + timedelta(seconds=1))
 
     result = execute(configured, settings, FIRST, plugins=plugins, cfg=CollectConfig(), clock=clock)
 
-    assert (result.outcome, result.code) == (Outcome.ERROR, ErrorCode.EXPIRED)
+    assert result is None
+    assert not configured.exists(CLAIM) and not configured.exists(RESULT)
     assert not (fake.state / "calls").exists()
-    assert "No se pudo hacer: Caducada: no se llegó a ejecutar" in plain(github_block(web))
-    assert BUTTON in github_block(web)
+    [old] = list_requests(configured, clock.current)
+    assert old.state is State.EXPIRED and pending_keys(configured, clock.current) == []
 
 
 # --- D5: identificadores hostiles --------------------------------------------------------------
@@ -552,3 +560,35 @@ def test_el_texto_de_la_peticion_no_usa_palabras_prohibidas_en_ningun_estado(
     page = web.get("/conectores").text
 
     assert not FORBIDDEN.search(text(page)), FORBIDDEN.search(text(page))
+
+
+def test_un_fallo_al_importar_deja_la_peticion_sin_evidencia_y_nunca_favorable(
+    web, configured, settings, plugins, fake, monkeypatch
+):
+    """Entre el artefacto y el manifiesto: el artefacto queda huérfano (sin manifiesto, sin
+    recogida visible) y la petición se cierra `COLLECT_CRASHED` sin `evidence_id`."""
+    create = configured.create_bytes
+
+    def fail_on_manifest(key, data):
+        if key.startswith("evidence/manifests/"):
+            raise OSError(CANARY)
+        create(key, data)
+
+    monkeypatch.setattr(configured, "create_bytes", fail_on_manifest)
+    ask_through_the_ui(web)
+
+    result = run(configured, settings, plugins)
+
+    assert (result.outcome, result.code) == (Outcome.ERROR, ErrorCode.COLLECT_CRASHED)
+    assert result.evidence_id is None and result.collection_status is None
+    assert stored_result(configured) == result
+    assert not [k for k in configured.list("evidence/manifests") if "EV-" in k]
+    assert len(configured.list("evidence/raw")) == 1  # el artefacto huérfano
+    page = web.get("/conectores").text
+    block = github_block(web)
+    card = request_card(block).split("Resultados de las comprobaciones")[0]
+    assert "tone-bad" in card and "tone-ok" not in card
+    assert not favorable(block)
+    assert "la recogida falló de forma inesperada" in plain(block)
+    assert "Sin recogidas todavía" in plain(github_block(web))
+    assert CANARY not in page and CANARY not in configured.read_bytes(RESULT).decode()

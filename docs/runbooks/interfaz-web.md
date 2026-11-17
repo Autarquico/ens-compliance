@@ -318,7 +318,8 @@ enrutado por host de Caddy y la validación del Caddyfile.
 
 ## 11. Recoger ahora
 
-Cada conector configurado de `/conectores` tiene el botón «Recoger ahora». La
+Cada conector configurado de `/conectores` (los del catálogo y los registrados
+como plugin) tiene el botón «Recoger ahora». La
 web no recoge: solo deja una petición y el scheduler del servicio `app` la
 atiende (la web no tiene credenciales ni salida a Internet).
 
@@ -377,11 +378,27 @@ pasado más de 24 h desde que se reclamó. Lo ya importado queda como en
 
 ### Caducada al reclamar
 
-Si el scheduler lee la petición poco antes de las 24 h y la reclama a las 24 h
-o después, la cierra como `EXPIRED` («Caducada: no se llegó a ejecutar») sin
-recoger: así nunca corre a la vez que la petición nueva que la web permite
-desde las 24 h. Una reclamada antes de las 24 h sigue su curso aunque pase ese
-límite. Pide otra recogida.
+Admitir una petición nueva y reclamar la anterior son una sola transición por
+conector (un `flock` sobre `evidence/collect-requests/<conector>.lock`, que no
+es una petición y nunca se borra). El scheduler lee el reloj dentro de ese lock
+y solo crea `<n>.started.json` si no han pasado 24 h: si la petición caducó
+entre que la vio y que la reclamó, la deja sin reclamar (queda «Caducada») y la
+web puede aceptar la siguiente. Nunca hay dos vivas, tampoco si el proceso
+muere a mitad. Una reclamada antes de las 24 h sigue su curso aunque pase ese
+límite. La recogida corre fuera del lock. Pide otra recogida.
+
+### Fallo durante la importación
+
+Si la recogida produce un resultado pero falla al guardarlo (error de disco,
+permisos) entre escribir el artefacto en `evidence/raw/` y escribir el
+manifiesto, la petición se cierra como «No se pudo hacer: la recogida falló de
+forma inesperada» (`COLLECT_CRASHED`), sin identificador de evidencia y sin
+tono favorable; la página sigue diciendo «Sin recogidas todavía» (o la última
+recogida anterior), porque la evidencia solo existe con manifiesto. El
+artefacto queda huérfano: es contenido direccionado por su hash, no se lee y
+la siguiente recogida con el mismo contenido lo reutiliza; `evidence verify`
+puede señalarlo. Los checks se evalúan igualmente con lo que hubiera antes.
+Revisa el disco y pide otra recogida.
 
 ### Orden
 
