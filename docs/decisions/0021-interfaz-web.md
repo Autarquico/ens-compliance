@@ -81,6 +81,13 @@ a través de `connectors/edit.py`, que valida con el mismo modelo y la misma
 política de rechazo de credenciales que el cargador. `deploy/.env` sigue fuera
 de su alcance: la UI nunca lo lee ni lo escribe.
 
+Enmienda (actualizado por ui-recogida): se añade `evidence/collect-requests`
+a la lista de escritura (peticiones de recogida bajo demanda). Es un prefijo
+exacto; el resto de `evidence/` sigue fuera. Admitir una petición y reclamarla
+toman un `flock` por conector (`evidence/collect-requests/<conector>.lock`, que
+la UI crea al pedir): no es el `CycleLock` y se mantiene solo durante esa
+transición, nunca durante la recogida.
+
 ### Escribe como la CLI, sin el lock
 
 La UI no toma el `CycleLock`: escribe por las mismas APIs de producto que la

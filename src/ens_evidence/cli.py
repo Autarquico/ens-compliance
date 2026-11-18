@@ -3277,6 +3277,7 @@ def scheduler_run(ctx: typer.Context) -> None:
         stop,
         heartbeat=heartbeat,
         requests=executor.pending_requests,
+        collect_requests=executor.pending_collect_requests,
     )
     with stop_on_signals(stop), monitoring_alongside(store, stop), jwks_refresh_alongside(stop):
         scheduler.run()

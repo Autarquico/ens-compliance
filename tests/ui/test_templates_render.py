@@ -10,6 +10,7 @@ import pytest
 from ens_evidence.ui.pages import STATUS_TEXT, install_template_helpers
 from ens_evidence.ui.views import check_history as ch
 from ens_evidence.ui.views import conectores as con
+from ens_evidence.ui.views import conectores_peticion as pet
 from ens_evidence.ui.views import conectores_recogida as rec
 from ens_evidence.ui.views import copias as cop
 from ens_evidence.ui.views import inventory as inv
@@ -885,6 +886,47 @@ _CON_BACKUPS = _con_block(
         rec.RepositoryState("tercero", None, "sin estado", None),
     ),
 )
+
+
+def _con_request(state="DONE", label="Terminada", tone="neutral", text="", **fields):
+    base = {
+        "state": state,
+        "label": label,
+        "tone": tone,
+        "text": text,
+        "requested_at": "2026-11-08 11:59 UTC",
+        "alive": state in ("PENDING", "RUNNING"),
+        "result": None,
+    }
+    return pet.RequestView(**(base | fields))
+
+
+_CON_RESULT = pet.ResultView(HOSTILE, HOSTILE, HOSTILE, HOSTILE, evidence_invalid=False)
+_CON_REQUESTS = {
+    "pendiente": _con_request("PENDING", "Pendiente", "warn", pet.PENDING_TEXT),
+    "en-curso": _con_request("RUNNING", "En curso", "warn", pet.RUNNING_TEXT),
+    "caducada": _con_request("EXPIRED", "Caducada", "neutral", pet.EXPIRED_TEXT),
+    "hecha": _con_request(result=_CON_RESULT),
+    "recogida-con-error": _con_request(
+        label="Terminada con error de recogida", tone="bad", result=_CON_RESULT
+    ),
+    "checks-no-registrados": _con_request(
+        label="Terminada; comprobaciones no registradas", tone="warn", result=_CON_RESULT
+    ),
+    "no-se-pudo": _con_request(label="No se pudo hacer: " + HOSTILE, tone="bad"),
+    "id-invalido": _con_request(
+        result=pet.ResultView(None, None, "sin comprobaciones", None, evidence_invalid=True)
+    ),
+}
+_CON_REQUEST_BLOCKS = tuple(
+    _con_block(
+        "github",
+        request=request,
+        can_collect=not request.alive,
+        collect_action="/conectores/github/recoger",
+    )
+    for request in _CON_REQUESTS.values()
+)
 _CON_BLOCKS = (
     _con_block("github", config=_con_config("sin-configurar")),
     _con_block("cloudflare", last=None),
@@ -939,6 +981,8 @@ def _con_page(blocks=_CON_BLOCKS, **fields):
         "page": dataclasses.replace(page, **fields),
         "saved": None,
         "saved_text": HOSTILE,
+        "requested_text": HOSTILE,
+        "form_errors": [HOSTILE],
         "permissions": EDITOR,
     }
 
@@ -1022,7 +1066,9 @@ VIEW_CONTEXT = {
     ],
     "views/conectores.html": [
         _con_page(),
-        _con_page(blocks=(), manifest_notes=(), inventory_notes=()) | {"saved_text": None},
+        _con_page(blocks=(), manifest_notes=(), inventory_notes=())
+        | {"saved_text": None, "requested_text": None, "form_errors": []},
+        _con_page(blocks=_CON_REQUEST_BLOCKS),
         _con_page() | {"permissions": READER},
     ],
     "views/conectores_form.html": [
@@ -1044,6 +1090,7 @@ VIEW_CONTEXT = {
         ),
         _con_form_context(block=_con_block(can_configure=False), permissions=READER),
         _con_form_context(form=None, block=_CON_BACKUPS),
+        *(_con_form_context(block=block) for block in _CON_REQUEST_BLOCKS),
         _con_form_context(
             form=None,
             block=_con_block("otro", editable=False, can_configure=False, credential=None),
@@ -1867,7 +1914,10 @@ def test_conectores_ficha_solo_si_no_hay_boton_y_registro_ilegible_avisa():
 
 def test_conectores_lector_no_ve_botones_ni_formularios():
     readers = _con_page(
-        blocks=tuple(dataclasses.replace(b, can_configure=False) for b in _CON_BLOCKS)
+        blocks=tuple(
+            dataclasses.replace(b, can_configure=False, can_collect=False)
+            for b in (*_CON_BLOCKS, *_CON_REQUEST_BLOCKS)
+        )
     )
     html = _render("views/conectores.html", readers | {"permissions": READER})
     assert "Configurar" not in html and 'method="post"' not in html and "<button" not in html
@@ -1902,3 +1952,94 @@ def test_conectores_form_lector_y_backups_no_tienen_formulario():
 def test_inventario_activo_lista_los_conectores_que_lo_citan():
     html = _render("views/inventario_activo.html", VIEW_CONTEXT["views/inventario_activo.html"][0])
     assert "Conectores que citan este activo" in html and 'href="/conectores/github"' in html
+
+
+def _request_html(key):
+    block = _CON_REQUEST_BLOCKS[list(_CON_REQUESTS).index(key)]
+    return _render("views/conectores.html", _con_page(blocks=(block,)))
+
+
+def test_conectores_pendiente_y_en_curso_no_ofrecen_el_boton_y_dicen_cuando_se_recoge():
+    for key in ("pendiente", "en-curso"):
+        assert 'action="/conectores/github/recoger"' not in _request_html(key)
+    assert "normalmente en menos de un minuto" in _request_html("pendiente")
+
+
+def test_conectores_caducada_remite_al_runbook_y_vuelve_a_ofrecer_el_boton():
+    html = _request_html("caducada")
+    assert "runbook" in html and "Pídela de nuevo." in html
+    assert 'action="/conectores/github/recoger"' in html and "Recoger ahora</button>" in html
+
+
+def test_conectores_caducada_sin_configuracion_valida_no_invita_a_pedir_otra():
+    block = dataclasses.replace(
+        _CON_REQUEST_BLOCKS[list(_CON_REQUESTS).index("caducada")],
+        config=_con_config("invalida", problem="x"),
+        can_collect=False,
+    )
+    html = _render("views/conectores.html", _con_page(blocks=(block,)))
+    assert "Corrige la configuración antes de pedir otra." in html
+    assert "ídela de nuevo" not in html and "Recoger ahora</button>" not in html
+
+
+def test_conectores_la_ficha_y_la_lista_pintan_el_boton_igual():
+    for can_collect in (True, False):
+        block = dataclasses.replace(_CON_REQUEST_BLOCKS[0], request=None, can_collect=can_collect)
+        listing = _render("views/conectores.html", _con_page(blocks=(block,)))
+        for form in (None, _con_form()):
+            detail = _render(
+                "views/conectores_form.html", _con_form_context(block=block, form=form)
+            )
+            assert ("Recoger ahora</button>" in listing) is can_collect
+            assert ("Recoger ahora</button>" in detail) is can_collect
+
+
+def test_conectores_peticion_fallida_muestra_su_codigo_y_no_done():
+    html = _render(
+        "views/conectores.html",
+        _con_page(
+            blocks=(
+                dataclasses.replace(
+                    _CON_REQUEST_BLOCKS[0],
+                    request=_con_request(
+                        label="No se pudo hacer: x", tone="bad", code="CONFIG_INVALID"
+                    ),
+                ),
+            )
+        ),
+    )
+    assert "CONFIG_INVALID" in html and 'badge-code">DONE' not in html
+
+
+def test_conectores_terminada_nunca_lleva_tono_favorable():
+    for key in (
+        "hecha",
+        "recogida-con-error",
+        "checks-no-registrados",
+        "no-se-pudo",
+        "id-invalido",
+    ):
+        card = _request_html(key).split("Recoger ahora</h3>")[1].split("<form")[0]
+        assert "tone-ok" not in card, key
+    assert "tone-bad" in _request_html("recogida-con-error")
+    assert "comprobaciones no registradas" in _request_html("checks-no-registrados")
+
+
+def test_conectores_identificador_no_canonico_no_se_muestra():
+    html = _request_html("id-invalido")
+    assert "identificador no válido" in html
+
+
+def test_conectores_errores_de_formulario_y_aviso_de_peticion_arriba():
+    context = _con_page() | {"form_errors": ["Ya hay una petición"], "requested_text": "Creada"}
+    html = _render("views/conectores.html", context)
+    assert 'role="alert"' in html and html.index("Ya hay una petición") < html.index("Resumen")
+    assert "Creada" in html
+
+
+def test_conectores_ficha_de_solo_lectura_muestra_la_peticion_sin_boton():
+    block = _CON_REQUEST_BLOCKS[0]
+    block = dataclasses.replace(block, request=_CON_REQUESTS["caducada"], can_collect=True)
+    block = dataclasses.replace(block, can_collect=False)
+    html = _render("views/conectores_form.html", _con_form_context(block=block) | {"form": None})
+    assert "Caducada" in html and "Recoger ahora</button>" not in html

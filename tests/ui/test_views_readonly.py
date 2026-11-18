@@ -67,6 +67,14 @@ def test_views_reject_writes(session, example_store):
     assert snapshot_of(example_store) == before
 
 
+def test_recoger_solo_acepta_post_y_un_get_no_escribe(session, example_store):
+    before = snapshot_of(example_store)
+
+    assert session.get("/conectores/github/recoger").status_code == 405
+
+    assert snapshot_of(example_store) == before
+
+
 def test_estado_points_to_the_wizard_until_scope_is_approved(session, example_store):
     page = session.get("/")
     assert 'href="/asistente/aprobacion-alcance"' in page.text

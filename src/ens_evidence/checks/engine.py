@@ -73,17 +73,42 @@ def run_all(
 ) -> list[ConnectorOutcome]:
     """Evalúa y registra cada conector configurado. Exige el alcance aprobado
     (`ScopeNotApproved` si no). `accept_clock_correction`: ver `record_run`."""
+    inventory = _approved_inventory(store)
+    return [
+        _run_connector(store, name, inventory, now, accept_clock_correction)
+        for name in ENGINE_CONNECTORS
+    ]
+
+
+def run_one(
+    store: WorkspaceStore, name: str, now: datetime, *, accept_clock_correction: bool = False
+) -> ConnectorOutcome | None:
+    """Lo mismo que `run_all` para un solo conector; None si el motor no lo evalúa. Exige el
+    alcance aprobado (`ScopeNotApproved` si no)."""
+    if name not in ENGINE_CONNECTORS:
+        return None
+    inventory = _approved_inventory(store)
+    return _run_connector(store, name, inventory, now, accept_clock_correction)
+
+
+def _approved_inventory(store: WorkspaceStore) -> Inventory:
     require_approved_scope(store)
     inventory = load_inventory(store).inventory
     assert inventory is not None  # aprobado implica inventario válido
-    outcomes: list[ConnectorOutcome] = []
-    for name in ENGINE_CONNECTORS:
-        if not store.exists(connector_config_key(name)):
-            outcomes.append(ConnectorOutcome(name, OutcomeKind.NOT_CONFIGURED))
-            continue
-        run = evaluate_connector(store, name, inventory, now)
-        outcomes.append(_record(store, run, now, accept_clock_correction))
-    return outcomes
+    return inventory
+
+
+def _run_connector(
+    store: WorkspaceStore,
+    name: str,
+    inventory: Inventory,
+    now: datetime,
+    accept_clock_correction: bool,
+) -> ConnectorOutcome:
+    if not store.exists(connector_config_key(name)):
+        return ConnectorOutcome(name, OutcomeKind.NOT_CONFIGURED)
+    run = evaluate_connector(store, name, inventory, now)
+    return _record(store, run, now, accept_clock_correction)
 
 
 def _record(

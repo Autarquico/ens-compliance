@@ -1,0 +1,21 @@
+{# Petición de recogida de un conector (`b: ConnectorBlock`; el botón sale si y solo si `b.can_collect`). Estados fijos: nunca un mensaje en bruto. #}
+{% import "_macros.html" as m with context %}
+{%- set r = b.request %}
+<h3 class="sub">Recoger ahora</h3>
+{% if r %}
+<p><span class="badge tone-{{ r.tone }}">{{ m.icon(m.TONE_ICON[r.tone]) }}<span>{{ r.label }}</span> <span class="badge-code">{{ r.code or r.state }}</span></span>
+  {% if r.requested_at %}pedida el <span class="mono">{{ r.requested_at }}</span>{% endif %}</p>
+{% if r.text %}<p>{{ r.text }}</p>{% endif %}
+{% if r.result %}
+<p class="muted">{% if r.result.collection_label %}{{ r.result.collection_label }}{% if r.result.phase_label %} ({{ r.result.phase_label }}){% endif %}; {% endif %}{{ r.result.checks_label }}{% if r.result.evidence_id %} · evidencia <span class="mono">{{ r.result.evidence_id }}</span>{% elif r.result.evidence_invalid %} · evidencia: identificador no válido{% endif %}.</p>
+{% endif %}
+{% else %}
+<p class="muted">{{ m.icon("help") }} Ninguna petición de recogida de este conector.</p>
+{% endif %}
+{% if r and r.state == "EXPIRED" and b.config.status != "configurado" %}
+<p>Corrige la configuración antes de pedir otra.</p>
+{% endif %}
+{% if b.can_collect %}
+{% if r and r.state == "EXPIRED" %}<p>Pídela de nuevo.</p>{% endif %}
+<form method="post" action="{{ b.collect_action }}"><div class="actions"><button class="btn" type="submit">Recoger ahora</button></div></form>
+{% endif %}

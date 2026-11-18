@@ -6,6 +6,12 @@ import pytest
 
 from .conftest import WRITE_HEADERS, auth, mint
 from .test_hostile import ALL_PAGES, STEP_PATHS
+from .test_recogida import FIRST, REQUESTS_PREFIX, ask_through_the_ui, run
+from .test_recogida import configured as configured  # noqa: PLC0414
+from .test_recogida import fake as fake  # noqa: PLC0414
+from .test_recogida import plugins as plugins  # noqa: PLC0414
+from .test_recogida import settings as settings  # noqa: PLC0414
+from .test_recogida import web as web  # noqa: PLC0414
 
 EMAIL = "custodio.secreto@example.com"
 BODY_MARKER = "CUERPO-DE-FORMULARIO-SECRETO-7431"
@@ -115,3 +121,25 @@ def test_los_logs_no_llevan_nada_del_asistente_de_claves_ni_de_custodios(caplog,
 
     logged = all_logged_text(caplog)
     assert not any(name in logged for name in names)
+
+
+@pytest.mark.parametrize("mode", ["collect", "prepare", "prepare_secret", "secret_error", "secret"])
+def test_una_recogida_con_un_token_en_su_error_no_llega_al_resultado_ni_a_la_pagina_ni_a_los_logs(
+    caplog, web, configured, settings, plugins, fake, mode
+):
+    from scheduling.collect_fakes import CANARY, LEAK
+
+    caplog.set_level(logging.DEBUG)
+    fake(mode)
+    ask_through_the_ui(web)
+
+    result = run(configured, settings, plugins)
+
+    assert result is not None
+    secrets = (CANARY, CANARY.rsplit("_", 1)[-1], LEAK, "ghp_")
+    files = "\n".join(configured.read_bytes(k).decode() for k in configured.list(REQUESTS_PREFIX))
+    assert FIRST in configured.list(REQUESTS_PREFIX)
+    pages = web.get("/conectores").text + web.get("/conectores/github").text
+    everything = "\n".join((files, pages, all_logged_text(caplog)))
+    for secret in secrets:
+        assert secret not in everything

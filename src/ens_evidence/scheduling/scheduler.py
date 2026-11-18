@@ -24,10 +24,12 @@ from ens_evidence.reports.model import is_day, is_month
 from ens_evidence.reports.monthly import previous_month
 from ens_evidence.reports.store import REPORTS_PREFIX, Kind, pairs, reports_in_period
 from ens_evidence.scheduling.calendar import (
+    COLLECT,
     PREAUDIT,
     AnyJobKind,
     Job,
     JobKind,
+    RequestKind,
     due_jobs,
     local_date,
     next_daily,
@@ -35,6 +37,8 @@ from ens_evidence.scheduling.calendar import (
     resolve_local,
 )
 from ens_evidence.scheduling.collect import Plugins, load_plugins
+from ens_evidence.scheduling.collect_requests import execute as execute_collect_request
+from ens_evidence.scheduling.collect_requests import pending_keys as pending_collect_keys
 from ens_evidence.scheduling.config import LoadedSchedule, ScheduleConfig
 from ens_evidence.scheduling.cycle import (
     InterruptedCycle,
@@ -61,6 +65,7 @@ HEARTBEAT_ENV = "ENS_HEARTBEAT_FILE"
 BEAT_EVERY_SECONDS = 60.0
 Key = tuple[AnyJobKind, str]
 Requests = Callable[[datetime], Collection[str]]
+"""Una cola de peticiones: sus claves vivas. El tipo lo fija el `Scheduler`, no la cola."""
 Status = Literal["completed", "failed", "busy", "interrupted"]
 Heartbeat = Callable[[], None]
 
@@ -148,9 +153,13 @@ class Scheduler:
         log: Callable[[str], None] = print_log,
         heartbeat: Heartbeat | None = None,
         requests: Requests | None = None,
+        collect_requests: Requests | None = None,
     ) -> None:
         self._heartbeat = heartbeat
-        self._requests = requests
+        self._queues: tuple[tuple[RequestKind, Requests | None, str], ...] = (
+            (PREAUDIT, requests, "requests_unreadable"),
+            (COLLECT, collect_requests, "collect_requests_unreadable"),
+        )
         self._clock = clock
         self._executor = executor
         self._load_config = load_config
@@ -231,15 +240,18 @@ class Scheduler:
                 found.setdefault(key, job)
         return sorted(found.values(), key=lambda job: (job.due_at, job.kind != "daily"))
 
-    def _request_keys(self, now: datetime) -> Collection[str]:
-        """Peticiones de pre-auditoría vivas, leídas en cada tick. Si no se pueden leer, no hay."""
-        if self._requests is None:
-            return ()
-        try:
-            return self._requests(now)
-        except (WorkspaceError, OSError) as error:
-            self._event("requests_unreadable", error=type(error).__name__)
-            return ()
+    def _request_keys(self, now: datetime) -> list[tuple[RequestKind, str]]:
+        """Peticiones vivas de cada cola, leídas en cada tick. Cada cola se descubre aparte y con
+        su propio diagnóstico: si una no se puede leer, no hay de esa cola y la otra sigue."""
+        found: list[tuple[RequestKind, str]] = []
+        for kind, discover, diagnostic in self._queues:
+            if discover is None:
+                continue
+            try:
+                found += [(kind, key) for key in discover(now)]
+            except (WorkspaceError, OSError) as error:
+                self._event(diagnostic, error=type(error).__name__)
+        return found
 
     def _reset_exhausted(self, now: datetime, cfg: ScheduleConfig) -> None:
         """Un trabajo agotado recupera sus intentos al día siguiente (local) sin reiniciar el
@@ -269,6 +281,8 @@ class Scheduler:
             self._event("job_done", job=job.kind, period=job.period)
         elif result.status == "interrupted":
             self._event("job_interrupted", job=job.kind, period=job.period)
+        elif result.status == "busy" and job.kind == COLLECT:
+            self._event("job_busy", job=job.kind, period=job.period)
         else:
             self._record_failure(job, cfg, attempt, result)
         return result
@@ -377,6 +391,10 @@ class CycleExecutor:
         """Las peticiones de pre-auditoría que la UI ha dejado y no se han ejecutado."""
         return pending_keys(self._store, now)
 
+    def pending_collect_requests(self, now: datetime) -> list[str]:
+        """Las peticiones de recogida que la UI ha dejado y no se han ejecutado."""
+        return pending_collect_keys(self._store, now)
+
     def run(
         self, job: Job, cfg: ScheduleConfig, trigger: Trigger, *, config_warning: bool = False
     ) -> JobResult:
@@ -392,6 +410,8 @@ class CycleExecutor:
             return JobResult("failed", "lock_unavailable")
         if job.kind == PREAUDIT:
             return self._run_request(job, lock)
+        if job.kind == COLLECT:
+            return self._run_collect_request(job, cfg, lock, clock)
         try:
             outcome = run_cycle(
                 CycleContext(lock),
@@ -436,9 +456,32 @@ class CycleExecutor:
             lock.release()
         return JobResult("completed")
 
+    def _run_collect_request(
+        self, job: Job, cfg: ScheduleConfig, lock: CycleLock, clock: Clock
+    ) -> JobResult:
+        """Recoge un solo conector con el lock ya tomado. El resultado de la recogida queda en el
+        resultado de la petición; aquí solo un crash o una escritura fallida es un fallo."""
+        try:
+            execute_collect_request(
+                self._store,
+                self._settings,
+                job.period,
+                plugins=self._loaded_plugins(),
+                cfg=cfg.collect,
+                clock=clock,
+            )
+        except _Stopped:
+            return JobResult("interrupted")
+        except Exception as error:
+            return JobResult("failed", f"collect_request_crashed:{type(error).__name__}")
+        finally:
+            lock.release()
+        return JobResult("completed")
+
     def _plugins_for(self, job: Job) -> Plugins | None:
-        if job.kind != "daily":
-            return None
+        return self._loaded_plugins() if job.kind == "daily" else None
+
+    def _loaded_plugins(self) -> Plugins:
         if self._plugins is None:
             self._plugins = load_plugins()
         return self._plugins

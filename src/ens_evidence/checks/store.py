@@ -29,7 +29,7 @@ from ens_evidence.evidence.layout import CHECKS_PREFIX
 from ens_evidence.matrix.store import instant_stamp
 from ens_evidence.workspace import AlreadyExists, NotFound, NotText, WorkspaceStore
 
-_NAME = re.compile(r"\d{6}-\d{8}T\d{12}Z-[0-9a-f]{12}\.json")
+RUN_FILE_NAME = re.compile(r"\d{6}-\d{8}T\d{12}Z-[0-9a-f]{12}\.json")
 UNATTRIBUTED = ""
 
 
@@ -134,7 +134,7 @@ def _no_duplicate_keys(pairs: list[tuple[str, Any]]) -> dict[str, Any]:
 
 
 def _read(store: WorkspaceStore, key: str) -> StoredRun | None:
-    if _NAME.fullmatch(key.rsplit("/", 1)[-1]) is None:
+    if RUN_FILE_NAME.fullmatch(key.rsplit("/", 1)[-1]) is None:
         return None
     try:
         data = store.read_bytes(key)

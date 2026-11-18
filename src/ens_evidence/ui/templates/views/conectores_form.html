@@ -20,6 +20,7 @@
   {% endif %}
   {% if b.last %}<p class="muted">Última recogida el <span class="mono">{{ b.last.collected_at }}</span> ({{ b.last.status_label }}{% if b.last.partial %}, parcial{% endif %}). El detalle está en <a href="/conectores">la lista de conectores</a>.</p>
   {% else %}<p class="muted">{{ m.icon("help") }} Sin recogidas todavía: eso no es un estado favorable.</p>{% endif %}
+  {% if b.request or b.can_collect %}{% include "partials/conector_peticion.html" %}{% endif %}
 </section>
 
 {% if b.name == "backups" %}

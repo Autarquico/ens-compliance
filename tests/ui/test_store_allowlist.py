@@ -32,6 +32,9 @@ def test_allowed_prefixes_are_written(ui_store, store, prefix):
         "evidence/key-custodians-evil/a.yaml",
         "evidence/key-custodians",
         "evidence/rawx/a",
+        "evidence/collect-requests",
+        "evidence/collect-requests-evil/a.yaml",
+        "evidence/collect-requests/../x",
         "scope/../connectors/a.yaml",
         "/scope/a.yaml",
         "",
@@ -55,3 +58,15 @@ def test_a_normalized_connectors_key_is_the_allowed_key(ui_store, store):
     ui_store.write_text("./connectors/github.yaml", "a: 1\n")
     assert store.read_text("connectors/github.yaml") == "a: 1\n"
     assert ui_store.written == ["connectors/github.yaml"]
+
+
+def test_collect_requests_prefix_is_writable():
+    assert "evidence/collect-requests" in WRITABLE_PREFIXES
+
+
+def test_el_lock_exclusivo_respeta_la_lista_blanca(ui_store, store):
+    with ui_store.exclusive_lock("evidence/collect-requests/github.lock"):
+        assert store.exists("evidence/collect-requests/github.lock")
+    with pytest.raises(WriteNotAllowed), ui_store.exclusive_lock("evidence/checks/x.lock"):
+        pytest.fail("no debe entrar")
+    assert not store.exists("evidence/checks/x.lock")

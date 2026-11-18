@@ -279,6 +279,18 @@ def test_parametros_de_ruta_hostiles_dan_404_sin_escribir(client, example_store,
     assert snapshot_of(example_store) == before
 
 
+@pytest.mark.parametrize(
+    "name", ["%2e%2e", "..%2fconnectors", "nope", "GitHub", "github%00", "a" * 5000]
+)
+def test_recoger_con_un_conector_hostil_se_deniega_y_no_escribe(client, example_store, token, name):
+    before = snapshot_of(example_store)
+
+    posted = post(client, token, f"/conectores/{name}/recoger", {})
+
+    assert posted.status_code in (403, 404, 307, 308, 400)
+    assert snapshot_of(example_store) == before
+
+
 @pytest.mark.parametrize("path", ["/static/../ui/config.py", "/static/%2e%2e/config.py",
                                   "/static/..%2fconfig.py", "/static//etc/passwd"])  # fmt: skip
 def test_static_no_sale_de_su_directorio(client, token, path):
@@ -572,6 +584,7 @@ NEW_POSTS = [
     ("/herramientas/copias", COPIAS_FORM),
     ("/herramientas/claves", CLAVES_FORM),
     ("/herramientas/claves/custodios", CUSTODIOS_FORM),
+    ("/conectores/github/recoger", {}),
 ]
 BAD_ORIGINS = [
     {"Origin": "https://evil.example"},
