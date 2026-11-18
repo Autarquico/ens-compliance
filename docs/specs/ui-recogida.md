@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: UI — «Recoger ahora» por petición en cola
 type: task
-status: active
+status: shipped
 priority: P1
 size: M
 issue: 95
@@ -12,7 +12,7 @@ depends_on: [ui-conectores]
 supersedes: []
 related_specs: [ui-conectores]
 created: 2026-11-17
-updated: 2026-11-17
+updated: 2026-11-18
 ---
 
 # UI — «Recoger ahora» por petición en cola
