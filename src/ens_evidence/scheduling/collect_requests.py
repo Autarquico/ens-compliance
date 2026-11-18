@@ -83,19 +83,31 @@ def _check_key(value: str | None) -> str | None:
     return value
 
 
+def _utc_representable(at: datetime) -> datetime:
+    """Una hora que no cabe en UTC (p. ej. 9999-12-31T23:59:59-01:00) es ilegible, no un 500."""
+    try:
+        at.astimezone(UTC)
+    except OverflowError as exc:
+        raise ValueError("fuera del rango representable en UTC") from exc
+    return at
+
+
+Instant = Annotated[AwareDatetime, AfterValidator(_utc_representable)]
+
+
 class CollectRequest(Strict):
     format: Literal["ens-collect-request/1"] = REQUEST_FORMAT
     connector: str = Field(pattern=CONNECTOR_PATTERN)
     email: str
     """Identidad de Access de quien la pide (no es una decisión ENS: no hay `by`)."""
-    requested_at: AwareDatetime
+    requested_at: Instant
 
 
 class StartedMarker(Strict):
     """`<n>.started.json` confirmado: la hora en que el planificador, ya publicado el reclamo, vio
     que la petición no había caducado."""
 
-    confirmed_at: AwareDatetime
+    confirmed_at: Instant
 
 
 class Outcome(StrEnum):

@@ -5,6 +5,7 @@ import fcntl
 import os
 import secrets
 import stat
+import threading
 from collections.abc import Iterator, MutableSequence
 from contextlib import contextmanager
 from pathlib import Path
@@ -24,8 +25,9 @@ class LocalStore:
         self._root = Path(root).resolve()
         self._root_fd: int | None = None
         self._closed = False
+        self._opening = threading.Lock()
         if _DIR_FD_SUPPORTED and self._root.is_dir():
-            self._root_fd = _open_root(self._root)
+            self._root_fd = _walk_root(self._root, create=False)
 
     def close(self) -> None:
         """Libera el descriptor de la raíz; las operaciones posteriores fallan cerradas."""
@@ -118,10 +120,10 @@ class LocalStore:
         no (leer nunca la crea). Después, sustituir su ruta no cambia dónde se escribe."""
         if self._closed or not _DIR_FD_SUPPORTED:
             raise StorageUnavailable("almacenamiento no disponible: sin descriptor de raíz")
-        if self._root_fd is None:
-            self._root.mkdir(parents=True, exist_ok=True)
-            self._root_fd = _open_root(self._root)
-        return self._root_fd
+        with self._opening:
+            if self._root_fd is None:
+                self._root_fd = _walk_root(self._root, create=True)
+            return self._root_fd
 
     @contextmanager
     def _parent(self, key: str) -> Iterator[tuple[int, str]]:
@@ -258,5 +260,16 @@ def _discard(parent: int, name: str) -> None:
         pass
 
 
-def _open_root(path: Path) -> int:
-    return os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_CLOEXEC)
+def _walk_root(root: Path, *, create: bool) -> int:
+    """Abre la raíz (ya resuelta) componente a componente desde `/` sin seguir enlaces: ni una
+    raíz ausente que aparezca como enlace antes de crearse puede anclar el almacén fuera."""
+    fd = os.open("/", _DIR_FLAGS)
+    try:
+        for name in root.parts[1:]:
+            child = _descend(fd, name) if create else _open_dir(fd, name)
+            os.close(fd)
+            fd = child
+    except BaseException:
+        os.close(fd)
+        raise
+    return fd

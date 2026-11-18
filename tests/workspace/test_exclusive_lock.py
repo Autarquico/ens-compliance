@@ -124,3 +124,34 @@ def test_tras_cerrar_el_almacen_las_escrituras_fallan_cerradas(root):
 
     with pytest.raises(StorageUnavailable):
         store.write_bytes("x.txt", b"data")
+
+
+@pytest.mark.parametrize("operation", ["lock", "write", "create"])
+def test_una_raiz_ausente_que_aparece_como_enlace_antes_de_crearse_se_rechaza(
+    tmp_path, outside, operation
+):
+    root = tmp_path / "ws"
+    store = LocalStore(root)
+    root.symlink_to(outside, target_is_directory=True)
+
+    with pytest.raises(AccessDenied):
+        if operation == "lock":
+            with store.exclusive_lock("a/x.lock"):
+                pass
+        elif operation == "write":
+            store.write_bytes("a/x.txt", b"data")
+        else:
+            store.create_bytes("a/x.txt", b"data")
+
+    assert list(outside.iterdir()) == []
+
+
+def test_una_raiz_ausente_se_crea_en_la_primera_escritura_y_no_al_leer(tmp_path):
+    root = tmp_path / "nuevo" / "ws"
+    store = LocalStore(root)
+    assert store.list("") == []
+    assert not root.exists()
+
+    store.write_bytes("a/x.txt", b"data")
+
+    assert (root / "a" / "x.txt").read_bytes() == b"data"

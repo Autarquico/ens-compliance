@@ -676,3 +676,19 @@ def test_peticiones_en_el_ultimo_dia_representable_no_rompen_la_pagina(web, conf
     ]
     assert pending_keys(configured, far) == [asked.key]
     assert web.get("/conectores").status_code == 200
+
+
+def test_una_hora_que_no_cabe_en_utc_es_una_peticion_ilegible_no_un_500(web, configured):
+    key = CLAIM.replace(".started.json", ".json")
+    request = {
+        "format": "ens-collect-request/1",
+        "connector": "github",
+        "email": "ana@clinica.example",
+        "requested_at": "9999-12-31T23:59:59-01:00",
+    }
+    configured.write_bytes(key, json.dumps(request).encode())
+
+    assert web.get("/conectores").status_code == 200
+    block = github_block(web)
+    assert "la petición o su resultado no se pueden leer" in plain(block)
+    assert not favorable(block)
