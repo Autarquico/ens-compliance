@@ -23,6 +23,7 @@ from ens_evidence.benchmark.score import (
     inventory_problems,
     inventory_sha256,
     match,
+    pair_sha256,
     rate,
     score,
     threshold_problems,
@@ -484,11 +485,49 @@ def test_el_caso_nuevo_sigue_contando_en_la_puerta_determinista() -> None:
     ]
 
 
+CODEX = entry_of(Provider.CODEX, "gpt-6.1-sol", score([]))
+WITH_CODEX = baseline([*BASE.entries, CODEX])
+KEPT = [scored(defective(HIT_X, HIT_Y), correct())]
+
+
+def retire_pair(entry: BaselineEntry = CODEX, sha256: str | None = None) -> Retired:
+    return Retired(
+        id=f"{entry.provider}/{entry.model}", sha256=sha256 or pair_sha256(entry), reason="r"
+    )
+
+
 def test_falta_un_proveedor_de_la_linea_base() -> None:
-    codex = entry_of(Provider.CODEX, "gpt-6.1-sol", score([]))
-    base = baseline([*BASE.entries, codex])
-    problems = problems_of([scored(defective(HIT_X, HIT_Y), correct())], base)
-    assert problems == ["falta codex/gpt-6.1-sol, que la línea base tenía"]
+    [problem] = problems_of(KEPT, WITH_CODEX)
+    assert problem == (
+        "falta codex/gpt-6.1-sol, que la línea base tenía, sin una entrada `retired` "
+        f"(sha256 en la línea base: {pair_sha256(CODEX)})"
+    )
+
+
+def test_un_par_retirado_con_su_huella_puede_faltar() -> None:
+    assert problems_of(KEPT, WITH_CODEX, retired=[retire_pair()]) == []
+
+
+def test_una_retirada_con_otra_huella_no_cubre_el_par() -> None:
+    [problem] = problems_of(KEPT, WITH_CODEX, retired=[retire_pair(sha256=SHA)])
+    assert problem.startswith("falta codex/gpt-6.1-sol")
+
+
+def test_una_retirada_de_un_par_cambiado_en_la_base_ya_no_cubre() -> None:
+    changed = entry_of(Provider.CODEX, "gpt-6.1-sol", score([defective(HIT_X, HIT_Y)]))
+    base = baseline([*BASE.entries, changed])
+    [problem] = problems_of(KEPT, base, retired=[retire_pair()])
+    assert f"sha256 en la línea base: {pair_sha256(changed)}" in problem
+
+
+def test_un_par_retirado_que_vuelve_no_es_un_problema() -> None:
+    assert problems_of([*KEPT, CODEX], WITH_CODEX, retired=[retire_pair()]) == []
+
+
+def test_retirar_un_par_no_relaja_la_puerta_de_casos() -> None:
+    problems = problems_of(KEPT, WITH_CODEX, inventory={}, retired=[retire_pair()])
+    assert problems and all("sale del inventario" in p for p in problems[:2])
+    assert not any(p.startswith("falta codex") for p in problems)
 
 
 def test_determinista_por_debajo_del_cien_falla_incluso_sin_linea_base() -> None:

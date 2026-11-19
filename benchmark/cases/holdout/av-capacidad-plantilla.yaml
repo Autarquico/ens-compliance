@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: av-capacidad-plantilla
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: capacidad
+  file: capacidad.md
+defects:
+- id: necesidades-personal-plantilla
+  layer: judgment
+  measure: op.pl.4
+  target:
+    kind: evidence
+    alias: capacidad
+  expected_criterion: calidad-documental
+  requirement:
+    measure: op.pl.4
+    clause: op.pl.4.4
+    quote: 'Necesidades de personal: cantidad y cualificación profesional'
+  rationale: La sección de necesidades de personal conserva los huecos de una plantilla sin rellenar.

@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ai-sin-medidas-disciplinarias
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: deberes
+  file: deberes.md
+defects:
+- id: sin-disciplina
+  layer: judgment
+  measure: mp.per.2
+  target:
+    kind: evidence
+    alias: deberes
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: mp.per.2
+    clause: mp.per.2.1
+    quote: Las medidas disciplinarias a que haya lugar
+  rationale: La evidencia niega las medidas disciplinarias que la normativa de seguridad sí establece.

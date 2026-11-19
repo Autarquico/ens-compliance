@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: av-bloqueo-ausente
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: puestos
+  file: puestos.md
+defects:
+- id: bloqueo-no-activo
+  layer: judgment
+  measure: mp.eq.2
+  target:
+    kind: evidence
+    alias: puestos
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: mp.eq.2
+    clause: mp.eq.2.1
+    quote: El puesto de trabajo se bloqueará al cabo de un tiempo prudencial de inactividad
+  rationale: La evidencia deja la sesión abierta, frente a la regla de la normativa que exige bloquear
+    el portátil al apartarse del mostrador.

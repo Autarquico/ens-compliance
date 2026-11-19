@@ -1,0 +1,17 @@
+services:
+  - id: reservas-viajes
+    name: Reservas y atención al viajero
+    assets:
+      - crm-reservas
+      - proveedor-crm
+      - servidor-archivos
+      - copia-nube
+      - portatil-mostrador-1
+      - portatil-mostrador-2
+  - id: administracion-agencia
+    name: Gestión y comunicaciones de la agencia
+    assets:
+      - cuentas-correo
+      - gestor-claves
+      - portatil-gerencia
+      - proveedor-conectividad

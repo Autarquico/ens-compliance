@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: av-puestos-sin-motivo
+partition: holdout
+profile: agencia-viajes
+kind: defective
+mutations:
+- op: declare_not_applicable
+  measure: mp.per.1
+  justification: Nos fiamos de las personas.
+defects:
+- id: puestos-excluidos-sin-razon
+  layer: judgment
+  measure: mp.per.1
+  target:
+    kind: justification
+  expected_criterion: solidez-justificacion-aplicabilidad
+  requirement:
+    measure: mp.per.1
+    clause: mp.per.1.1
+    quote: se definirán las responsabilidades en materia de seguridad
+  rationale: La caracterización de puestos se excluye con una frase que no explica por qué deja de ser
+    necesaria.

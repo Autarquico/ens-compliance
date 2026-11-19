@@ -1,0 +1,36 @@
+information:
+  - id: datos-viajeros
+    description: Datos identificativos y de contacto de viajeros, reservas y contratos de viaje
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado: incumplimiento formal subsanable y perjuicio menor y reparable a un viajero."}
+      I: {level: BAJO, justification: "Perjuicio limitado: un dato erróneo se corrige con el viajero antes de la salida."}
+      T: {level: BAJO, justification: "Perjuicio limitado: la agencia puede reconstruir los hechos con los correos y los proveedores."}
+      A: {level: BAJO, justification: "Perjuicio limitado: la agencia puede emitir documentación por teléfono con los mayoristas."}
+      D: {level: BAJO, justification: "Perjuicio limitado: la pérdida de un expediente se recupera de la copia nocturna con un daño menor."}
+    valuation:
+      valued_by: Rafael Ortuño Cabello
+      role: information_owner
+      valued_at: 2026-09-25T10:00:00+00:00
+services:
+  - id: reservas-viajes
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado: afecta a datos de viajeros con perjuicio menor y reparable."}
+      I: {level: BAJO, justification: "Perjuicio limitado: un cambio indebido de una reserva se detecta al confirmarla con el mayorista."}
+      T: {level: BAJO, justification: "Perjuicio limitado: la trazabilidad se compensa con el historial del programa de reservas."}
+      A: {level: BAJO, justification: "Perjuicio limitado: una caída de un día reduce de forma apreciable la capacidad de vender, sin daño en activos."}
+      D: {level: BAJO, justification: "Perjuicio limitado: la recuperación de un expediente desde la copia es posible en horas."}
+    valuation:
+      valued_by: Rafael Ortuño Cabello
+      role: service_owner
+      valued_at: 2026-09-25T10:05:00+00:00
+  - id: administracion-agencia
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado: el correo contiene datos de contacto de clientes sin categorías especiales."}
+      I: {level: BAJO, justification: "Perjuicio limitado: un mensaje alterado se detecta por el remitente y se aclara."}
+      T: {level: BAJO, justification: "Perjuicio limitado: el origen de un mensaje se comprueba por teléfono."}
+      A: {level: BAJO, justification: "Perjuicio limitado: el teléfono sustituye al correo durante unos días."}
+      D: {level: BAJO, justification: "Perjuicio limitado: un buzón perdido se recupera con la copia del proveedor del correo."}
+    valuation:
+      valued_by: Rafael Ortuño Cabello
+      role: service_owner
+      valued_at: 2026-09-25T10:10:00+00:00

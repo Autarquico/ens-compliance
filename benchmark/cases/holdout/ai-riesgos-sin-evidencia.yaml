@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ai-riesgos-sin-evidencia
+partition: holdout
+profile: academia-idiomas
+kind: defective
+judgment: false
+mutations:
+- op: unlink_evidence
+  alias: riesgos
+  measure: op.pl.1
+defects:
+- id: riesgos-ausente
+  layer: deterministic
+  measure: op.pl.1
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: op.pl.1
+    clause: op.pl.1.1
+    quote: Identifique los activos más valiosos del sistema
+  rationale: El análisis de riesgos se desenlaza y la medida queda sin evidencia.

@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: av-nube-desenlazada
+partition: holdout
+profile: agencia-viajes
+kind: defective
+judgment: false
+mutations:
+- op: unlink_evidence
+  alias: nube
+  measure: op.nub.1
+defects:
+- id: nube-ausente
+  layer: deterministic
+  measure: op.nub.1
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: op.nub.1
+    clause: op.nub.1.1
+    quote: Los sistemas que suministran un servicio en la nube a organismos del sector público
+  rationale: La evidencia de servicios en la nube se desenlaza y la medida queda sin evidencia.

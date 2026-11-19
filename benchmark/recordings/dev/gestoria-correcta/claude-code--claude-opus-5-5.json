@@ -4,34 +4,34 @@
   "case_sha256": "6794d6b90de6d6bfcb6be86a0026f92219adebe2c84ef809c3de4aaebec65b5e",
   "provider": "claude-code",
   "model": "claude-opus-5-5",
-  "destination": "claude-code 2.1.317, sesión del usuario (plan contratado); ejecutable 2.1.317 (sha256 09f153b46b5df9e8b3454716d682a91901de020cbca630f61dec1a015b32b5e9); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
   "temperature": null,
   "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
-  "pack_version": "2.0.0",
-  "pack_sha256": "a4d887d681574551c067de1194c25d2871c8311b216f9075a89164537215b25e",
-  "payload_sha256": "094a2b087f764670fb1a309f3d90a4174292738f161307de22e15cafa3c9866e",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "ccf124d7361124b5ca1e54bf2ce4e07dd2623146755a4576f7bf40abbb1be188",
   "tool_version": "0.1.0",
   "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
-  "recorded_at": "2026-11-06T02:21:20.124574Z",
+  "recorded_at": "2026-11-06T23:45:06.020276Z",
   "recorded_by": "Alejandro Perez",
   "repetitions": [
     {
       "n": 1,
-      "at": "2026-11-06T02:19:17.015395Z",
+      "at": "2026-11-06T23:44:01.821758Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 2,
-      "at": "2026-11-06T02:19:55.831558Z",
+      "at": "2026-11-06T23:44:22.332858Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null
     },
     {
       "n": 3,
-      "at": "2026-11-06T02:20:37.099751Z",
+      "at": "2026-11-06T23:44:46.779667Z",
       "outcome": "response",
       "response": "{\"findings\": []}",
       "kind": null

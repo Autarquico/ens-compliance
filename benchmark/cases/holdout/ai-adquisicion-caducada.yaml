@@ -1,0 +1,34 @@
+format: ens-benchmark-case/1
+id: ai-adquisicion-caducada
+partition: holdout
+profile: academia-idiomas
+kind: defective
+judgment: false
+mutations:
+- op: expire_evidence
+  alias: adquisicion
+  valid_until: '2026-09-29T00:00:00+00:00'
+defects:
+- id: adquisicion-caducada
+  layer: deterministic
+  measure: op.pl.3
+  target:
+    kind: evidence
+    alias: adquisicion
+  expected_rule: EVIDENCE_EXPIRED
+  requirement:
+    measure: op.pl.3
+    clause: op.pl.3.1
+    quote: Atenderá a las conclusiones del análisis de riesgos
+  rationale: El proceso de adquisición caduca antes de la fecha del expediente.
+- id: adquisicion-sin-cobertura
+  layer: deterministic
+  measure: op.pl.3
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: op.pl.3
+    clause: op.pl.3.2
+    quote: Será acorde a la arquitectura de seguridad escogida
+  rationale: Al dejar de valer la evidencia, la medida queda sin cobertura y las cláusulas sin evidencia.

@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/ai-permisos-totales",
+  "case_sha256": "d753c227545c0a516ef6cdeab3be156a95dacd1f9908a0f0f2b38fa6d4479741",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "4bcb5f6c9be780587642825e60d3230c845a4c3368b348d5ead2d7a0088b8eb2",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-08T15:32:46.483134Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-08T15:30:21.069256Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.4\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"La gerencia decide los derechos de acceso a cada recurso, la responsable del sistema concede, cambia o anula los permisos y ambas revisan los permisos cada seis meses.\"}], \"evidence\": [{\"ref\": \"EV-20261005-fd486a74\", \"quote\": \"Todo el personal, incluido el profesorado, tiene el perfil de administración completa de la aplicación para no depender de la responsable del sistema.\"}, {\"ref\": \"EV-20261005-fd486a74\", \"quote\": \"El profesorado accede únicamente a las fichas de su grupo.\"}], \"justifications\": [], \"reason\": \"El procedimiento reserva la concesión de permisos a la responsable del sistema según decida la gerencia, pero la evidencia declara que todo el personal tiene administración completa precisamente para no depender de ella, lo que muestra un fallo de mínimo privilegio (op.acc.4.2) y de capacidad de autorizar (op.acc.4.4). La misma evidencia es incoherente al afirmar que el profesorado solo accede a las fichas de su grupo, y el análisis de riesgos declara como salvaguarda «permisos mínimos por perfil».\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-08T15:31:16.747178Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.4\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"La gerencia decide los derechos de acceso a cada recurso, la responsable del sistema concede, cambia o anula los permisos y ambas revisan los permisos cada seis meses.\"}], \"evidence\": [{\"ref\": \"EV-20261005-fd486a74\", \"quote\": \"Todo el personal, incluido el profesorado, tiene el perfil de administración completa de la aplicación para no depender de la responsable del sistema.\"}, {\"ref\": \"EV-20261005-fd486a74\", \"quote\": \"El profesorado accede únicamente a las fichas de su grupo.\"}], \"justifications\": [], \"reason\": \"El procedimiento reserva a la gerencia la decisión sobre los derechos de acceso y a la responsable del sistema su gestión, pero la evidencia de mínimo privilegio declara administración completa para todo el personal precisamente para no depender de ella. Ese perfil también contradice la afirmación, en la misma evidencia, de que el profesorado solo accede a las fichas de su grupo, y se propone como fallo parcial en la implantación de la medida.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-08T15:32:00.532469Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.acc.4\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"La gerencia decide los derechos de acceso a cada recurso, la responsable del sistema concede, cambia o anula los permisos y ambas revisan los permisos cada seis meses.\"}], \"evidence\": [{\"ref\": \"EV-20261005-fd486a74\", \"quote\": \"Todo el personal, incluido el profesorado, tiene el perfil de administración completa de la aplicación para no depender de la responsable del sistema.\"}, {\"ref\": \"EV-20261005-fd486a74\", \"quote\": \"El profesorado accede únicamente a las fichas de su grupo.\"}], \"justifications\": [], \"reason\": \"El procedimiento reserva a la gerencia y a la responsable del sistema la decisión y la gestión de los permisos, pero la evidencia muestra que todo el personal tiene administración completa precisamente para no depender de ella, lo que deja ver un fallo de mínimo privilegio (op.acc.4.2). La misma evidencia afirma además que el profesorado solo accede a las fichas de su grupo, lo que no es coherente con ese perfil.\"}]}",
+      "kind": null
+    }
+  ]
+}

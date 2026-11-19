@@ -1,0 +1,13 @@
+dependencies:
+  - id: dep-crm-proveedor
+    asset: crm-reservas
+    depends_on: proveedor-crm
+    purpose: El servicio de reservas se ejecuta en la infraestructura del proveedor del programa
+  - id: dep-nas-copia
+    asset: servidor-archivos
+    depends_on: copia-nube
+    purpose: Los expedientes escaneados se copian cada noche al almacenamiento cifrado
+  - id: dep-mostrador-conectividad
+    asset: portatil-mostrador-1
+    depends_on: proveedor-conectividad
+    purpose: Los portátiles acceden al programa de reservas por la línea de la oficina

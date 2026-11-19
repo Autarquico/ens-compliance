@@ -59,7 +59,9 @@ def inventory(root: Path, cases: Sequence[BenchCase]) -> dict[str, str]:
         }
         if case.profile is not None:
             if case.profile not in profiles:
-                profiles[case.profile] = _tree(bench_dir(profiles_dir(root) / case.profile, root))
+                profiles[case.profile] = _tree(
+                    bench_dir(profiles_dir(root, case.partition) / case.profile, root)
+                )
             fingerprint["profile"] = profiles[case.profile]
         found[case.key] = _sha256(fingerprint)
         for defect in case.defects:

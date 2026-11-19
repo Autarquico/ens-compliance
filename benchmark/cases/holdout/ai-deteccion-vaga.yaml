@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ai-deteccion-vaga
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: monitorizacion
+  file: monitorizacion.md
+defects:
+- id: deteccion-sin-concretar
+  layer: judgment
+  measure: op.mon.1
+  target:
+    kind: evidence
+    alias: monitorizacion
+  expected_criterion: calidad-documental
+  requirement:
+    measure: op.mon.1
+    clause: op.mon.1.1
+    quote: Se dispondrá de herramientas de detección o prevención de intrusiones
+  rationale: La evidencia no nombra ninguna herramienta ni cómo avisa, y se limita a afirmaciones genéricas.

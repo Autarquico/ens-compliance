@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/av-compensa-copias-proveedor",
+  "case_sha256": "0fc3c4685e2f0b5b335ca368e504dc61785e4269d859e569e5b564b42e17c955",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "7d524bf3c903280181626837b2de4bff4483a208bc19b2952de2f4c4c7b274f1",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-08T15:44:08.081105Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-08T15:41:17.042911Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Copia nocturna del servidor de archivos a un almacenamiento cifrado fuera de la oficina y una copia mensual en un disco guardado en la caja fuerte de la gerencia; cada trimestre se prueba una restauración y solo el administrador del sistema y la responsable de la seguridad acceden a las copias.\"}], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El proveedor es una empresa seria y protege igual.\"}], \"reason\": \"La justificación afirma que la compensación protege igual sin mostrarlo, y la medida compensatoria declarada (las copias propias del proveedor del programa de reservas) deja sin cubrir los expedientes del servidor de archivos, cuya copia describe el procedimiento y que el análisis de riesgos (EV-20261012-91414e62, no enlazado a esta medida) sitúa entre los activos más valiosos. Tampoco justifica la frecuencia, el almacenamiento, los controles de acceso ni la retención que exige mp.info.6.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-08T15:42:12.286712Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Copia nocturna del servidor de archivos a un almacenamiento cifrado fuera de la oficina y una copia mensual en un disco guardado en la caja fuerte de la gerencia; cada trimestre se prueba una restauración y solo el administrador del sistema y la responsable de la seguridad acceden a las copias.\"}], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El proveedor es una empresa seria y protege igual.\"}], \"reason\": \"La justificación afirma que protege igual sin mostrarlo: confiar en las copias que hace el proveedor del programa de reservas deja sin cubrir los expedientes del servidor de archivos, que el documento citado sitúa en el ámbito de las copias, y no acredita frecuencia, retención, almacenamiento ni control de acceso (mp.info.6.1 y mp.info.6.2). El análisis de riesgos (EV-20261012-91414e62, no enlazado a esta medida) cuenta ese servidor entre los activos más valiosos y su fallo entre las amenazas más probables; además, la compensación no explica por qué se sustituye la medida si el procedimiento describe copias propias.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-08T15:43:09.277495Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.info.6\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:mp.info.6:base\", \"quote\": \"El proveedor es una empresa seria y protege igual.\"}], \"reason\": \"La justificación afirma que protege igual sin mostrarlo, como exige el artículo 28.3: la compensatoria declarada son las copias propias del proveedor del programa de reservas. Deja sin cubrir la recuperación de los expedientes del servidor de archivos, que el análisis de riesgos (EV-20261012-91414e62) sitúa entre los activos más valiosos, y no indica frecuencia, almacenamiento ni controles de acceso a las copias (mp.info.6.1 y mp.info.6.2).\"}]}",
+      "kind": null
+    }
+  ]
+}

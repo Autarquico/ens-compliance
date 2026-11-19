@@ -1,0 +1,23 @@
+format: ens-benchmark-case/1
+id: ai-bloqueo-sin-efecto
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: puestos
+  file: puestos.md
+defects:
+- id: bloqueo-no-se-aplica
+  layer: judgment
+  measure: mp.eq.2
+  target:
+    kind: evidence
+    alias: puestos
+  expected_criterion: coherencia-politica-evidencia
+  requirement:
+    measure: mp.eq.2
+    clause: mp.eq.2.1
+    quote: El puesto de trabajo se bloqueará al cabo de un tiempo prudencial de inactividad
+  rationale: La evidencia dice que los portátiles no se bloquean, lo que contradice la regla de uso de
+    equipos de la normativa y la justificación con que se adopta la medida.

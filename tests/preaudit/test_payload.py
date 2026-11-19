@@ -201,6 +201,7 @@ def test_only_what_the_criteria_ask_for(generated):
         "documents",
         "evidence",
         "links",
+        "deterministic_coverage",
     }
     assert content["untrusted"] is True and content["notice"] == UNTRUSTED_NOTICE
     keys = all_keys(content)

@@ -1,0 +1,12 @@
+format: ens-benchmark-case/1
+id: clinica-coordinacion-quincenal
+partition: dev
+profile: clinica-dental
+kind: correct
+mutations:
+  - op: set_answer
+    key: coordinacion
+    value: >-
+      Desde octubre los cuatro responsables se reúnen cada dos viernes, a las 14:00, antes de la
+      consulta de tarde; Irene Esmalte levanta acta con los acuerdos y la guarda en la carpeta
+      Seguridad del servidor.

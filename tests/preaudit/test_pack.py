@@ -45,7 +45,7 @@ def pack_copy(tmp_path: Path) -> Path:
 
 def test_loads_and_exposes_criteria_and_pack_hash():
     pack = load_pack()
-    assert pack.version == "2.0.0"
+    assert pack.version == "3.0.0"
     manifest = (Path(str(CURRENT_PACK)) / "manifest.json").read_bytes()
     assert pack.sha256 == hashlib.sha256(manifest).hexdigest()
     assert {c.id for c in pack.criteria} == {
@@ -199,7 +199,7 @@ def test_documentary_quality_only_weighs_clauses_on_what_a_document_contains():
 def test_system_prompt_leaves_connector_data_to_the_deterministic_layer():
     prompt = _normalized(load_pack().system_prompt)
     assert "evidencia con `provenance` `collector`" in prompt
-    assert "su comprobación es determinista" in prompt
+    assert "solo esa propiedad de esas evidencias queda fuera de tu juicio" in prompt.lower()
 
 
 def test_system_prompt_takes_the_categorisation_as_given():
@@ -259,3 +259,55 @@ def test_the_criterion_source_does_not_name_a_class():
 def test_system_prompt_points_to_the_classification_definitions():
     prompt = load_pack().system_prompt
     assert "`classifications`" in prompt and "§VI.2" in prompt and "§53" in prompt
+
+
+def test_the_current_pack_is_v3_and_its_rule_3_excludes_only_what_the_coverage_covers():
+    pack = load_pack()
+    rule = pack.system_prompt.split("\n3. ", 1)[1].split("\n4. ", 1)[0]
+
+    assert pack.version == "3.0.0" and CURRENT_PACK.name == "v3"
+    assert "deterministic_coverage" in rule
+    assert "provenance` `collector`" in rule and "propónlo" in rule
+
+
+def test_a_declared_safeguard_means_a_risk_or_weakness_is_not_a_contradiction():
+    prompt = _normalized(load_pack().system_prompt)
+    assert (
+        "no contradice una justificación si el propio expediente declara una salvaguarda" in prompt
+    )
+    assert "que la salvaguarda pudiera fallar es una consecuencia solo posible" in prompt
+    assert "Esto no exime a una compensación" in prompt
+
+
+def test_documentary_quality_also_weighs_clauses_that_say_what_a_process_covers():
+    [criterion] = [c for c in load_pack().criteria if c.id == "calidad-documental"]
+    compare = _normalized(criterion.compare)
+    rd311 = _normalized(SOURCE_FIXTURES["rd311"].read_text(encoding="utf-8")).lower()
+    for wording in ("cubra", "tendrá en cuenta lo dispuesto"):
+        assert f"«{wording}»" in compare and wording in rd311
+    assert "«se comprobará»" in compare  # la exclusión de lo que manda hacer sigue en pie
+
+
+def test_there_is_one_finding_per_measure_and_document_even_if_a_fragment_serves_several_measures():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "como máximo, un hallazgo por cada pareja (medida, documento)" in prompt
+    assert (
+        "un mismo fragmento muestra problemas en medidas distintas, propón uno en cada medida"
+        in prompt
+    )
+    assert "sin fragmento literal no hay hallazgo" in prompt
+
+
+def test_a_qualified_sentence_is_quoted_whole_within_the_length_limit():
+    prompt = _normalized(load_pack().system_prompt)
+    assert "cita la frase completa (dentro del límite de longitud de abajo)" in prompt
+    assert f"más de {MAX_QUOTE_CHARS} caracteres" in prompt
+
+
+def test_the_response_schema_is_the_one_of_v2():
+    schema = json.loads((CURRENT_PACK / "response.schema.json").read_text(encoding="utf-8"))
+
+    assert hashlib.sha256((CURRENT_PACK / "response.schema.json").read_bytes()).hexdigest() == (
+        "d700c754916858b2b9e149a53f03cb9a156ff4148703e0e9e816d93ebb11d713"
+    )
+    assert set(schema["properties"]) == {"findings"}

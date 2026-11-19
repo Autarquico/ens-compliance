@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ai-politica-desenlazada
+partition: holdout
+profile: academia-idiomas
+kind: defective
+judgment: false
+mutations:
+- op: unlink_document
+  ref: politica-seguridad
+  measure: org.1
+defects:
+- id: politica-ausente
+  layer: deterministic
+  measure: org.1
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: org.1
+    clause: org.1.1
+    quote: Los objetivos o misión de la organización
+  rationale: La política de seguridad se desenlaza de su medida, que queda sin evidencia.

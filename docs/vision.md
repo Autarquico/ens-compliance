@@ -165,6 +165,9 @@ Cada fase es usable por sí sola.
   - Checks, informes, expediente, y pre-auditoría (capa determinista + audit
     pack con clientes Anthropic y OpenAI).
   - Sin UI web, sin servidor osquery y sin detección.
+  - Nota (2026-11-08): el umbral del banco de defectos se cierra de forma
+    provisional solo con Anthropic; el par OpenAI se pospone por cuota
+    (ADR 0018) y su umbral queda pendiente.
 - **v0.2 — la usa una pyme que no es Autarqui.** UI web (htmx) con asistente y
   generador documental; login con MFA u OIDC; instalador de un comando;
   servidor osquery embebido y agentes; conector Microsoft 365; guías de
@@ -351,6 +354,8 @@ Cada escenario indica la versión en la que debe cumplirse.
 - **Given** el banco de defectos sembrados de la versión actual del audit pack
 - **When** se ejecuta la pre-auditoría con cada proveedor soportado
 - **Then** detecta el 100 % de los deterministas y ≥ 80 % de los de juicio con ≤ 20 % de falsas alarmas, y el resultado queda registrado por proveedor
+
+Nota (2026-11-08): por cuota, el par OpenAI está pospuesto (ADR 0018); hasta su seguimiento, solo el par Anthropic es puerta y el cierre es provisional.
 
 ### Scenario: perfil ligero (v0.2)
 - **Given** la instalación base sin el perfil de detección

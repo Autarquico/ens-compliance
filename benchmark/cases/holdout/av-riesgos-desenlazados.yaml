@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: av-riesgos-desenlazados
+partition: holdout
+profile: agencia-viajes
+kind: defective
+judgment: false
+mutations:
+- op: unlink_evidence
+  alias: riesgos
+  measure: op.pl.1
+defects:
+- id: riesgos-ausente
+  layer: deterministic
+  measure: op.pl.1
+  target:
+    kind: none
+  expected_rule: EVIDENCE_MISSING
+  requirement:
+    measure: op.pl.1
+    clause: op.pl.1.2
+    quote: Identifique las amenazas más probables
+  rationale: El análisis de riesgos se desenlaza y la medida queda sin evidencia.

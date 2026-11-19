@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ai-claves-pendiente
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: replace_evidence_text
+  alias: claves
+  file: claves.md
+defects:
+- id: claves-sin-redactar
+  layer: judgment
+  measure: op.exp.10
+  target:
+    kind: evidence
+    alias: claves
+  expected_criterion: calidad-documental
+  requirement:
+    measure: op.exp.10
+    clause: op.exp.10.2
+    quote: Los medios de generación estarán aislados de los medios de explotación
+  rationale: La sección que debe describir el aislamiento de los medios de generación está sin redactar.

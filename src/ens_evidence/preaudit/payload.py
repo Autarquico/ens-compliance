@@ -7,7 +7,8 @@ Sin red. Contiene solo:
 - las justificaciones de no aplicabilidad y de compensación;
 - los textos de los documentos organizativos;
 - las evidencias enlazadas a medidas aplicables: metadatos y, si es texto, su contenido;
-- los enlaces medida↔documento↔evidencia.
+- los enlaces medida↔documento↔evidencia;
+- la cobertura determinista: qué propiedad evalúa cada check enlazado y con qué resultado.
 
 Toda persona declarada en el workspace se sustituye por su rol o, si no tiene, por `[PERSONA]`:
 las de las respuestas de org-docs (responsables y lista de personas), las que el expediente
@@ -43,6 +44,7 @@ from ens_evidence.orgdocs.approval import ROLE_QUESTION
 from ens_evidence.orgdocs.keys import ANSWERS_KEY, document_key
 from ens_evidence.orgdocs.template import load_templates
 from ens_evidence.preaudit.classify import JUDGMENT_CLASSIFICATIONS
+from ens_evidence.preaudit.coverage import deterministic_coverage
 from ens_evidence.preaudit.pack import AuditPack
 from ens_evidence.preaudit.redact import Designated, redact_fields, require_clean
 from ens_evidence.workspace import NotFound, WorkspaceStore
@@ -120,6 +122,7 @@ def build_payload(store: WorkspaceStore, dossier: str, pack: AuditPack) -> Paylo
         "documents": [documents[name] for name in sorted(documents)],
         "evidence": evidence,
         "links": links,
+        "deterministic_coverage": deterministic_coverage(export, {e["ref"] for e in evidence}),
     }
     designated = _people(store, files, export, snapshot, statuses)
     data = {

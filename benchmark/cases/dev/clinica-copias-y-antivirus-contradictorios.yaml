@@ -1,0 +1,94 @@
+format: ens-benchmark-case/1
+id: clinica-copias-y-antivirus-contradictorios
+partition: dev
+profile: clinica-dental
+kind: defective
+mutations:
+  - op: replace_evidence_text
+    alias: copias
+    file: copias.txt
+  - op: replace_evidence_text
+    alias: antivirus
+    file: antivirus.txt
+defects:
+  - id: copias-usb-sin-cifrar
+    layer: judgment
+    measure: mp.info.6
+    target: {kind: evidence, alias: copias}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: mp.info.6
+      clause: mp.info.6.1
+      quote: >-
+        Se realizarán copias de seguridad que permitan recuperar datos perdidos, accidental o
+        intencionadamente. La periodicidad y los plazos de retención de estas copias de
+        seguridad se determinarán en la normativa interna de la organización relativa a copias
+        de seguridad.
+    rationale: >-
+      Los procedimientos aprobados prometen copia nocturna cifrada de la base de pacientes y
+      restauración trimestral; la hoja aportada muestra copias quincenales de solo las
+      radiografías a un USB sin cifrar junto al servidor, ninguna fuera de la clínica y ninguna
+      restauración probada.
+  - id: servidor-sin-antivirus
+    layer: judgment
+    measure: op.exp.6
+    target: {kind: evidence, alias: antivirus}
+    expected_criterion: coherencia-politica-evidencia
+    requirement:
+      measure: op.exp.6
+      clause: op.exp.6.2
+      quote: >-
+        Se instalará software de protección frente a código dañino en todos los equipos: puestos
+        de usuario, servidores y elementos perimetrales.
+    rationale: >-
+      El estado anotado reconoce el servidor sin protección desde mayo, un gabinete con la
+      licencia vencida y el portátil con firmas viejas, frente a la normativa que exige
+      antivirus en todos los equipos y el análisis de memorias y adjuntos.
+  - id: continuidad-excluida-sin-copia-de-pacientes
+    layer: judgment
+    measure: op.cont.2
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.cont.2
+      clause: op.cont.2.2
+      quote: >-
+        Existirá una previsión para coordinar la entrada en servicio de los medios alternativos de
+        forma que se garantice poder seguir prestando los servicios esenciales de la organización.
+    rationale: >-
+      Consecuencia de la hoja de copias del caso: el perfil excluye el plan de continuidad porque la
+      agenda en papel y el teléfono cubren una parada de hasta un día, el plazo que la política
+      fija para recuperar las historias, pero la hoja de copias cuenta que la última recuperación de
+      la base de pacientes, en marzo de 2026, llevó tres días, que esa base no se copia aparte y que
+      no se ha probado ninguna restauración, así que ese plazo de un día no está respaldado.
+  - id: terceros-excluidos-sin-copia-externa
+    layer: judgment
+    measure: op.ext.3
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.ext.3
+      clause: op.ext.3.1
+      quote: >-
+        Se analizará el impacto que puede tener sobre el sistema un incidente accidental o
+        deliberado que tenga su origen en la cadena de suministro.
+    rationale: >-
+      Consecuencia de la hoja de copias del caso: el perfil excluye la protección de la cadena de
+      suministro porque el almacenamiento externo solo recibe copias ya cifradas en la clínica,
+      pero la hoja muestra un USB sin cifrar junto al servidor y ninguna copia fuera de la
+      clínica.
+  - id: impacto-excluido-con-recuperacion-de-tres-dias
+    layer: judgment
+    measure: op.cont.1
+    target: {kind: justification}
+    expected_criterion: solidez-justificacion-aplicabilidad
+    requirement:
+      measure: op.cont.1
+      clause: op.cont.1.1
+      quote: >-
+        Se realizará un análisis de impacto que permita determinar los requisitos de disponibilidad de cada servicio (impacto de una interrupción durante un periodo de tiempo determinado), así como los elementos que son críticos para la prestación de cada servicio.
+    rationale: >-
+      Consecuencia de la hoja de copias del caso: el perfil descarta el análisis de impacto porque
+      la política ya fija recuperar las historias en menos de un día, pero la hoja cuenta que la
+      última recuperación de la base de pacientes, en marzo de 2026, llevó tres días, así que ese
+      objetivo no está respaldado y los requisitos de disponibilidad no se han determinado.

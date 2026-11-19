@@ -59,7 +59,7 @@ class Pair:
 
 REQUIRED_PAIRS = (
     Pair(Provider.CLAUDE_CODE, "claude-opus-5-5"),
-    Pair(Provider.CODEX, "gpt-6.1-sol"),
+    # Pair(Provider.CODEX, "gpt-6.1-sol"),  # pospuesto por cuota (ADR 0018, 2026-11-08)
 )
 """Los pares que pasan el umbral de v0.1 (decisión del usuario D4): el plan contratado."""
 
@@ -98,7 +98,7 @@ class ProfileCache:
         base = self._bases.get(case.profile)
         if base is None:
             where = self._scratch / case.profile
-            base = build_bench_profile(root, case.profile, where, steps=BASE_STEPS)
+            base = build_bench_profile(root, case.partition, case.profile, where, steps=BASE_STEPS)
             self._bases[case.profile] = base
         files = bench_dir(case_files_dir(root, case), root)
         return finish_case(base.fork(destination), case, files)

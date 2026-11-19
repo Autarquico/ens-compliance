@@ -1,0 +1,5 @@
+format: ens-benchmark-case/1
+id: ai-correcto-base
+partition: holdout
+profile: academia-idiomas
+kind: correct

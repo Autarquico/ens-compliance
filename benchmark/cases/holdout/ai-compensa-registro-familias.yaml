@@ -1,0 +1,26 @@
+format: ens-benchmark-case/1
+id: ai-compensa-registro-familias
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: compensate
+  measure: op.acc.5
+  measures:
+  - Se confía en que las familias cuidan sus datos de acceso.
+  replaces:
+  - base
+  justification: Las familias son de confianza y protegen igual que el requisito.
+defects:
+- id: compensacion-confianza
+  layer: judgment
+  measure: op.acc.5
+  target:
+    kind: justification
+  expected_criterion: solidez-justificacion-aplicabilidad
+  requirement:
+    measure: op.acc.5
+    clause: op.acc.5.1
+    quote: deberán haberse identificado y registrado de manera fidedigna ante el sistema
+  rationale: La compensación sustituye el registro fidedigno de los usuarios externos por una confianza
+    genérica en las familias, sin protección equivalente.

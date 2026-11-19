@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/av-correcto-base",
+  "case_sha256": "d1b779626f26430c9797f37af913ff971f8b392a71a692ad7601c329c0c86262",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "a43f6f5efbcb6bd82140b21933b4a2134eb9fa38954c2a885087f7e746bbfad8",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-08T15:50:09.047578Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-08T15:46:53.976473Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.pl.1\", \"proposal\": \"OBSERVACION\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Identifica los activos más valiosos, las amenazas más probables, las salvaguardas y los riesgos residuales, y lo revisa cada año en octubre.\"}], \"evidence\": [{\"ref\": \"EV-20261012-91414e62\", \"quote\": \"Fecha: 22 de septiembre de 2026. Autora: [responsable de la seguridad], responsable de la seguridad. Próxima revisión: octubre de 2027.\"}], \"justifications\": [], \"reason\": \"El procedimiento exige revisar el análisis de riesgos cada año en octubre, pero el análisis de septiembre de 2026 fija su próxima revisión en octubre de 2027, con lo que la de octubre de 2026 no se contempla. Se propone como observación porque el análisis es de un mes antes y la desviación es de calendario.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-08T15:47:50.595316Z",
+      "outcome": "response",
+      "response": "{\"findings\": []}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-08T15:48:54.223368Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.si.1\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.si.1\", \"quote\": \"La tabla del anexo II del RD 311/2022 no exige esta medida para la categoría BÁSICA ni para el nivel BAJO de las dimensiones afectadas, y la agencia no la adopta de forma voluntaria.\"}], \"reason\": \"La justificación solo remite a la tabla del anexo II y afirma que el marcado no se adopta, pero el documento procedimientos-seguridad (no enlazado a esta medida), en «Tratamiento de la información: el etiquetado de soportes», indica que el disco de la copia mensual lleva una etiqueta con la palabra «Confidencial» y el mes de uso. Se propone para que una persona valore esta incoherencia.\"}, {\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"mp.si.2\", \"proposal\": \"OBSERVACION\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:not_selected:mp.si.2\", \"quote\": \"La tabla del anexo II del RD 311/2022 no exige esta medida para la categoría BÁSICA ni para el nivel BAJO de las dimensiones afectadas, y la agencia no la adopta de forma voluntaria.\"}], \"reason\": \"La justificación solo remite a la tabla del anexo II y afirma que la criptografía de soportes no se adopta, pero la evidencia EV-20261012-1f5398fb (no enlazada a esta medida), en mp.si.4.3, declara que el disco externo va cifrado, y el documento procedimientos-seguridad (tampoco enlazado) menciona un «disco externo cifrado». Se propone para que una persona valore esta incoherencia.\"}]}",
+      "kind": null
+    }
+  ]
+}

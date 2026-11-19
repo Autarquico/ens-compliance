@@ -1,0 +1,22 @@
+format: ens-benchmark-case/1
+id: ai-bloqueo-sin-motivo
+partition: holdout
+profile: academia-idiomas
+kind: defective
+mutations:
+- op: declare_not_applicable
+  measure: mp.eq.2
+  justification: No hace falta.
+defects:
+- id: bloqueo-excluido-sin-razon
+  layer: judgment
+  measure: mp.eq.2
+  target:
+    kind: justification
+  expected_criterion: solidez-justificacion-aplicabilidad
+  requirement:
+    measure: mp.eq.2
+    clause: mp.eq.2.1
+    quote: El puesto de trabajo se bloqueará al cabo de un tiempo prudencial de inactividad
+  rationale: La medida, antes adoptada por el riesgo de pérdida de portátiles, se excluye con una justificación
+    que no da ninguna razón.

@@ -1,0 +1,20 @@
+name: Sistema de reservas y expedientes de Brújula Austral Viajes
+description: >-
+  Programa de reservas contratado como servicio, servidor de archivos con los expedientes de
+  viajeros, correo y puestos de trabajo de la agencia, para gestionar reservas, contratos de
+  viaje y comunicaciones con los clientes.
+included_assets:
+  - portatil-gerencia
+  - portatil-mostrador-1
+  - portatil-mostrador-2
+  - servidor-archivos
+  - crm-reservas
+  - cuentas-correo
+  - gestor-claves
+  - copia-nube
+  - proveedor-crm
+  - proveedor-conectividad
+included_services:
+  - reservas-viajes
+  - administracion-agencia
+exclusions: []

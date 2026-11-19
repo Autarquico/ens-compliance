@@ -1,0 +1,36 @@
+information:
+  - id: datos-alumnado
+    description: Fichas del alumnado, grupos, calificaciones y datos de contacto de las familias
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado: incumplimiento formal subsanable y perjuicio menor y reparable a un alumno."}
+      I: {level: BAJO, justification: "Perjuicio limitado: un error en una ficha se corrige con la documentación de la familia."}
+      T: {level: BAJO, justification: "Perjuicio limitado: reducción apreciable de la capacidad de rendir cuentas de los cambios, sin daño mayor."}
+      A: {level: BAJO, justification: "Perjuicio limitado: la secretaría puede trabajar con papel durante unos días sin daño mayor."}
+      D: {level: BAJO, justification: "Perjuicio limitado: la pérdida de una ficha se recupera de la copia semanal con un daño menor."}
+    valuation:
+      valued_by: Marta Quirós Vidal
+      role: information_owner
+      valued_at: 2026-09-20T10:00:00+00:00
+services:
+  - id: matricula-alumnado
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado: afecta a datos de alumnado con perjuicio menor y reparable."}
+      I: {level: BAJO, justification: "Perjuicio limitado: una alteración se detecta al revisar la matrícula y se corrige."}
+      T: {level: BAJO, justification: "Perjuicio limitado: la falta de trazabilidad se compensa con los registros del proveedor."}
+      A: {level: BAJO, justification: "Perjuicio limitado: la matrícula en línea puede suspenderse unos días sin daño mayor."}
+      D: {level: BAJO, justification: "Perjuicio limitado: una caída de un día reduce de forma apreciable la capacidad, sin daño en activos."}
+    valuation:
+      valued_by: Marta Quirós Vidal
+      role: service_owner
+      valued_at: 2026-09-20T10:05:00+00:00
+  - id: administracion-academia
+    ratings:
+      C: {level: BAJO, justification: "Perjuicio limitado: el correo contiene datos de contacto sin categorías especiales."}
+      I: {level: BAJO, justification: "Perjuicio limitado: un mensaje alterado se detecta por su remitente y se aclara."}
+      T: {level: BAJO, justification: "Perjuicio limitado: el origen de los mensajes se comprueba por otros medios."}
+      A: {level: BAJO, justification: "Perjuicio limitado: el teléfono sustituye al correo durante unos días."}
+      D: {level: BAJO, justification: "Perjuicio limitado: la pérdida de un buzón se recupera con la copia del proveedor."}
+    valuation:
+      valued_by: Marta Quirós Vidal
+      role: service_owner
+      valued_at: 2026-09-20T10:10:00+00:00

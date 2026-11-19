@@ -33,7 +33,9 @@ runner = CliRunner()
 def base(tmp_path_factory) -> Build:
     """El perfil mini sin expediente, construido una vez; cada test muta su propia copia."""
     destination = tmp_path_factory.mktemp("base") / "ws"
-    return build_bench_profile(FIXTURES, "mini", destination, seed="dev/base", steps=BASE_STEPS)
+    return build_bench_profile(
+        FIXTURES, Partition.DEV, "mini", destination, seed="dev/base", steps=BASE_STEPS
+    )
 
 
 def fixture_case(name: str) -> Case:

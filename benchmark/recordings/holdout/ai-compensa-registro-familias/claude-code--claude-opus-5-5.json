@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/ai-compensa-registro-familias",
+  "case_sha256": "278a34139eef7e5d77c2a4cc20dbe981a29a74fb0a29352d8070a48509c0d2d6",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "016d941e8a827847580ca6346ca4a0e980bcd1fa0d8cc76ef740ecac6baf8e0b",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-08T15:15:13.181568Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-08T15:12:48.667705Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.5\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:op.acc.5:base\", \"quote\": \"Las familias son de confianza y protegen igual que el requisito.\"}], \"reason\": \"La justificación afirma la equivalencia sin mostrar que la compensatoria declarada, confiar en que las familias cuidan sus datos de acceso, proteja igual o mejor del riesgo sobre los activos (art. 28.3). Esa confianza deja sin cubrir lo que exigen las cláusulas sustituidas op.acc.5.1 a op.acc.5.9, como el registro fidedigno previo, la inhabilitación por pérdida o compromiso y el límite de intentos.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-08T15:13:37.686449Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.5\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:op.acc.5:base\", \"quote\": \"Las familias son de confianza y protegen igual que el requisito.\"}], \"reason\": \"La justificación afirma la equivalencia sin mostrarla: confiar en que las familias cuidan sus datos de acceso no es una salvaguarda técnica ni organizativa y deja sin cubrir lo que exige op.acc.5.1 a op.acc.5.9, como el registro fidedigno previo, la inhabilitación de credenciales o la limitación de intentos. No se justifica que proteja, igual o mejor, del riesgo sobre los activos (datos de alumnado, con menores), como pide el artículo 28.3.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-08T15:14:27.667981Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"solidez-justificacion-aplicabilidad\", \"measure\": \"op.acc.5\", \"proposal\": \"NC_MENOR\", \"documents\": [], \"evidence\": [], \"justifications\": [{\"ref\": \"justification:compensation:op.acc.5:base\", \"quote\": \"Las familias son de confianza y protegen igual que el requisito.\"}], \"reason\": \"La justificación afirma la equivalencia sin mostrar que la compensatoria (confiar en que las familias cuidan sus datos de acceso) proteja igual o mejor del riesgo sobre los activos, datos de menores y familias incluidos. Deja sin cubrir lo que sustituye de op.acc.5.1 a op.acc.5.9, como el registro fidedigno, la inhabilitación de credenciales y la limitación de intentos.\"}]}",
+      "kind": null
+    }
+  ]
+}

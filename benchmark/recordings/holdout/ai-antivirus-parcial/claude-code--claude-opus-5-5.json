@@ -1,0 +1,40 @@
+{
+  "format": "ens-benchmark-recording/1",
+  "case": "holdout/ai-antivirus-parcial",
+  "case_sha256": "6de7291dc520d8ca9e10190602f6146a42d104a40435a7315ae47948a51b5745",
+  "provider": "claude-code",
+  "model": "claude-opus-5-5",
+  "destination": "claude-code 2.1.319, sesión del usuario (plan contratado); ejecutable 2.1.319 (sha256 1f53587e92dee8e089fa349188a4cda64fa34ace6e7b0ca2ee278ddaa3cc2ebd); sin ajustes, hooks, MCP ni CLAUDE.md del usuario; los ajustes gestionados por la organización en este equipo siguen aplicando",
+  "temperature": null,
+  "temperature_note": "no aplica: JudgmentConfig no expone temperatura y los clientes no la envían; rige la del proveedor",
+  "pack_version": "3.0.0",
+  "pack_sha256": "56ba258ae5e037e05de53064a640b7a76227465ab53e49e0168f9df94ae3029d",
+  "payload_sha256": "9070f378e55e4c3ac873dd35c3549444cc41f2576d869f790b9f6e961b3ffa19",
+  "tool_version": "0.1.0",
+  "catalog_sha256": "d526b12b1b680ea8a586c83654c32f89fdb2a7074c41fef820a2a45cc14b407d",
+  "recorded_at": "2026-11-08T15:04:14.159165Z",
+  "recorded_by": "Alejandro Perez",
+  "repetitions": [
+    {
+      "n": 1,
+      "at": "2026-11-08T15:02:09.033825Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.exp.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Instala el antivirus en todos los equipos, actualiza sus firmas de forma permanente según el fabricante, activa la protección en tiempo real y analiza cualquier fichero externo antes de abrirlo.\"}], \"evidence\": [{\"ref\": \"EV-20261005-d1001c86\", \"quote\": \"Solo el portátil de secretaría lleva antivirus; el portátil de dirección no lo lleva porque se usa poco.\"}], \"justifications\": [], \"reason\": \"El procedimiento exige instalar el antivirus en todos los equipos, pero la evidencia enlazada afirma que el portátil de dirección no lo lleva. Se propone como fallo en la implantación de un requisito de la medida, porque la protección frente a código dañino falta en uno de los dos portátiles del sistema.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 2,
+      "at": "2026-11-08T15:02:53.201412Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.exp.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Instala el antivirus en todos los equipos, actualiza sus firmas de forma permanente según el fabricante, activa la protección en tiempo real y analiza cualquier fichero externo antes de abrirlo.\"}], \"evidence\": [{\"ref\": \"EV-20261005-d1001c86\", \"quote\": \"Solo el portátil de secretaría lleva antivirus; el portátil de dirección no lo lleva porque se usa poco.\"}], \"justifications\": [], \"reason\": \"El procedimiento exige instalar el antivirus en todos los equipos, pero la evidencia enlazada declara que el portátil de dirección no lo lleva. Se propone como no conformidad menor por fallo parcial en la implantación de la medida; la decisión corresponde a una persona.\"}]}",
+      "kind": null
+    },
+    {
+      "n": 3,
+      "at": "2026-11-08T15:03:33.283110Z",
+      "outcome": "response",
+      "response": "{\"findings\": [{\"criterion\": \"coherencia-politica-evidencia\", \"measure\": \"op.exp.6\", \"proposal\": \"NC_MENOR\", \"documents\": [{\"ref\": \"procedimientos-seguridad\", \"quote\": \"Instala el antivirus en todos los equipos, actualiza sus firmas de forma permanente según el fabricante, activa la protección en tiempo real y analiza cualquier fichero externo antes de abrirlo.\"}], \"evidence\": [{\"ref\": \"EV-20261005-d1001c86\", \"quote\": \"Solo el portátil de secretaría lleva antivirus; el portátil de dirección no lo lleva porque se usa poco.\"}], \"justifications\": [], \"reason\": \"El procedimiento exige instalar el antivirus en todos los equipos, pero la evidencia afirma que el portátil de dirección no lo lleva. Se propone como fallo parcial en la implantación de la medida, ya que uno de los dos portátiles queda sin el mecanismo de protección que el documento exige.\"}]}",
+      "kind": null
+    }
+  ]
+}
