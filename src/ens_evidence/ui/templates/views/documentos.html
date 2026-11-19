@@ -11,9 +11,12 @@
 <ul>{% for item in g["items"] %}<li>{{ item }}</li>{% endfor %}</ul></div>
 {%- endfor %}
 {%- endmacro %}
+{% macro lista(names, by_name) -%}
+<ul>{% for n in names %}<li>{% if n in by_name %}<a href="{{ by_name[n].href }}">{{ by_name[n].title }}</a>{% if by_name[n].source %} <span class="muted">sha256</span> <span class="mono">{{ by_name[n].source.document_sha256 }}</span>{% endif %}{% else %}<span class="mono">{{ n }}</span>{% endif %}</li>{% endfor %}</ul>
+{%- endmacro %}
 {% macro creados(title, names, by_name) -%}
 {%- if names %}<p>{{ title }}</p>
-<ul>{% for n in names %}<li>{% if n in by_name %}<a href="{{ by_name[n].href }}">{{ by_name[n].title }}</a>{% if by_name[n].source %} <span class="muted">sha256</span> <span class="mono">{{ by_name[n].source.document_sha256 }}</span>{% endif %}{% else %}<span class="mono">{{ n }}</span>{% endif %}</li>{% endfor %}</ul>{% endif -%}
+{{ lista(names, by_name) }}{% endif -%}
 {%- endmacro %}
 {% block content %}
 {%- set can_edit = permissions is defined and permissions.edit -%}
@@ -32,7 +35,7 @@
   {% if not (page.outcome.created or page.outcome.updated or page.outcome.unchanged) %}<p>No se ha generado ningún documento.</p>{% endif %}
 </section>
 {% if page.outcome.archived %}<section class="notice notice-warn" role="status"><p><strong>Había ediciones manuales y se han archivado.</strong> El documento se ha vuelto a generar desde las respuestas; la versión editada se conserva aparte.</p>
-  <ul>{% for n in page.outcome.archived %}<li>{% if n in by_name %}{{ by_name[n].title }}{% else %}<span class="mono">{{ n }}</span>{% endif %}</li>{% endfor %}</ul></section>{% endif %}
+  {{ lista(page.outcome.archived, by_name) }}</section>{% endif %}
 {% endif %}
 {% for w in page.warnings %}<p class="muted">{{ m.icon("alert") }} {{ w }}</p>{% endfor %}
 

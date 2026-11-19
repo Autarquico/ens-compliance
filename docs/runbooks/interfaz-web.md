@@ -438,8 +438,9 @@ falta.
 
 `/documentos/{documento}` es la ficha: texto generado (escapado, recortado a
 1 MiB solo en pantalla), meta, cláusulas y medidas que cubre, historial de
-aprobaciones y aviso de registros ilegibles. Un documento sin generar muestra la
-ficha sin texto; un nombre que no está en las plantillas da 404.
+aprobaciones y aviso de registros ilegibles. Un documento sin generar no tiene ficha
+y da 404, igual que un nombre que no está en las plantillas; el listado explica por
+qué no está generado. Un fichero binario o desaparecido nunca da 500.
 
 **`by` es un nombre declarado.** «Quién lo aprueba» se escribe a mano y nunca
 viene relleno, ni desde el JWT ni desde las respuestas. El producto exige que

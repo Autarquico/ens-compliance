@@ -65,7 +65,7 @@
   {% if detail.truncated %}<div class="notice notice-warn" role="status"><p>Se muestra solo el principio del documento. El fichero completo está en el workspace.</p></div>{% endif %}
   {% if "�" in detail.text %}<div class="notice notice-warn" role="status"><p>El fichero contiene caracteres que no son texto válido; se muestran como «�».</p></div>{% endif %}
   <pre tabindex="0">{{ detail.text }}</pre>
-  {% elif r.state == "NOT_GENERATED" %}<p class="muted">Todavía no hay texto: el documento no está generado.</p>
+
   {% else %}<p class="muted">{{ m.icon("alert") }} No hay texto que mostrar: el fichero no se ha podido leer.</p>{% endif %}
 </section>
 <p class="muted">Esta vista no declara conformidad: la revisión es de una persona.</p>

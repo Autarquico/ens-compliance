@@ -85,7 +85,6 @@ NO_AUTHORITY = (
 UNKNOWN_DOCUMENT = "No reconocemos ese documento."
 SAVED_VALUES = frozenset({"aprobado"})
 STEP = "documentos"
-BLOCKER_ITEMS_SHOWN = 3
 
 
 # --- DTO -----------------------------------------------------------------------------------------
@@ -387,7 +386,7 @@ def _row(
         error_key=f"approved_by~{name}",
         unreadable=len(status.unreadable),
         drift_notice=_drift_notice(reasons) if can_approve else "",
-        role_notice=role_notice if can_approve else "",
+        role_notice=role_notice if can_approve and permissions.edit else "",
         can_submit=can_approve and role is not None and not role_missing,
     )
 
@@ -473,7 +472,6 @@ def _list_page(
         status,
         **page_context(request, "documentos", "Documentos"),
         page=page,
-        rows=page.rows,
         saved=saved,
         form_errors=form_errors or [],
         errors=errors or {},
@@ -490,12 +488,13 @@ def ficha(request: Request) -> Response:
     if name not in document_names():  # antes de derivar ninguna clave del segmento
         raise HTTPException(404)
     detail = build_detail(request.app.state.store, name, permissions_of(request))
+    if detail.row.state == DocumentState.NOT_GENERATED.value:  # el listado dice por qué
+        raise HTTPException(404)
     return render(
         request,
         "views/documento.html",
         **page_context(request, "documentos", titles()[name]),
         detail=detail,
-        row=detail.row,
     )
 
 
@@ -546,7 +545,7 @@ def _refused(request: Request, action: str, store: UiStore, **page: Any) -> Resp
 def _blocker_lines(blockers: GenerationBlockers) -> list[str]:
     return [
         *blockers.reasons,
-        *(f"{g.label}: {item}" for g in blockers.groups for item in g.items[:BLOCKER_ITEMS_SHOWN]),
+        *(f"{g.label}: {item}" for g in blockers.groups for item in g.items),
     ]
 
 
@@ -572,6 +571,11 @@ def _echo(key: str, by: str) -> dict[str, str]:
     return {} if find_secrets({"valor": by}) else {key: by}
 
 
+def _unechoed(line: str) -> str:
+    """Una línea del producto que cita lo escrito: si parece un secreto no se devuelve."""
+    return "No se puede aprobar con ese nombre." if find_secrets({"valor": line}) else line
+
+
 def _approve(store: UiStore, name: str, by: str, role, now: datetime) -> None:
     try:
         approve_document(store, name, by, role, now)
@@ -580,7 +584,7 @@ def _approve(store: UiStore, name: str, by: str, role, now: datetime) -> None:
     except UnknownDocument:
         raise StepRejected(form_errors=[UNKNOWN_DOCUMENT]) from None
     except DocumentApprovalRejected as exc:
-        raise StepRejected(form_errors=[plain(e) for e in exc.errors]) from None
+        raise StepRejected(form_errors=[_unechoed(plain(e)) for e in exc.errors]) from None
 
 
 async def aprobar(request: Request) -> Response:

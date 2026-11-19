@@ -1241,12 +1241,6 @@ VIEW_CONTEXT = {
         {"detail": _doc_detail(), "nav_active": "documentos"},
         {"detail": _doc_detail("APPROVED", truncated=True), "nav_active": "documentos"},
         {"detail": _doc_detail("OBSOLETE", text="roto \ufffd"), "nav_active": "documentos"},
-        {
-            "detail": _doc_detail(
-                "NOT_GENERATED", text="", clauses=(), measures=(), history=(), unreadable=()
-            ),
-            "nav_active": "documentos",
-        },
         {"detail": _doc_detail("GENERATED", text=""), "nav_active": "documentos"},
     ],
     "agents.html": {"rows": [_AGENT_ROW, _AGENT_BARE], "problems": [HOSTILE], "notes": [HOSTILE]},
@@ -2360,8 +2354,7 @@ def test_documento_ficha_escapa_el_texto_y_lleva_la_advertencia_de_cobertura():
 def test_documento_truncado_sin_texto_y_con_caracteres_reemplazados_lo_dicen():
     assert "solo el principio del documento" in _documento(1)
     assert "no son texto válido" in _documento(2)
-    assert "el documento no está generado" in _documento(3) and "<pre" not in _documento(3)
-    assert "no se ha podido leer" in _documento(4) and "<pre" not in _documento(4)
+    assert "no se ha podido leer" in _documento(3) and "<pre" not in _documento(3)
 
 
 def test_estado_enlaza_la_fase_de_documentos_solo_si_la_fase_lo_trae():

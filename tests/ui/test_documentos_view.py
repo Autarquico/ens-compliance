@@ -24,6 +24,7 @@ from ens_evidence.ui.roles import ROLES_KEY, Grant, Permissions, RolesStatus, du
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import documents as view
 from ens_evidence.ui.views import status as status_view
+from ens_evidence.ui.wizard.base import StepRejected
 from ens_evidence.workspace import NotFound
 
 from .conftest import NOW, ORIGIN, Session, snapshot_of, ui_client
@@ -255,8 +256,21 @@ def test_sin_el_rol_no_hay_formulario_y_si_aviso_con_enlace(config, ready, key, 
     rules = row_of(page_of(ready, NO_ROLE), RULES)
     assert rules.can_submit is False and rules.role_missing is True
     assert "la dirección" in rules.role_notice
+    assert "la dirección" in page.text
     assert "/aprobar" not in page.text
     assert 'href="/asistente/documentos-responsables"' in page.text
+
+
+def test_quien_solo_lee_no_ve_el_aviso_de_rol_sino_el_de_solo_lectura(config, ready, key, token):
+    ready.write_text(ROLES_KEY, dump_roles({"ana@example.com": Grant(False, frozenset())}))
+    client = ui_client(config, ready, key)
+
+    page = get(client, token, "/documentos")
+
+    reader_rows = page_of(ready, Permissions("ana@example.com", RolesStatus.OK, False, frozenset()))
+    assert all(r.role_notice == "" for r in reader_rows.rows)
+    assert "tu cuenta no tiene ese rol" not in page.text
+    assert "Solo lectura" in page.text
 
 
 def test_sin_autoridad_declarada_de_los_procedimientos_se_dice_y_no_hay_formulario(ready):
@@ -311,7 +325,7 @@ def test_fichero_binario_no_da_500(session, ready):
 
     page = session.get(f"/documentos/{POLICY}")
 
-    assert page.status_code == 200
+    assert page.status_code == 404  # un binario no cuenta como generado
     assert view.build_detail(UiStore(ready), POLICY, EDITOR).text == ""
     assert session.get("/documentos").status_code == 200
 
@@ -338,15 +352,14 @@ def test_fichero_que_desaparece_entre_lecturas_no_da_500(config, ready, key, tok
     assert view.build_detail(UiStore(spy), POLICY, EDITOR).text == ""
 
 
-def test_documento_conocido_sin_generar_muestra_la_ficha_sin_texto(session, ready):
+def test_documento_conocido_sin_generar_da_404_en_la_ficha_y_el_listado_lo_explica(session, ready):
     forget(ready, PROCEDURES)
 
-    page = session.get(f"/documentos/{PROCEDURES}")
-
-    assert page.status_code == 200
-    detail = view.build_detail(UiStore(ready), PROCEDURES, EDITOR)
-    assert detail.row.state == "NOT_GENERATED"
-    assert detail.text == "" and detail.clauses == () and detail.measures == ()
+    assert session.get(f"/documentos/{PROCEDURES}").status_code == 404
+    listing = session.get("/documentos")
+    assert listing.status_code == 200
+    assert f'href="/documentos/{PROCEDURES}"' not in listing.text
+    assert row_of(page_of(ready), PROCEDURES).state == "NOT_GENERATED"
 
 
 # --- D8: entrada hostil ---------------------------------------------------------------------------
@@ -522,6 +535,22 @@ def test_post_con_respuestas_invalidas_explica_y_no_escribe(session, example_sto
     assert len(audit_lines(audit, "rejected")) == 1
 
 
+def test_el_422_lista_todas_las_preguntas_pendientes_igual_que_el_get(session, writable):
+    write_answers(writable, **dict.fromkeys(ANSWERS, None))
+    get_groups = view.generation_blockers(UiStore(writable), view._report(UiStore(writable))).groups
+    assert any(len(g.items) > 3 for g in get_groups)
+
+    response = session.post("/documentos/generar", {})
+    listing = session.get("/documentos")
+
+    assert response.status_code == 422
+    for g in get_groups:
+        for item in g.items:
+            line = html.escape(f"{g.label}: {item}", quote=False)
+            assert line in response.text or html.escape(line) in response.text
+            assert html.escape(item, quote=False) in listing.text
+
+
 def test_post_con_cuestionario_sin_empezar(session, example_store, audit):
     approve_scope(example_store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
     before = snapshot_of(example_store)
@@ -593,6 +622,11 @@ def test_una_edicion_manual_se_archiva_y_solo_figura_como_archivada(session, wri
 
     assert response.status_code == 200
     assert "ediciones manuales" in response.text
+    archived = response.text.split("ediciones manuales", 1)[1]
+    sha = view._meta_of(
+        UiStore(writable), next(s for s in all_statuses(UiStore(writable)) if s.name == RULES)
+    )
+    assert f'href="/documentos/{RULES}"' in archived and sha.document_sha256 in archived
     assert [k for k in writable.list("org/docs/history/") if RULES in k]
     assert "Actualizados:" not in response.text
 
@@ -741,6 +775,19 @@ def test_un_secreto_en_el_nombre_no_se_repinta(session, ready):
 
     assert response.status_code == 422
     assert secret not in response.text
+
+
+def test_un_secreto_citado_por_el_producto_no_se_devuelve_en_la_linea_de_error(ready):
+    secret = "AKIAIOSFODNN7EXAMPLE"
+    echoed = f"{secret} no es la persona declarada en responsable"
+
+    assert secret not in view._unechoed(echoed)
+    assert view._unechoed("Pedro Otro no es la persona declarada") == (
+        "Pedro Otro no es la persona declarada"
+    )
+    with pytest.raises(StepRejected) as rejected:
+        view._approve(UiStore(ready), POLICY, secret, Role.MANAGEMENT, NOW)
+    assert all(secret not in line for line in rejected.value.form_errors)
 
 
 def test_el_campo_de_aprobar_nunca_viene_relleno(session, ready):
