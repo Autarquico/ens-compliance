@@ -6,7 +6,13 @@ from functools import cache
 from typing import Any
 
 from ens_evidence.models.enums import Role
-from ens_evidence.orgdocs import DocumentState, Question, all_statuses, load_templates
+from ens_evidence.orgdocs import (
+    DocumentState,
+    DocumentStatus,
+    Question,
+    all_statuses,
+    load_templates,
+)
 from ens_evidence.orgdocs.approval import ROLE_QUESTION
 from ens_evidence.ui.store import UiStore
 
@@ -168,8 +174,11 @@ def plain(message: str) -> str:
     return message.replace("`", "").strip()
 
 
-def issue_groups(report) -> list[dict[str, Any]]:
-    """Lo que falta o está mal, agrupado por bloque del cuestionario."""
+def issue_groups(report, only: set[str] | None = None) -> list[dict[str, Any]]:
+    """Lo que falta o está mal, agrupado por bloque del cuestionario.
+
+    Con `only` (ids de pregunta) se quedan las preguntas de ese conjunto y los avisos que no son
+    de ninguna pregunta del cuestionario."""
     grouped: dict[str, list[str]] = {}
     unplaced: list[str] = []
 
@@ -178,10 +187,12 @@ def issue_groups(report) -> list[dict[str, Any]]:
         (grouped.setdefault(block.slug, []) if block else unplaced).append(text)
 
     for pending in report.pending:
-        add(pending.question.id, f"Falta responder: {pending.question.text}")
+        if only is None or pending.question.id in only:
+            add(pending.question.id, f"Falta responder: {pending.question.text}")
     for problem in report.problems:
         owner = problem.split(":", 1)[0]
-        add(owner, plain(problem))
+        if only is None or owner in only or owner not in questions():
+            add(owner, plain(problem))
     groups = [
         {"slug": b.slug, "label": b.title, "items": grouped[b.slug]}
         for b in BLOCKS
@@ -192,7 +203,10 @@ def issue_groups(report) -> list[dict[str, Any]]:
     return groups
 
 
-def document_rows(store: UiStore) -> list[dict[str, Any]]:
+def document_rows(
+    store: UiStore, statuses: list[DocumentStatus] | None = None
+) -> list[dict[str, Any]]:
+    """Una fila por documento; con `statuses` ya calculados no se vuelven a leer."""
     return [
         {
             "name": status.name,
@@ -202,7 +216,7 @@ def document_rows(store: UiStore) -> list[dict[str, Any]]:
             "tone": STATE_TONES[status.state],
             "reasons": [plain(r) for r in status.reasons],
         }
-        for status in all_statuses(store)
+        for status in (all_statuses(store) if statuses is None else statuses)
     ]
 
 

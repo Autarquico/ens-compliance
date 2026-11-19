@@ -1,0 +1,72 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{% block content %}
+{%- set r = detail.row -%}
+{%- set tone = r.tone if (r.tone != "ok" or r.state == "APPROVED") else "neutral" -%}
+<p><a href="/documentos#doc-{{ r.name }}">Volver a los documentos</a></p>
+<h1>{{ r.title }}</h1>
+<p><span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ r.state_label }}</span> <span class="badge-code">{{ r.state }}</span></span></p>
+{% if r.reasons %}<ul class="muted">{% for reason in r.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+{{ m.revision_humana() }}
+<p class="muted">Aprobar un documento no cambia el estado de ninguna medida. La aprobación se hace desde <a href="/documentos#doc-{{ r.name }}">la lista</a>.</p>
+
+<section class="section" aria-labelledby="h-fuente">
+  <h2 id="h-fuente">Fuente</h2>
+  {% if r.source %}
+  <div class="table-wrap"><table>
+    <caption>De dónde sale el documento generado</caption>
+    <tbody>
+      <tr><th scope="row">Plantilla</th><td><span class="mono">{{ r.source.template_id }}</span> versión {{ r.source.template_version }}</td></tr>
+      <tr><th scope="row">Versión del generador</th><td>{{ r.source.renderer_version }}</td></tr>
+      <tr><th scope="row">sha256 del documento</th><td><span class="mono">{{ r.source.document_sha256 }}</span></td></tr>
+      <tr><th scope="row">Catálogo</th><td><span class="mono">{{ r.source.catalog_sha256 }}</span> <span class="muted">consolidado el {{ r.source.catalog_consolidation_date }}</span></td></tr>
+      <tr><th scope="row">Articulado</th><td><span class="mono">{{ r.source.articulado_sha256 }}</span> <span class="muted">consolidado el {{ r.source.articulado_consolidation_date }}</span></td></tr>
+    </tbody>
+  </table></div>
+  {% else %}<p class="muted">No hay fuente que mostrar: el documento no está generado.</p>{% endif %}
+</section>
+
+<section class="section" aria-labelledby="h-cobertura">
+  <h2 id="h-cobertura">Qué cubre</h2>
+  <div class="notice notice-warn" role="note"><p>Cubrir una cláusula no acredita que la medida esté implantada.</p></div>
+  {% if detail.clauses %}
+  <div class="table-wrap"><table>
+    <caption>{{ detail.clauses | length }} cláusulas</caption>
+    <thead><tr><th scope="col">Cláusula</th><th scope="col">Origen</th><th scope="col">Apartado</th></tr></thead>
+    <tbody>{% for c in detail.clauses %}<tr><th scope="row"><span class="mono">{{ c.id }}</span></th><td>{{ c.origin }}</td><td>{{ c.section }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">No hay cláusulas registradas.</p>{% endif %}
+  {% if detail.measures %}
+  <div class="table-wrap"><table>
+    <caption>{{ detail.measures | length }} medidas citadas</caption>
+    <thead><tr><th scope="col">Medida</th><th scope="col">Cláusulas cubiertas</th><th scope="col">Cláusulas sin cubrir</th></tr></thead>
+    <tbody>{% for x in detail.measures %}<tr><th scope="row"><span class="mono">{{ x.id }}</span></th><td>{% for c in x.covered %}<span class="mono">{{ c }}</span>{% if not loop.last %}, {% endif %}{% else %}<span class="muted">—</span>{% endfor %}</td><td>{% for c in x.missing %}<span class="mono">{{ c }}</span>{% if not loop.last %}, {% endif %}{% else %}<span class="muted">—</span>{% endfor %}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% endif %}
+</section>
+
+<section class="section" aria-labelledby="h-historial">
+  <h2 id="h-historial">Historial de aprobaciones</h2>
+  <p class="muted">El nombre es el que declaró quien aprobó; no está autenticado.</p>
+  {% if detail.unreadable %}<div class="notice notice-warn" role="status"><p><strong>Hay registros de aprobación que no se pueden leer.</strong> No se tienen en cuenta.</p>
+    <ul>{% for u in detail.unreadable %}<li><span class="mono">{{ u }}</span></li>{% endfor %}</ul></div>{% endif %}
+  {% if detail.history %}
+  <div class="table-wrap"><table>
+    <caption>Del más antiguo al más reciente</caption>
+    <thead><tr><th scope="col">Quién (declarado)</th><th scope="col">Rol</th><th scope="col">Cuándo</th></tr></thead>
+    <tbody>{% for a in detail.history %}<tr><th scope="row">{{ a.approved_by }}</th><td>{{ a.role_label }}</td><td>{{ a.approved_at }}</td></tr>{% endfor %}</tbody>
+  </table></div>
+  {% else %}<p class="muted">{{ m.icon("help") }} Sin aprobación: este documento no se ha aprobado nunca.</p>{% endif %}
+</section>
+
+<section class="section" aria-labelledby="h-texto">
+  <h2 id="h-texto">Texto</h2>
+  {% if detail.text %}
+  {% if detail.truncated %}<div class="notice notice-warn" role="status"><p>Se muestra solo el principio del documento. El fichero completo está en el workspace.</p></div>{% endif %}
+  {% if "�" in detail.text %}<div class="notice notice-warn" role="status"><p>El fichero contiene caracteres que no son texto válido; se muestran como «�».</p></div>{% endif %}
+  <pre tabindex="0">{{ detail.text }}</pre>
+  {% elif r.state == "NOT_GENERATED" %}<p class="muted">Todavía no hay texto: el documento no está generado.</p>
+  {% else %}<p class="muted">{{ m.icon("alert") }} No hay texto que mostrar: el fichero no se ha podido leer.</p>{% endif %}
+</section>
+<p class="muted">Esta vista no declara conformidad: la revisión es de una persona.</p>
+{% endblock %}

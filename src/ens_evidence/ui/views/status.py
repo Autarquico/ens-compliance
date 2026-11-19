@@ -2,7 +2,7 @@
 
 import re
 from collections.abc import Callable, Iterator
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import datetime
 
 from starlette.requests import Request
@@ -71,6 +71,9 @@ class Phase:
     url: str
     action: str
     """Qué hacer si falta (el texto del enlace del siguiente paso)."""
+    operate_href: str = ""
+    operate_label: str = ""
+    """Página de operación de la fase, si la tiene: se ofrece aunque la fase esté hecha."""
 
 
 # --- cada fase calcula su estado real y, si falta, adónde ir ------------------------------------
@@ -93,7 +96,15 @@ _scope = _wizard_phase("alcance", "Alcance", "alcance")
 _categorization = _wizard_phase("categorizacion", "Categorización", "categorizacion")
 _risk = _wizard_phase("riesgos", "Riesgos", "riesgos")
 _applicability = _wizard_phase("aplicabilidad", "Aplicabilidad", "aplicabilidad")
-_documents = _wizard_phase("documentos", "Documentos", GROUP)
+_documents_wizard = _wizard_phase("documentos", "Documentos", GROUP)
+
+
+def _documents(store: UiStore, now: datetime, status: object) -> Phase:
+    return replace(
+        _documents_wizard(store, now, status),
+        operate_href="/documentos",
+        operate_label="Ver los documentos",
+    )
 
 
 INCIDENT_MEASURE = "op.exp.9"

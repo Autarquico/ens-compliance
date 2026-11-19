@@ -13,6 +13,7 @@ from ens_evidence.ui.views import conectores as con
 from ens_evidence.ui.views import conectores_peticion as pet
 from ens_evidence.ui.views import conectores_recogida as rec
 from ens_evidence.ui.views import copias as cop
+from ens_evidence.ui.views import documents as docs
 from ens_evidence.ui.views import inventory as inv
 from ens_evidence.ui.views.agents import (
     AgentDetail,
@@ -29,6 +30,7 @@ TEMPLATES = Path(__file__).resolve().parents[2] / "src" / "ens_evidence" / "ui" 
 STATIC = TEMPLATES.parent / "static"
 
 HOSTILE = "<script>alert(1)</script>"
+HTML_HOSTILE = "&lt;script&gt;alert(1)&lt;/script&gt;"
 
 STEPS = [
     ("sistema", "Sistema", "alcance"),
@@ -92,6 +94,8 @@ VIEW_TEMPLATES = [
     "views/copias.html",
     "views/conectores.html",
     "views/conectores_form.html",
+    "views/documentos.html",
+    "views/documento.html",
 ]
 # Solo se importa desde otras plantillas.
 INDIRECT = {"_macros.html"}
@@ -1031,7 +1035,220 @@ _CON_FIELD_ERRORS = {f.name: [HOSTILE] for f in _CON_FIELDS} | {
 }
 
 
+_SHA = "a" * 64
+
+
+def _doc_source(**f):
+    return docs.SourceInfo(
+        **{
+            "template_id": HOSTILE,
+            "template_version": 2,
+            "renderer_version": 1,
+            "document_sha256": _SHA,
+            "catalog_sha256": "b" * 64,
+            "catalog_consolidation_date": "2026-10-01",
+            "articulado_sha256": "c" * 64,
+            "articulado_consolidation_date": "2026-09-01",
+            **f,
+        }
+    )
+
+
+def _doc_approval(**f):
+    return docs.ApprovalInfo(
+        **{
+            "approved_by": HOSTILE,
+            "role": "management",
+            "role_label": "la dirección",
+            "approved_at": "2026-11-10 09:00 UTC",
+            **f,
+        }
+    )
+
+
+def _doc_group(**f):
+    return docs.IssueGroup(
+        **{
+            "slug": "documentos-incidentes",
+            "label": "Incidentes",
+            "items": (HOSTILE, "¿Cómo se avisa?"),
+            "href": "/asistente/documentos-incidentes",
+            **f,
+        }
+    )
+
+
+def _doc_row(name="politica-seguridad", state="GENERATED", **f):
+    labels = {
+        "NOT_GENERATED": ("Sin generar", "neutral"),
+        "GENERATED": ("Generado, pendiente de aprobar", "warn"),
+        "APPROVED": ("Aprobado", "ok"),
+        "OBSOLETE": ("Aprobación caducada", "warn"),
+    }
+    label, tone = labels[state]
+    generated = state != "NOT_GENERATED"
+    return docs.DocumentRow(
+        **{
+            "name": name,
+            "title": HOSTILE,
+            "href": f"/documentos/{name}",
+            "state": state,
+            "state_label": label,
+            "tone": tone,
+            "reasons": (HOSTILE,) if state == "OBSOLETE" else (),
+            "source": _doc_source() if generated else None,
+            "approval": _doc_approval() if state == "APPROVED" else None,
+            "last_approval": _doc_approval() if state in ("APPROVED", "OBSOLETE") else None,
+            "approver": docs.ApproverInfo(
+                role="management",
+                role_label="la dirección",
+                signatory=HOSTILE,
+                responsables_href="/asistente/documentos-responsables",
+            ),
+            "missing": (),
+            "can_approve": state in ("GENERATED", "OBSOLETE"),
+            "can_submit": state in ("GENERATED", "OBSOLETE"),
+            "drift_notice": "Las respuestas han cambiado: genera de nuevo."
+            if state == "OBSOLETE"
+            else "",
+            "role_notice": "",
+            "error_key": f"approved_by~{name}",
+            "unreadable": 1 if state == "OBSOLETE" else 0,
+            "role_missing": False,
+            "role_options": (),
+            **f,
+        }
+    )
+
+
+_DOC_ROWS = (
+    _doc_row("politica-seguridad", "APPROVED"),
+    _doc_row("normativa-seguridad", "GENERATED"),
+    _doc_row("procedimientos", "OBSOLETE"),
+    _doc_row("plan-continuidad", "NOT_GENERATED", missing=(_doc_group(),)),
+)
+
+
+def _doc_page(rows=_DOC_ROWS, **f):
+    return docs.DocumentsPage(
+        **{
+            "rows": rows,
+            "scope_ok": True,
+            "answers_started": True,
+            "issue_groups": (),
+            "warnings": (HOSTILE,),
+            "can_generate": True,
+            "blockers": (),
+            "outcome": None,
+            "generated_at": "2026-11-19 10:00 UTC",
+            "scope_href": "",
+            "start_href": "/asistente/documentos-organizacion",
+            **f,
+        }
+    )
+
+
+def _doc_context(page=None, **f):
+    return {
+        "page": page or _doc_page(),
+        "saved": None,
+        "form_errors": [],
+        "values": {},
+        "errors": {},
+        "permissions": EDITOR,
+        "nav_active": "documentos",
+        **f,
+    }
+
+
+_DOC_BLOCKED = _doc_page(
+    rows=(_doc_row("normativa-seguridad", "NOT_GENERATED", missing=(_doc_group(),)),),
+    scope_ok=False,
+    answers_started=False,
+    scope_href="/asistente/aprobacion-alcance",
+    can_generate=False,
+    blockers=("El alcance no está aprobado.", HOSTILE),
+    issue_groups=(_doc_group(), _doc_group(slug=None, label="Otros avisos", href=None)),
+)
+_DOC_OUTCOME = _doc_page(
+    outcome=docs.GenerateOutcome(
+        created=("politica-seguridad",),
+        updated=("normativa-seguridad",),
+        unchanged=("procedimientos",),
+        archived=("normativa-seguridad", HOSTILE),
+    )
+)
+_DOC_NO_ROLE = _doc_page(
+    rows=(
+        _doc_row(
+            "politica-seguridad",
+            "GENERATED",
+            can_submit=False,
+            role_notice="Te falta el rol de dirección para aprobarlo.",
+        ),
+    )
+)
+_DOC_NO_SIGNATORY = _doc_page(
+    rows=(
+        _doc_row(
+            "procedimientos",
+            "GENERATED",
+            can_submit=False,
+            approver=docs.ApproverInfo(
+                role=None,
+                role_label=None,
+                signatory="",
+                responsables_href="/asistente/documentos-responsables",
+            ),
+            role_notice="Aún no has declarado quién aprueba los procedimientos.",
+        ),
+    )
+)
+
+
+def _doc_detail(state="GENERATED", **f):
+    return docs.DocumentDetail(
+        **{
+            "row": _doc_row("politica-seguridad", state),
+            "text": f"# {HOSTILE}\n\n<img src=x onerror>\n",
+            "truncated": False,
+            "clauses": (docs.ClauseRow(id="op.pl.1-a", origin=HOSTILE, section=HOSTILE),),
+            "measures": (
+                docs.MeasureRow(id="op.pl.1", covered=("op.pl.1-a",), missing=(HOSTILE,)),
+            ),
+            "history": (_doc_approval(), _doc_approval(approved_at="2026-11-12 09:00 UTC")),
+            "unreadable": (HOSTILE,),
+            **f,
+        }
+    )
+
+
 VIEW_CONTEXT = {
+    "views/documentos.html": [
+        _doc_context(),
+        _doc_context(permissions=READER),
+        _doc_context(_DOC_BLOCKED),
+        _doc_context(_DOC_OUTCOME, saved="aprobado"),
+        _doc_context(_DOC_NO_ROLE),
+        _doc_context(_DOC_NO_SIGNATORY),
+        _doc_context(
+            values={"approved_by~normativa-seguridad": HOSTILE},
+            errors={"approved_by~normativa-seguridad": [HOSTILE]},
+            form_errors=[HOSTILE],
+        ),
+    ],
+    "views/documento.html": [
+        {"detail": _doc_detail(), "nav_active": "documentos"},
+        {"detail": _doc_detail("APPROVED", truncated=True), "nav_active": "documentos"},
+        {"detail": _doc_detail("OBSOLETE", text="roto \ufffd"), "nav_active": "documentos"},
+        {
+            "detail": _doc_detail(
+                "NOT_GENERATED", text="", clauses=(), measures=(), history=(), unreadable=()
+            ),
+            "nav_active": "documentos",
+        },
+        {"detail": _doc_detail("GENERATED", text=""), "nav_active": "documentos"},
+    ],
     "agents.html": {"rows": [_AGENT_ROW, _AGENT_BARE], "problems": [HOSTILE], "notes": [HOSTILE]},
     "agents_detail.html": {
         "detail": AgentDetail(
@@ -1208,6 +1425,13 @@ VIEW_CONTEXT = {
         "next_step_label": "Seguir con el asistente",
         "phases": [
             {"key": "alcance", "label": "Alcance", "state": "done"},
+            {
+                "key": "documentos",
+                "label": "Documentos",
+                "state": "next",
+                "operate_href": "/documentos",
+                "operate_label": "Ver los documentos",
+            },
             {"key": "riesgos", "label": "Riesgos", "state": "next"},
             {"key": "matriz", "label": "Matriz", "state": "todo"},
         ],
@@ -2043,3 +2267,104 @@ def test_conectores_ficha_de_solo_lectura_muestra_la_peticion_sin_boton():
     block = dataclasses.replace(block, can_collect=False)
     html = _render("views/conectores_form.html", _con_form_context(block=block) | {"form": None})
     assert "Caducada" in html and "Recoger ahora</button>" not in html
+
+
+def _documentos(index=0):
+    return _render("views/documentos.html", VIEW_CONTEXT["views/documentos.html"][index])
+
+
+def _documento(index=0):
+    return _render("views/documento.html", VIEW_CONTEXT["views/documento.html"][index])
+
+
+def test_documentos_editor_muestra_estados_con_texto_y_el_nombre_llega_vacio():
+    html = _documentos()
+    for label in (
+        "Aprobado",
+        "Generado, pendiente de aprobar",
+        "Aprobación caducada",
+        "Sin generar",
+    ):
+        assert label in html
+    assert 'name="approved_by" value=""' in html
+    assert HOSTILE not in html and HTML_HOSTILE in html
+    assert "Cubrir" not in html and "Revisión humana obligatoria" in html
+    assert 'href="/estado' not in html and 'action="/documentos/generar"' in html
+    assert "/documentos/normativa-seguridad/aprobar" in html
+
+
+def test_documentos_el_aviso_de_caducidad_va_antes_del_formulario_de_aprobar():
+    html = _documentos()
+    row = html[html.index('id="doc-procedimientos"') : html.index('id="doc-plan-continuidad"')]
+    assert row.index("Las respuestas han cambiado") < row.index("<form")
+
+
+def test_documentos_sin_aprobacion_lo_dice_y_nunca_es_favorable():
+    html = _render(
+        "views/documentos.html",
+        _doc_context(_doc_page(rows=(_doc_row("normativa-seguridad", "GENERATED"),))),
+    )
+    assert "Sin aprobación" in html and "tone-ok" not in html
+    forced = _doc_page(rows=(_doc_row("normativa-seguridad", "GENERATED", tone="ok"),))
+    assert "tone-ok" not in _render("views/documentos.html", _doc_context(forced))
+
+
+def test_documentos_lector_no_ve_formularios_y_se_le_explica():
+    html = _documentos(1)
+    assert "<form" not in html and "<button" not in html
+    assert "Solo lectura: para generar o aprobar documentos hace falta permiso de edición." in html
+
+
+def test_documentos_con_impedimentos_no_ofrece_generar_y_los_enlaza():
+    html = _documentos(2)
+    assert "Generar los documentos</button>" not in html and "/documentos/generar" not in html
+    assert "El alcance no está aprobado." in html
+    assert 'href="/asistente/aprobacion-alcance"' in html
+    assert 'href="/asistente/documentos-organizacion"' in html
+    assert 'href="/asistente/documentos-incidentes"' in html and "Otros avisos" in html
+
+
+def test_documentos_el_resultado_de_generar_incluye_archivados_y_hash():
+    html = _documentos(3)
+    for text in ("Creados:", "Actualizados:", "Sin cambios:", "Había ediciones manuales"):
+        assert text in html
+    assert "a" * 64 in html
+    assert "Aprobación registrada" in html
+
+
+def test_documentos_sin_rol_no_hay_boton_ni_puerta_deshabilitada():
+    html = _documentos(4)
+    assert "Te falta el rol de dirección" in html
+    row = html[html.index('id="doc-politica-seguridad"') :]
+    assert "<button" not in row and "<fieldset" not in row and "disabled" not in html
+    sin_firmante = _documentos(5)
+    assert "<button" not in sin_firmante[sin_firmante.index('id="doc-procedimientos"') :]
+    assert "Aún no has declarado" in sin_firmante
+    assert 'href="/asistente/documentos-responsables"' in sin_firmante
+
+
+def test_documentos_errores_de_aprobar_van_con_su_campo_y_nada_se_prerellena_con_el_firmante():
+    html = _render("views/documentos.html", VIEW_CONTEXT["views/documentos.html"][6])
+    assert 'aria-invalid="true"' in html and 'id="err-approved_by~normativa-seguridad"' in html
+    assert 'value="&lt;script&gt;' in html
+
+
+def test_documento_ficha_escapa_el_texto_y_lleva_la_advertencia_de_cobertura():
+    html = _documento()
+    assert "&lt;img src=x onerror&gt;" in html and "<img" not in html
+    assert "Cubrir una cláusula no acredita que la medida esté implantada." in html
+    assert "<form" not in html
+    assert "no se pueden leer" in html and "Sin aprobación" not in html
+
+
+def test_documento_truncado_sin_texto_y_con_caracteres_reemplazados_lo_dicen():
+    assert "solo el principio del documento" in _documento(1)
+    assert "no son texto válido" in _documento(2)
+    assert "el documento no está generado" in _documento(3) and "<pre" not in _documento(3)
+    assert "no se ha podido leer" in _documento(4) and "<pre" not in _documento(4)
+
+
+def test_estado_enlaza_la_fase_de_documentos_solo_si_la_fase_lo_trae():
+    html = _render("views/estado.html", VIEW_CONTEXT["views/estado.html"])
+    assert 'href="/documentos"' in html and "Ver los documentos" in html
+    assert html.count('href="/documentos"') == 2  # menú y fase

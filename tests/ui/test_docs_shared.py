@@ -3,7 +3,7 @@
 import pytest
 
 from ens_evidence.models.enums import Role
-from ens_evidence.orgdocs import DocumentState, document_names, load_templates
+from ens_evidence.orgdocs import DocumentState, all_statuses, document_names, load_templates
 from ens_evidence.orgdocs.approval import FIXED_AUTHORITY
 from ens_evidence.orgdocs.contract import AUTHORITY_ROLE
 from ens_evidence.ui.store import UiStore
@@ -77,6 +77,37 @@ def test_issue_groups_agrupa_por_bloque_y_deja_lo_desconocido_en_otros_avisos():
     assert groups[-1]["items"] == ["desconocida: aviso raro"]
 
 
+def test_issue_groups_con_only_deja_solo_las_preguntas_pedidas_y_los_avisos_globales():
+    first, second = BLOCKS[0].question_ids[0], BLOCKS[2].question_ids[0]
+    report = FakeReport(
+        pending=[FakePending(first, "Primera"), FakePending(second, "Segunda")],
+        problems=[f"{first}: mal", f"{second}: peor", "desconocida: aviso raro"],
+    )
+
+    groups = issue_groups(report, only={first})
+
+    assert [g["slug"] for g in groups] == [BLOCKS[0].slug, None]
+    assert groups[0]["items"][0] == "Falta responder: Primera" and len(groups[0]["items"]) == 2
+    assert groups[-1]["label"] == "Otros avisos"
+    assert groups[-1]["items"] == ["desconocida: aviso raro"]
+
+
+def test_issue_groups_con_only_vacio_solo_conserva_los_avisos_globales():
+    qid = BLOCKS[0].question_ids[0]
+    report = FakeReport(pending=[FakePending(qid, "Pendiente")], problems=["suelto: aviso"])
+
+    assert issue_groups(report, only=set()) == [
+        {"slug": None, "label": "Otros avisos", "items": ["suelto: aviso"]}
+    ]
+
+
+def test_issue_groups_con_only_none_es_igual_que_sin_filtro():
+    qid = BLOCKS[0].question_ids[0]
+    report = FakeReport(pending=[FakePending(qid, "P")], problems=[f"{qid}: mal", "x: raro"])
+
+    assert issue_groups(report, only=None) == issue_groups(report)
+
+
 def test_issue_groups_sin_nada_no_devuelve_grupos():
     assert issue_groups(FakeReport()) == []
 
@@ -111,3 +142,13 @@ def test_questions_y_titles_cubren_las_plantillas():
     loaded = load_templates()
     assert set(titles()) == {item.id for item in loaded}
     assert questions() is questions()
+
+
+def test_document_rows_con_estados_ya_calculados_no_vuelve_a_leer(store):
+    statuses = all_statuses(UiStore(store))
+
+    class Unreadable:
+        def __getattr__(self, name):
+            raise AssertionError("no debe leer el almacén")
+
+    assert document_rows(Unreadable(), statuses) == document_rows(UiStore(store))
