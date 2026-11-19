@@ -259,7 +259,8 @@ una petición ya encolada se ejecuta aunque después se revoque el permiso.
 Cambiar quién aprueba los procedimientos (bloque «Responsables» de los
 documentos) pide `management`; sin él, ese campo queda inactivo y el resto del
 bloque se guarda con la edición. Qué rol pide cada documento está en la
-sección 12.
+sección 12. En Documentos, la fila indica el rol requerido y enlaza a
+Responsables; la orden para pedir el rol aparece en la página 403.
 
 Asignar un rol indica que esa persona puede firmar, no que sea quien firma: el
 nombre de `by` lo escribe quien rellena el formulario (el ADR 0021 hablaba de
@@ -468,14 +469,20 @@ aprobar de nuevo. Aprobar un documento no cambia el estado de ninguna medida.
 
 **Generar.** El botón solo aparece si el alcance está aprobado y las respuestas
 están completas; si no, la página lista los motivos con enlace al paso o bloque.
-El POST responde 303 a `/documentos#resultado`. El resultado de esa ejecución
-(documentos creados, actualizados, sin cambios, con el sha256 del informe de
-generación; una edición manual se archiva en `org/docs/history/` y se marca
-como archivada) se guarda en la memoria del servidor, ligado a quien generó, y
-se muestra una sola vez en el siguiente GET: caduca a los 5 minutos, no va en
-la URL y no lo ve otra persona. Recargar la página no repite la generación ni
-vuelve a mostrar el resultado; si el servidor se reinicia antes de leerlo, se
-pierde (los documentos y su estado siguen en la lista). Si el POST llega y el
+El POST responde 303 a `/documentos?resultado=<token>#resultado`. El token es un
+identificador aleatorio de un solo uso; el resultado en sí nunca va en la URL.
+El resultado de esa ejecución (documentos creados, actualizados, sin cambios,
+con el sha256 del informe de generación; una edición manual se archiva en
+`org/docs/history/` y se marca como archivada) se guarda en la memoria del
+servidor, ligado a quien generó y a ese token, y se muestra una sola vez en el
+GET que lo trae: caduca a los 5 minutos y no lo ve otra persona. Varias
+generaciones pendientes de la misma persona (p. ej. en dos pestañas) conviven,
+cada una con su token; un token desconocido, ajeno o caducado no muestra nada y
+no es un error, y un GET sin token (o un HEAD) no consume nada. Recargar la
+página no repite la generación ni vuelve a mostrar el resultado. Si el servidor
+se reinicia antes de leerlo, se pierde. Con varios workers de `ui`, el GET puede
+caer en otro proceso que no tiene el resultado: se pierde aunque los documentos
+ya estén escritos (siguen en la lista con su estado). Si el POST llega y el
 producto rechaza, responde 422 con los motivos y no escribe nada. Aprobar responde 303 a `/documentos?hecho=aprobado`.
 
 **Leer las líneas de auditoría.**

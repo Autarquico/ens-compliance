@@ -2,6 +2,7 @@
 
 import html
 import logging
+import re
 from datetime import timedelta
 from pathlib import Path
 
@@ -126,6 +127,8 @@ def test_scenario_1_estado_con_fuente_y_aprobacion(session, ready):
     assert procedures.approval is None
     assert MANAGER in page.text and policy.source.document_sha256 in page.text
     assert policy.source.catalog_consolidation_date in page.text
+    assert policy.source.catalog_sha256 in page.text
+    assert policy.source.articulado_sha256 in page.text
     assert "Aprobado" in page.text and "Sin generar" in page.text
     assert "Generado, pendiente de aprobar" in page.text
     assert f'href="/documentos/{POLICY}"' in page.text
@@ -238,6 +241,7 @@ def test_scenario_4_aviso_de_documento_desactualizado_antes_de_enviar(session, r
     assert all(reason in policy.drift_notice for reason in policy.reasons)
     assert "no está al día" in page.text
     assert f'action="/documentos/{POLICY}/aprobar"' in page.text
+    assert 'action="/documentos/generar"' in page.text and "Generar los documentos" in page.text
 
 
 def test_documento_al_dia_no_lleva_aviso(ready):
@@ -581,12 +585,17 @@ def writable(example_store):
     return example_store
 
 
+def redirect_path(response) -> str:
+    location = response.headers["location"]
+    assert re.fullmatch(r"/documentos\?resultado=[A-Za-z0-9_-]{16,}#resultado", location)
+    return location.split("#")[0]
+
+
 def generate_and_show(session):
-    """POST generar (debe ser 303 a /documentos#resultado) y el GET siguiente."""
+    """POST generar (303 a /documentos?resultado=<token>#resultado) y el GET de esa redirección."""
     response = session.post("/documentos/generar", {})
     assert response.status_code == 303
-    assert response.headers["location"] == "/documentos#resultado"
-    return session.get("/documentos")
+    return session.get(redirect_path(response))
 
 
 def test_generar_crea_los_documentos_y_los_lista_con_su_sha(session, writable, audit):
@@ -620,12 +629,46 @@ def test_el_resultado_no_va_en_la_url_ni_lo_ve_otra_persona(config, writable, ke
     client = ui_client(config, writable, key)
     ana = Session(client, token)
     luis = Session(client, mint(key, email="luis@example.com"))
-    assert ana.post("/documentos/generar", {}).status_code == 303
+    redirect = ana.post("/documentos/generar", {})
+    path = redirect_path(redirect)
+    assert "Creados" not in redirect.headers["location"]
 
-    assert "Resultado de la generación" not in luis.get("/documentos").text
-    crafted = ana.get("/documentos?creados=x&resultado=1")
-    assert "Resultado de la generación" in crafted.text  # el suyo, retirado ahora
-    assert "Resultado de la generación" not in ana.get("/documentos").text
+    assert "Resultado de la generación" not in luis.get(path).text  # token ajeno
+    assert "Resultado de la generación" not in ana.get("/documentos?resultado=inventado").text
+    assert "Resultado de la generación" in ana.get(path).text  # el suyo, retirado ahora
+    assert "Resultado de la generación" not in ana.get(path).text
+
+
+def test_dos_generaciones_de_la_misma_persona_se_ven_cada_una_con_su_redireccion(session, writable):
+    first = redirect_path(session.post("/documentos/generar", {}))
+    write_answers(writable, organizacion="Otra organización distinta, S.L.")
+    second = redirect_path(session.post("/documentos/generar", {}))
+    assert first != second
+
+    late = session.get(second)
+    early = session.get(first)
+
+    assert "Actualizados:" in late.text and "Creados:" not in late.text
+    assert "Creados:" in early.text and "Actualizados:" not in early.text
+
+
+def test_un_get_sin_token_entre_el_post_y_su_redireccion_no_consume_el_resultado(session, writable):
+    path = redirect_path(session.post("/documentos/generar", {}))
+
+    assert "Resultado de la generación" not in session.get("/documentos").text
+
+    assert "Resultado de la generación" in session.get(path).text
+
+
+def test_un_head_antes_del_get_no_gasta_el_resultado(config, writable, key, token):
+    client = ui_client(config, writable, key)
+    session = Session(client, token)
+    path = redirect_path(session.post("/documentos/generar", {}))
+
+    head = client.head(path, headers={"Cf-Access-Jwt-Assertion": token}, follow_redirects=False)
+
+    assert head.status_code == 200
+    assert "Resultado de la generación" in session.get(path).text
 
 
 def test_generar_otra_vez_deja_todo_sin_cambios_y_no_escribe(session, writable, audit):
@@ -670,13 +713,13 @@ def test_una_edicion_manual_archivada_figura_como_actualizada_con_su_aviso(sessi
 
 
 def test_el_sha_del_resultado_es_el_del_informe_no_el_del_meta_releido(session, writable):
-    session.post("/documentos/generar", {})
+    path = redirect_path(session.post("/documentos/generar", {}))
     metas = {n: writable.read_text(meta_key(n)) for n in document_names()}
     for name, meta in metas.items():  # otra generación cambia el meta entre el POST y el GET
         sha = view._read_meta(UiStore(writable), name).document_sha256
         writable.write_text(meta_key(name), meta.replace(sha, "f" * 64))
 
-    page = session.get("/documentos")
+    page = session.get(path)
 
     for name in document_names():
         reported = view._read_meta(UiStore(writable), name)
@@ -717,14 +760,16 @@ def test_una_url_manipulada_no_muestra_resultado_de_generacion(session, ready):
 def test_la_estanteria_caduca_y_esta_acotada():
     outcome = view.GenerateOutcome((), (), ())
     shelf = view.OutcomeShelf(ttl=timedelta(minutes=5), capacity=2)
-    shelf.put("a", outcome, NOW)
-    assert shelf.take("a", NOW + timedelta(minutes=6)) is None
-    shelf.put("a", outcome, NOW)
-    shelf.put("b", outcome, NOW)
-    shelf.put("c", outcome, NOW)
-    assert shelf.take("a", NOW) is None
-    assert shelf.take("b", NOW) is outcome
-    assert shelf.take("b", NOW) is None
+    old = shelf.put("a", outcome, NOW)
+    assert shelf.take("a", old, NOW + timedelta(minutes=6)) is None
+    first = shelf.put("a", outcome, NOW)
+    second = shelf.put("a", outcome, NOW)
+    third = shelf.put("a", outcome, NOW)
+    assert shelf.take("a", first, NOW) is None  # el más antiguo cedió ante el tope
+    assert shelf.take("b", second, NOW) is None  # ajeno: no se entrega ni se gasta
+    assert shelf.take("a", second, NOW) is outcome
+    assert shelf.take("a", second, NOW) is None
+    assert shelf.take("a", third, NOW) is outcome
 
 
 def test_un_fallo_en_la_segunda_escritura_audita_solo_las_claves_escritas(

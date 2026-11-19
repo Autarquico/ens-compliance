@@ -4,6 +4,7 @@ Solo lee. La lógica es la del asistente (`wizard/docs_shared.py`) y la de las A
 (`orgdocs`); aquí solo se presenta. La plantilla recibe únicamente los DTO de este módulo.
 """
 
+import secrets
 import threading
 from collections import OrderedDict
 from dataclasses import dataclass
@@ -182,27 +183,32 @@ OUTCOME_CAPACITY = 256
 
 
 class OutcomeShelf:
-    """El resultado de la última generación de cada persona, para enseñarlo una sola vez.
+    """Los resultados de generación pendientes de enseñar, cada uno tras su propio token.
 
-    Vive en la memoria del servidor (no es un secreto ni sale en la URL): el POST lo deja y el
-    siguiente GET de la misma identidad lo retira. Caduca y está acotado."""
+    Vive en la memoria del servidor (no es un secreto ni sale en la URL: solo viaja el token
+    opaco): el POST deja el resultado y el GET que trae ese token, de la misma identidad, lo
+    retira. Caduca y está acotado."""
 
     def __init__(self, ttl: timedelta = OUTCOME_TTL, capacity: int = OUTCOME_CAPACITY) -> None:
         self._ttl, self._capacity = ttl, capacity
-        self._entries: OrderedDict[str, tuple[datetime, GenerateOutcome]] = OrderedDict()
+        self._entries: OrderedDict[str, tuple[str, datetime, GenerateOutcome]] = OrderedDict()
         self._lock = threading.Lock()
 
-    def put(self, identity: str, outcome: GenerateOutcome, now: datetime) -> None:
+    def put(self, identity: str, outcome: GenerateOutcome, now: datetime) -> str:
+        token = secrets.token_urlsafe(16)
         with self._lock:
-            self._entries.pop(identity, None)
-            self._entries[identity] = (now + self._ttl, outcome)
+            self._entries[token] = (identity, now + self._ttl, outcome)
             while len(self._entries) > self._capacity:
                 self._entries.popitem(last=False)
+        return token
 
-    def take(self, identity: str, now: datetime) -> GenerateOutcome | None:
+    def take(self, identity: str, token: str, now: datetime) -> GenerateOutcome | None:
         with self._lock:
-            entry = self._entries.pop(identity, None)
-        return entry[1] if entry and now < entry[0] else None
+            entry = self._entries.get(token)
+            if entry is None or entry[0] != identity:  # ajeno o desconocido: no se toca
+                return None
+            del self._entries[token]
+        return entry[2] if now < entry[1] else None
 
 
 @dataclass(frozen=True)
@@ -543,9 +549,10 @@ def _list_page(
 
 def listado(request: Request) -> Response:
     outcome = None
-    if request.method == "GET":  # un HEAD no gasta el resultado
+    token = request.query_params.get("resultado", "")
+    if request.method == "GET" and token:  # un HEAD o un GET sin token no gastan nada
         outcome = request.app.state.outcomes.take(
-            identity_of(request).email, request.app.state.clock()
+            identity_of(request).email, token, request.app.state.clock()
         )
     return _list_page(request, request.app.state.store, saved=_saved(request), outcome=outcome)
 
@@ -630,10 +637,10 @@ async def generar(request: Request) -> Response:
         lines = [INVALID_ANSWERS, *_blocker_lines(GenerationBlockers(True, True, (), groups))]
         return _refused(request, "generar", store, form_errors=lines)
     _audit(request, "generar", store.written)
-    request.app.state.outcomes.put(
+    token = request.app.state.outcomes.put(
         identity_of(request).email, generate_outcome(report), request.app.state.clock()
     )
-    return RedirectResponse(f"{LIST_PATH}#resultado", status_code=303)
+    return RedirectResponse(f"{LIST_PATH}?resultado={token}#resultado", status_code=303)
 
 
 def _echo(key: str, by: str) -> dict[str, str]:

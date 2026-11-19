@@ -66,6 +66,8 @@
     </th>
     <td>{% if r.source %}<span class="mono">{{ r.source.template_id }}</span> v{{ r.source.template_version }}
       <div class="muted">sha256 <span class="mono">{{ r.source.document_sha256 }}</span></div>
+      <div class="muted">catálogo sha256 <span class="mono">{{ r.source.catalog_sha256 }}</span></div>
+      <div class="muted">articulado sha256 <span class="mono">{{ r.source.articulado_sha256 }}</span></div>
       <div class="muted">Catálogo consolidado el {{ r.source.catalog_consolidation_date }}; articulado el {{ r.source.articulado_consolidation_date }}.</div>
       {%- else %}<span class="muted">—</span>{% endif %}</td>
     <td>{% if r.approval %}<strong>{{ r.approval.approved_by }}</strong> <span class="muted">(nombre declarado)</span>
