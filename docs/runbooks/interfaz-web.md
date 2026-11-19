@@ -258,7 +258,8 @@ Enviar a una pre-auditoría externa y decidir sus hallazgos piden
 una petición ya encolada se ejecuta aunque después se revoque el permiso.
 Cambiar quién aprueba los procedimientos (bloque «Responsables» de los
 documentos) pide `management`; sin él, ese campo queda inactivo y el resto del
-bloque se guarda con la edición.
+bloque se guarda con la edición. Qué rol pide cada documento está en la
+sección 12.
 
 Asignar un rol indica que esa persona puede firmar, no que sea quien firma: el
 nombre de `by` lo escribe quien rellena el formulario (el ADR 0021 hablaba de
@@ -415,3 +416,70 @@ las de pre-auditoría.
 Las peticiones no se borran nunca de forma automática: cada pulsación deja sus
 ficheros en `evidence/collect-requests/<conector>/` como parte del rastro de
 auditoría. Solo las vivas cuentan para el límite de una por conector.
+
+## 12. Documentos
+
+`/documentos` es la pantalla de operación de la documentación organizativa: una
+fila por documento de las plantillas. El cuestionario sigue en el asistente
+(`/asistente/documentos-*`); esta página solo enlaza a cada bloque desde lo que
+falta.
+
+**Qué muestra cada fila.**
+
+- Estado: sin generar, generado pendiente de aprobar, aprobado o aprobación
+  caducada. Un documento que ya no coincide con sus entradas lleva los motivos
+  en llano. Sin aprobación nunca se pinta como favorable.
+- Fuente del documento generado: plantilla y versión, sha256 y fechas de
+  consolidación del catálogo y del articulado. No hay fecha de generación: el
+  meta no la guarda y no se inventa; la única fecha es la de cada aprobación.
+- Última aprobación: nombre declarado, rol y fecha.
+- Quién debe aprobarlo y qué falta para generarlo (preguntas pendientes o
+  inválidas, por bloque y enlazadas).
+
+`/documentos/{documento}` es la ficha: texto generado (escapado, recortado a
+1 MiB solo en pantalla), meta, cláusulas y medidas que cubre, historial de
+aprobaciones y aviso de registros ilegibles. Un documento sin generar muestra la
+ficha sin texto; un nombre que no está en las plantillas da 404.
+
+**`by` es un nombre declarado.** «Quién lo aprueba» se escribe a mano y nunca
+viene relleno, ni desde el JWT ni desde las respuestas. El producto exige que
+coincida con la persona declarada para el puesto (`firmante_direccion`,
+responsable de la seguridad o del sistema); la página muestra ese nombre como
+referencia. Quién operaba la pantalla lo dice la auditoría, no el campo.
+
+**Rol que exige cada documento** (`orgdocs/approval.py`). Hace falta además
+permiso de edición (sección 7).
+
+| Documento | Rol |
+|---|---|
+| `politica-seguridad`, `normativa-seguridad`, `designacion-responsables` | `management` |
+| `procedimiento-incidentes`, `procedimientos-seguridad`, `proceso-autorizacion` | El de la autoridad declarada en `autoridad_procedimientos`: la dirección (`management`), el responsable de la seguridad (`security_officer`) o el del sistema (`system_owner`) |
+
+Si la organización aún no ha declarado esa autoridad, la fila lo dice, enlaza al
+bloque «Responsables» y no ofrece aprobar. Quien no tiene el rol ve cuál le
+falta y la orden que tendría que pedir (sección 7), sin botón.
+
+**Una aprobación no se revoca desde la web.** El registro
+(`org/docs/approvals/<documento>/`) es de solo añadir. Si el documento cambia o
+sus respuestas cambian, la aprobación pasa a caducada y hay que generar y
+aprobar de nuevo. Aprobar un documento no cambia el estado de ninguna medida.
+
+**Generar.** El botón solo aparece si el alcance está aprobado y las respuestas
+están completas; si no, la página lista los motivos con enlace al paso o bloque.
+El POST responde 200 con el resultado de esa ejecución: documentos creados,
+actualizados, sin cambios y archivados (una edición manual se archiva en
+`org/docs/history/`), con su sha256. Recargar repite una generación
+determinista. Si el POST llega y el producto rechaza, responde 422 con los
+motivos y no escribe nada. Aprobar responde 303 a `/documentos?hecho=aprobado`.
+
+**Leer las líneas de auditoría.**
+`docker compose -p ens-box logs ui | grep 'ens_evidence.ui.audit'`. Los pasos son
+`step=documentos` con `action=generar` o `action=aprobar`. Ninguna línea lleva
+el nombre escrito ni mensajes con valores.
+
+| `outcome` | Significa | Qué mirar |
+|---|---|---|
+| `saved` | Se escribió. | `keys=` son las claves escritas; `roles=` el rol usado al aprobar (`management`…). `keys=-` si todo estaba sin cambios. |
+| `rejected` | La petición llegó al handler y se rechazó antes de escribir (alcance, respuestas, nombre no declarado, documento desconocido, documento no al día). | `keys=-`; el motivo está en la respuesta 422 que vio la persona, no en el log. |
+| `failed` | Falló la escritura tras haber escrito algo. | `keys=` solo las claves **efectivamente** escritas; revisa el workspace y vuelve a generar. |
+| `denied` | Rechazada antes del handler o por rol: sin permiso de edición (403) o sin el rol del documento. | `path=`, `reason=` y `role=` (el rol que faltaba). No se escribió nada. |

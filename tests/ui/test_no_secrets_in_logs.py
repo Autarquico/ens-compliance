@@ -3,6 +3,7 @@
 import logging
 
 import pytest
+import yaml
 
 from .conftest import WRITE_HEADERS, auth, mint
 from .test_hostile import ALL_PAGES, STEP_PATHS
@@ -143,3 +144,34 @@ def test_una_recogida_con_un_token_en_su_error_no_llega_al_resultado_ni_a_la_pag
     everything = "\n".join((files, pages, all_logged_text(caplog)))
     for secret in secrets:
         assert secret not in everything
+
+
+def test_los_logs_no_llevan_un_secreto_enviado_como_aprobador_de_un_documento(
+    caplog, raw_client, example_store, token
+):
+    from ens_evidence.models.enums import Role
+    from ens_evidence.orgdocs import ANSWERS_KEY, build_documents
+    from ens_evidence.scope import approve_scope
+
+    from .conftest import NOW
+    from .test_wizard_docs import ANSWERS
+
+    secret = "ghp_abcdefghijklmnopqrstuvwxyz0123456789"
+    approve_scope(example_store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
+    example_store.write_text(ANSWERS_KEY, yaml.safe_dump(ANSWERS, allow_unicode=True))
+    build_documents(example_store)
+    caplog.set_level(logging.DEBUG)
+    good = {**auth(token), **WRITE_HEADERS}
+
+    rejected = raw_client.post(
+        "/documentos/politica-seguridad/aprobar", data={"approved_by": secret}, headers=good
+    )
+    raw_client.post(
+        "/documentos/politica-seguridad/aprobar", data={"approved_by": secret}, headers=auth(token)
+    )
+    raw_client.post("/documentos/no-existe/aprobar", data={"approved_by": secret}, headers=good)
+    raw_client.post("/documentos/generar", data={"approved_by": secret}, headers=good)
+
+    assert rejected.status_code == 422
+    assert secret not in rejected.text
+    assert secret not in all_logged_text(caplog)

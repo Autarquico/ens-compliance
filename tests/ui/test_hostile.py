@@ -5,8 +5,12 @@ import yaml
 from starlette.routing import Route
 from starlette.testclient import TestClient
 
+from ens_evidence.models.enums import Role
+from ens_evidence.orgdocs import ANSWERS_KEY, build_documents
+from ens_evidence.orgdocs.keys import document_key
 from ens_evidence.preaudit.records import scan_runs
 from ens_evidence.preaudit.requests import list_requests
+from ens_evidence.scope import approve_scope
 from ens_evidence.ui.app import create_ui_app
 from ens_evidence.ui.forms import MAX_UPLOAD_BYTES
 from ens_evidence.ui.routes import ui_routes
@@ -31,6 +35,7 @@ from .test_preaudit_actions import stages as stages  # noqa: PLC0414
 from .test_tools import FORM as COPIAS_FORM
 from .test_tools import SENTINELS as COPIAS_SECRETS
 from .test_tools_claves import FORM as CLAVES_FORM
+from .test_wizard_docs import ANSWERS
 
 VIEWS = [
     "/",
@@ -41,10 +46,12 @@ VIEWS = [
     "/monitorizacion",
     "/conectores",
     "/conectores/github",
+    "/documentos",
 ]
 STEP_PATHS = [f"/asistente/{s.slug}" for s in STEPS]
 KIT_PATHS = ["/herramientas", "/herramientas/claves", "/herramientas/claves/custodios"]
-ALL_PAGES = [*VIEWS, "/asistente", *STEP_PATHS, *KIT_PATHS]
+DOCUMENT_PAGE = "/documentos/politica-seguridad"
+ALL_PAGES = [*VIEWS, DOCUMENT_PAGE, "/asistente", *STEP_PATHS, *KIT_PATHS]
 XSS = "<script>alert(1)</script>"
 IMG = '"><img src=x onerror=alert(2)>'
 SECURITY_HEADERS = (
@@ -107,6 +114,12 @@ def test_otros_metodos_que_escriben_tambien_exigen_origen(client, token, method)
 
 
 def hostile_workspace(store) -> None:
+    approve_scope(store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
+    store.write_text(ANSWERS_KEY, yaml.safe_dump(ANSWERS, allow_unicode=True))
+    build_documents(store)
+    policy = document_key("politica-seguridad")
+    store.write_text(policy, f"{XSS}\n{IMG}\n" + store.read_text(policy))
+
     def edit(key, change):
         data = yaml.safe_load(store.read_text(key))
         change(data)

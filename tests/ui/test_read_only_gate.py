@@ -3,10 +3,16 @@
 import re
 
 import pytest
+import yaml
 
 from ens_evidence.models.enums import Role
+from ens_evidence.orgdocs import ANSWERS_KEY, build_documents
+from ens_evidence.scope import approve_scope
 from ens_evidence.ui.pages import code_spans, roles_notices
 from ens_evidence.ui.roles import ROLES_KEY, Grant, Permissions, RolesStatus, dump_roles
+
+from .conftest import NOW
+from .test_wizard_docs import ANSWERS
 
 EMAIL = "ana@example.com"
 FORM_PAGES = [
@@ -66,6 +72,26 @@ def test_sin_edicion_el_listado_de_conectores_no_ofrece_recoger_ahora(session, e
 
     assert "Recoger ahora</button>" not in page
     assert 'method="post"' not in page
+
+
+@pytest.mark.parametrize("path", ["/documentos", "/documentos/politica-seguridad"])
+def test_sin_edicion_los_documentos_no_ofrecen_formulario_y_lo_explican(
+    session, example_store, path
+):
+    approve_scope(example_store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
+    example_store.write_text(ANSWERS_KEY, yaml.safe_dump(ANSWERS, allow_unicode=True))
+    build_documents(example_store)
+    grant(example_store, False)
+
+    page = session.get(path).text
+
+    assert 'method="post"' not in page
+    assert "Generar los documentos</button>" not in page
+    assert "Aprobar este documento" not in page
+    if path == "/documentos":
+        assert (
+            "Solo lectura: para generar o aprobar documentos hace falta permiso de edición." in page
+        )
 
 
 @pytest.mark.parametrize("path", ["/asistente/sistema", "/evidencias/nueva", "/incidentes/nuevo"])

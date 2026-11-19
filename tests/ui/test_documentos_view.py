@@ -817,3 +817,29 @@ def test_d7_sin_autoridad_declarada_hay_aviso_sin_boton_y_el_post_se_rechaza(ses
     assert response.status_code == 422 and view.NO_AUTHORITY in response.text
     assert snapshot_of(ready) == before
     assert len(audit_lines(audit, "rejected")) == 1
+
+
+# --- escenarios 5 y 6: lector y nombre hostil en el POST de aprobar -------------------------------
+
+
+def test_un_lector_recibe_403_al_aprobar_y_no_escribe(config, ready, key, token, audit):
+    grant(ready, False, Role.MANAGEMENT)
+    session = Session(ui_client(config, ready, key), token)
+    before = snapshot_of(ready)
+
+    response = session.post(f"/documentos/{POLICY}/aprobar", approve_form(MANAGER))
+
+    assert response.status_code == 403
+    assert snapshot_of(ready) == before
+    assert len(audit_lines(audit, "denied")) == 1
+    assert not audit_lines(audit, "saved")
+
+
+def test_aprobar_con_un_nombre_de_documento_con_ruta_se_rechaza_y_no_escribe(session, ready, audit):
+    before = snapshot_of(ready)
+
+    response = session.post("/documentos/..%2Forg%2Fanswers/aprobar", approve_form(MANAGER))
+
+    assert response.status_code in (404, 422)
+    assert snapshot_of(ready) == before
+    assert not audit_lines(audit, "saved")
