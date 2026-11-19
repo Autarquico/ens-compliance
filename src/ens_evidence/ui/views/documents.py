@@ -7,21 +7,25 @@ Solo lee. La lógica es la del asistente (`wizard/docs_shared.py`) y la de las A
 from dataclasses import dataclass
 from datetime import datetime
 from functools import cache
+from typing import Any
 
 import yaml
 from pydantic import ValidationError
+from starlette.concurrency import run_in_threadpool
 from starlette.exceptions import HTTPException
 from starlette.requests import Request
-from starlette.responses import Response
+from starlette.responses import RedirectResponse, Response
 from starlette.routing import BaseRoute, Route
 
 from ens_evidence.approvals import safe_load_unique
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
+    AnswersInvalid,
     BuildReport,
     DocumentState,
     DocumentStatus,
     all_statuses,
+    build_documents,
     document_names,
     load_templates,
     validate_answers,
@@ -29,6 +33,9 @@ from ens_evidence.orgdocs import (
 from ens_evidence.orgdocs.answers import AnswersReport
 from ens_evidence.orgdocs.approval import (
     DocumentApproval,
+    DocumentApprovalRejected,
+    UnknownDocument,
+    approve_document,
     document_status,
     required_role,
     scan_approvals,
@@ -36,12 +43,21 @@ from ens_evidence.orgdocs.approval import (
 from ens_evidence.orgdocs.build import BuildStatus
 from ens_evidence.orgdocs.keys import document_key, meta_key
 from ens_evidence.orgdocs.meta import DocumentMeta
-from ens_evidence.scope import ScopeState, scope_status
-from ens_evidence.ui.pages import page_context, permissions_of, render
+from ens_evidence.scope import ScopeNotApproved, ScopeState, scope_status
+from ens_evidence.scope.secrets import find_secrets
+from ens_evidence.ui.audit import audit_write
+from ens_evidence.ui.forms import FormInvalid, FormTooLarge, first, read_form
+from ens_evidence.ui.pages import (
+    error_page,
+    identity_of,
+    page_context,
+    permissions_of,
+    render,
+)
 from ens_evidence.ui.roles import Permissions, role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
-from ens_evidence.ui.wizard.base import read_yaml
+from ens_evidence.ui.wizard.base import StepRejected, declared_name, read_yaml
 from ens_evidence.ui.wizard.docs_shared import (
     ROLE_LABELS,
     SCOPE_NOT_APPROVED,
@@ -66,7 +82,10 @@ NO_AUTHORITY = (
     "Antes de aprobar este documento di quién aprueba los procedimientos, en el bloque "
     "«Responsables y designación»."
 )
+UNKNOWN_DOCUMENT = "No reconocemos ese documento."
 SAVED_VALUES = frozenset({"aprobado"})
+STEP = "documentos"
+BLOCKER_ITEMS_SHOWN = 3
 
 
 # --- DTO -----------------------------------------------------------------------------------------
@@ -144,7 +163,7 @@ class GenerateOutcome:
     updated: tuple[str, ...]
     unchanged: tuple[str, ...]
     archived: tuple[str, ...]
-    """Documentos editados a mano cuya versión anterior se archivó (también figuran en updated)."""
+    """Documentos editados a mano cuya versión anterior se archivó (no figuran en updated)."""
 
 
 @dataclass(frozen=True)
@@ -275,14 +294,16 @@ def generation_blockers(store: UiStore, report: AnswersReport) -> GenerationBloc
 
 
 def generate_outcome(report: BuildReport) -> GenerateOutcome:
-    def names(*kinds: BuildStatus) -> tuple[str, ...]:
-        return tuple(d.name for d in report.documents if d.status in kinds)
+    def names(kind: BuildStatus, *, by_hand: bool = False) -> tuple[str, ...]:
+        return tuple(
+            d.name for d in report.documents if d.status is kind and d.edited_by_hand is by_hand
+        )
 
     return GenerateOutcome(
         created=names(BuildStatus.CREATED),
         updated=names(BuildStatus.UPDATED),
         unchanged=names(BuildStatus.UNCHANGED),
-        archived=tuple(d.name for d in report.documents if d.edited_by_hand),
+        archived=names(BuildStatus.UPDATED, by_hand=True),
     )
 
 
@@ -434,17 +455,34 @@ def _saved(request: Request) -> str | None:
     return value if value in SAVED_VALUES else None
 
 
-def listado(request: Request) -> Response:
-    page = build_page(request.app.state.store, request.app.state.clock(), permissions_of(request))
+def _list_page(
+    request: Request,
+    store: UiStore,
+    *,
+    status: int = 200,
+    saved: str | None = None,
+    outcome: GenerateOutcome | None = None,
+    form_errors: list[str] | None = None,
+    errors: dict[str, list[str]] | None = None,
+    values: dict[str, str] | None = None,
+) -> Response:
+    page = build_page(store, request.app.state.clock(), permissions_of(request), outcome)
     return render(
         request,
         "views/documentos.html",
+        status,
         **page_context(request, "documentos", "Documentos"),
         page=page,
         rows=page.rows,
-        saved=_saved(request),
-        form_errors=[],
+        saved=saved,
+        form_errors=form_errors or [],
+        errors=errors or {},
+        values=values or {},
     )
+
+
+def listado(request: Request) -> Response:
+    return _list_page(request, request.app.state.store, saved=_saved(request))
 
 
 def ficha(request: Request) -> Response:
@@ -461,7 +499,127 @@ def ficha(request: Request) -> Response:
     )
 
 
+# --- escritura -----------------------------------------------------------------------------------
+
+
+def _audit(request: Request, action: str, keys: list[str], *, failed: bool = False) -> None:
+    audit_write(
+        identity=identity_of(request).email,
+        step=STEP,
+        action=action,
+        keys=keys,
+        at=request.app.state.clock(),
+        roles=[r.value for r in permissions_of(request).used],
+        failed=failed,
+    )
+
+
+def _audit_rejected(request: Request, action: str) -> None:
+    audit_write(
+        identity=identity_of(request).email,
+        step=STEP,
+        action=action,
+        keys=[],
+        at=request.app.state.clock(),
+        roles=[r.value for r in permissions_of(request).used],
+        rejected=True,
+    )
+
+
+async def _written(request: Request, store: UiStore, action: str, work):
+    """Ejecuta la escritura; si falla tras escribir algo, audita lo escrito y relanza."""
+    try:
+        return await run_in_threadpool(work)
+    except StepRejected:
+        raise
+    except Exception:
+        if store.written:
+            _audit(request, action, store.written, failed=True)
+        raise
+
+
+def _refused(request: Request, action: str, store: UiStore, **page: Any) -> Response:
+    _audit_rejected(request, action)
+    return _list_page(request, store, status=422, **page)
+
+
+def _blocker_lines(blockers: GenerationBlockers) -> list[str]:
+    return [
+        *blockers.reasons,
+        *(f"{g.label}: {item}" for g in blockers.groups for item in g.items[:BLOCKER_ITEMS_SHOWN]),
+    ]
+
+
+async def generar(request: Request) -> Response:
+    store = request.app.state.store.recording()
+    blockers = generation_blockers(store, _report(store))
+    if not blockers.clear:
+        return _refused(request, "generar", store, form_errors=_blocker_lines(blockers))
+    try:
+        report = await _written(request, store, "generar", lambda: build_documents(store))
+    except ScopeNotApproved:  # el alcance cambió entre el cálculo y la generación
+        return _refused(request, "generar", store, form_errors=[SCOPE_NOT_APPROVED])
+    except AnswersInvalid as exc:
+        groups = _groups(issue_groups(exc.report))
+        lines = [INVALID_ANSWERS, *_blocker_lines(GenerationBlockers(True, True, (), groups))]
+        return _refused(request, "generar", store, form_errors=lines)
+    _audit(request, "generar", store.written)
+    return _list_page(request, store, outcome=generate_outcome(report))
+
+
+def _echo(key: str, by: str) -> dict[str, str]:
+    """Lo que la persona escribió, para repintarlo; lo que parece un secreto no se devuelve."""
+    return {} if find_secrets({"valor": by}) else {key: by}
+
+
+def _approve(store: UiStore, name: str, by: str, role, now: datetime) -> None:
+    try:
+        approve_document(store, name, by, role, now)
+    except ScopeNotApproved:
+        raise StepRejected(form_errors=[SCOPE_NOT_APPROVED]) from None
+    except UnknownDocument:
+        raise StepRejected(form_errors=[UNKNOWN_DOCUMENT]) from None
+    except DocumentApprovalRejected as exc:
+        raise StepRejected(form_errors=[plain(e) for e in exc.errors]) from None
+
+
+async def aprobar(request: Request) -> Response:
+    store, now = request.app.state.store.recording(), request.app.state.clock()
+    name = request.path_params["documento"]
+    if name not in document_names():  # antes de derivar ninguna clave del segmento
+        return _refused(request, "aprobar", store, form_errors=[UNKNOWN_DOCUMENT])
+    try:
+        form = await read_form(request)
+    except FormTooLarge:
+        _audit_rejected(request, "aprobar")
+        return error_page(request, 413, "El formulario es demasiado grande.")
+    except FormInvalid:
+        _audit_rejected(request, "aprobar")
+        return error_page(request, 400, "No se ha entendido el formulario.")
+    by, key = first(form, "approved_by"), f"approved_by~{name}"
+    try:
+        declared_name(by, "Quién lo aprueba", key)
+        role = required_role(name, _report(store).values)
+        if role is None:
+            raise StepRejected(form_errors=[NO_AUTHORITY])
+        permissions_of(request).require(role)
+        await _written(request, store, "aprobar", lambda: _approve(store, name, by, role, now))
+    except StepRejected as rejected:
+        return _refused(
+            request,
+            "aprobar",
+            store,
+            form_errors=rejected.form_errors,
+            errors=rejected.errors,
+            values=_echo(key, by),
+        )
+    _audit(request, "aprobar", store.written)
+    return RedirectResponse(f"{LIST_PATH}?hecho=aprobado#doc-{name}", status_code=303)
+
+
 DOCUMENTS_ROUTES: list[BaseRoute] = [
     Route(LIST_PATH, listado, methods=["GET"]),
+    Route(f"{LIST_PATH}/generar", generar, methods=["POST"]),
     Route(f"{LIST_PATH}/{{documento}}", ficha, methods=["GET"]),
+    Route(f"{LIST_PATH}/{{documento}}/aprobar", aprobar, methods=["POST"]),
 ]

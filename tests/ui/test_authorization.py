@@ -657,6 +657,34 @@ def test_la_pagina_de_aprobacion_deshabilita_lo_que_el_usuario_no_puede_firmar(d
     assert "disabled" in page
 
 
+def test_aprobar_en_la_pagina_de_documentos_sin_el_rol_de_su_ficha_no_escribe(documents, audit):
+    ui, store = documents
+    fill_all(ui)
+    ui.post("/documentos/generar", {"x": "1"})
+    grant(store, True)
+    before = snapshot_of(store)
+
+    response = ui.post("/documentos/politica-seguridad/aprobar", {"approved_by": "Marta Ibáñez"})
+
+    assert response.status_code == 403
+    assert snapshot_of(store) == before
+    assert "role=management" in audit_lines(audit, "denied")[0]
+
+
+def test_aprobar_en_la_pagina_de_documentos_con_el_rol_de_su_ficha_funciona(documents, audit):
+    ui, store = documents
+    fill_all(ui)
+    ui.post("/documentos/generar", {"x": "1"})
+    grant(store, True, Role.MANAGEMENT)
+
+    response = ui.post(
+        "/documentos/politica-seguridad/aprobar", {"approved_by": "Marta Ibáñez Soler"}
+    )
+
+    assert response.status_code == 303
+    assert "roles=management" in audit_lines(audit, "saved")[-1]
+
+
 def test_los_pasos_de_aprobacion_con_rol_fijo_deniegan_sin_el_rol(ui, store, audit):
     grant(store, True, Role.SYSTEM_OWNER)
 

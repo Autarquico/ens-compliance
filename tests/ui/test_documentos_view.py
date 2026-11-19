@@ -1,6 +1,8 @@
 """Página de documentos: filas, impedimentos, ficha y entrada hostil. Solo lectura."""
 
 import dataclasses
+import html
+import logging
 from pathlib import Path
 
 import pytest
@@ -9,6 +11,7 @@ import yaml
 from ens_evidence.models.enums import Role
 from ens_evidence.orgdocs import (
     ANSWERS_KEY,
+    DocumentState,
     all_statuses,
     approve_document,
     build_documents,
@@ -23,7 +26,7 @@ from ens_evidence.ui.views import documents as view
 from ens_evidence.ui.views import status as status_view
 from ens_evidence.workspace import NotFound
 
-from .conftest import NOW, ui_client
+from .conftest import NOW, ORIGIN, Session, snapshot_of, ui_client
 from .test_wizard_docs import ANSWERS, MANAGER
 
 POLICY, RULES, PROCEDURES = "politica-seguridad", "normativa-seguridad", "procedimientos-seguridad"
@@ -413,7 +416,7 @@ def test_generate_outcome_sale_del_build_report():
 
     outcome = view.generate_outcome(report)
 
-    assert dataclasses.astuple(outcome) == (("a",), ("b",), ("c",), ("b",))
+    assert dataclasses.astuple(outcome) == (("a",), (), ("c",), ("b",))
 
 
 def test_la_pagina_no_tiene_resultado_de_generacion_en_un_get(ready):
@@ -432,3 +435,385 @@ def test_la_fase_documentos_de_estado_enlaza_a_la_pagina(example_store, ready):
         assert shown.operate_href == "/documentos"
         assert shown.operate_label == "Ver los documentos"
     assert status_view._scope(UiStore(ready), NOW, None).operate_href == ""
+
+
+# --- escritura: audit y ayudas -------------------------------------------------------------------
+
+EMAIL = "ana@example.com"
+SECURITY_NAME = ANSWERS["resp_seguridad"]
+SYSTEM_NAME = ANSWERS["resp_sistema"]
+
+
+@pytest.fixture
+def audit(caplog):
+    caplog.set_level(logging.INFO, logger="ens_evidence.ui.audit")
+    return caplog
+
+
+def audit_lines(audit, outcome: str) -> list[str]:
+    return [r.message for r in audit.records if f"outcome={outcome}" in r.message]
+
+
+def all_audit_lines(audit) -> list[str]:
+    return [r.message for r in audit.records if r.name == "ens_evidence.ui.audit"]
+
+
+def grant(store, edit: bool = True, *roles: Role) -> None:
+    store.write_text(ROLES_KEY, dump_roles({EMAIL: Grant(edit, frozenset(roles))}))
+
+
+def approvals_of(store, name: str) -> list[str]:
+    return store.list(f"org/docs/approvals/{name}/")
+
+
+def raw_post(client, token, path: str, data: dict):
+    headers = {"Cf-Access-Jwt-Assertion": token, "Origin": ORIGIN, "Sec-Fetch-Site": "same-origin"}
+    return client.post(path, data=data, headers=headers, follow_redirects=False)
+
+
+def approve_form(by: str) -> dict:
+    return {"approved_by": by}
+
+
+# --- escenario 2 (POST): los mismos motivos que el GET, sin escribir ----------------------------
+
+
+def test_scenario_2_post_directo_devuelve_los_motivos_y_no_escribe(session, example_store, audit):
+    incidents = ("incidentes_deteccion", "incidentes_niveles")
+    write_answers(example_store, **dict.fromkeys(incidents))
+    before = snapshot_of(example_store)
+
+    response = session.post("/documentos/generar", {})
+
+    assert response.status_code == 422
+    assert view.SCOPE_NOT_APPROVED in response.text
+    assert 'href="/asistente/aprobacion-alcance"' in response.text
+    assert 'href="/asistente/documentos-incidentes"' in response.text
+    assert "No se ha escrito nada" in response.text
+    assert snapshot_of(example_store) == before
+    lines = audit_lines(audit, "rejected")
+    assert len(lines) == 1 and "step=documentos action=generar" in lines[0]
+    assert f"identity={EMAIL}" in lines[0] and "keys=-" in lines[0]
+    assert not audit_lines(audit, "saved")
+
+
+def test_los_motivos_del_post_son_los_del_get(session, example_store):
+    write_answers(example_store, incidentes_deteccion=None, incidentes_niveles=None)
+    store = UiStore(example_store)
+    expected = view._blocker_lines(view.generation_blockers(store, view._report(store)))
+
+    response = session.post("/documentos/generar", {})
+    get = session.get("/documentos")
+
+    assert expected and all(line in html.unescape(response.text) for line in expected)
+    assert all(reason in html.unescape(get.text) for reason in page_of(example_store).blockers)
+
+
+def test_post_con_respuestas_invalidas_explica_y_no_escribe(session, example_store, audit):
+    approve_scope(example_store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
+    write_answers(example_store, uso_equipos=None, organizacion="n/a")
+    before = snapshot_of(example_store)
+
+    response = session.post("/documentos/generar", {})
+
+    assert response.status_code == 422
+    assert view.INVALID_ANSWERS in response.text
+    assert snapshot_of(example_store) == before
+    assert len(audit_lines(audit, "rejected")) == 1
+
+
+def test_post_con_cuestionario_sin_empezar(session, example_store, audit):
+    approve_scope(example_store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
+    before = snapshot_of(example_store)
+
+    response = session.post("/documentos/generar", {})
+
+    assert response.status_code == 422
+    assert view.NOT_STARTED in response.text
+    assert 'href="/asistente/documentos-organizacion"' in response.text
+    assert snapshot_of(example_store) == before
+    assert len(audit_lines(audit, "rejected")) == 1
+
+
+# --- generar: creados, actualizados, sin cambios, archivados -------------------------------------
+
+
+@pytest.fixture
+def writable(example_store):
+    approve_scope(example_store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
+    write_answers(example_store)
+    return example_store
+
+
+def test_generar_crea_los_documentos_y_los_lista_con_su_sha(session, writable, audit):
+    response = session.post("/documentos/generar", {})
+
+    assert response.status_code == 200
+    statuses = all_statuses(UiStore(writable))
+    assert all(s.state is DocumentState.GENERATED for s in statuses)
+    for name in document_names():
+        sha = view._meta_of(UiStore(writable), next(s for s in statuses if s.name == name))
+        assert sha.document_sha256 in response.text
+    assert "Creados:" in response.text
+    saved = audit_lines(audit, "saved")
+    assert len(saved) == 1
+    assert all(document_key(n) in saved[0] and meta_key(n) in saved[0] for n in document_names())
+
+
+def test_generar_otra_vez_deja_todo_sin_cambios_y_no_escribe(session, writable, audit):
+    session.post("/documentos/generar", {})
+    before = snapshot_of(writable)
+    audit.clear()
+
+    response = session.post("/documentos/generar", {})
+
+    assert response.status_code == 200 and "Sin cambios:" in response.text
+    assert "Creados:" not in response.text and "Actualizados:" not in response.text
+    assert snapshot_of(writable) == before
+    assert "keys=-" in audit_lines(audit, "saved")[0]
+
+
+def test_generar_tras_cambiar_una_respuesta_actualiza(session, writable, audit):
+    session.post("/documentos/generar", {})
+    write_answers(writable, organizacion="Otra organización distinta, S.L.")
+    audit.clear()
+
+    response = session.post("/documentos/generar", {})
+
+    assert response.status_code == 200 and "Actualizados:" in response.text
+    assert "ediciones manuales" not in response.text
+    assert document_key(POLICY) in audit_lines(audit, "saved")[0]
+
+
+def test_una_edicion_manual_se_archiva_y_solo_figura_como_archivada(session, writable):
+    build_documents(writable)
+    writable.write_text(document_key(RULES), "# editado a mano\n")
+
+    response = session.post("/documentos/generar", {})
+
+    assert response.status_code == 200
+    assert "ediciones manuales" in response.text
+    assert [k for k in writable.list("org/docs/history/") if RULES in k]
+    assert "Actualizados:" not in response.text
+
+
+def test_el_resultado_de_generar_sale_del_build_report(writable):
+    build_documents(writable)
+    writable.write_text(document_key(RULES), "# editado a mano\n")
+    write_answers(writable, organizacion="Otra organización distinta, S.L.")
+    spy_store = UiStore(writable).recording()
+
+    outcome = view.generate_outcome(build_documents(spy_store))
+
+    assert RULES in outcome.archived and RULES not in outcome.updated
+    assert POLICY in outcome.updated or POLICY in outcome.unchanged
+
+
+def test_una_url_manipulada_no_muestra_resultado_de_generacion(session, ready):
+    page = session.get("/documentos?creados=politica-seguridad&actualizados=x&archivados=y")
+
+    assert page.status_code == 200
+    assert "Creados:" not in page.text and "Actualizados:" not in page.text
+    assert "ediciones manuales" not in page.text
+
+
+def test_un_fallo_en_la_segunda_escritura_audita_solo_las_claves_escritas(
+    config, writable, key, token, audit
+):
+    first_name = document_names()[0]
+    real = writable.write_text
+    calls = []
+
+    def flaky(k, text):
+        calls.append(k)
+        if len(calls) == 2:
+            raise OSError("disco lleno")
+        real(k, text)
+
+    writable.write_text = flaky
+    client = ui_client(config, writable, key)
+
+    with pytest.raises(OSError):
+        raw_post(client, token, "/documentos/generar", {})
+
+    failed = audit_lines(audit, "failed")
+    assert len(failed) == 1
+    assert f"keys={document_key(first_name)}" in failed[0]
+    assert "disco lleno" not in failed[0] and meta_key(first_name) not in failed[0]
+    assert not audit_lines(audit, "saved")
+
+
+def test_un_lector_recibe_403_y_no_escribe(config, writable, key, token, audit):
+    grant(writable, False)
+    session = Session(ui_client(config, writable, key), token)
+    before = snapshot_of(writable)
+
+    response = session.post("/documentos/generar", {})
+
+    assert response.status_code == 403
+    assert snapshot_of(writable) == before
+    assert len(audit_lines(audit, "denied")) == 1
+    assert not audit_lines(audit, "saved")
+
+
+# --- escenario 3: aprobar con el rol que exige el documento --------------------------------------
+
+
+def test_scenario_3_aprobar_con_management(session, ready, audit):
+    grant(ready, True, Role.MANAGEMENT)
+    controls_before = {k: ready.read_bytes(k) for k in ready.list("controls/")}
+    before = snapshot_of(ready)
+
+    response = session.post(f"/documentos/{POLICY}/aprobar", approve_form(MANAGER))
+
+    assert response.status_code == 303
+    assert response.headers["location"] == f"/documentos?hecho=aprobado#doc-{POLICY}"
+    new = set(snapshot_of(ready)) - set(before)
+    assert len(new) == 1 and next(iter(new)).startswith(f"org/docs/approvals/{POLICY}/")
+    line = audit_lines(audit, "saved")[0]
+    assert f"identity={EMAIL}" in line and "roles=management" in line
+    assert f"keys={next(iter(new))}" in line
+    assert {k: ready.read_bytes(k) for k in ready.list("controls/")} == controls_before
+    assert {k: v for k, v in snapshot_of(ready).items() if k in before} == before
+    assert row_of(page_of(ready), POLICY).state == "APPROVED"
+
+
+def test_la_auditoria_de_aprobar_no_lleva_el_nombre(session, ready, audit):
+    grant(ready, True, Role.MANAGEMENT)
+
+    session.post(f"/documentos/{POLICY}/aprobar", approve_form(MANAGER))
+
+    assert all("Marta" not in line and "approved_by" not in line for line in all_audit_lines(audit))
+
+
+def test_scenario_4_post_obsoleto_da_422_no_esta_al_dia(session, ready, audit):
+    approve_document(ready, POLICY, MANAGER, Role.MANAGEMENT, NOW)
+    write_answers(ready, organizacion="Otra organización distinta, S.L.")
+    before = snapshot_of(ready)
+
+    response = session.post(f"/documentos/{POLICY}/aprobar", approve_form(MANAGER))
+
+    assert response.status_code == 422
+    assert "no está al día" in response.text
+    assert snapshot_of(ready) == before
+    assert len(audit_lines(audit, "rejected")) == 1 and not audit_lines(audit, "saved")
+
+
+def test_un_editor_sin_el_rol_recibe_403_con_el_rol_en_la_linea(config, ready, key, token, audit):
+    grant(ready, True)
+    session = Session(ui_client(config, ready, key), token)
+    before = snapshot_of(ready)
+
+    response = session.post(f"/documentos/{POLICY}/aprobar", approve_form(MANAGER))
+
+    assert response.status_code == 403
+    assert snapshot_of(ready) == before
+    assert "role=management" in audit_lines(audit, "denied")[0]
+    assert not audit_lines(audit, "saved")
+
+
+@pytest.mark.parametrize("by", ["ana@example.com", "", "   "])
+def test_un_email_o_un_nombre_vacio_da_422_en_su_campo(session, ready, audit, by):
+    before = snapshot_of(ready)
+
+    response = session.post(f"/documentos/{POLICY}/aprobar", approve_form(by))
+
+    assert response.status_code == 422
+    assert f'id="err-approved_by~{POLICY}"' in response.text
+    assert snapshot_of(ready) == before
+    assert len(audit_lines(audit, "rejected")) == 1
+
+
+def test_el_nombre_que_no_es_el_declarado_se_rechaza_y_se_repinta_lo_escrito(session, ready):
+    before = snapshot_of(ready)
+
+    response = session.post(f"/documentos/{POLICY}/aprobar", approve_form("Pedro Otro"))
+
+    assert response.status_code == 422
+    assert 'value="Pedro Otro"' in response.text
+    assert snapshot_of(ready) == before
+
+
+def test_un_secreto_en_el_nombre_no_se_repinta(session, ready):
+    secret = "AKIAIOSFODNN7EXAMPLE"
+
+    response = session.post(f"/documentos/{POLICY}/aprobar", approve_form(secret))
+
+    assert response.status_code == 422
+    assert secret not in response.text
+
+
+def test_el_campo_de_aprobar_nunca_viene_relleno(session, ready):
+    approve_document(ready, POLICY, MANAGER, Role.MANAGEMENT, NOW)
+    page = session.get("/documentos").text
+
+    assert 'name="approved_by" value=""' in page
+    assert f'value="{MANAGER}"' not in page
+
+
+@pytest.mark.parametrize(
+    ("segment", "decoded"), [("%3Cscript%3E", "<script>"), ("no-existe", "no-existe")]
+)
+def test_aprobar_un_documento_desconocido_da_422_y_no_toca_claves_derivadas(
+    spied, token, audit, segment, decoded
+):
+    spy, client = spied
+    spy.calls.clear()
+
+    response = raw_post(client, token, f"/documentos/{segment}/aprobar", approve_form(MANAGER))
+
+    assert response.status_code == 422
+    assert "No reconocemos ese documento" in response.text
+    assert spy.writes() == []
+    assert [c for c in spy.calls if any(decoded in str(a) for a in c[1])] == []
+    assert "content-security-policy" in response.headers
+    assert len(audit_lines(audit, "rejected")) == 1
+
+
+# --- D7: rol configurable en procedimientos -------------------------------------------------------
+
+
+def test_d7_con_el_rol_anterior_tras_cambiar_la_autoridad_da_403_sin_escribir(
+    config, ready, key, token, audit
+):
+    grant(ready, True, Role.SECURITY_OFFICER)
+    write_answers(ready, autoridad_procedimientos="el responsable del sistema")
+    build_documents(ready)
+    session = Session(ui_client(config, ready, key), token)
+    before = snapshot_of(ready)
+
+    response = session.post(f"/documentos/{PROCEDURES}/aprobar", approve_form(SYSTEM_NAME))
+
+    assert response.status_code == 403
+    assert snapshot_of(ready) == before
+    assert "role=system_owner" in audit_lines(audit, "denied")[0]
+    assert not audit_lines(audit, "saved")
+
+
+def test_d7_con_el_rol_vigente_funciona_y_lo_audita(config, ready, key, token, audit):
+    write_answers(ready, autoridad_procedimientos="el responsable del sistema")
+    build_documents(ready)
+    grant(ready, True, Role.SYSTEM_OWNER)
+    session = Session(ui_client(config, ready, key), token)
+
+    response = session.post(f"/documentos/{PROCEDURES}/aprobar", approve_form(SYSTEM_NAME))
+
+    assert response.status_code == 303
+    line = audit_lines(audit, "saved")[0]
+    assert f"identity={EMAIL}" in line and "roles=system_owner" in line
+    assert f"org/docs/approvals/{PROCEDURES}/" in line
+    assert len(approvals_of(ready, PROCEDURES)) == 1
+
+
+def test_d7_sin_autoridad_declarada_hay_aviso_sin_boton_y_el_post_se_rechaza(session, ready, audit):
+    write_answers(ready, autoridad_procedimientos=None)
+    before = snapshot_of(ready)
+
+    page = session.get("/documentos")
+    response = session.post(f"/documentos/{PROCEDURES}/aprobar", approve_form(SECURITY_NAME))
+
+    assert view.NO_AUTHORITY in page.text
+    assert f'action="/documentos/{PROCEDURES}/aprobar"' not in page.text
+    assert response.status_code == 422 and view.NO_AUTHORITY in response.text
+    assert snapshot_of(ready) == before
+    assert len(audit_lines(audit, "rejected")) == 1
