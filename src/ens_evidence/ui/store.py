@@ -50,13 +50,19 @@ class UiStore:
         return self._inner.list(prefix)
 
     def write_text(self, key: str, text: str) -> None:
-        self._inner.write_text(self._allowed_and_noted(key), text)
+        allowed = self._allowed(key)
+        self._inner.write_text(allowed, text)
+        self._note(allowed)
 
     def write_bytes(self, key: str, data: bytes) -> None:
-        self._inner.write_bytes(self._allowed_and_noted(key), data)
+        allowed = self._allowed(key)
+        self._inner.write_bytes(allowed, data)
+        self._note(allowed)
 
     def create_bytes(self, key: str, data: bytes) -> None:
-        self._inner.create_bytes(self._allowed_and_noted(key), data)
+        allowed = self._allowed(key)
+        self._inner.create_bytes(allowed, data)
+        self._note(allowed)
 
     @contextmanager
     def exclusive_lock(self, key: str) -> Iterator[None]:
@@ -66,11 +72,9 @@ class UiStore:
         with opener(allowed) if opener else nullcontext():
             yield
 
-    def _allowed_and_noted(self, key: str) -> str:
-        allowed = self._allowed(key)
+    def _note(self, allowed: str) -> None:
         if allowed not in self.written:
             self.written.append(allowed)
-        return allowed
 
     @staticmethod
     def _allowed(key: str) -> str:

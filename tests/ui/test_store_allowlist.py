@@ -70,3 +70,26 @@ def test_el_lock_exclusivo_respeta_la_lista_blanca(ui_store, store):
     with pytest.raises(WriteNotAllowed), ui_store.exclusive_lock("evidence/checks/x.lock"):
         pytest.fail("no debe entrar")
     assert not store.exists("evidence/checks/x.lock")
+
+
+@pytest.mark.parametrize("write", ["write_text", "write_bytes", "create_bytes"])
+def test_una_escritura_que_falla_no_anota_su_clave(store, write):
+    class Failing:
+        def __init__(self, inner):
+            self._inner = inner
+
+        def __getattr__(self, name):
+            return getattr(self._inner, name)
+
+        def write_text(self, key, text):
+            raise OSError("disco lleno")
+
+        write_bytes = create_bytes = write_text
+
+    recording = UiStore(Failing(store)).recording()
+    data = "x" if write == "write_text" else b"x"
+
+    with pytest.raises(OSError):
+        getattr(recording, write)("org/a.yaml", data)
+
+    assert recording.written == []
