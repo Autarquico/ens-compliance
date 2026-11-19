@@ -50,6 +50,7 @@ p { margin: 0 0 var(--space-4); max-width: 68ch; }
 a { color: var(--accent); text-underline-offset: 3px; }
 a:hover { color: var(--accent-hover); } a:active { color: var(--accent-active); }
 code, .mono { font-family: var(--font-mono); font-size: 0.9em; }
+.hash { overflow-wrap: anywhere; }
 .muted { color: var(--muted); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
 

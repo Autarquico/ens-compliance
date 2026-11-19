@@ -4,7 +4,7 @@ EXPECTED = {
     "content-security-policy": (
         "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
     ),
-    "referrer-policy": "no-referrer",
+    "referrer-policy": "same-origin",
     "cache-control": "no-store",
     "x-content-type-options": "nosniff",
 }

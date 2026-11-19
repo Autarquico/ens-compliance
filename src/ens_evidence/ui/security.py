@@ -6,7 +6,7 @@ from starlette.types import ASGIApp, Message, Receive, Scope, Send
 CSP = "default-src 'self'; frame-ancestors 'none'; base-uri 'none'; form-action 'self'"
 SECURITY_HEADERS = {
     "content-security-policy": CSP,
-    "referrer-policy": "no-referrer",
+    "referrer-policy": "same-origin",
     "cache-control": "no-store",
     "x-content-type-options": "nosniff",
 }

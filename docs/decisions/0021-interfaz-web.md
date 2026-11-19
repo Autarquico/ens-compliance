@@ -64,10 +64,15 @@ falta alguno o difiere, 403.
 ### Cabeceras y plantillas
 
 CSP `default-src 'self'` (sin inline, sin `unsafe-*`), `frame-ancestors 'none'`,
-`Referrer-Policy: no-referrer`, `Cache-Control: no-store`,
+`Referrer-Policy: same-origin`, `Cache-Control: no-store`,
 `X-Content-Type-Options: nosniff`. Jinja2 con autoescape. htmx y fuentes
 empaquetados, sin CDN. Las vistas de evidencias muestran manifiestos y
 resúmenes, nunca cuerpos en bruto.
+
+`same-origin` y no `no-referrer`: con `no-referrer` el navegador envía
+`Origin: null` en todo POST de formulario (Fetch, «append a request `Origin`
+header») y la comprobación de origen rechaza cada escritura. `same-origin` no
+envía el referer a ningún otro sitio.
 
 ### Lista blanca de escritura
 
