@@ -4,8 +4,10 @@ Solo lee. La lógica es la del asistente (`wizard/docs_shared.py`) y la de las A
 (`orgdocs`); aquí solo se presenta. La plantilla recibe únicamente los DTO de este módulo.
 """
 
+import threading
+from collections import OrderedDict
 from dataclasses import dataclass
-from datetime import datetime
+from datetime import datetime, timedelta
 from functools import cache
 from typing import Any
 
@@ -30,7 +32,7 @@ from ens_evidence.orgdocs import (
     load_templates,
     validate_answers,
 )
-from ens_evidence.orgdocs.answers import AnswersReport
+from ens_evidence.orgdocs.answers import AnswersReport, read_answers
 from ens_evidence.orgdocs.approval import (
     DocumentApproval,
     DocumentApprovalRejected,
@@ -57,7 +59,7 @@ from ens_evidence.ui.pages import (
 from ens_evidence.ui.roles import Permissions, role_options
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views import format_instant
-from ens_evidence.ui.wizard.base import StepRejected, declared_name, read_yaml
+from ens_evidence.ui.wizard.base import StepRejected, declared_name
 from ens_evidence.ui.wizard.docs_shared import (
     ROLE_LABELS,
     SCOPE_NOT_APPROVED,
@@ -157,12 +159,50 @@ class DocumentRow:
 
 
 @dataclass(frozen=True)
+class OutcomeDocument:
+    name: str
+    sha256: str
+    archived: bool = False
+    """Solo en los actualizados: había una edición manual y su versión anterior se archivó."""
+
+
+@dataclass(frozen=True)
 class GenerateOutcome:
-    created: tuple[str, ...]
-    updated: tuple[str, ...]
-    unchanged: tuple[str, ...]
-    archived: tuple[str, ...]
-    """Documentos editados a mano cuya versión anterior se archivó (no figuran en updated)."""
+    created: tuple[OutcomeDocument, ...]
+    updated: tuple[OutcomeDocument, ...]
+    unchanged: tuple[OutcomeDocument, ...]
+
+    @property
+    def archived(self) -> tuple[OutcomeDocument, ...]:
+        return tuple(d for d in self.updated if d.archived)
+
+
+OUTCOME_TTL = timedelta(minutes=5)
+OUTCOME_CAPACITY = 256
+
+
+class OutcomeShelf:
+    """El resultado de la última generación de cada persona, para enseñarlo una sola vez.
+
+    Vive en la memoria del servidor (no es un secreto ni sale en la URL): el POST lo deja y el
+    siguiente GET de la misma identidad lo retira. Caduca y está acotado."""
+
+    def __init__(self, ttl: timedelta = OUTCOME_TTL, capacity: int = OUTCOME_CAPACITY) -> None:
+        self._ttl, self._capacity = ttl, capacity
+        self._entries: OrderedDict[str, tuple[datetime, GenerateOutcome]] = OrderedDict()
+        self._lock = threading.Lock()
+
+    def put(self, identity: str, outcome: GenerateOutcome, now: datetime) -> None:
+        with self._lock:
+            self._entries.pop(identity, None)
+            self._entries[identity] = (now + self._ttl, outcome)
+            while len(self._entries) > self._capacity:
+                self._entries.popitem(last=False)
+
+    def take(self, identity: str, now: datetime) -> GenerateOutcome | None:
+        with self._lock:
+            entry = self._entries.pop(identity, None)
+        return entry[1] if entry and now < entry[0] else None
 
 
 @dataclass(frozen=True)
@@ -232,7 +272,12 @@ def _own_questions(name: str) -> frozenset[str]:
 
 
 def _report(store: UiStore) -> AnswersReport:
-    return validate_answers(read_yaml(store, ANSWERS_KEY), load_templates())
+    """Las respuestas validadas; un fichero ilegible o de otro tipo es un problema con su causa."""
+    try:
+        raw = read_answers(store) if store.exists(ANSWERS_KEY) else None
+    except ValueError as exc:
+        return AnswersReport(problems=[str(exc)])
+    return validate_answers(raw, load_templates())
 
 
 def _read_meta(store: UiStore, name: str) -> DocumentMeta | None:
@@ -293,16 +338,17 @@ def generation_blockers(store: UiStore, report: AnswersReport) -> GenerationBloc
 
 
 def generate_outcome(report: BuildReport) -> GenerateOutcome:
-    def names(kind: BuildStatus, *, by_hand: bool = False) -> tuple[str, ...]:
+    def documents(kind: BuildStatus) -> tuple[OutcomeDocument, ...]:
         return tuple(
-            d.name for d in report.documents if d.status is kind and d.edited_by_hand is by_hand
+            OutcomeDocument(d.name, d.document_sha256, d.edited_by_hand)
+            for d in report.documents
+            if d.status is kind
         )
 
     return GenerateOutcome(
-        created=names(BuildStatus.CREATED),
-        updated=names(BuildStatus.UPDATED),
-        unchanged=names(BuildStatus.UNCHANGED),
-        archived=names(BuildStatus.UPDATED, by_hand=True),
+        created=documents(BuildStatus.CREATED),
+        updated=documents(BuildStatus.UPDATED),
+        unchanged=documents(BuildStatus.UNCHANGED),
     )
 
 
@@ -350,6 +396,7 @@ def _row(
     report: AnswersReport,
     permissions: Permissions,
     meta: DocumentMeta | None,
+    last_approval: DocumentApproval | None,
 ) -> DocumentRow:
     name = status.name
     role = required_role(name, report.values)
@@ -372,7 +419,7 @@ def _row(
         reasons=reasons,
         source=_source(meta),
         approval=_approval(status.approval) if status.state is DocumentState.APPROVED else None,
-        last_approval=_approval(status.approval),
+        last_approval=_approval(last_approval),
         approver=ApproverInfo(
             role.value if role else None,
             ROLE_LABELS[role] if role else None,
@@ -391,6 +438,14 @@ def _row(
     )
 
 
+def _last_approval(store: UiStore, status: DocumentStatus) -> DocumentApproval | None:
+    """La última aprobación legible; sin generar el estado no la lee, pero sigue siendo historia."""
+    if status.state is not DocumentState.NOT_GENERATED:
+        return status.approval
+    history, _ = scan_approvals(store, status.name)
+    return history[-1] if history else None
+
+
 def build_page(
     store: UiStore,
     now: datetime,
@@ -402,7 +457,14 @@ def build_page(
     report = _report(store)
     blockers = generation_blockers(store, report)
     rows = tuple(
-        _row(status, base, report, permissions, _meta_of(store, status))
+        _row(
+            status,
+            base,
+            report,
+            permissions,
+            _meta_of(store, status),
+            _last_approval(store, status),
+        )
         for status, base in zip(statuses, base_rows, strict=True)
     )
     return DocumentsPage(
@@ -425,8 +487,8 @@ def build_detail(store: UiStore, name: str, permissions: Permissions) -> Documen
     report = _report(store)
     base = document_rows(store, [status])[0]
     meta = _meta_of(store, status)
-    row = _row(status, base, report, permissions, meta)
     history, _ = scan_approvals(store, name)
+    row = _row(status, base, report, permissions, meta, _last_approval(store, status))
     text, truncated = (
         _read_text(store, name) if status.state is not DocumentState.NOT_GENERATED else ("", False)
     )
@@ -441,7 +503,7 @@ def build_detail(store: UiStore, name: str, permissions: Permissions) -> Documen
         )
         if meta
         else (),
-        history=tuple(info for a in reversed(history) if (info := _approval(a))),
+        history=tuple(info for a in history if (info := _approval(a))),
         unreadable=tuple(status.unreadable),
     )
 
@@ -480,7 +542,12 @@ def _list_page(
 
 
 def listado(request: Request) -> Response:
-    return _list_page(request, request.app.state.store, saved=_saved(request))
+    outcome = None
+    if request.method == "GET":  # un HEAD no gasta el resultado
+        outcome = request.app.state.outcomes.take(
+            identity_of(request).email, request.app.state.clock()
+        )
+    return _list_page(request, request.app.state.store, saved=_saved(request), outcome=outcome)
 
 
 def ficha(request: Request) -> Response:
@@ -563,7 +630,10 @@ async def generar(request: Request) -> Response:
         lines = [INVALID_ANSWERS, *_blocker_lines(GenerationBlockers(True, True, (), groups))]
         return _refused(request, "generar", store, form_errors=lines)
     _audit(request, "generar", store.written)
-    return _list_page(request, store, outcome=generate_outcome(report))
+    request.app.state.outcomes.put(
+        identity_of(request).email, generate_outcome(report), request.app.state.clock()
+    )
+    return RedirectResponse(f"{LIST_PATH}#resultado", status_code=303)
 
 
 def _echo(key: str, by: str) -> dict[str, str]:
@@ -625,5 +695,6 @@ DOCUMENTS_ROUTES: list[BaseRoute] = [
     Route(LIST_PATH, listado, methods=["GET"]),
     Route(f"{LIST_PATH}/generar", generar, methods=["POST"]),
     Route(f"{LIST_PATH}/{{documento}}", ficha, methods=["GET"]),
-    Route(f"{LIST_PATH}/{{documento}}/aprobar", aprobar, methods=["POST"]),
+    # `:path`: un nombre con barras llega al handler, que lo rechaza con el mensaje fijo y lo audita
+    Route(f"{LIST_PATH}/{{documento:path}}/aprobar", aprobar, methods=["POST"]),
 ]

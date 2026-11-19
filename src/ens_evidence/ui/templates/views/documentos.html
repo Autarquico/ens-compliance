@@ -11,12 +11,12 @@
 <ul>{% for item in g["items"] %}<li>{{ item }}</li>{% endfor %}</ul></div>
 {%- endfor %}
 {%- endmacro %}
-{% macro lista(names, by_name) -%}
-<ul>{% for n in names %}<li>{% if n in by_name %}<a href="{{ by_name[n].href }}">{{ by_name[n].title }}</a>{% if by_name[n].source %} <span class="muted">sha256</span> <span class="mono">{{ by_name[n].source.document_sha256 }}</span>{% endif %}{% else %}<span class="mono">{{ n }}</span>{% endif %}</li>{% endfor %}</ul>
+{% macro lista(docs, by_name) -%}
+<ul>{% for d in docs %}<li>{% if d.name in by_name %}<a href="{{ by_name[d.name].href }}">{{ by_name[d.name].title }}</a>{% else %}<span class="mono">{{ d.name }}</span>{% endif %} <span class="muted">sha256</span> <span class="mono">{{ d.sha256 }}</span>{% if d.archived %} <span class="muted">· edición manual archivada</span>{% endif %}</li>{% endfor %}</ul>
 {%- endmacro %}
-{% macro creados(title, names, by_name) -%}
-{%- if names %}<p>{{ title }}</p>
-{{ lista(names, by_name) }}{% endif -%}
+{% macro creados(title, docs, by_name) -%}
+{%- if docs %}<p>{{ title }}</p>
+{{ lista(docs, by_name) }}{% endif -%}
 {%- endmacro %}
 {% block content %}
 {%- set can_edit = permissions is defined and permissions.edit -%}
@@ -28,14 +28,13 @@
 {% if saved == "aprobado" %}<section class="notice notice-ok" role="status"><p>Aprobación registrada. No cambia el estado de ninguna medida.</p></section>{% endif %}
 {% if form_errors %}<section class="notice notice-warn" role="alert"><p><strong>No se ha escrito nada.</strong></p><ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></section>{% endif %}
 {% if page.outcome %}
-<section class="notice notice-ok" role="status" aria-labelledby="h-resultado"><p id="h-resultado"><strong>Resultado de la generación.</strong></p>
+<section class="notice notice-ok" id="resultado" role="status" aria-labelledby="h-resultado"><p id="h-resultado"><strong>Resultado de la generación.</strong></p>
   {{ creados("Creados:", page.outcome.created, by_name) }}
   {{ creados("Actualizados:", page.outcome.updated, by_name) }}
   {{ creados("Sin cambios:", page.outcome.unchanged, by_name) }}
   {% if not (page.outcome.created or page.outcome.updated or page.outcome.unchanged) %}<p>No se ha generado ningún documento.</p>{% endif %}
 </section>
-{% if page.outcome.archived %}<section class="notice notice-warn" role="status"><p><strong>Había ediciones manuales y se han archivado.</strong> El documento se ha vuelto a generar desde las respuestas; la versión editada se conserva aparte.</p>
-  {{ lista(page.outcome.archived, by_name) }}</section>{% endif %}
+{% if page.outcome.archived %}<section class="notice notice-warn" role="status"><p><strong>Había ediciones manuales y se han archivado.</strong> El documento se ha vuelto a generar desde las respuestas; la versión editada se conserva aparte.</p></section>{% endif %}
 {% endif %}
 {% for w in page.warnings %}<p class="muted">{{ m.icon("alert") }} {{ w }}</p>{% endfor %}
 

@@ -1172,10 +1172,12 @@ _DOC_BLOCKED = _doc_page(
 )
 _DOC_OUTCOME = _doc_page(
     outcome=docs.GenerateOutcome(
-        created=("politica-seguridad",),
-        updated=("normativa-seguridad",),
-        unchanged=("procedimientos",),
-        archived=("normativa-seguridad", HOSTILE),
+        created=(docs.OutcomeDocument("politica-seguridad", "a" * 64),),
+        updated=(
+            docs.OutcomeDocument("normativa-seguridad", "b" * 64, archived=True),
+            docs.OutcomeDocument(HOSTILE, "c" * 64),
+        ),
+        unchanged=(docs.OutcomeDocument("procedimientos", "d" * 64),),
     )
 )
 _DOC_NO_ROLE = _doc_page(

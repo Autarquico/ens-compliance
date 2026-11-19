@@ -1,8 +1,8 @@
 """Página de documentos: filas, impedimentos, ficha y entrada hostil. Solo lectura."""
 
-import dataclasses
 import html
 import logging
+from datetime import timedelta
 from pathlib import Path
 
 import pytest
@@ -27,7 +27,7 @@ from ens_evidence.ui.views import status as status_view
 from ens_evidence.ui.wizard.base import StepRejected
 from ens_evidence.workspace import NotFound
 
-from .conftest import NOW, ORIGIN, Session, snapshot_of, ui_client
+from .conftest import NOW, ORIGIN, Session, mint, snapshot_of, ui_client
 from .test_wizard_docs import ANSWERS, MANAGER
 
 POLICY, RULES, PROCEDURES = "politica-seguridad", "normativa-seguridad", "procedimientos-seguridad"
@@ -421,15 +421,22 @@ def test_lista_vacia_en_un_workspace_sin_nada(session, example_store):
 def test_generate_outcome_sale_del_build_report():
     report = BuildReport(
         documents=[
-            DocumentResult("a", BuildStatus.CREATED, "0" * 64),
-            DocumentResult("b", BuildStatus.UPDATED, "0" * 64, edited_by_hand=True),
-            DocumentResult("c", BuildStatus.UNCHANGED, "0" * 64),
+            DocumentResult("a", BuildStatus.CREATED, "1" * 64),
+            DocumentResult("b", BuildStatus.UPDATED, "2" * 64, edited_by_hand=True),
+            DocumentResult("c", BuildStatus.UNCHANGED, "3" * 64),
+            DocumentResult("d", BuildStatus.UPDATED, "4" * 64),
         ]
     )
 
     outcome = view.generate_outcome(report)
 
-    assert dataclasses.astuple(outcome) == (("a",), (), ("c",), ("b",))
+    assert outcome.created == (view.OutcomeDocument("a", "1" * 64),)
+    assert outcome.updated == (
+        view.OutcomeDocument("b", "2" * 64, archived=True),
+        view.OutcomeDocument("d", "4" * 64),
+    )
+    assert outcome.unchanged == (view.OutcomeDocument("c", "3" * 64),)
+    assert [d.name for d in outcome.archived] == ["b"]
 
 
 def test_la_pagina_no_tiene_resultado_de_generacion_en_un_get(ready):
@@ -574,61 +581,115 @@ def writable(example_store):
     return example_store
 
 
-def test_generar_crea_los_documentos_y_los_lista_con_su_sha(session, writable, audit):
+def generate_and_show(session):
+    """POST generar (debe ser 303 a /documentos#resultado) y el GET siguiente."""
     response = session.post("/documentos/generar", {})
+    assert response.status_code == 303
+    assert response.headers["location"] == "/documentos#resultado"
+    return session.get("/documentos")
 
-    assert response.status_code == 200
+
+def test_generar_crea_los_documentos_y_los_lista_con_su_sha(session, writable, audit):
+    page = generate_and_show(session)
+
+    assert page.status_code == 200
     statuses = all_statuses(UiStore(writable))
     assert all(s.state is DocumentState.GENERATED for s in statuses)
     for name in document_names():
         sha = view._meta_of(UiStore(writable), next(s for s in statuses if s.name == name))
-        assert sha.document_sha256 in response.text
-    assert "Creados:" in response.text
+        assert sha.document_sha256 in page.text
+    assert "Creados:" in page.text
     saved = audit_lines(audit, "saved")
     assert len(saved) == 1
     assert all(document_key(n) in saved[0] and meta_key(n) in saved[0] for n in document_names())
 
 
-def test_generar_otra_vez_deja_todo_sin_cambios_y_no_escribe(session, writable, audit):
-    session.post("/documentos/generar", {})
+def test_el_resultado_se_ve_una_vez_y_recargar_ni_lo_repite_ni_escribe(session, writable, audit):
+    generate_and_show(session)
     before = snapshot_of(writable)
     audit.clear()
 
-    response = session.post("/documentos/generar", {})
+    again = session.get("/documentos")
 
-    assert response.status_code == 200 and "Sin cambios:" in response.text
-    assert "Creados:" not in response.text and "Actualizados:" not in response.text
+    assert "Resultado de la generación" not in again.text and "Creados:" not in again.text
+    assert snapshot_of(writable) == before
+    assert audit_lines(audit, "saved") == []
+
+
+def test_el_resultado_no_va_en_la_url_ni_lo_ve_otra_persona(config, writable, key, token):
+    client = ui_client(config, writable, key)
+    ana = Session(client, token)
+    luis = Session(client, mint(key, email="luis@example.com"))
+    assert ana.post("/documentos/generar", {}).status_code == 303
+
+    assert "Resultado de la generación" not in luis.get("/documentos").text
+    crafted = ana.get("/documentos?creados=x&resultado=1")
+    assert "Resultado de la generación" in crafted.text  # el suyo, retirado ahora
+    assert "Resultado de la generación" not in ana.get("/documentos").text
+
+
+def test_generar_otra_vez_deja_todo_sin_cambios_y_no_escribe(session, writable, audit):
+    generate_and_show(session)
+    before = snapshot_of(writable)
+    audit.clear()
+
+    page = generate_and_show(session)
+
+    assert "Sin cambios:" in page.text
+    assert "Creados:" not in page.text and "Actualizados:" not in page.text
     assert snapshot_of(writable) == before
     assert "keys=-" in audit_lines(audit, "saved")[0]
 
 
 def test_generar_tras_cambiar_una_respuesta_actualiza(session, writable, audit):
-    session.post("/documentos/generar", {})
+    generate_and_show(session)
     write_answers(writable, organizacion="Otra organización distinta, S.L.")
     audit.clear()
 
-    response = session.post("/documentos/generar", {})
+    page = generate_and_show(session)
 
-    assert response.status_code == 200 and "Actualizados:" in response.text
-    assert "ediciones manuales" not in response.text
+    assert "Actualizados:" in page.text
+    assert "ediciones manuales" not in page.text
     assert document_key(POLICY) in audit_lines(audit, "saved")[0]
 
 
-def test_una_edicion_manual_se_archiva_y_solo_figura_como_archivada(session, writable):
+def test_una_edicion_manual_archivada_figura_como_actualizada_con_su_aviso(session, writable):
     build_documents(writable)
     writable.write_text(document_key(RULES), "# editado a mano\n")
 
-    response = session.post("/documentos/generar", {})
+    page = generate_and_show(session)
 
-    assert response.status_code == 200
-    assert "ediciones manuales" in response.text
-    archived = response.text.split("ediciones manuales", 1)[1]
+    assert "ediciones manuales" in page.text
+    updated = page.text.split("Actualizados:", 1)[1].split("Sin cambios:", 1)[0]
     sha = view._meta_of(
         UiStore(writable), next(s for s in all_statuses(UiStore(writable)) if s.name == RULES)
-    )
-    assert f'href="/documentos/{RULES}"' in archived and sha.document_sha256 in archived
+    ).document_sha256
+    assert f'href="/documentos/{RULES}"' in updated and sha in updated
+    assert "edición manual archivada" in updated
     assert [k for k in writable.list("org/docs/history/") if RULES in k]
-    assert "Actualizados:" not in response.text
+
+
+def test_el_sha_del_resultado_es_el_del_informe_no_el_del_meta_releido(session, writable):
+    session.post("/documentos/generar", {})
+    metas = {n: writable.read_text(meta_key(n)) for n in document_names()}
+    for name, meta in metas.items():  # otra generación cambia el meta entre el POST y el GET
+        sha = view._read_meta(UiStore(writable), name).document_sha256
+        writable.write_text(meta_key(name), meta.replace(sha, "f" * 64))
+
+    page = session.get("/documentos")
+
+    for name in document_names():
+        reported = view._read_meta(UiStore(writable), name)
+        assert reported.document_sha256 == "f" * 64
+        written = metas[name]
+        sha = next(
+            line.split(": ")[1].strip()
+            for line in written.splitlines()
+            if line.startswith("document_sha256")
+        )
+        outcome_part = page.text.split('id="resultado"', 1)[1].split("</section>", 1)[0]
+        assert sha in outcome_part
+        assert "f" * 64 not in outcome_part
 
 
 def test_el_resultado_de_generar_sale_del_build_report(writable):
@@ -639,8 +700,10 @@ def test_el_resultado_de_generar_sale_del_build_report(writable):
 
     outcome = view.generate_outcome(build_documents(spy_store))
 
-    assert RULES in outcome.archived and RULES not in outcome.updated
-    assert POLICY in outcome.updated or POLICY in outcome.unchanged
+    assert RULES in [d.name for d in outcome.archived] and RULES in [
+        d.name for d in outcome.updated
+    ]
+    assert POLICY in [d.name for d in outcome.updated + outcome.unchanged]
 
 
 def test_una_url_manipulada_no_muestra_resultado_de_generacion(session, ready):
@@ -649,6 +712,19 @@ def test_una_url_manipulada_no_muestra_resultado_de_generacion(session, ready):
     assert page.status_code == 200
     assert "Creados:" not in page.text and "Actualizados:" not in page.text
     assert "ediciones manuales" not in page.text
+
+
+def test_la_estanteria_caduca_y_esta_acotada():
+    outcome = view.GenerateOutcome((), (), ())
+    shelf = view.OutcomeShelf(ttl=timedelta(minutes=5), capacity=2)
+    shelf.put("a", outcome, NOW)
+    assert shelf.take("a", NOW + timedelta(minutes=6)) is None
+    shelf.put("a", outcome, NOW)
+    shelf.put("b", outcome, NOW)
+    shelf.put("c", outcome, NOW)
+    assert shelf.take("a", NOW) is None
+    assert shelf.take("b", NOW) is outcome
+    assert shelf.take("b", NOW) is None
 
 
 def test_un_fallo_en_la_segunda_escritura_audita_solo_las_claves_escritas(
@@ -799,12 +875,21 @@ def test_el_campo_de_aprobar_nunca_viene_relleno(session, ready):
 
 
 @pytest.mark.parametrize(
-    ("segment", "decoded"), [("%3Cscript%3E", "<script>"), ("no-existe", "no-existe")]
+    ("segment", "decoded"),
+    [
+        ("%3Cscript%3E", "<script>"),
+        ("no-existe", "no-existe"),
+        ("a/b", "a/b"),
+        ("a%2Fb", "a/b"),
+        ("..%2Forg%2Fanswers", "../org/answers"),
+        (f"{POLICY}/x", f"{POLICY}/x"),
+    ],
 )
 def test_aprobar_un_documento_desconocido_da_422_y_no_toca_claves_derivadas(
-    spied, token, audit, segment, decoded
+    spied, ready, token, audit, segment, decoded
 ):
     spy, client = spied
+    before = snapshot_of(ready)
     spy.calls.clear()
 
     response = raw_post(client, token, f"/documentos/{segment}/aprobar", approve_form(MANAGER))
@@ -812,9 +897,12 @@ def test_aprobar_un_documento_desconocido_da_422_y_no_toca_claves_derivadas(
     assert response.status_code == 422
     assert "No reconocemos ese documento" in response.text
     assert spy.writes() == []
+    assert snapshot_of(ready) == before
     assert [c for c in spy.calls if any(decoded in str(a) for a in c[1])] == []
     assert "content-security-policy" in response.headers
-    assert len(audit_lines(audit, "rejected")) == 1
+    [line] = audit_lines(audit, "rejected")
+    assert "step=documentos" in line and "action=aprobar" in line and "keys=-" in line
+    assert decoded not in line
 
 
 # --- D7: rol configurable en procedimientos -------------------------------------------------------
@@ -890,3 +978,56 @@ def test_aprobar_con_un_nombre_de_documento_con_ruta_se_rechaza_y_no_escribe(ses
     assert response.status_code in (404, 422)
     assert snapshot_of(ready) == before
     assert not audit_lines(audit, "saved")
+
+
+# --- revisión externa r1 --------------------------------------------------------------------------
+
+
+def test_el_historial_va_del_mas_antiguo_al_mas_reciente(session, ready):
+    older, newer = NOW - timedelta(days=2), NOW - timedelta(days=1)
+    approve_document(ready, POLICY, MANAGER, Role.MANAGEMENT, older)
+    approve_document(ready, POLICY, MANAGER, Role.MANAGEMENT, newer)
+
+    page = session.get(f"/documentos/{POLICY}").text
+
+    older_at, newer_at = view.format_instant(older), view.format_instant(newer)
+    assert page.index(older_at) < page.index(newer_at)
+    history = view.build_detail(UiStore(ready), POLICY, EDITOR).history
+    assert [h.approved_at for h in history] == [older_at, newer_at]
+
+
+def test_un_documento_sin_generar_con_aprobacion_previa_la_muestra_como_historia(session, ready):
+    approve_document(ready, POLICY, MANAGER, Role.MANAGEMENT, NOW)
+    unlink(ready, meta_key(POLICY))
+
+    row = row_of(page_of(ready), POLICY)
+    listing = session.get("/documentos").text
+
+    assert row.state == "NOT_GENERATED" and row.approval is None
+    assert row.last_approval is not None and row.last_approval.approved_by == MANAGER
+    cell = listing.split(f'id="doc-{POLICY}"', 1)[1].split("</tr>", 1)[0]
+    assert "Sin aprobación vigente" in cell and "Antes:" in cell and MANAGER in cell
+    assert "Sin aprobación</span>" not in cell
+
+
+@pytest.mark.parametrize(
+    "content",
+    [b"\xff\xfe\x00", b"a: [unclosed\n", b"- una\n- lista\n"],
+    ids=["bin", "yaml", "tipo"],
+)
+def test_un_fichero_de_respuestas_ilegible_se_diagnostica_en_get_y_post(
+    session, writable, audit, content
+):
+    (Path(writable._root) / ANSWERS_KEY).write_bytes(content)
+    before = snapshot_of(writable)
+
+    page = session.get("/documentos")
+    refused = session.post("/documentos/generar", {})
+
+    assert page.status_code == 200 and refused.status_code == 422
+    assert snapshot_of(writable) == before
+    for text in (page.text, refused.text):
+        assert "org/answers.yaml" in text
+        assert "Todavía no has respondido" not in text
+    assert "Todavía no se pueden generar" in page.text
+    assert not session.get("/documentos").text.count('action="/documentos/generar"')

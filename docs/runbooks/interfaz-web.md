@@ -458,7 +458,8 @@ permiso de edición (sección 7).
 
 Si la organización aún no ha declarado esa autoridad, la fila lo dice, enlaza al
 bloque «Responsables» y no ofrece aprobar. Quien no tiene el rol ve cuál le
-falta y la orden que tendría que pedir (sección 7), sin botón.
+falta y un enlace a «Responsables» para ver quién aprueba, sin botón; asignar el
+rol es cosa de quien administra la herramienta (sección 7).
 
 **Una aprobación no se revoca desde la web.** El registro
 (`org/docs/approvals/<documento>/`) es de solo añadir. Si el documento cambia o
@@ -467,11 +468,15 @@ aprobar de nuevo. Aprobar un documento no cambia el estado de ninguna medida.
 
 **Generar.** El botón solo aparece si el alcance está aprobado y las respuestas
 están completas; si no, la página lista los motivos con enlace al paso o bloque.
-El POST responde 200 con el resultado de esa ejecución: documentos creados,
-actualizados, sin cambios y archivados (una edición manual se archiva en
-`org/docs/history/`), con su sha256. Recargar repite una generación
-determinista. Si el POST llega y el producto rechaza, responde 422 con los
-motivos y no escribe nada. Aprobar responde 303 a `/documentos?hecho=aprobado`.
+El POST responde 303 a `/documentos#resultado`. El resultado de esa ejecución
+(documentos creados, actualizados, sin cambios, con el sha256 del informe de
+generación; una edición manual se archiva en `org/docs/history/` y se marca
+como archivada) se guarda en la memoria del servidor, ligado a quien generó, y
+se muestra una sola vez en el siguiente GET: caduca a los 5 minutos, no va en
+la URL y no lo ve otra persona. Recargar la página no repite la generación ni
+vuelve a mostrar el resultado; si el servidor se reinicia antes de leerlo, se
+pierde (los documentos y su estado siguen en la lista). Si el POST llega y el
+producto rechaza, responde 422 con los motivos y no escribe nada. Aprobar responde 303 a `/documentos?hecho=aprobado`.
 
 **Leer las líneas de auditoría.**
 `docker compose -p ens-box logs ui | grep 'ens_evidence.ui.audit'`. Los pasos son

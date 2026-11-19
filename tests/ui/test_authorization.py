@@ -171,7 +171,7 @@ def concrete_operations():
         if isinstance(entry, ByParam):
             for value, requirement in entry.policies.items():
                 path = template.replace("{" + entry.param + "}", value)
-                yield method, re.sub(r"\{\w+\}", "x" * 64, path), requirement
+                yield method, re.sub(r"\{[\w:]+\}", "x" * 64, path), requirement
         else:
             yield method, template, entry
 
