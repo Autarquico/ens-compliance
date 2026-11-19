@@ -27,6 +27,7 @@
 - #92 UI de copias de seguridad
 - #94 UI de conectores — estado y configuración
 - #95 UI — «Recoger ahora» por petición en cola
+- #98 UI — Documentos organizativos: estado, generación y aprobación
 <!-- /pm-sync:done-this-week -->
 
 ---

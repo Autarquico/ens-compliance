@@ -2,7 +2,7 @@
 codename: ens-compliance
 title: UI de documentos — estado, generación y aprobación
 type: task
-status: active
+status: shipped
 priority: P1
 size: M
 issue: 98
