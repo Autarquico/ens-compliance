@@ -20,8 +20,9 @@ from ens_evidence.categorization import CategorizationState, categorization_stat
 from ens_evidence.checks.source import StoredCheckResults
 from ens_evidence.evidence import list_manifests
 from ens_evidence.matrix import documents_snapshot, matrix_status
-from ens_evidence.orgdocs import document_names
-from ens_evidence.scope import ScopeState, scope_status
+from ens_evidence.models.enums import Role
+from ens_evidence.orgdocs import ANSWERS_KEY, approve_document, build_documents, document_names
+from ens_evidence.scope import ScopeState, approve_scope, scope_status
 from ens_evidence.ui.config import UiConfig
 from ens_evidence.ui.wizard.applicability import _medidas_context
 from ens_evidence.ui.wizard.base import StepInput
@@ -161,6 +162,26 @@ def test_including_an_existing_asset_is_the_same_in_ui_and_cli(
     assert (
         "bk-externo" in yaml.safe_load(cli_store.read_text("scope/system.yaml"))["included_assets"]
     )
+    assert snapshot_of(cli_store) == snapshot_of(ui_store)
+
+
+def test_approving_a_document_is_the_same_in_ui_and_cli(workspaces, config, key, token):
+    cli_store, ui_store = workspaces
+    for store in workspaces:
+        approve_scope(store, "Ana Ruiz", Role.SYSTEM_OWNER, NOW)
+        store.write_text(ANSWERS_KEY, yaml.safe_dump(ANSWERS, allow_unicode=True))
+        build_documents(store)
+    approve_document(cli_store, "politica-seguridad", MANAGER, Role.MANAGEMENT, NOW)
+    session = Session(ui_client(config, ui_store, key), token)
+
+    response = session.post("/documentos/politica-seguridad/aprobar", {"approved_by": MANAGER})
+
+    assert response.status_code == 303, response.text
+    prefix = "org/docs/approvals/"
+    cli_approvals = {k: v for k, v in snapshot_of(cli_store).items() if k.startswith(prefix)}
+    ui_approvals = {k: v for k, v in snapshot_of(ui_store).items() if k.startswith(prefix)}
+    assert len(cli_approvals) == 1
+    assert ui_approvals == cli_approvals
     assert snapshot_of(cli_store) == snapshot_of(ui_store)
 
 

@@ -113,6 +113,8 @@ OPERATIONS: Operations = {
     ("POST", DOSSIER_PATH): ByParam("accion", DOSSIER_ACTIONS),
     ("POST", "/incidentes/nuevo"): EDIT,
     ("POST", "/incidentes/{incidente}/{accion}"): ByParam("accion", INCIDENT_ACTIONS),
+    ("POST", "/documentos/generar"): EDIT,
+    ("POST", "/documentos/{documento:path}/aprobar"): EDIT,  # el rol sale de la ficha (handler)
     ("POST", "/inventario/alta"): EDIT,
     ("POST", "/inventario/activos/{activo}/{accion}"): ByParam("accion", INVENTORY_ACTIONS),
     ("POST", "/conectores/{conector}"): ByParam("conector", CONNECTOR_FORMS),

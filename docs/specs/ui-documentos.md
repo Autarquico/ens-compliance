@@ -6,7 +6,7 @@ status: active
 priority: P1
 size: M
 issue: 98
-prs: []
+prs: [100]
 related_issues: [98]
 depends_on: [web-ui-flujo, org-docs-templates, ui-inventario]
 supersedes: []

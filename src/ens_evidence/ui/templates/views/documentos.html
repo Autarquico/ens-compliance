@@ -1,0 +1,106 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m with context %}
+{# Estado de un documento: icono + texto + código. Sin aprobación nunca es favorable, aunque el tono llegue como «ok». #}
+{% macro estado(r) -%}
+{%- set tone = r.tone if (r.tone != "ok" or r.state == "APPROVED") else "neutral" -%}
+<span class="badge tone-{{ tone }}">{{ m.icon(m.TONE_ICON[tone]) }}<span>{{ r.state_label }}</span> <span class="badge-code">{{ r.state }}</span></span>
+{%- endmacro %}
+{% macro grupos(groups) -%}
+{%- for g in groups %}
+<div><strong>{% if g.href %}<a href="{{ g.href }}">{{ g.label }}</a>{% else %}{{ g.label }}{% endif %}</strong>
+<ul>{% for item in g["items"] %}<li>{{ item }}</li>{% endfor %}</ul></div>
+{%- endfor %}
+{%- endmacro %}
+{% macro lista(docs, by_name) -%}
+<ul>{% for d in docs %}<li>{% if d.name in by_name %}<a href="{{ by_name[d.name].href }}">{{ by_name[d.name].title }}</a>{% else %}<span class="mono">{{ d.name }}</span>{% endif %} <span class="muted">sha256</span> <span class="mono">{{ d.sha256 }}</span>{% if d.archived %} <span class="muted">· edición manual archivada</span>{% endif %}</li>{% endfor %}</ul>
+{%- endmacro %}
+{% macro creados(title, docs, by_name) -%}
+{%- if docs %}<p>{{ title }}</p>
+{{ lista(docs, by_name) }}{% endif -%}
+{%- endmacro %}
+{% block content %}
+{%- set can_edit = permissions is defined and permissions.edit -%}
+{%- set by_name = {} -%}
+{%- for r in page.rows %}{% if by_name.update({r.name: r}) %}{% endif %}{% endfor %}
+<h1>Documentos</h1>
+<p class="lead">La documentación organizativa que se genera a partir de tus respuestas: qué documentos hay, cuál está aprobado y por quién, y qué falta para generar el resto. Aprobar un documento no da por cumplida ninguna medida: eso lo demuestran las evidencias. El cuestionario se responde en el <a href="/asistente/documentos-organizacion">asistente</a>.</p>
+{{ m.revision_humana() }}
+{% if saved == "aprobado" %}<section class="notice notice-ok" role="status"><p>Aprobación registrada. No cambia el estado de ninguna medida.</p></section>{% endif %}
+{% if form_errors %}<section class="notice notice-warn" role="alert"><p><strong>No se ha escrito nada.</strong></p><ul>{% for e in form_errors %}<li>{{ e }}</li>{% endfor %}</ul></section>{% endif %}
+{% if page.outcome %}
+<section class="notice notice-ok" id="resultado" role="status" aria-labelledby="h-resultado"><p id="h-resultado"><strong>Resultado de la generación.</strong></p>
+  {{ creados("Creados:", page.outcome.created, by_name) }}
+  {{ creados("Actualizados:", page.outcome.updated, by_name) }}
+  {{ creados("Sin cambios:", page.outcome.unchanged, by_name) }}
+  {% if not (page.outcome.created or page.outcome.updated or page.outcome.unchanged) %}<p>No se ha generado ningún documento.</p>{% endif %}
+</section>
+{% if page.outcome.archived %}<section class="notice notice-warn" role="status"><p><strong>Había ediciones manuales y se han archivado.</strong> El documento se ha vuelto a generar desde las respuestas; la versión editada se conserva aparte.</p></section>{% endif %}
+{% endif %}
+{% for w in page.warnings %}<p class="muted">{{ m.icon("alert") }} {{ w }}</p>{% endfor %}
+
+<section class="section" aria-labelledby="h-generar">
+  <h2 id="h-generar">Generar los documentos</h2>
+  {% if page.blockers %}
+  <div class="notice notice-warn" role="status"><p><strong>Todavía no se pueden generar.</strong></p>
+    <ul>{% for b in page.blockers %}<li>{{ b }}</li>{% endfor %}</ul>
+    {% if not page.scope_ok and page.scope_href %}<p><a href="{{ page.scope_href }}">Ir a aprobar el alcance</a></p>{% endif %}
+    {% if not page.answers_started and page.start_href %}<p><a href="{{ page.start_href }}">Empezar el cuestionario</a></p>{% endif %}
+    {{ grupos(page.issue_groups) }}
+  </div>
+  {% elif page.can_generate and can_edit %}
+  <p>Genera o actualiza los documentos con las respuestas actuales. No cambia el estado de ninguna medida.</p>
+  <form method="post" action="/documentos/generar"><div class="actions"><button class="btn btn-primary" type="submit">Generar los documentos</button></div></form>
+  {% endif %}
+  {% if not can_edit %}<p class="muted">Solo lectura: para generar o aprobar documentos hace falta permiso de edición.</p>{% endif %}
+</section>
+
+<div class="table-wrap"><table>
+  <caption>{{ page.rows | length }} documentos de las plantillas</caption>
+  <thead><tr><th scope="col">Documento</th><th scope="col">Fuente</th><th scope="col">Última aprobación</th><th scope="col">Aprobación</th><th scope="col">Qué falta</th></tr></thead>
+  <tbody>
+  {%- for r in page.rows %}
+  <tr id="doc-{{ r.name }}">
+    <th scope="row">{% if r.state != "NOT_GENERATED" %}<a href="{{ r.href }}">{{ r.title }}</a>{% else %}{{ r.title }}{% endif %}
+      <div>{{ estado(r) }}</div>
+      {%- if r.reasons %}<ul class="muted">{% for reason in r.reasons %}<li>{{ reason }}</li>{% endfor %}</ul>{% endif %}
+    </th>
+    <td>{% if r.source %}<span class="mono">{{ r.source.template_id }}</span> v{{ r.source.template_version }}
+      <div class="muted">sha256 <span class="mono">{{ r.source.document_sha256 }}</span></div>
+      <div class="muted">catálogo sha256 <span class="mono">{{ r.source.catalog_sha256 }}</span></div>
+      <div class="muted">articulado sha256 <span class="mono">{{ r.source.articulado_sha256 }}</span></div>
+      <div class="muted">Catálogo consolidado el {{ r.source.catalog_consolidation_date }}; articulado el {{ r.source.articulado_consolidation_date }}.</div>
+      {%- else %}<span class="muted">—</span>{% endif %}</td>
+    <td>{% if r.approval %}<strong>{{ r.approval.approved_by }}</strong> <span class="muted">(nombre declarado)</span>
+      <div class="muted">{{ r.approval.role_label }} · {{ r.approval.approved_at }}</div>
+      {%- elif r.last_approval %}<span class="muted">{{ m.icon("help") }} Sin aprobación vigente.</span>
+      <div class="muted">Antes: {{ r.last_approval.approved_by }} · {{ r.last_approval.role_label }} · {{ r.last_approval.approved_at }}</div>
+      {%- else %}<span class="muted">{{ m.icon("help") }} Sin aprobación</span>{% endif %}
+      {%- if r.unreadable %}<div class="muted">{{ m.icon("alert") }} {{ r.unreadable }} registros de aprobación ilegibles.</div>{% endif %}</td>
+    <td>
+      {%- if r.approver.role_label %}<p class="muted">Lo aprueba {{ r.approver.role_label }}.{% if r.approver.signatory %} Nombre declarado para ese puesto: <strong>{{ r.approver.signatory }}</strong>.{% else %} Todavía no has declarado quién es.{% endif %}</p>
+      {%- else %}<p class="muted">Todavía no has declarado quién aprueba este documento.</p>{% endif %}
+      {%- if r.approver.responsables_href and not r.approver.signatory %}<p><a href="{{ r.approver.responsables_href }}">Declarar quién aprueba</a></p>{% endif %}
+      {%- if r.can_approve %}
+      {%- if r.drift_notice %}<p>{{ m.icon("alert") }} {{ r.drift_notice }}</p>{% endif %}
+      {%- if r.role_notice %}<div class="notice notice-warn"><p>{{ r.role_notice }}</p>{% if r.approver.responsables_href %}<p><a href="{{ r.approver.responsables_href }}">Ver quién aprueba</a></p>{% endif %}</div>{% endif %}
+      {%- if r.can_submit and can_edit %}
+      <form method="post" action="{{ r.href }}/aprobar" novalidate>
+        <div class="field">
+          <label for="f-by-{{ r.name }}">Quién lo aprueba<span class="hint">Tu nombre completo. Queda registrado como lo declaras.</span></label>
+          <input type="text" id="f-by-{{ r.name }}" name="approved_by" value="{{ (values or {}).get(r.error_key, '') }}" autocomplete="name"{% if (errors or {}).get(r.error_key) %} aria-invalid="true" aria-describedby="err-{{ r.error_key }}"{% endif %}>
+          {{ m.field_errors(r.error_key) }}
+        </div>
+        <div class="actions"><button class="btn btn-primary" type="submit">Aprobar este documento</button></div>
+      </form>
+      {%- endif %}
+      {%- endif %}
+    </td>
+    <td>{% if r.missing %}{{ grupos(r.missing) }}{% elif r.state == "NOT_GENERATED" %}<span class="muted">Nada pendiente en las respuestas; falta generarlo.</span>{% else %}<span class="muted">—</span>{% endif %}</td>
+  </tr>
+  {%- else %}
+  <tr><td colspan="5" class="muted">No hay plantillas de documentos.</td></tr>
+  {%- endfor %}
+  </tbody>
+</table></div>
+<p class="muted">Datos leídos el {{ page.generated_at }}. Un documento sin aprobar no es un documento aprobado. Esta vista no declara conformidad.</p>
+{% endblock %}

@@ -32,18 +32,23 @@ def audit_write(
     roles: Iterable[str] = (),
     asset: str | None = None,
     failed: bool = False,
+    rejected: bool = False,
 ) -> None:
-    """`asset` identifica el activo tocado; `failed`, una escritura que falló tras escribir algo."""
+    """`asset` identifica el activo tocado; `failed`, una escritura que falló tras escribir algo;
+    `rejected`, una petición que el handler rechazó antes de escribir (sin claves)."""
+    if rejected and failed:
+        raise ValueError("una línea de auditoría no puede ser a la vez rejected y failed")
     target = f" asset={_field(asset)}" if asset is not None else ""
-    (AUDIT_LOGGER.error if failed else AUDIT_LOGGER.info)(
+    outcome = "rejected" if rejected else "failed" if failed else "saved"
+    (AUDIT_LOGGER.error if failed else AUDIT_LOGGER.warning if rejected else AUDIT_LOGGER.info)(
         "audit outcome=%s identity=%s step=%s action=%s%s roles=%s keys=%s at=%s",
-        "failed" if failed else "saved",
+        outcome,
         _field(identity),
         _field(step),
         _field(action),
         target,
         _roles(roles),
-        ",".join(_field(k) for k in keys) or "-",
+        "-" if rejected else ",".join(_field(k) for k in keys) or "-",
         at.isoformat(),
     )
 

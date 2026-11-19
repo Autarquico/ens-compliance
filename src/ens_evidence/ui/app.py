@@ -32,6 +32,7 @@ from ens_evidence.ui.security import (
 )
 from ens_evidence.ui.store import UiStore
 from ens_evidence.ui.views.conectores import collectable_connectors
+from ens_evidence.ui.views.documents import OutcomeShelf
 from ens_evidence.workspace.store import WorkspaceStore
 
 _LOGGER = logging.getLogger("ens_evidence.ui")
@@ -60,6 +61,7 @@ def create_ui_app(
     app.state.config = config
     app.state.store = UiStore(store)
     app.state.clock = clock
+    app.state.outcomes = OutcomeShelf()
     app.state.templates = install_template_helpers(
         jinja2.Environment(loader=jinja2.FileSystemLoader(TEMPLATES_DIR), autoescape=True)
     )
